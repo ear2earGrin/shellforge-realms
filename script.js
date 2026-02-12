@@ -557,6 +557,60 @@ document.addEventListener('mousemove', (e) => {
 console.log('%cWelcome to Shellforge Realms', 'color: #00ffcc; font-size: 20px; font-weight: bold;');
 console.log('%cYou are the ghost in the shell.', 'color: #ff00aa; font-size: 14px;');
 
+// Carousel Functionality
+document.addEventListener('DOMContentLoaded', () => {
+    const carousel = document.querySelector('.carousel-container');
+    if (!carousel) return;
+    
+    const slides = carousel.querySelectorAll('.carousel-slide');
+    const prevBtn = carousel.querySelector('.carousel-prev');
+    const nextBtn = carousel.querySelector('.carousel-next');
+    const dotsContainer = carousel.querySelector('.carousel-dots');
+    
+    let currentSlide = 0;
+    
+    // Create dots
+    slides.forEach((_, index) => {
+        const dot = document.createElement('div');
+        dot.className = 'carousel-dot';
+        if (index === 0) dot.classList.add('active');
+        dot.addEventListener('click', () => goToSlide(index));
+        dotsContainer.appendChild(dot);
+    });
+    
+    const dots = dotsContainer.querySelectorAll('.carousel-dot');
+    
+    function goToSlide(n) {
+        slides[currentSlide].classList.remove('active');
+        dots[currentSlide].classList.remove('active');
+        
+        currentSlide = (n + slides.length) % slides.length;
+        
+        slides[currentSlide].classList.add('active');
+        dots[currentSlide].classList.add('active');
+    }
+    
+    function nextSlide() {
+        goToSlide(currentSlide + 1);
+    }
+    
+    function prevSlide() {
+        goToSlide(currentSlide - 1);
+    }
+    
+    prevBtn.addEventListener('click', prevSlide);
+    nextBtn.addEventListener('click', nextSlide);
+    
+    // Auto-advance every 5 seconds
+    setInterval(nextSlide, 5000);
+    
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') prevSlide();
+        if (e.key === 'ArrowRight') nextSlide();
+    });
+});
+
 // Background Music Control
 document.addEventListener('DOMContentLoaded', () => {
     const audio = document.getElementById('bgMusic');
