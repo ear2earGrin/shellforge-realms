@@ -3023,7 +3023,12 @@
             document.getElementById('karmaValue').textContent = agent.karma >= 0 ? `+${agent.karma}` : agent.karma;
             document.getElementById('locationValue').textContent = agent.location || 'Nexarch';
             document.getElementById('turnsValue').textContent = agent.turnsTaken || 0;
-            document.getElementById('daysValue').textContent = agent.daysSurvived || 1;
+            
+            // Calculate days survived based on creation date
+            const daysSurvived = agent.createdAt 
+                ? Math.floor((Date.now() - new Date(agent.createdAt).getTime()) / (1000 * 60 * 60 * 24)) + 1
+                : 1;
+            document.getElementById('daysValue').textContent = daysSurvived;
 
             // Update location badge
             const locationName = agent.location || 'Nexarch';
