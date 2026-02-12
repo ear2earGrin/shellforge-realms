@@ -423,7 +423,7 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
 .agent-login-link {
     position: absolute;
     left: 30px;
-    bottom: -70px;
+    bottom: 15px;
     z-index: 2;
     max-width: 500px;
     width: 100%;
