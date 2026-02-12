@@ -1202,11 +1202,18 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
 /* Carousel Styles */
 .carousel-container {
     position: relative;
-    max-width: 900px;
+    max-width: 1400px;
     margin: 0 auto;
     overflow: hidden;
     border-radius: 10px;
     border: 2px solid rgba(0, 255, 204, 0.3);
+    transition: all 0.4s ease;
+}
+
+.carousel-container:hover {
+    transform: scale(1.05);
+    box-shadow: 0 20px 60px rgba(0, 255, 204, 0.4);
+    border-color: var(--color-primary);
 }
 
 .carousel-track {
@@ -1219,6 +1226,7 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
     position: relative;
     aspect-ratio: 16/9;
     display: none;
+    overflow: hidden;
 }
 
 .carousel-slide.active {
@@ -1230,6 +1238,11 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
     height: 100%;
     object-fit: cover;
     display: block;
+    transition: transform 0.4s ease;
+}
+
+.carousel-container:hover .carousel-slide img {
+    transform: scale(1.08);
 }
 
 .carousel-caption {
