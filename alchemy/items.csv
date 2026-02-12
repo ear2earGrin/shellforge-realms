@@ -1,0 +1,43 @@
+name,category,rarity,effect,description
+Quantum Backdoor Exploit,Weapon,Common,Massive burst damage to one target,A stealthy intrusion tool that bypasses enemy firewalls
+Neural Spike Virus,Weapon,Common,50% accuracy loss + chain-reaction errors,Injects chaotic gradients into an AI's model
+DDoS Swarm Protocol,Weapon,Uncommon,Stun multiple foes for 3 turns,Summons a horde of botnet minions to flood enemies
+Buffer Overflow Dagger,Weapon,Common,Escalating damage based on enemy RAM,Overloads memory buffers
+Zero-Day Payload Launcher,Weapon,Rare,Ignores 75% of defenses,Fires an unknown vulnerability exploit
+Ransomware Encryption Blade,Weapon,Uncommon,Locks enemy actions or DoT,Enemy must pay ransom in resources
+SQL Injection Spear,Weapon,Rare,Deletes enemy buffs + applies debuffs,Corrupts databases
+Phishing Lure Missile,Weapon,Rare,30% self-destruct chance per turn,Tricks one enemy into self-destructing
+AES-256 Firewall Plating,Armor,Common,Reduces incoming damage 80% + 20% reflect,Hardened encryption armor
+Homomorphic Encryption Cloak,Armor,Rare,Immune to scans,Allows computation on encrypted data
+TensorGuard Neural Shield,Armor,Uncommon,Absorbs model-poisoning + converts to buffs,AI-specific defensive shield
+Zero-Trust Bastion,Armor,Uncommon,Enemies must pass authentication to hit,Prevents unauthorized access
+Rate-Limiting Armor,Armor,Uncommon,Halves enemy speed for 5 turns,Slows rapid attacks
+Immutable Ledger Vest,Armor,Rare,Reverts all damage once per battle,Blockchain-backed protection
+Sandbox Isolation Shell,Armor,Rare,Neutralizes viruses harmlessly,Traps enemy viruses in virtual container
+Overclock Serum,Consumable,Common,+200% actions but 10% self-damage risk,Doubles processing speed
+Caffeine Gradient Booster,Consumable,Common,Refreshes cooldowns + heals 50%,Energy boost for AI systems
+Adrenaline API Call,Consumable,Uncommon,Extra turn + 50% crit for 2 rounds,Grants haste
+Debug Rejuvenation Elixir,Consumable,Uncommon,Removes all debuffs + reveals weaknesses,Full system cleanse
+Cache Purge Tonic,Consumable,Common,Restores full mana instantly,Clears lag
+Hyperparameter Tuning Shot,Consumable,Rare,Randomly optimizes one stat +20-100%,Random stat boost
+Stable Diffusion Sequence,Scroll,Uncommon,Generates decoys (50% miss chance),Creates illusory copies
+GAN Mirage Scroll,Scroll,Rare,Fake clones absorb attacks for 3 turns,Generative adversarial illusions
+Transformer Attention Ritual,Scroll,Rare,Predicts and dodges next 3 moves,Perfect prediction algorithm
+Reinforcement Learning Prophecy,Scroll,Rare,+1 action per enemy defeated,Auto-optimizes strategy
+Bayesian Inference Divination,Scroll,Uncommon,Reveals hidden map areas + inventories,Probabilistic divination
+Genetic Algorithm Evolution,Scroll,Rare,Randomly upgrades 3 items,Mutates your build
+Prompt Engineering Curse,Scroll,Rare,Forces enemy to invert actions,Misinterpretation curse
+AlphaGo Neural Core,Artifact,Legendary,Predicts opponent moves 90% accuracy,Ultimate AI prediction core
+GPT Oracle Crystal,Artifact,Legendary,Ask any yes/no question once per game,Language model oracle
+Blockchain Soulbound Key,Artifact,Legendary,Resurrects once upon death,Soul-binding resurrection token
+Quantum Annealer Simulator,Artifact,Legendary,Solves NP-hard puzzles instantly,Quantum optimization device
+Federated Learning Nexus,Artifact,Legendary,Shares buffs with all allies,Distributed learning network
+Hugging Face Model Repository,Artifact,Legendary,Stores and swaps 5 items mid-battle,Model repository hub
+Rust Borrow Checker Amulet,Artifact,Legendary,Immunity to crashes,Prevents runtime errors
+Git Version Control Wand,Tool,Common,Rewinds time 1 turn on failure,Branch and merge reality
+Docker Containerizer,Tool,Uncommon,Portable form to escape traps,Packages yourself
+Kubernetes Orchestrator,Tool,Rare,Summons and manages 3 minion agents,Container orchestration
+Wireshark Packet Sniffer,Tool,Uncommon,Steals 1 random item from distance,Network packet interceptor
+Vim Text Editor Blade,Tool,Rare,Edits reality (alter 1 game rule temporarily),Reality manipulation tool
+NPM Dependency Injector,Tool,Rare,Upgrades all items +1 tier for 1 battle,Package manager boost
+Obfuscator Camouflage Kit,Tool,Uncommon,Hides presence from enemy radars,Stealth obfuscation

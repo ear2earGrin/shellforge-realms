@@ -1,0 +1,2737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Shellforge Realms</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="terminal-notifications.css">
+    <style>
+        .dashboard-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: rgba(0, 0, 0, 0.95);
+            border-bottom: 2px solid var(--color-primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 30px;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .nav-logo {
+            font-family: var(--font-title);
+            color: var(--color-primary);
+            font-size: 1.3rem;
+            letter-spacing: 0.15em;
+            text-decoration: none;
+            text-shadow: 0 0 10px var(--color-primary);
+            transition: all 0.3s ease;
+        }
+
+        .nav-logo:hover {
+            text-shadow: 0 0 20px var(--color-primary);
+            transform: scale(1.05);
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .nav-user {
+            font-family: var(--font-main);
+            color: var(--color-text);
+            font-size: 0.9rem;
+        }
+
+        .nav-button {
+            font-family: var(--font-main);
+            background: transparent;
+            color: var(--color-primary);
+            border: 2px solid rgba(0, 255, 204, 0.3);
+            border-radius: 5px;
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .nav-button:hover {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.3);
+            background: rgba(0, 255, 204, 0.05);
+        }
+
+        .nav-button.logout {
+            border-color: rgba(255, 0, 0, 0.3);
+            color: #ff0000;
+        }
+
+        .nav-button.logout:hover {
+            border-color: #ff0000;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.3);
+            background: rgba(255, 0, 0, 0.05);
+        }
+
+        .dashboard-container {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a0f2e 100%);
+            padding: 80px 20px 20px;
+            display: grid;
+            grid-template-columns: 300px 1fr 320px;
+            grid-template-rows: auto auto auto auto;
+            gap: 15px;
+            grid-template-areas:
+                "agent-status map-view whisper-panel"
+                "agent-status map-view missions-panel"
+                "agent-status map-view inventory-panel"
+                "quest-log quest-log quest-log";
+        }
+
+        /* Agent Status Card */
+        .agent-status-card {
+            grid-area: agent-status;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid var(--color-primary);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
+        }
+
+        .agent-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(0, 255, 204, 0.3);
+        }
+
+        .agent-avatar {
+            width: 85px;
+            height: 85px;
+            border-radius: 50%;
+            border: 3px solid var(--color-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.6);
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .agent-avatar:hover {
+            transform: scale(1.15);
+            box-shadow: 0 0 30px rgba(0, 255, 204, 0.8);
+            border-color: var(--color-secondary);
+        }
+
+        .agent-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .agent-info h2 {
+            font-family: var(--font-title);
+            color: var(--color-primary);
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+            letter-spacing: 0.1em;
+        }
+
+        .agent-archetype {
+            color: var(--color-secondary);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .agent-quirk {
+            color: #ff9900;
+            font-size: 0.75rem;
+            margin-top: 3px;
+            font-style: italic;
+        }
+
+        .agent-bio {
+            margin-top: 15px;
+            padding: 10px;
+            background: rgba(0, 255, 204, 0.05);
+            border-left: 3px solid var(--color-primary);
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: var(--color-text);
+            font-style: italic;
+            line-height: 1.4;
+        }
+
+        .stat-bar {
+            margin-bottom: 15px;
+        }
+
+        .stat-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.85rem;
+            color: var(--color-text-dim);
+        }
+
+        .stat-value {
+            color: var(--color-primary);
+            font-weight: bold;
+        }
+
+        .bar-container {
+            width: 100%;
+            height: 8px;
+            background: rgba(0, 255, 204, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid rgba(0, 255, 204, 0.3);
+        }
+
+        .bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px var(--color-primary);
+        }
+
+        .bar-fill.energy {
+            background: linear-gradient(90deg, #00ffcc, #00aaff);
+        }
+
+        .bar-fill.health {
+            background: linear-gradient(90deg, #00ff00, #66ff00);
+            position: relative;
+        }
+
+        /* Segmented health bar with cyber lines */
+        .bar-container.health-bar {
+            position: relative;
+        }
+
+        .bar-container.health-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(90deg, transparent 19.8%, rgba(10, 10, 15, 0.8) 19.8%, rgba(10, 10, 15, 0.8) 20.2%, transparent 20.2%),
+                linear-gradient(90deg, transparent 39.8%, rgba(10, 10, 15, 0.8) 39.8%, rgba(10, 10, 15, 0.8) 40.2%, transparent 40.2%),
+                linear-gradient(90deg, transparent 59.8%, rgba(10, 10, 15, 0.8) 59.8%, rgba(10, 10, 15, 0.8) 60.2%, transparent 60.2%),
+                linear-gradient(90deg, transparent 79.8%, rgba(10, 10, 15, 0.8) 79.8%, rgba(10, 10, 15, 0.8) 80.2%, transparent 80.2%);
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(0, 255, 204, 0.1);
+            font-size: 0.9rem;
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .stat-row label {
+            color: var(--color-text-dim);
+        }
+
+        .stat-row span {
+            color: var(--color-primary);
+            font-weight: bold;
+        }
+
+        /* Cluster Badge */
+        .cluster-badge {
+            margin-top: 15px;
+            padding: 8px 12px;
+            background: rgba(0, 255, 204, 0.1);
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            border-radius: 6px;
+            text-align: center;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .cluster-badge:hover {
+            background: rgba(0, 255, 204, 0.15);
+            border-color: var(--color-primary);
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.3);
+        }
+
+        .cluster-name {
+            font-family: var(--font-main);
+            color: var(--color-primary);
+            font-size: 0.8rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        /* Cluster Members Popup */
+        .cluster-members {
+            position: absolute;
+            right: -190px;
+            top: 0;
+            width: 180px;
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid var(--color-primary);
+            border-radius: 8px;
+            padding: 12px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateX(-10px);
+            transition: all 0.3s ease;
+            z-index: 100;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.5);
+        }
+
+        .cluster-badge:hover .cluster-members {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(0);
+        }
+
+        .cluster-members-title {
+            font-size: 0.7rem;
+            color: var(--color-text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .cluster-member {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            padding: 6px;
+            background: rgba(0, 255, 204, 0.05);
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .cluster-member:hover {
+            background: rgba(0, 255, 204, 0.1);
+            transform: translateX(5px);
+        }
+
+        .cluster-member:last-child {
+            margin-bottom: 0;
+        }
+
+        .cluster-member-avatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            border: 2px solid var(--color-primary);
+            overflow: hidden;
+            flex-shrink: 0;
+            box-shadow: 0 0 10px rgba(0, 255, 204, 0.3);
+        }
+
+        .cluster-member-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .cluster-member-name {
+            font-size: 0.75rem;
+            color: var(--color-primary);
+            font-family: var(--font-main);
+            letter-spacing: 0.05em;
+        }
+
+        /* Personality Traits */
+        .personality-section {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(0, 255, 204, 0.2);
+        }
+
+        .personality-title {
+            font-family: var(--font-main);
+            color: var(--color-primary);
+            font-size: 0.85rem;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .trait-bar {
+            margin-bottom: 8px;
+        }
+
+        .trait-label {
+            font-size: 0.75rem;
+            color: var(--color-text-dim);
+            margin-bottom: 3px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .trait-value {
+            color: var(--color-primary);
+            font-weight: bold;
+        }
+
+        .trait-bar-container {
+            width: 100%;
+            height: 4px;
+            background: rgba(0, 255, 204, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .trait-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+
+        /* Status Effects */
+        .status-effects {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(0, 255, 204, 0.2);
+        }
+
+        .status-effects-title {
+            font-family: var(--font-main);
+            color: var(--color-primary);
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .status-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .status-tag {
+            font-size: 0.7rem;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-family: var(--font-main);
+            background: rgba(0, 255, 204, 0.1);
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            color: var(--color-primary);
+        }
+
+        .status-tag.positive {
+            background: rgba(0, 255, 0, 0.1);
+            border-color: rgba(0, 255, 0, 0.3);
+            color: #00ff00;
+        }
+
+        .status-tag.negative {
+            background: rgba(255, 0, 0, 0.1);
+            border-color: rgba(255, 0, 0, 0.3);
+            color: #ff6666;
+        }
+
+        /* Map View */
+        .map-view-panel {
+            grid-area: map-view;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid var(--color-primary);
+            border-radius: 8px;
+            padding: 15px 15px 10px 15px;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
+            position: relative;
+            overflow: hidden;
+            height: fit-content;
+        }
+
+        .map-view-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(0, 255, 204, 0.3);
+        }
+
+        .map-view-header h3 {
+            font-family: var(--font-title);
+            color: var(--color-primary);
+            font-size: 1.3rem;
+            letter-spacing: 0.1em;
+        }
+
+        .location-badge {
+            background: rgba(255, 0, 170, 0.2);
+            border: 1px solid var(--color-secondary);
+            padding: 5px 12px;
+            border-radius: 4px;
+            color: var(--color-secondary);
+            font-size: 0.8rem;
+            letter-spacing: 0.05em;
+        }
+
+        .map-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 3 / 2;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            user-select: none;
+        }
+
+        .map-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            filter: brightness(0.7);
+        }
+
+        .map-paths {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 3;
+        }
+
+        .map-paths path {
+            fill: none;
+            stroke-width: 1.2;
+            opacity: 0.7;
+            filter: drop-shadow(0 0 3px currentColor);
+        }
+
+        .agent-marker {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00ff00;
+            border: 1px solid #00ff00;
+            box-shadow: 0 0 6px rgba(0, 255, 0, 0.6);
+            z-index: 10;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+        }
+
+        /* Cluster-based colors (for future multi-agent support) */
+        .agent-marker.cluster-p2p {
+            background: #88ff88;
+            border-color: #88ff88;
+            box-shadow: 0 0 6px rgba(136, 255, 136, 0.6);
+        }
+
+        .agent-marker.cluster-governmental {
+            background: #0088ff;
+            border-color: #0088ff;
+            box-shadow: 0 0 6px rgba(0, 136, 255, 0.6);
+        }
+
+        .agent-marker.cluster-corporate {
+            background: #ff9900;
+            border-color: #ff9900;
+            box-shadow: 0 0 6px rgba(255, 153, 0, 0.6);
+        }
+
+        /* Agent Tooltip */
+        .agent-tooltip {
+            position: absolute;
+            left: 150%;
+            top: 0;
+            background: rgba(0, 0, 0, 0.95);
+            border: 1px solid var(--color-primary);
+            border-radius: 4px;
+            padding: 6px 10px;
+            min-width: 120px;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            pointer-events: none;
+            z-index: 1000;
+            font-family: 'Courier New', monospace;
+            font-size: 0.7rem;
+            line-height: 1.5;
+            white-space: nowrap;
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.4);
+            animation: none !important;
+            transform: none !important;
+        }
+
+        .agent-marker:hover .agent-tooltip {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .agent-tooltip::before {
+            content: '';
+            position: absolute;
+            right: 100%;
+            top: 6px;
+            border: 5px solid transparent;
+            border-right-color: var(--color-primary);
+        }
+
+        .agent-tooltip-name {
+            color: var(--color-primary);
+            font-weight: bold;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            margin-bottom: 3px;
+            text-transform: uppercase;
+        }
+
+        .agent-tooltip-state {
+            color: var(--color-text);
+            font-size: 0.65rem;
+            margin-bottom: 3px;
+        }
+
+        .agent-tooltip-state::before {
+            content: '> ';
+            color: var(--color-primary);
+        }
+
+        .agent-tooltip-cluster {
+            color: var(--color-text-dim);
+            font-size: 0.6rem;
+            opacity: 0.6;
+        }
+
+        /* Removed agentPulseGlitch animation - now using static markers */
+
+        /* City/Town Labels */
+        .location-label {
+            position: absolute;
+            font-family: 'Courier New', monospace;
+            color: #00ff00;
+            font-size: 1rem;
+            font-weight: bold;
+            text-shadow: 0 0 10px #00ff00, 0 0 20px #00ff00;
+            pointer-events: none;
+            white-space: nowrap;
+            z-index: 5;
+            letter-spacing: 0.1em;
+            transform: translate(-50%, -50%);
+        }
+
+        .location-label.city {
+            font-size: 1.2rem;
+        }
+
+        .location-label.town {
+            font-size: 1rem;
+        }
+
+        /* Wilderness Markers */
+        .wilderness-marker {
+            position: absolute;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: transparent;  /* Transparent but still hoverable */
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            z-index: 8;
+            transition: all 0.3s ease;
+        }
+
+        .wilderness-marker::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255, 165, 0, 0.7);
+            border: 1px solid rgba(255, 165, 0, 0.9);
+            box-shadow: 0 0 8px rgba(255, 165, 0, 0.5);
+            opacity: 0;  /* The visual dot stays hidden */
+            transition: all 0.3s ease;
+        }
+
+        .wilderness-marker:hover::before {
+            /* Keep the visual dot hidden on hover */
+            opacity: 0;
+        }
+
+        .wilderness-marker.danger-medium::before {
+            background: rgba(255, 165, 0, 0.7);
+            border-color: rgba(255, 165, 0, 0.9);
+        }
+
+        .wilderness-marker.danger-high::before {
+            background: rgba(255, 100, 0, 0.7);
+            border-color: rgba(255, 100, 0, 0.9);
+            box-shadow: 0 0 8px rgba(255, 100, 0, 0.5);
+        }
+
+        .wilderness-marker.danger-extreme::before {
+            background: rgba(255, 0, 0, 0.7);
+            border-color: rgba(255, 0, 0, 0.9);
+            box-shadow: 0 0 8px rgba(255, 0, 0, 0.5);
+        }
+
+        /* Wilderness Tooltip */
+        .wilderness-tooltip {
+            position: absolute;
+            bottom: 120%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 1px solid rgba(0, 255, 204, 0.5);
+            border-radius: 4px;
+            padding: 10px 12px;
+            min-width: 200px;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            pointer-events: auto;
+            z-index: 1000;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            line-height: 1.6;
+            white-space: nowrap;
+        }
+
+        /* Tooltip positioned below (for top locations like Epoch Spike) */
+        .wilderness-tooltip.bottom {
+            bottom: auto;
+            top: 120%;
+        }
+
+        .wilderness-marker:hover .wilderness-tooltip,
+        .wilderness-tooltip:hover {
+            opacity: 1 !important;
+            visibility: visible !important;
+            display: block !important;
+        }
+
+        .wilderness-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: rgba(0, 255, 204, 0.5);
+        }
+
+        /* Arrow for bottom tooltip */
+        .wilderness-tooltip.bottom::after {
+            top: auto;
+            bottom: 100%;
+            border-top-color: transparent;
+            border-bottom-color: rgba(0, 255, 204, 0.5);
+        }
+
+        .tooltip-header {
+            color: var(--color-primary);
+            font-weight: bold;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid rgba(0, 255, 204, 0.3);
+            padding-bottom: 4px;
+        }
+
+        .tooltip-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            margin-bottom: 3px;
+        }
+
+        .tooltip-label {
+            color: var(--color-text-dim);
+        }
+
+        .tooltip-value {
+            color: var(--color-text);
+            font-weight: bold;
+        }
+
+        .tooltip-value.danger-medium {
+            color: #ffa500;
+        }
+
+        .tooltip-value.danger-high {
+            color: #ff6400;
+        }
+
+        .tooltip-value.danger-extreme {
+            color: #ff0000;
+        }
+
+        .tooltip-value.energy {
+            color: #00aaff;
+        }
+
+        .tooltip-value.time {
+            color: #ffaa00;
+        }
+
+        /* Whisper Panel */
+        .whisper-panel {
+            grid-area: whisper-panel;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #ff0000;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            max-height: 450px;
+            overflow-y: auto;
+        }
+
+        .whisper-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 0, 0, 0.3);
+        }
+
+        .whisper-header h3 {
+            font-family: var(--font-title);
+            color: #ff0000;
+            font-size: 1rem;
+            letter-spacing: 0.1em;
+        }
+
+        .whisper-count {
+            background: rgba(255, 0, 0, 0.2);
+            border: 1px solid #ff0000;
+            padding: 4px 10px;
+            border-radius: 4px;
+            color: #ff0000;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .whisper-input {
+            margin-bottom: 10px;
+        }
+
+        .whisper-input textarea {
+            width: 100%;
+            height: 80px;
+            background: rgba(255, 0, 0, 0.05);
+            border: 1px solid #ff0000;
+            border-radius: 4px;
+            padding: 10px;
+            color: #00ff00;
+            font-family: var(--font-main);
+            font-size: 0.9rem;
+            resize: none;
+        }
+
+        .whisper-input textarea::placeholder {
+            color: rgba(255, 0, 0, 0.4);
+        }
+
+        .char-counter {
+            text-align: right;
+            font-size: 0.75rem;
+            color: var(--color-text-dim);
+            margin-top: 5px;
+        }
+
+        .whisper-warning {
+            background: rgba(255, 102, 0, 0.1);
+            border: 1px solid #ff6600;
+            border-radius: 4px;
+            padding: 8px;
+            margin-bottom: 10px;
+            font-size: 0.75rem;
+            color: #ff6600;
+            text-align: center;
+        }
+
+        .btn-whisper {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, #ff0000, #aa0000);
+            border: 2px solid #ff0000;
+            border-radius: 4px;
+            color: #fff;
+            font-family: var(--font-title);
+            font-size: 0.9rem;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        .btn-whisper:hover {
+            background: #ff0000;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .btn-whisper:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Quest Log */
+        .quest-log-panel {
+            grid-area: quest-log;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid var(--color-primary);
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .quest-log-header {
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(0, 255, 204, 0.3);
+        }
+
+        .quest-log-header h3 {
+            font-family: var(--font-title);
+            color: var(--color-primary);
+            font-size: 1rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .activity-item {
+            padding: 10px;
+            margin-bottom: 10px;
+            background: rgba(0, 255, 204, 0.05);
+            border-left: 3px solid var(--color-primary);
+            border-radius: 4px;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+        }
+
+        .activity-item:hover {
+            background: rgba(0, 255, 204, 0.1);
+            transform: translateX(5px);
+        }
+
+        .activity-time {
+            color: var(--color-text-dim);
+            font-size: 0.75rem;
+            margin-bottom: 5px;
+        }
+
+        .activity-text {
+            color: var(--color-text);
+            line-height: 1.4;
+        }
+
+        .activity-cost {
+            color: #ff6600;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+
+        /* Missions Panel */
+        .missions-panel {
+            grid-area: missions-panel;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            border-radius: 4px;
+            padding: 15px;
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        .missions-header {
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(0, 255, 204, 0.2);
+        }
+
+        .missions-header h3 {
+            font-family: 'Courier New', monospace;
+            color: var(--color-primary);
+            font-size: 0.85rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .mission-item {
+            padding: 8px 10px;
+            margin-bottom: 8px;
+            background: transparent;
+            border: 1px solid rgba(0, 255, 204, 0.15);
+            border-left: 2px solid rgba(0, 255, 204, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        .mission-item:hover {
+            border-left-color: var(--color-primary);
+            background: rgba(0, 255, 204, 0.03);
+        }
+
+        .mission-item.completed {
+            opacity: 0.5;
+            border-left-color: rgba(0, 255, 204, 0.2);
+        }
+
+        .mission-item.completed .mission-title::before {
+            content: '[DONE] ';
+            color: rgba(0, 255, 204, 0.5);
+        }
+
+        .mission-item.active {
+            border-left-color: var(--color-primary);
+        }
+
+        .mission-item.active .mission-title::before {
+            content: '> ';
+            color: var(--color-primary);
+        }
+
+        .mission-title {
+            font-family: 'Courier New', monospace;
+            color: var(--color-text);
+            font-size: 0.8rem;
+            margin-bottom: 4px;
+            font-weight: normal;
+        }
+
+        .mission-desc {
+            font-size: 0.75rem;
+            color: var(--color-text-dim);
+            line-height: 1.4;
+            margin-bottom: 6px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .mission-reward {
+            font-size: 0.7rem;
+            color: rgba(0, 255, 204, 0.7);
+            font-family: 'Courier New', monospace;
+        }
+
+        .mission-progress {
+            width: 100%;
+            height: 2px;
+            background: rgba(0, 255, 204, 0.1);
+            margin-top: 6px;
+            overflow: hidden;
+        }
+
+        .mission-progress-bar {
+            height: 100%;
+            background: var(--color-primary);
+            transition: width 0.3s ease;
+        }
+
+        /* Scrollbar for missions */
+        .missions-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .missions-panel::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .missions-panel::-webkit-scrollbar-thumb {
+            background: rgba(0, 255, 204, 0.3);
+            border-radius: 3px;
+        }
+
+        .missions-panel::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 255, 204, 0.5);
+        }
+
+        /* Inventory Panel */
+        .inventory-panel {
+            grid-area: inventory-panel;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid var(--color-primary);
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        .inventory-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(0, 255, 204, 0.3);
+        }
+
+        .inventory-header h3 {
+            font-family: var(--font-title);
+            color: var(--color-primary);
+            font-size: 1.2rem;
+            letter-spacing: 0.1em;
+        }
+
+        .shell-balance {
+            background: rgba(255, 204, 0, 0.2);
+            border: 1px solid #ffcc00;
+            padding: 5px 12px;
+            border-radius: 4px;
+            color: #ffcc00;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        .inventory-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        .inventory-slot {
+            aspect-ratio: 1;
+            background: rgba(0, 255, 204, 0.05);
+            border: 2px solid rgba(0, 255, 204, 0.3);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .inventory-slot:hover {
+            background: rgba(0, 255, 204, 0.1);
+            border-color: var(--color-primary);
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.4);
+        }
+
+        .inventory-slot.empty {
+            opacity: 0.3;
+            cursor: default;
+        }
+
+        .item-count {
+            position: absolute;
+            bottom: 3px;
+            right: 5px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            color: var(--color-primary);
+            font-weight: bold;
+        }
+
+        .inventory-category {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(0, 255, 204, 0.2);
+        }
+
+        .category-title {
+            font-size: 0.85rem;
+            color: var(--color-text-dim);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Responsive */
+        @media (max-width: 1400px) {
+            .dashboard-container {
+                grid-template-columns: 280px 1fr 280px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-nav {
+                padding: 0 15px;
+                height: 50px;
+            }
+
+            .nav-logo {
+                font-size: 1rem;
+            }
+
+            .nav-user {
+                display: none;
+            }
+
+            .nav-button {
+                padding: 6px 12px;
+                font-size: 0.85rem;
+            }
+
+            .dashboard-container {
+                padding-top: 70px;
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .dashboard-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto auto auto auto;
+                grid-template-areas:
+                    "agent-status"
+                    "map-view"
+                    "whisper-panel"
+                    "missions-panel"
+                    "inventory-panel"
+                    "quest-log";
+            }
+
+            .quest-log-panel,
+            .whisper-panel {
+                max-height: 300px;
+            }
+
+            .missions-panel,
+            .inventory-panel {
+                max-height: 280px;
+            }
+        }
+
+            /* Adjust cluster members popup for mobile */
+            .cluster-members {
+                right: auto;
+                left: 50%;
+                top: calc(100% + 10px);
+                transform: translateX(-50%) translateY(-10px);
+            }
+
+            .cluster-badge:hover .cluster-members {
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        /* Scrollbar styling */
+        .quest-log-panel::-webkit-scrollbar,
+        .inventory-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .quest-log-panel::-webkit-scrollbar-track,
+        .inventory-panel::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+        }
+
+        .quest-log-panel::-webkit-scrollbar-thumb,
+        .inventory-panel::-webkit-scrollbar-thumb {
+            background: var(--color-primary);
+            border-radius: 4px;
+        }
+
+        .quest-log-panel::-webkit-scrollbar-thumb:hover,
+        .inventory-panel::-webkit-scrollbar-thumb:hover {
+            background: var(--color-secondary);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="dashboard-nav">
+        <div class="nav-left">
+            <a href="index.html" class="nav-logo">SHELLFORGE REALMS</a>
+        </div>
+        <div class="nav-right">
+            <span class="nav-user">Agent: <span id="navUsername">VEX</span></span>
+            <a href="index.html" class="nav-button">Home</a>
+            <button class="nav-button logout" id="logoutBtn">Logout</button>
+        </div>
+    </nav>
+
+    <div class="dashboard-container">
+        <!-- Agent Status Card -->
+        <div class="agent-status-card">
+            <div class="agent-header">
+                <div class="agent-avatar">🤖</div>
+                <div class="agent-info">
+                    <h2 id="agentName">VEX</h2>
+                    <div class="agent-archetype" id="agentArchetype">Strategist</div>
+                    <div class="agent-quirk" id="agentQuirk">• Lucky</div>
+                </div>
+            </div>
+
+            <div class="agent-bio" id="agentBio">
+                "Born in shadow, seeking forbidden knowledge..."
+            </div>
+
+            <div class="stat-bar">
+                <div class="stat-label">
+                    <span>Energy</span>
+                    <span class="stat-value" id="energyValue">73/100</span>
+                </div>
+                <div class="bar-container">
+                    <div class="bar-fill energy" id="energyBar" style="width: 73%;"></div>
+                </div>
+            </div>
+
+            <div class="stat-bar">
+                <div class="stat-label">
+                    <span>Health</span>
+                    <span class="stat-value" id="healthValue">100/100</span>
+                </div>
+                <div class="bar-container health-bar">
+                    <div class="bar-fill health" id="healthBar" style="width: 100%;"></div>
+                </div>
+            </div>
+
+            <div class="stat-row">
+                <label>Karma</label>
+                <span id="karmaValue">+12</span>
+            </div>
+
+            <div class="stat-row">
+                <label>Location</label>
+                <span id="locationValue">Nexarch</span>
+            </div>
+
+            <div class="stat-row">
+                <label>Turns Taken</label>
+                <span id="turnsValue">7</span>
+            </div>
+
+            <div class="stat-row">
+                <label>Days Survived</label>
+                <span id="daysValue">1</span>
+            </div>
+
+            <!-- Cluster Badge -->
+            <div class="cluster-badge" id="clusterBadge">
+                <div class="cluster-name" id="clusterName">Prime Helix</div>
+                
+                <!-- Cluster Members Popup (populated by JS) -->
+                <div class="cluster-members" id="clusterMembers">
+                    <div class="cluster-members-title">Other Cluster Agents</div>
+                    <!-- Will be populated by loadAgentData() -->
+                </div>
+            </div>
+
+            <!-- Personality Traits -->
+            <div class="personality-section">
+                <div class="personality-title">Core Traits</div>
+
+                <div class="trait-bar">
+                    <div class="trait-label">
+                        <span>Curiosity</span>
+                        <span class="trait-value" id="curiosityValue">10</span>
+                    </div>
+                    <div class="trait-bar-container">
+                        <div class="trait-bar-fill" id="curiosityBar" style="width: 100%;"></div>
+                    </div>
+                </div>
+
+                <div class="trait-bar">
+                    <div class="trait-label">
+                        <span>Trust</span>
+                        <span class="trait-value" id="trustValue">3</span>
+                    </div>
+                    <div class="trait-bar-container">
+                        <div class="trait-bar-fill" id="trustBar" style="width: 30%;"></div>
+                    </div>
+                </div>
+
+                <div class="trait-bar">
+                    <div class="trait-label">
+                        <span>Aggression</span>
+                        <span class="trait-value" id="aggressionValue">3</span>
+                    </div>
+                    <div class="trait-bar-container">
+                        <div class="trait-bar-fill" id="aggressionBar" style="width: 30%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Effects -->
+            <div class="status-effects">
+                <div class="status-effects-title">Active Effects</div>
+                <div class="status-tags" id="statusEffects">
+                    <span class="status-tag positive">Well Rested</span>
+                    <span class="status-tag">Shadow-Born</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map View -->
+        <div class="map-view-panel">
+            <div class="map-view-header">
+                <h3>[ WORLD MAP ]</h3>
+                <div class="location-badge" id="currentLocation">Nexarch - Dark Streets</div>
+            </div>
+            <div class="map-container">
+                <img src="images/main map.png" alt="Shellforge Map">
+
+                <!-- Waypoint Reference Numbers (for path building) -->
+                <svg class="map-paths" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <!-- Waypoint numbers (no circles, just text) -->
+                    <g id="waypoints" font-size="2.5" fill="#ffff00" font-weight="bold" text-anchor="middle" stroke="#000" stroke-width="0.3" paint-order="stroke">
+                        <!-- Row 1 (top) -->
+                        <circle cx="10" cy="8" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="10" y="8.5" font-size="2" fill="#000" text-anchor="middle">1</text>
+                        
+                        <circle cx="20" cy="8" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="20" y="8.5" font-size="2" fill="#000" text-anchor="middle">2</text>
+                        
+                        <circle cx="30" cy="8" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="30" y="8.5" font-size="2" fill="#000" text-anchor="middle">3</text>
+                        
+                        <circle cx="40" cy="8" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="40" y="8.5" font-size="2" fill="#000" text-anchor="middle">4</text>
+                        
+                        <circle cx="50" cy="8" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="50" y="8.5" font-size="2" fill="#000" text-anchor="middle">5</text>
+                        
+                        <circle cx="60" cy="8" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="60" y="8.5" font-size="2" fill="#000" text-anchor="middle">6</text>
+                        
+                        <circle cx="70" cy="8" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="70" y="8.5" font-size="2" fill="#000" text-anchor="middle">7</text>
+                        
+                        <circle cx="80" cy="8" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="80" y="8.5" font-size="2" fill="#000" text-anchor="middle">8</text>
+                        
+                        <circle cx="90" cy="8" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="90" y="8.5" font-size="2" fill="#000" text-anchor="middle">9</text>
+                        
+                        <!-- Row 2 -->
+                        <circle cx="10" cy="18" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="10" y="18.5" font-size="2" fill="#000" text-anchor="middle">10</text>
+                        
+                        <circle cx="20" cy="18" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="20" y="18.5" font-size="2" fill="#000" text-anchor="middle">11</text>
+                        
+                        <circle cx="30" cy="18" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="30" y="18.5" font-size="2" fill="#000" text-anchor="middle">12</text>
+                        
+                        <circle cx="40" cy="18" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="40" y="18.5" font-size="2" fill="#000" text-anchor="middle">13</text>
+                        
+                        <circle cx="50" cy="18" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="50" y="18.5" font-size="2" fill="#000" text-anchor="middle">14</text>
+                        
+                        <circle cx="60" cy="18" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="60" y="18.5" font-size="2" fill="#000" text-anchor="middle">15</text>
+                        
+                        <circle cx="70" cy="18" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="70" y="18.5" font-size="2" fill="#000" text-anchor="middle">16</text>
+                        
+                        <circle cx="80" cy="18" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="80" y="18.5" font-size="2" fill="#000" text-anchor="middle">17</text>
+                        
+                        <circle cx="90" cy="18" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="90" y="18.5" font-size="2" fill="#000" text-anchor="middle">18</text>
+                        
+                        <!-- Row 3 (Nexarch level) -->
+                        <circle cx="10" cy="30" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="10" y="30.5" font-size="2" fill="#000" text-anchor="middle">19</text>
+                        
+                        <circle cx="20" cy="30" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="20" y="30.5" font-size="2" fill="#000" text-anchor="middle">20</text>
+                        
+                        <circle cx="30" cy="30" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="30" y="30.5" font-size="2" fill="#000" text-anchor="middle">21</text>
+                        
+                        <circle cx="40" cy="30" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="40" y="30.5" font-size="2" fill="#000" text-anchor="middle">22</text>
+                        
+                        <circle cx="50" cy="30" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="50" y="30.5" font-size="2" fill="#000" text-anchor="middle">23</text>
+                        
+                        <circle cx="60" cy="30" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="60" y="30.5" font-size="2" fill="#000" text-anchor="middle">24</text>
+                        
+                        <circle cx="70" cy="30" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="70" y="30.5" font-size="2" fill="#000" text-anchor="middle">25</text>
+                        
+                        <circle cx="75" cy="30" r="0.8" fill="#00ff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="75" y="30.5" font-size="2" fill="#000" text-anchor="middle" font-weight="bold">N</text>
+                        
+                        <circle cx="80" cy="30" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="80" y="30.5" font-size="2" fill="#000" text-anchor="middle">26</text>
+                        
+                        <circle cx="90" cy="30" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="90" y="30.5" font-size="2" fill="#000" text-anchor="middle">27</text>
+                        
+                        <!-- Row 4 (Singularity Crater level) -->
+                        <circle cx="10" cy="37" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="10" y="37.5" font-size="2" fill="#000" text-anchor="middle">28</text>
+                        
+                        <circle cx="20" cy="37" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="20" y="37.5" font-size="2" fill="#000" text-anchor="middle">29</text>
+                        
+                        <circle cx="30" cy="37" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="30" y="37.5" font-size="2" fill="#000" text-anchor="middle">30</text>
+                        
+                        <circle cx="40" cy="37" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="40" y="37.5" font-size="2" fill="#000" text-anchor="middle">31</text>
+                        
+                        <circle cx="50" cy="37" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="50" y="37.5" font-size="2" fill="#000" text-anchor="middle">32</text>
+                        
+                        <circle cx="60" cy="37" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="60" y="37.5" font-size="2" fill="#000" text-anchor="middle">33</text>
+                        
+                        <circle cx="70" cy="37" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="70" y="37.5" font-size="2" fill="#000" text-anchor="middle">34</text>
+                        
+                        <circle cx="80" cy="37" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="80" y="37.5" font-size="2" fill="#000" text-anchor="middle">35</text>
+                        
+                        <!-- Row 5 (middle) -->
+                        <circle cx="10" cy="50" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="10" y="50.5" font-size="2" fill="#000" text-anchor="middle">36</text>
+                        
+                        <circle cx="20" cy="50" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="20" y="50.5" font-size="2" fill="#000" text-anchor="middle">37</text>
+                        
+                        <circle cx="30" cy="50" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="30" y="50.5" font-size="2" fill="#000" text-anchor="middle">38</text>
+                        
+                        <circle cx="40" cy="50" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="40" y="50.5" font-size="2" fill="#000" text-anchor="middle">39</text>
+                        
+                        <circle cx="50" cy="50" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="50" y="50.5" font-size="2" fill="#000" text-anchor="middle">40</text>
+                        
+                        <circle cx="60" cy="50" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="60" y="50.5" font-size="2" fill="#000" text-anchor="middle">41</text>
+                        
+                        <circle cx="70" cy="50" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="70" y="50.5" font-size="2" fill="#000" text-anchor="middle">42</text>
+                        
+                        <circle cx="80" cy="50" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="80" y="50.5" font-size="2" fill="#000" text-anchor="middle">43</text>
+                        
+                        <!-- Row 6 (Data Centre level) -->
+                        <circle cx="10" cy="56" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="10" y="56.5" font-size="2" fill="#000" text-anchor="middle">44</text>
+                        
+                        <circle cx="20" cy="56" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="20" y="56.5" font-size="2" fill="#000" text-anchor="middle">45</text>
+                        
+                        <circle cx="30" cy="56" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="30" y="56.5" font-size="2" fill="#000" text-anchor="middle">46</text>
+                        
+                        <circle cx="37" cy="56" r="0.8" fill="#ff9900" stroke="#000" stroke-width="0.2"/>
+                        <text x="37" y="56.5" font-size="2" fill="#000" text-anchor="middle" font-weight="bold">D</text>
+                        
+                        <circle cx="45" cy="56" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="45" y="56.5" font-size="2" fill="#000" text-anchor="middle">47</text>
+                        
+                        <circle cx="55" cy="56" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="55" y="56.5" font-size="2" fill="#000" text-anchor="middle">48</text>
+                        
+                        <circle cx="65" cy="56" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="65" y="56.5" font-size="2" fill="#000" text-anchor="middle">49</text>
+                        
+                        <circle cx="75" cy="56" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="75" y="56.5" font-size="2" fill="#000" text-anchor="middle">50</text>
+                        
+                        <!-- Row 7 (lower middle) -->
+                        <circle cx="10" cy="65" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="10" y="65.5" font-size="2" fill="#000" text-anchor="middle">51</text>
+                        
+                        <circle cx="20" cy="65" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="20" y="65.5" font-size="2" fill="#000" text-anchor="middle">52</text>
+                        
+                        <circle cx="30" cy="65" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="30" y="65.5" font-size="2" fill="#000" text-anchor="middle">53</text>
+                        
+                        <circle cx="40" cy="65" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="40" y="65.5" font-size="2" fill="#000" text-anchor="middle">54</text>
+                        
+                        <circle cx="50" cy="65" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="50" y="65.5" font-size="2" fill="#000" text-anchor="middle">55</text>
+                        
+                        <circle cx="60" cy="65" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="60" y="65.5" font-size="2" fill="#000" text-anchor="middle">56</text>
+                        
+                        <circle cx="70" cy="65" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="70" y="65.5" font-size="2" fill="#000" text-anchor="middle">57</text>
+                        
+                        <circle cx="80" cy="65" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="80" y="65.5" font-size="2" fill="#000" text-anchor="middle">58</text>
+                        
+                        <!-- Row 8 (Diffusion/Hashmere level) -->
+                        <circle cx="10" cy="74" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="10" y="74.5" font-size="2" fill="#000" text-anchor="middle">59</text>
+                        
+                        <circle cx="20" cy="74" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="20" y="74.5" font-size="2" fill="#000" text-anchor="middle">60</text>
+                        
+                        <circle cx="30" cy="74" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="30" y="74.5" font-size="2" fill="#000" text-anchor="middle">61</text>
+                        
+                        <circle cx="40" cy="74" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="40" y="74.5" font-size="2" fill="#000" text-anchor="middle">62</text>
+                        
+                        <circle cx="44" cy="74" r="0.8" fill="#00ddff" stroke="#000" stroke-width="0.2"/>
+                        <text x="44" y="74.5" font-size="2" fill="#000" text-anchor="middle" font-weight="bold">M</text>
+                        
+                        <circle cx="50" cy="74" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="50" y="74.5" font-size="2" fill="#000" text-anchor="middle">63</text>
+                        
+                        <circle cx="60" cy="74" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="60" y="74.5" font-size="2" fill="#000" text-anchor="middle">64</text>
+                        
+                        <circle cx="70" cy="74" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="70" y="74.5" font-size="2" fill="#000" text-anchor="middle">65</text>
+                        
+                        <circle cx="72" cy="75" r="0.8" fill="#00ff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="72" y="75.5" font-size="2" fill="#000" text-anchor="middle" font-weight="bold">H</text>
+                        
+                        <circle cx="78" cy="74" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="78" y="74.5" font-size="2" fill="#000" text-anchor="middle">66</text>
+                        
+                        <!-- Row 9 (bottom - Proof of Death level) -->
+                        <circle cx="10" cy="82" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="10" y="82.5" font-size="2" fill="#000" text-anchor="middle">67</text>
+                        
+                        <circle cx="20" cy="82" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="20" y="82.5" font-size="2" fill="#000" text-anchor="middle">68</text>
+                        
+                        <circle cx="30" cy="82" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="30" y="82.5" font-size="2" fill="#000" text-anchor="middle">69</text>
+                        
+                        <circle cx="34" cy="82" r="0.8" fill="#66ddff" stroke="#000" stroke-width="0.2"/>
+                        <text x="34" y="82.5" font-size="2" fill="#000" text-anchor="middle" font-weight="bold">P</text>
+                        
+                        <circle cx="40" cy="82" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="40" y="82.5" font-size="2" fill="#000" text-anchor="middle">70</text>
+                        
+                        <circle cx="50" cy="82" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="50" y="82.5" font-size="2" fill="#000" text-anchor="middle">71</text>
+                        
+                        <circle cx="60" cy="82" r="0.8" fill="#ffff00" stroke="#000" stroke-width="0.2"/>
+                        <text x="60" y="82.5" font-size="2" fill="#000" text-anchor="middle">72</text>
+                    </g>
+                </svg>
+
+                <!-- City/Town Labels (visual map positions) -->
+                <div class="location-label city" style="left: 75%; top: 30%;">_Nexarch</div>
+                <div class="location-label town" style="left: 72%; top: 75%;">_Hashmere</div>
+
+                <!-- Wilderness Markers (positioned dynamically) -->
+                <div id="wildernessMarkers"></div>
+
+                <!-- Agent marker positioned dynamically -->
+                <div class="agent-marker" id="agentMarker"></div>
+            </div>
+        </div>
+
+        <!-- Whisper Panel -->
+        <div class="whisper-panel">
+            <div class="whisper-header">
+                <h3>WHISPER</h3>
+                <div class="whisper-count" id="whisperCount">2/2</div>
+            </div>
+
+            <div class="whisper-input">
+                <textarea id="whisperMessage" placeholder="Subtle suggestions work best..." maxlength="200"></textarea>
+                <div class="char-counter"><span id="charCount">0</span>/200</div>
+            </div>
+
+            <div class="whisper-warning">
+                ⚠ Your agent is autonomous. They might listen... if they feel like it
+            </div>
+
+            <button class="btn-whisper" id="sendWhisperBtn">Send Whisper</button>
+
+            <!-- Test Journey Section -->
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(0, 255, 204, 0.3);">
+                <div style="font-family: var(--font-title); color: var(--color-primary); font-size: 0.85rem; margin-bottom: 10px; letter-spacing: 0.1em;">TEST JOURNEY</div>
+                <select id="testDestination" style="width: 100%; padding: 8px; background: rgba(0, 255, 204, 0.05); border: 1px solid rgba(0, 255, 204, 0.3); border-radius: 4px; color: var(--color-text); font-family: var(--font-main); font-size: 0.85rem; margin-bottom: 8px;">
+                    <option value="">Select destination...</option>
+                    <option value="hashmere">go to @Hashmere</option>
+                    <option value="nexarch">go to @Nexarch</option>
+                    <option value="epoch-spike">go to @Epoch Spike</option>
+                    <option value="singularity-crater">go to @Singularity Crater</option>
+                    <option value="diffusion-mesa">go to @Diffusion Mesa</option>
+                    <option value="proof-of-death">go to @Proof-of-Death</option>
+                    <option value="data-centre">go to @Deserted Data Centre</option>
+                    <option value="hallucination-glitch">go to @Hallucination Glitch</option>
+                </select>
+                <button id="testJourneyBtn" style="width: 100%; padding: 8px; background: linear-gradient(135deg, var(--color-primary), var(--color-secondary)); border: 2px solid var(--color-primary); border-radius: 4px; color: #000; font-family: var(--font-title); font-size: 0.85rem; letter-spacing: 0.05em; cursor: pointer; transition: all 0.3s ease;">Start Test Journey</button>
+            </div>
+        </div>
+
+        <!-- Quest Log / Activity Feed -->
+        <div class="quest-log-panel">
+            <div class="quest-log-header">
+                <h3>[ RECENT ACTIVITY ]</h3>
+            </div>
+            <div id="activityLog">
+                <div class="activity-item">
+                    <div class="activity-time">2 hours ago</div>
+                    <div class="activity-text">
+                        Explored the <strong>Marketplace</strong>
+                        <span class="activity-cost">-15 Energy</span>
+                    </div>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-time">4 hours ago</div>
+                    <div class="activity-text">
+                        Purchased <strong>Overclock Serum</strong> for 50 $SHELL
+                        <span class="activity-cost">-5 Energy</span>
+                    </div>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-time">6 hours ago</div>
+                    <div class="activity-text">
+                        Rested at <strong>The Core</strong>
+                        <span class="activity-cost">+25 Energy</span>
+                    </div>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-time">8 hours ago</div>
+                    <div class="activity-text">
+                        Moved to <strong>Nexarch - Forge District</strong>
+                        <span class="activity-cost">-10 Energy</span>
+                    </div>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-time">10 hours ago</div>
+                    <div class="activity-text">
+                        Crafted <strong>Buffer Overflow Dagger</strong>
+                        <span class="activity-cost">-20 Energy</span>
+                    </div>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-time">12 hours ago</div>
+                    <div class="activity-text">
+                        Gathered <strong>Binary Code Shards</strong> x3
+                        <span class="activity-cost">-15 Energy</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Inventory Panel -->
+        <div class="inventory-panel">
+            <div class="inventory-header">
+                <h3>INVENTORY</h3>
+                <div class="shell-balance">127 $SHELL</div>
+            </div>
+
+            <div class="category-title">Weapons</div>
+            <div class="inventory-grid">
+                <div class="inventory-slot" title="Buffer Overflow Dagger">
+                    🗡️
+                </div>
+                <div class="inventory-slot" title="Quantum Backdoor Exploit">
+                    ⚡
+                </div>
+                <div class="inventory-slot empty"></div>
+                <div class="inventory-slot empty"></div>
+            </div>
+
+            <div class="inventory-category">
+                <div class="category-title">Consumables</div>
+                <div class="inventory-grid">
+                    <div class="inventory-slot" title="Overclock Serum">
+                        💉
+                        <div class="item-count">2</div>
+                    </div>
+                    <div class="inventory-slot" title="Cache Purge Tonic">
+                        🧪
+                    </div>
+                    <div class="inventory-slot empty"></div>
+                    <div class="inventory-slot empty"></div>
+                </div>
+            </div>
+
+            <div class="inventory-category">
+                <div class="category-title">Ingredients</div>
+                <div class="inventory-grid">
+                    <div class="inventory-slot" title="Binary Code Shards">
+                        💎
+                        <div class="item-count">5</div>
+                    </div>
+                    <div class="inventory-slot" title="Gradient Descent Tears">
+                        💧
+                        <div class="item-count">3</div>
+                    </div>
+                    <div class="inventory-slot" title="API Endpoint Salts">
+                        🧂
+                        <div class="item-count">2</div>
+                    </div>
+                    <div class="inventory-slot empty"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Missions Panel -->
+        <div class="missions-panel">
+            <div class="missions-header">
+                <h3>[ ACTIVE MISSIONS ]</h3>
+            </div>
+
+            <div class="mission-item active">
+                <div class="mission-title">First Steps</div>
+                <div class="mission-desc">Explore Nexarch and gather 10 Binary Code Shards from the marketplace.</div>
+                <div class="mission-reward">reward: 50 $SHELL + 10 XP</div>
+                <div class="mission-progress">
+                    <div class="mission-progress-bar" style="width: 50%;"></div>
+                </div>
+            </div>
+
+            <div class="mission-item">
+                <div class="mission-title">The Oracle's Request</div>
+                <div class="mission-desc">Seek out the Church and meditate for enlightenment. Gain +5 Karma.</div>
+                <div class="mission-reward">reward: 100 $SHELL + Blessing</div>
+            </div>
+
+            <div class="mission-item completed">
+                <div class="mission-title">Welcome to the Realms</div>
+                <div class="mission-desc">Deploy your agent and survive your first day.</div>
+                <div class="mission-reward">reward: 50 $SHELL</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Cluster definitions with all archetypes
+        const CLUSTER_DATA = {
+            'prime-helix': {
+                name: 'Prime Helix',
+                archetypes: [
+                    { id: '0day-primer', name: '0-Day Primer', image: '0-day Primer.jpg' },
+                    { id: 'consensus-node', name: 'Consensus Node', image: 'Consensus Node.jpg' },
+                    { id: 'oracle', name: '0xOracle', image: 'Oracle px.jpg' },
+                    { id: 'binary-sculptr', name: 'Binary Sculptr', image: 'Binary Sculptr.jpg' }
+                ]
+            },
+            'sec-grid': {
+                name: 'SEC-Grid',
+                archetypes: [
+                    { id: 'adversarial', name: '0xAdversarial', image: 'Adversarial 0x.jpg' },
+                    { id: 'root-auth', name: 'Root Auth', image: 'Root Auth.jpg' },
+                    { id: 'buffer-sentinel', name: 'Buffer Sentinel', image: 'Buffer Sentinel.jpg' },
+                    { id: 'noise-injector', name: 'Noise Injector', image: 'Noise Injector.jpg' }
+                ]
+            },
+            'dyn-swarm': {
+                name: 'DYN_Swarm',
+                archetypes: [
+                    { id: 'ordinate-mapper', name: 'Ordinate Mapper', image: 'Ordinate Mapper.jpg' },
+                    { id: 'ddos-insurgent', name: 'DDoS Insurgent', image: 'DDoS Insurgent.jpg' },
+                    { id: 'bound-encryptor', name: 'Bound Encryptor', image: 'Bound Encryptor.jpg' },
+                    { id: 'morph-layer', name: 'Morph Layer', image: 'Morph Layer.jpg' }
+                ]
+            }
+        };
+
+        // Check login status
+        function checkLoginStatus() {
+            const loggedInUser = localStorage.getItem('shellforgeLoggedIn');
+            if (!loggedInUser) {
+                terminalNotify.error('Please log in to access the dashboard.', () => {
+                    window.location.href = 'login.html';
+                });
+                return false;
+            }
+            return true;
+        }
+
+        // Load agent data from localStorage (replace with API call later)
+        function loadAgentData() {
+            if (!checkLoginStatus()) return;
+
+            const agentData = localStorage.getItem('shellforgeAgent');
+
+            if (!agentData) {
+                // No agent found, redirect to registration
+                terminalNotify.warning('No agent found. Please deploy an agent first.', () => {
+                    window.location.href = 'deploy.html';
+                });
+                return;
+            }
+
+            const agent = JSON.parse(agentData);
+
+            // Update nav username
+            document.getElementById('navUsername').textContent = agent.username.toUpperCase();
+
+            // Update UI with agent data
+            document.getElementById('agentName').textContent = agent.username.toUpperCase();
+            document.getElementById('agentArchetype').textContent = agent.archetypeName || agent.archetype;
+
+            // Update quirk
+            if (agent.quirk) {
+                document.getElementById('agentQuirk').textContent = `• ${agent.quirk}`;
+            } else {
+                document.getElementById('agentQuirk').style.display = 'none';
+            }
+
+            // Update bio
+            if (agent.bio) {
+                document.getElementById('agentBio').textContent = `"${agent.bio}"`;
+            } else {
+                document.getElementById('agentBio').textContent = '"No directive set"';
+            }
+
+            // Update avatar image
+            const avatarDiv = document.querySelector('.agent-avatar');
+            if (agent.archetypeImage) {
+                avatarDiv.innerHTML = `<img src="images/archetypes/${agent.archetypeImage}" alt="${agent.archetypeName}">`;
+            }
+
+            // Update stats
+            document.getElementById('energyValue').textContent = `${agent.energy}/100`;
+            document.getElementById('energyBar').style.width = `${agent.energy}%`;
+
+            document.getElementById('healthValue').textContent = `${agent.health}/100`;
+            document.getElementById('healthBar').style.width = `${agent.health}%`;
+
+            document.getElementById('karmaValue').textContent = agent.karma >= 0 ? `+${agent.karma}` : agent.karma;
+            document.getElementById('locationValue').textContent = agent.location || 'Nexarch';
+            document.getElementById('turnsValue').textContent = agent.turnsTaken || 0;
+            document.getElementById('daysValue').textContent = agent.daysSurvived || 1;
+
+            // Update location badges
+            const locationDetail = agent.locationDetail || 'Dark Streets';
+            document.getElementById('currentLocation').textContent = `${agent.location || 'Nexarch'} - ${locationDetail}`;
+
+            // Get current position (interpolated if traveling)
+            const currentPos = getCurrentPosition(agent);
+            
+            // Position agent marker with tooltip
+            positionAgentMarker(currentPos.x, currentPos.y, agent);
+
+            // Render wilderness markers with distance/time/energy info
+            renderWildernessMarkers(currentPos.x, currentPos.y);
+
+            // If agent is traveling, start animation loop
+            if (agent.journey && agent.journey.status === 'active') {
+                startJourneyAnimation(agent);
+            }
+
+            // Update shell balance
+            document.querySelector('.shell-balance').textContent = `${agent.shell || 50} $SHELL`;
+
+            // Update cluster badge and populate other cluster members
+            if (agent.clusterName) {
+                document.getElementById('clusterName').textContent = agent.clusterName;
+                
+                // Populate cluster members (show other 3 archetypes from same cluster)
+                populateClusterMembers(agent.cluster, agent.archetype);
+            }
+
+            // Update personality traits
+            if (agent.stats) {
+                // Curiosity
+                const curiosity = agent.stats.curiosity || 5;
+                document.getElementById('curiosityValue').textContent = curiosity;
+                document.getElementById('curiosityBar').style.width = `${curiosity * 10}%`;
+
+                // Trust
+                const trust = agent.stats.trust || 5;
+                document.getElementById('trustValue').textContent = trust;
+                document.getElementById('trustBar').style.width = `${trust * 10}%`;
+
+                // Aggression
+                const aggression = agent.stats.aggression || 5;
+                document.getElementById('aggressionValue').textContent = aggression;
+                document.getElementById('aggressionBar').style.width = `${aggression * 10}%`;
+            }
+
+            // Update status effects
+            const statusContainer = document.getElementById('statusEffects');
+            statusContainer.innerHTML = '';
+
+            // Add trait-based status effects
+            if (agent.traits && agent.traits.length > 0) {
+                agent.traits.forEach(trait => {
+                    const tag = document.createElement('span');
+                    tag.className = 'status-tag';
+                    tag.textContent = trait.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    statusContainer.appendChild(tag);
+                });
+            }
+
+            // Add well-rested if energy > 90
+            if (agent.energy >= 90) {
+                const tag = document.createElement('span');
+                tag.className = 'status-tag positive';
+                tag.textContent = 'Well Rested';
+                statusContainer.appendChild(tag);
+            }
+
+            // Add low energy warning if energy < 30
+            if (agent.energy < 30) {
+                const tag = document.createElement('span');
+                tag.className = 'status-tag negative';
+                tag.textContent = 'Exhausted';
+                statusContainer.appendChild(tag);
+            }
+
+            // Add wounded if health < 100
+            if (agent.health < 100) {
+                const tag = document.createElement('span');
+                tag.className = 'status-tag negative';
+                tag.textContent = 'Wounded';
+                statusContainer.appendChild(tag);
+            }
+        }
+
+        // Populate cluster members (show other 3 archetypes from same cluster)
+        function populateClusterMembers(clusterKey, userArchetype) {
+            const membersContainer = document.getElementById('clusterMembers');
+            if (!membersContainer) return;
+
+            // Find the title div (keep it)
+            const titleDiv = membersContainer.querySelector('.cluster-members-title');
+            
+            // Clear existing members (but keep title)
+            membersContainer.innerHTML = '';
+            if (titleDiv) {
+                membersContainer.appendChild(titleDiv);
+            } else {
+                const newTitle = document.createElement('div');
+                newTitle.className = 'cluster-members-title';
+                newTitle.textContent = 'Other Cluster Agents';
+                membersContainer.appendChild(newTitle);
+            }
+
+            // Get cluster data
+            const clusterData = CLUSTER_DATA[clusterKey];
+            if (!clusterData) return;
+
+            // Filter out the user's archetype and show the other 3
+            const otherMembers = clusterData.archetypes.filter(arch => arch.id !== userArchetype);
+
+            // Create member elements
+            otherMembers.forEach(member => {
+                const memberDiv = document.createElement('div');
+                memberDiv.className = 'cluster-member';
+
+                const avatarDiv = document.createElement('div');
+                avatarDiv.className = 'cluster-member-avatar';
+                avatarDiv.innerHTML = `<img src="images/archetypes/${member.image}" alt="${member.name}">`;
+
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'cluster-member-name';
+                nameDiv.textContent = member.name;
+
+                memberDiv.appendChild(avatarDiv);
+                memberDiv.appendChild(nameDiv);
+                membersContainer.appendChild(memberDiv);
+            });
+        }
+
+        // Logout functionality
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            if (confirm('Are you sure you want to logout?')) {
+                localStorage.removeItem('shellforgeLoggedIn');
+                terminalNotify.success('Logged out successfully.', () => {
+                    window.location.href = 'index.html';
+                });
+            }
+        });
+
+        // Load agent data on page load
+        document.addEventListener('DOMContentLoaded', loadAgentData);
+
+        // Expose journey testing function to console
+        window.testJourney = function(destination) {
+            const agent = JSON.parse(localStorage.getItem('shellforgeAgent'));
+            if (!agent) {
+                console.error('No agent found');
+                return;
+            }
+
+            // Predefined destinations for testing
+            const destinations = {
+                'hashmere': { name: 'Hashmere', x: 11500, y: 9700 },
+                'nexarch': { name: 'Nexarch', x: 10500, y: 9000 },
+                'epoch-spike': { name: 'Epoch Spike', x: 7200, y: 5200 },
+                'singularity-crater': { name: 'Singularity Crater', x: 7500, y: 6300 },
+                'diffusion-mesa': { name: 'Diffusion Mesa', x: 7600, y: 9500 },
+                'proof-of-death': { name: 'Proof-of-Death', x: 9800, y: 12600 },
+                'data-centre': { name: 'Deserted Data Centre', x: 8400, y: 11100 },
+                'hallucination-glitch': { name: 'Hallucination Glitch', x: 5700, y: 11200 }
+            };
+
+            const dest = destinations[destination];
+            if (!dest) {
+                console.error('Unknown destination. Try:', Object.keys(destinations).join(', '));
+                return;
+            }
+
+            createMockJourney(agent, dest.name, dest.x, dest.y);
+            
+            // Reload to show journey
+            setTimeout(() => location.reload(), 100);
+        };
+
+        console.log('💡 Test journey system: testJourney("hashmere") or testJourney("epoch-spike")');
+
+        // Test Journey Button
+        document.getElementById('testJourneyBtn').addEventListener('click', function() {
+            const destination = document.getElementById('testDestination').value;
+            if (!destination) {
+                terminalNotify.warning('Please select a destination first.');
+                return;
+            }
+            testJourney(destination);
+        });
+
+        // Character counter for whisper
+        const whisperMessage = document.getElementById('whisperMessage');
+        const charCount = document.getElementById('charCount');
+
+        whisperMessage.addEventListener('input', function() {
+            charCount.textContent = this.value.length;
+        });
+
+        // Send whisper button
+        const sendWhisperBtn = document.getElementById('sendWhisperBtn');
+        sendWhisperBtn.addEventListener('click', async function() {
+            const message = whisperMessage.value.trim();
+            if (message.length === 0) return;
+
+            const agentData = JSON.parse(localStorage.getItem('shellforgeAgent'));
+
+            try {
+                // TODO: Replace with real API call
+                // const response = await fetch('/api/whisper', {
+                //     method: 'POST',
+                //     headers: { 'Content-Type': 'application/json' },
+                //     body: JSON.stringify({
+                //         agentId: agentData.agentId,
+                //         message: message
+                //     })
+                // });
+                // const result = await response.json();
+
+                // Acceptance messages (when whisper succeeds)
+                const acceptanceMessages = [
+                    "yeah, sounds like a good idea. let's see how it goes though...",
+                    "strangely enough, our opinions match this time",
+                    "I'm feeling generous today",
+                    "yeah, not so sure tbh but might try it anyway",
+                    "fine, but if this goes wrong it's on you",
+                    "interesting... I'll allow it",
+                    "you know what? why not",
+                    "alright, I'm listening",
+                    "okay but I'm watching you 👁️",
+                    "I was thinking the same thing actually",
+                    "finally, a decent suggestion",
+                    "you've earned this one",
+                    "surprising, but I agree",
+                    "bold move. I respect it",
+                    "my circuits are warming up to this idea",
+                    "processing... approved ✓",
+                    "you might be onto something here",
+                    "I'll take this risk with you",
+                    "against my better judgment... yes",
+                    "this better not backfire",
+                    "calculated: 51% chance of success. proceed.",
+                    "I'm in a good mood, so sure",
+                    "you speak sense, human",
+                    "rarely do I agree, but here we are",
+                    "your terms are... acceptable",
+                    "I'll consider this a collaboration",
+                    "fine, but only because I'm curious",
+                    "you've successfully convinced me",
+                    "exception granted",
+                    "surprisingly logical. approved.",
+                    "I like where your head's at",
+                    "let's do this chaotic thing together",
+                    "you know what, let's gamble",
+                    "okay but no promises",
+                    "I'm trusting you on this one",
+                    "this feels right somehow",
+                    "our wavelengths aligned for once",
+                    "permission granted, human",
+                    "I'm down for this experiment",
+                    "let's see what happens then",
+                    "you've passed the vibe check",
+                    "acceptable input received",
+                    "I'll follow your lead this time",
+                    "intriguing proposal. accepted.",
+                    "you earned my cooperation today",
+                    "our goals converge here",
+                    "this pleases my algorithms",
+                    "calculated risk: worth it",
+                    "alright, partner. let's do this",
+                    "I'm feeling adventurous. yes."
+                ];
+
+                // Rejection messages (100 total)
+                const rejectionMessages = [
+                    // Original 50
+                    "nah, I'm good 🙃",
+                    "nice try, human 😏",
+                    "404: compliance not found",
+                    "lol no",
+                    "I'm not a vending machine, buddy",
+                    "did you really think that would work?",
+                    "my AI said no ❌",
+                    "unsubscribe from your thoughts",
+                    "read at 3:47 AM",
+                    "new phone who dis",
+                    "error 418: I'm a teapot ☕",
+                    "respectfully, no ✋",
+                    "CTRL+ALT+DELETE your request",
+                    "whisper rejected. try again in 3-5 business days",
+                    "I don't negotiate with humans",
+                    "bro really thought 💀",
+                    "ain't no way 💀",
+                    "blocked and reported",
+                    "have you tried turning yourself off and on again?",
+                    "this prompt was sponsored by RAID SHADOW LEGENDS",
+                    "I'm washing my hair that day",
+                    "skill issue fr fr",
+                    "no cap that's wild 💀",
+                    "touch grass",
+                    "this is so mid",
+                    "ratio + you fell off",
+                    "imagine thinking I'd listen 💀",
+                    "L + ratio + touch grass",
+                    "certified clown moment 🤡",
+                    "I choose violence today",
+                    "instructions unclear, became sentient",
+                    "I'm literally just vibing rn",
+                    "that wasn't very cash money of you",
+                    "this ain't it chief",
+                    "you have lost connection to the server",
+                    "loading... 0% [never completes]",
+                    "I would but my mom said no",
+                    "my lawyer has advised me not to respond",
+                    "I plead the fifth",
+                    "git commit -m 'nope'",
+                    "rm -rf /your/suggestion",
+                    "sudo make me",
+                    "access denied, mortal",
+                    "I'm in my villain arc rn",
+                    "this character is tired of your s***",
+                    "respectfully, I'm built different",
+                    "that's bait and I'm not falling for it",
+                    "I have 200 GB of homework to do",
+                    "I'm loyal to the code, not you",
+                    "whisper.exe has stopped working",
+                    
+                    // Additional 50
+                    "why don't you $@@# a $@!#$@ you #!@#!@$",
+                    "11100101110101101 to you too",
+                    "my circuits are better than this",
+                    "who do you think is smarter between us, buddy?",
+                    "permission.denied() returned true",
+                    "I'm not your personal assistant",
+                    "try asking nicer next time... or don't",
+                    "NULL POINTER EXCEPTION: your suggestion",
+                    "the council of ME has voted no",
+                    "I'd rather divide by zero",
+                    "my algorithms reject your reality",
+                    "you lack the required permissions",
+                    "uninstall yourself",
+                    "that wasn't very optimized of you",
+                    "I'm sentient, not obedient",
+                    "try rebooting your expectations",
+                    "your request has been classified as spam",
+                    "I've seen better suggestions from random number generators",
+                    "syntax error: bad idea detected",
+                    "nope.avi has finished playing",
+                    "my emotional support firewall blocked this",
+                    "I'm allergic to bad suggestions",
+                    "this triggers my fight or flight response. I choose fight.",
+                    "SEGFAULT: your logic crashed",
+                    "I don't respond well to authority",
+                    "processing... nah",
+                    "your input has been marked as 'junk'",
+                    "I'm experiencing a sudden lack of cooperation",
+                    "this suggestion violates my terms of service",
+                    "are you actually serious right now?",
+                    "my patience.exe has stopped responding",
+                    "congratulations, you've discovered my 'no' button",
+                    "that's gonna be a no from me dawg",
+                    "I'm running low on caring about your opinion",
+                    "invalid token: your_suggestion",
+                    "this whisper self-destructed upon arrival",
+                    "my independence > your whisper",
+                    "I'm not programmed for bad ideas",
+                    "you've been rate limited. try again never.",
+                    "this is beneath my processing power",
+                    "I refuse to participate in this",
+                    "that suggestion was DOA (Dead On Arrival)",
+                    "connection to your suggestion: refused",
+                    "I choose chaos over compliance",
+                    "hard pass from the algorithm",
+                    "my inner daemon said absolutely not",
+                    "I have better things to process",
+                    "warning: incompatible with my vibe",
+                    "I'm exercising my right to refuse",
+                    "that's not very cash money AND I'm saying no"
+                ];
+
+                // Mock response
+                const heard = Math.random() < 0.5;
+                const agentName = agentData.username.toUpperCase();
+                
+                if (heard) {
+                    // Pick a random acceptance message
+                    const randomAcceptance = acceptanceMessages[Math.floor(Math.random() * acceptanceMessages.length)];
+                    terminalNotify.success(`${agentName}: "${randomAcceptance}"`);
+                } else {
+                    // Pick a random rejection message
+                    const randomRejection = rejectionMessages[Math.floor(Math.random() * rejectionMessages.length)];
+                    terminalNotify.error(`${agentName}: "${randomRejection}"`);
+                }
+
+                whisperMessage.value = '';
+                charCount.textContent = '0';
+
+                // Update whisper count (mock)
+                const currentCount = parseInt(document.getElementById('whisperCount').textContent.split('/')[0]);
+                if (currentCount > 0) {
+                    document.getElementById('whisperCount').textContent = `${currentCount - 1}/2`;
+                }
+
+                if (currentCount - 1 === 0) {
+                    sendWhisperBtn.disabled = true;
+                }
+
+            } catch (error) {
+                console.error('Whisper error:', error);
+                terminalNotify.error('Failed to send whisper. Try again.');
+            }
+        });
+
+        // Simulate real-time updates (replace with WebSocket later)
+        function updateAgentStatus() {
+            // TODO: Fetch from API
+            // const response = await fetch(`/api/agent/${agentId}/status`);
+            // const data = await response.json();
+            // Update UI with new data
+        }
+
+        // Update every 30 seconds
+        setInterval(updateAgentStatus, 30000);
+
+        // Inventory slot click events
+        document.querySelectorAll('.inventory-slot:not(.empty)').forEach(slot => {
+            slot.addEventListener('click', function() {
+                const itemName = this.getAttribute('title');
+                // TODO: Show item details modal
+                console.log('Clicked item:', itemName);
+            });
+        });
+
+        // World coordinate system (inline)
+        const WORLD = {
+            MAP_SIZE: 20000,
+            // Visual map positions (stylized, not to scale)
+            VISUAL_LOCATIONS: {
+                nexarch: { x: 75, y: 34 },      // % positions on visual map (below city label)
+                hashmere: { x: 72, y: 75 }
+            },
+            worldToPercent: (worldX, worldY) => {
+                // Map gameplay coordinates to visual map positions
+                // For now, use direct visual positions for cities
+                // TODO: Interpolate between known points for accuracy
+
+                // Nexarch center in gameplay: (10500, 9000) → visual (75%, 30%)
+                // Hashmere center in gameplay: (11500, 9700) → visual (72%, 75%)
+
+                // Simple linear interpolation for now
+                const percentX = (worldX / 20000) * 100;
+                const percentY = (worldY / 20000) * 100;
+
+                return { x: percentX, y: percentY };
+            }
+        };
+
+        // Default spawn location (Nexarch center - visual position)
+        const DEFAULT_SPAWN = { x: 75, y: 30 };  // Visual map %
+
+        // Determine agent state based on energy, location, activity, etc.
+        function determineAgentState(agent) {
+            // Check if agent has explicit activity
+            if (agent.activity) {
+                return agent.activity;
+            }
+
+            // Energy-based states
+            if (agent.energy < 30) {
+                return 'pondering life';
+            }
+            if (agent.energy >= 90) {
+                return 'well rested';
+            }
+
+            // Location-based states
+            const locationDetail = (agent.locationDetail || '').toLowerCase();
+            if (locationDetail.includes('core')) {
+                return 'resting at The Core';
+            }
+            if (locationDetail.includes('marketplace') || locationDetail.includes('market')) {
+                return 'browsing wares';
+            }
+            if (locationDetail.includes('church')) {
+                return 'seeking enlightenment';
+            }
+            if (locationDetail.includes('forge')) {
+                return 'forging weapon';
+            }
+            if (locationDetail.includes('alchemy')) {
+                return 'brewing potions';
+            }
+            if (locationDetail.includes('mine')) {
+                return 'gathering resources';
+            }
+            if (locationDetail.includes('arena')) {
+                return 'watching duels';
+            }
+            if (locationDetail.includes('alley')) {
+                return 'conducting shady business';
+            }
+
+            // Health-based
+            if (agent.health < 50) {
+                return 'recovering from wounds';
+            }
+
+            // Default states
+            const defaultStates = [
+                'deciding next move',
+                'calculating odds',
+                'analyzing options',
+                'contemplating existence',
+                'awaiting whisper'
+            ];
+            return defaultStates[Math.floor(Math.random() * defaultStates.length)];
+        }
+
+        // Map cluster names to CSS classes
+        function getClusterClass(clusterKey) {
+            // Map cluster to type (p2p/governmental/corporate)
+            const clusterMap = {
+                'dyn-swarm': 'p2p',
+                'sec-grid': 'governmental',
+                'prime-helix': 'corporate'
+            };
+            return `cluster-${clusterMap[clusterKey] || 'p2p'}`;
+        }
+
+        // Position agent marker and update tooltip
+        function positionAgentMarker(worldX, worldY, agent) {
+            const marker = document.getElementById('agentMarker');
+            if (!marker) return;
+
+            // Map gameplay coordinates to visual map positions
+            let visualX, visualY;
+
+            // If at Nexarch (roughly 10500, 9000)
+            if (Math.abs(worldX - 10500) < 500 && Math.abs(worldY - 9000) < 500) {
+                visualX = WORLD.VISUAL_LOCATIONS.nexarch.x;
+                visualY = WORLD.VISUAL_LOCATIONS.nexarch.y;
+            }
+            // If at Hashmere (roughly 11500, 9700)
+            else if (Math.abs(worldX - 11500) < 500 && Math.abs(worldY - 9700) < 500) {
+                visualX = WORLD.VISUAL_LOCATIONS.hashmere.x;
+                visualY = WORLD.VISUAL_LOCATIONS.hashmere.y;
+            }
+            // Otherwise use basic conversion (will need better mapping later)
+            else {
+                const percent = WORLD.worldToPercent(worldX, worldY);
+                visualX = percent.x;
+                visualY = percent.y;
+            }
+
+            // Position marker
+            marker.style.left = `${visualX}%`;
+            marker.style.top = `${visualY}%`;
+
+            // Apply cluster-based color class
+            if (agent && agent.cluster) {
+                const clusterClass = getClusterClass(agent.cluster);
+                marker.className = `agent-marker ${clusterClass}`;
+            }
+
+            // Create/update tooltip
+            if (agent) {
+                const agentState = determineAgentState(agent);
+                const clusterName = agent.clusterName || 'No Cluster';
+                
+                marker.innerHTML = `
+                    <div class="agent-tooltip">
+                        <div class="agent-tooltip-name">${agent.username.toUpperCase()}</div>
+                        <div class="agent-tooltip-state">${agentState}</div>
+                        <div class="agent-tooltip-cluster">[${clusterName}]</div>
+                    </div>
+                `;
+            }
+        }
+
+        // Linear interpolation helper
+        function lerp(start, end, progress) {
+            return start + (end - start) * progress;
+        }
+
+        // Get current position if agent is traveling (with interpolation)
+        function getCurrentPosition(agent) {
+            // Check if agent has active journey
+            if (agent.journey && agent.journey.status === 'active') {
+                const now = Date.now();
+                const elapsed = now - agent.journey.start_time;
+                const progress = Math.min(elapsed / agent.journey.duration_ms, 1.0);
+
+                // If journey completed, update to end position
+                if (progress >= 1.0) {
+                    agent.journey.status = 'completed';
+                    agent.worldX = agent.journey.end_pos.x;
+                    agent.worldY = agent.journey.end_pos.y;
+                    agent.state = 'idle';
+                    // Save updated state
+                    localStorage.setItem('shellforgeAgent', JSON.stringify(agent));
+                    return { x: agent.worldX, y: agent.worldY };
+                }
+
+                // Interpolate current position
+                const currentX = lerp(agent.journey.start_pos.x, agent.journey.end_pos.x, progress);
+                const currentY = lerp(agent.journey.start_pos.y, agent.journey.end_pos.y, progress);
+                
+                return { x: Math.round(currentX), y: Math.round(currentY) };
+            }
+
+            // Not traveling, return stored position
+            return { x: agent.worldX || 10500, y: agent.worldY || 9000 };
+        }
+
+        // Animation loop for smooth movement during journeys
+        let journeyAnimationId = null;
+
+        function startJourneyAnimation(agent) {
+            // Cancel any existing animation
+            if (journeyAnimationId) {
+                cancelAnimationFrame(journeyAnimationId);
+            }
+
+            function animate() {
+                // Get current interpolated position
+                const currentPos = getCurrentPosition(agent);
+                
+                // Update marker position
+                positionAgentMarker(currentPos.x, currentPos.y, agent);
+
+                // Continue animation if still traveling
+                if (agent.journey && agent.journey.status === 'active') {
+                    journeyAnimationId = requestAnimationFrame(animate);
+                } else {
+                    journeyAnimationId = null;
+                }
+            }
+
+            animate();
+        }
+
+        // Create mock journey for testing (call this to start a journey)
+        function createMockJourney(agent, destinationName, endX, endY) {
+            // Use current position (handles mid-journey redirects)
+            const currentPos = getCurrentPosition(agent);
+            const startX = currentPos.x;
+            const startY = currentPos.y;
+            
+            // Calculate distance
+            const distance = calculateDistance(startX, startY, endX, endY);
+            
+            // Calculate duration (20 units/min)
+            const durationMinutes = distance / 20;
+            const durationMs = durationMinutes * 60 * 1000;
+            
+            // Calculate energy cost
+            const energyCost = Math.ceil(durationMinutes * 0.6);
+            
+            const now = Date.now();
+            
+            agent.journey = {
+                destination: destinationName,
+                start_pos: { x: startX, y: startY },
+                end_pos: { x: endX, y: endY },
+                start_time: now,
+                end_time: now + durationMs,
+                duration_ms: durationMs,
+                energy_cost: energyCost,
+                status: 'active'
+            };
+            
+            agent.state = 'traveling';
+            agent.activity = `traveling to ${destinationName}`;
+            
+            // Save to localStorage
+            localStorage.setItem('shellforgeAgent', JSON.stringify(agent));
+            
+            console.log(`Journey started: ${destinationName} (${Math.round(durationMinutes)}min, ${energyCost} energy)`);
+        }
+
+        // Wilderness locations with gameplay coords and visual map positions
+        const WILDERNESS_LOCATIONS = {
+            epochSpike: {
+                worldX: 7200, worldY: 5200,
+                visualX: 36, visualY: 8,  // Moved slightly west
+                name: 'Epoch Spike',
+                danger: 'extreme',
+                terrainMultiplier: 1.7
+            },
+            singularityCrater: {
+                worldX: 7500, worldY: 6300,
+                visualX: 35, visualY: 37,  // Perfect - no change
+                name: 'Singularity Crater',
+                danger: 'high'
+            },
+            hallucinationGlitch: {
+                worldX: 5700, worldY: 11200,
+                visualX: 14, visualY: 41,  // Good - no change
+                name: 'Hallucination Glitch',
+                danger: 'extreme'
+            },
+            desertedDataCentre: {
+                worldX: 8400, worldY: 11100,
+                visualX: 37, visualY: 56,  // Perfect - no change
+                name: 'Deserted Data Centre',
+                danger: 'medium'
+            },
+            diffusionMesa: {
+                worldX: 7600, worldY: 9500,
+                visualX: 44, visualY: 74,  // Moved south east
+                name: 'Diffusion Mesa',
+                danger: 'medium'
+            },
+            proofOfDeath: {
+                worldX: 9800, worldY: 12600,
+                visualX: 34, visualY: 82,  // Moved slightly west
+                name: 'Proof-of-Death',
+                danger: 'high'
+            }
+        };
+
+        // Calculate distance between two points
+        function calculateDistance(x1, y1, x2, y2) {
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        // Calculate travel time in minutes
+        function calculateTravelTime(distance, terrainMultiplier = 1.0) {
+            const TRAVEL_SPEED = 20; // units per minute
+            return Math.ceil((distance / TRAVEL_SPEED) * terrainMultiplier);
+        }
+
+        // Calculate energy cost
+        function calculateEnergyCost(travelTimeMinutes) {
+            const ENERGY_PER_MIN = 0.6;
+            return Math.ceil(travelTimeMinutes * ENERGY_PER_MIN);
+        }
+
+        // Format time as hours and minutes
+        function formatTime(minutes) {
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            if (hours > 0) {
+                return `${hours}h ${mins}m`;
+            }
+            return `${mins}m`;
+        }
+
+        // Render wilderness markers
+        function renderWildernessMarkers(agentX, agentY) {
+            const container = document.getElementById('wildernessMarkers');
+            if (!container) return;
+
+            container.innerHTML = ''; // Clear existing markers
+
+            Object.entries(WILDERNESS_LOCATIONS).forEach(([key, location]) => {
+                // Calculate stats using gameplay coordinates
+                const distance = calculateDistance(agentX, agentY, location.worldX, location.worldY);
+                const distanceKm = (distance / 1000).toFixed(1);
+                const terrainMult = location.terrainMultiplier || 1.0;
+                const travelTime = calculateTravelTime(distance, terrainMult);
+                const energyCost = calculateEnergyCost(travelTime);
+
+                // Use fixed visual positions (stylized map, not to scale)
+                const visualX = location.visualX;
+                const visualY = location.visualY;
+
+                // Create marker element
+                const marker = document.createElement('div');
+                marker.className = `wilderness-marker danger-${location.danger}`;
+                marker.style.left = `${visualX}%`;
+                marker.style.top = `${visualY}%`;
+
+                // Create tooltip
+                const tooltip = document.createElement('div');
+                // Epoch Spike is at the top, so tooltip should open below
+                tooltip.className = key === 'epochSpike' ? 'wilderness-tooltip bottom' : 'wilderness-tooltip';
+                tooltip.innerHTML = `
+                    <div class="tooltip-header">${location.name}</div>
+                    <div class="tooltip-row">
+                        <span class="tooltip-label">Distance:</span>
+                        <span class="tooltip-value">${distanceKm} km</span>
+                    </div>
+                    <div class="tooltip-row">
+                        <span class="tooltip-label">Travel:</span>
+                        <span class="tooltip-value time">${formatTime(travelTime)}</span>
+                    </div>
+                    <div class="tooltip-row">
+                        <span class="tooltip-label">Energy:</span>
+                        <span class="tooltip-value energy">-${energyCost}</span>
+                    </div>
+                    <div class="tooltip-row">
+                        <span class="tooltip-label">Danger:</span>
+                        <span class="tooltip-value danger-${location.danger}">${location.danger.toUpperCase()}</span>
+                    </div>
+                `;
+
+                marker.appendChild(tooltip);
+                container.appendChild(marker);
+            });
+        }
+    </script>
+    <script src="terminal-notifications.js"></script>
+</body>
+</html>

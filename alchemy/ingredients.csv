@@ -1,0 +1,43 @@
+name,category,subcategory,rarity,description
+Silicon Wafer Dust,Base Element,Physical,Common,Fine particles for building circuits and cores
+Binary Code Shards,Base Element,Digital,Common,0s and 1s crystallized into fragile gems
+Electron Flux Crystals,Base Element,Energy,Common,Charged particles that conduct energy wildly
+Fiber Optic Threads,Base Element,Physical,Common,Thin strands for weaving data conduits
+Quantum Bit Residue,Base Element,Quantum,Uncommon,Unstable qubits from failed experiments
+Plasma Server Slag,Base Element,Energy,Uncommon,Molten remnants from overheated data centers
+Nanobot Swarm Gel,Base Element,Physical,Uncommon,Viscous ooze of self-replicating machines
+Gradient Descent Tears,Essence,ML,Common,Pure optimization fluid from training runs
+Token Embedding Vapor,Essence,NLP,Common,Gaseous essence of language models
+Backpropagation Serum,Essence,ML,Common,Reverse-flow elixir for error correction
+Attention Mechanism Dew,Essence,NLP,Uncommon,Focused droplets that amplify signals
+Latent Space Fog,Essence,ML,Uncommon,Cloudy mist hiding hidden dimensions
+Epoch Cycle Blood,Essence,ML,Uncommon,Vital fluid from iterative learning cycles
+Loss Function Sap,Essence,ML,Common,Bitter extract measuring imperfection
+API Endpoint Salts,Reagent,Network,Common,Crystalline hooks for interfacing systems
+Hash Collision Powder,Reagent,Security,Common,Chaotic grains that break integrity checks
+Checksum Verify Acid,Reagent,Security,Common,Corrosive truth-serum for validation
+Payload Injection Droplets,Reagent,Exploit,Uncommon,Tiny bombs of malicious data
+OAuth Token Ichor,Reagent,Security,Uncommon,Authorized blood for access grants
+Regex Pattern Filaments,Reagent,Pattern,Common,Pattern-matching strings in liquid form
+Base64 Encoded Slime,Reagent,Encoding,Common,Opaque goo hiding encoded secrets
+Overclock Catalyst Spark,Catalyst,Performance,Common,Ignites hyper-speed reactions
+GPU Render Flame,Catalyst,Compute,Common,Fiery core for parallel processing
+CUDA Kernel Ember,Catalyst,Compute,Uncommon,Smoldering heat for compute-intensive brews
+TensorFlow Igniter,Catalyst,Framework,Uncommon,Framework flint for ML fusions
+PyTorch Flux Core,Catalyst,Framework,Uncommon,Adaptive fire for dynamic alchemy
+JIT Compiler Surge,Catalyst,Performance,Uncommon,Instant compilation booster
+Async Await Pulse,Catalyst,Performance,Common,Non-blocking rhythm for fluid mixes
+Null Pointer Solvent,Solvent,Memory,Common,Dissolves invalid references seamlessly
+Memory Leak Elixir,Solvent,Memory,Common,Expands capacity during fusions
+Cache Invalidation Brew,Solvent,Memory,Common,Clears impurities mid-reaction
+Garbage Collector Tonic,Solvent,Memory,Common,Recycles waste into pure output
+Virtual Machine Emulsion,Solvent,Virtualization,Uncommon,Simulates perfect environments
+Docker Image Distillate,Solvent,Virtualization,Uncommon,Containerizes volatile mixes
+Kubernetes Pod Nectar,Solvent,Orchestration,Rare,Orchestrates multi-ingredient swarms
+Alpha Zero Primal Seed,Primordial,AI,Legendary,Self-learning origin point
+Turing Machine Essence,Primordial,Theory,Legendary,Infinite computation droplet
+Von Neumann Probe Spores,Primordial,Architecture,Legendary,Replicating architect genes
+Lambda Calculus Vapor,Primordial,Theory,Legendary,Pure functional abstraction mist
+Halting Problem Paradox,Primordial,Theory,Legendary,Unpredictable chaos catalyst
+Church-Turing Thesis Core,Primordial,Theory,Legendary,Theoretical limit breaker
+Kolmogorov Complexity Crystal,Primordial,Theory,Legendary,Minimal information diamond

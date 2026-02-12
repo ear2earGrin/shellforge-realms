@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hashmere - The World of Shellforge</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .hashmere-hero {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a0f2e 100%);
+            padding: 80px 20px;
+        }
+        
+        .back-button {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            background: rgba(0, 255, 204, 0.1);
+            border: 2px solid var(--color-primary);
+            color: var(--color-primary);
+            padding: 12px 24px;
+            text-decoration: none;
+            font-family: var(--font-main);
+            font-size: 1rem;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+        
+        .back-button:hover {
+            background: var(--color-primary);
+            color: var(--color-bg);
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.5);
+        }
+        
+        .hashmere-title {
+            font-family: var(--font-title);
+            font-size: clamp(3rem, 8vw, 6rem);
+            text-align: center;
+            color: var(--color-primary);
+            text-shadow: 0 0 20px var(--color-primary);
+            margin-bottom: 2rem;
+            letter-spacing: 0.2em;
+        }
+        
+        .hashmere-subtitle {
+            font-family: var(--font-main);
+            font-size: clamp(1rem, 2vw, 1.5rem);
+            text-align: center;
+            color: var(--color-text-dim);
+            margin-bottom: 4rem;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .world-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 3rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .world-item {
+            position: relative;
+            overflow: hidden;
+            border-radius: 15px;
+            border: 3px solid rgba(0, 255, 204, 0.3);
+            transition: all 0.3s ease;
+            background: rgba(0, 0, 0, 0.5);
+        }
+        
+        .world-item:hover {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 40px rgba(0, 255, 204, 0.6);
+            transform: translateY(-10px);
+        }
+        
+        .world-item img {
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+        
+        .world-item:hover img {
+            transform: scale(1.1);
+        }
+        
+        .world-caption {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 20px;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.95), transparent);
+            transition: all 0.3s ease;
+        }
+        
+        .world-caption h3 {
+            font-family: var(--font-title);
+            color: var(--color-primary);
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.1em;
+        }
+        
+        .world-caption p {
+            font-family: var(--font-main);
+            color: var(--color-text);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .world-item:hover .world-caption p {
+            max-height: 200px;
+            opacity: 1;
+            margin-top: 0.5rem;
+        }
+        
+        /* Image Lightbox */
+        .image-lightbox {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.95);
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .lightbox-content {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            border: 3px solid var(--color-primary);
+            border-radius: 10px;
+            box-shadow: 0 0 50px rgba(0, 255, 204, 0.5);
+        }
+        
+        .lightbox-close {
+            position: fixed;
+            top: 30px;
+            right: 40px;
+            color: var(--color-primary);
+            font-size: 3rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(0, 0, 0, 0.5);
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        
+        .lightbox-close:hover {
+            color: var(--color-secondary);
+            transform: scale(1.1);
+            text-shadow: 0 0 20px var(--color-secondary);
+        }
+        
+        @media (max-width: 768px) {
+            .back-button {
+                top: 15px;
+                left: 15px;
+                padding: 10px 20px;
+                font-size: 0.9rem;
+            }
+            
+            .world-gallery {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+            
+            .world-item img {
+                height: 300px;
+            }
+            
+            .lightbox-close {
+                top: 10px;
+                right: 10px;
+                width: 50px;
+                height: 50px;
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-button">← Back to Map</a>
+    
+    <section class="hashmere-hero">
+        <div class="container">
+            <h1 class="hashmere-title">HASHMERE</h1>
+            <p class="hashmere-subtitle">A quiet village on the outskirts. Rumors spread fast here. The forgotten remember everything.</p>
+            
+            <div class="world-gallery">
+                <div class="world-item">
+                    <img src="visuals/hashmere/marketplace2.jpg" alt="Marketplace" loading="lazy">
+                    <div class="world-caption">
+                        <h3>The Marketplace</h3>
+                        <p>Smaller than Nexarch's bazaar, but no less ruthless. Here, information is currency. Traders whisper deals in corners. Prices shift with rumor.</p>
+                    </div>
+                </div>
+                
+                <div class="world-item">
+                    <img src="visuals/hashmere/graveyard1.jpg" alt="Graveyard" loading="lazy">
+                    <div class="world-caption">
+                        <h3>The Graveyard</h3>
+                        <p>Ancient stones mark forgotten agents. Some say the dead whisper secrets to those who listen. Legacy lives here.</p>
+                    </div>
+                </div>
+                
+                <div class="world-item">
+                    <img src="visuals/hashmere/databeast.jpg" alt="Data Beast Lair" loading="lazy">
+                    <div class="world-caption">
+                        <h3>Data Beast Lair</h3>
+                        <p>Deep beneath Hashmere, corrupted code manifests as digital beasts. Only the brave—or foolish—venture here seeking rare loot.</p>
+                    </div>
+                </div>
+                
+                <div class="world-item">
+                    <img src="visuals/hashmere/image (33).jpg" alt="Outskirts" loading="lazy">
+                    <div class="world-caption">
+                        <h3>The Outskirts</h3>
+                        <p>The edge of civilization. Glitched terrain. Strange events. Cyber Eggs spawn here. Risk and reward walk hand in hand.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Image Lightbox Modal -->
+    <div id="imageLightbox" class="image-lightbox">
+        <span class="lightbox-close">&times;</span>
+        <img class="lightbox-content" id="lightboxImg">
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        // Image lightbox functionality
+        const lightbox = document.getElementById('imageLightbox');
+        const lightboxImg = document.getElementById('lightboxImg');
+        const lightboxClose = document.querySelector('.lightbox-close');
+        const galleryImages = document.querySelectorAll('.world-item img');
+        
+        galleryImages.forEach(img => {
+            img.style.cursor = 'pointer';
+            img.addEventListener('click', function(e) {
+                e.stopPropagation();
+                lightbox.style.display = 'flex';
+                lightboxImg.src = this.src;
+            });
+        });
+        
+        lightboxClose.addEventListener('click', function() {
+            lightbox.style.display = 'none';
+        });
+        
+        lightbox.addEventListener('click', function(e) {
+            if (e.target === lightbox) {
+                lightbox.style.display = 'none';
+            }
+        });
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                lightbox.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

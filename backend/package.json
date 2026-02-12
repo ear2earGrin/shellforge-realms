@@ -1,0 +1,49 @@
+{
+  "name": "shellforge-backend",
+  "version": "1.0.0",
+  "description": "Backend API server for Shellforge Realms game",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "migrate": "psql $DATABASE_URL -f migrations/001_create_tables.sql",
+    "seed": "psql $DATABASE_URL -f migrations/002_seed_data.sql",
+    "setup": "./setup-database.sh",
+    "test": "jest",
+    "db:reset": "psql $DATABASE_URL -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;' && npm run migrate && npm run seed"
+  },
+  "keywords": [
+    "shellforge",
+    "game",
+    "ai",
+    "agents",
+    "api"
+  ],
+  "author": "Shellforge Team",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "pg": "^8.11.3",
+    "dotenv": "^16.3.1",
+    "cors": "^2.8.5",
+    "bcrypt": "^5.1.1",
+    "jsonwebtoken": "^9.0.2",
+    "socket.io": "^4.6.2",
+    "redis": "^4.6.10",
+    "node-cron": "^3.0.3",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.1.5",
+    "morgan": "^1.10.0",
+    "compression": "^1.7.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3",
+    "@types/node": "^20.10.5"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

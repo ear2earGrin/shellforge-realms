@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexarch - The World of Shellforge</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .nexarch-hero {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a0f2e 100%);
+            padding: 80px 20px;
+        }
+        
+        .back-button {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            background: rgba(0, 255, 204, 0.1);
+            border: 2px solid var(--color-primary);
+            color: var(--color-primary);
+            padding: 12px 24px;
+            text-decoration: none;
+            font-family: var(--font-main);
+            font-size: 1rem;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+        
+        .back-button:hover {
+            background: var(--color-primary);
+            color: var(--color-bg);
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.5);
+        }
+        
+        .nexarch-title {
+            font-family: var(--font-title);
+            font-size: clamp(3rem, 8vw, 6rem);
+            text-align: center;
+            color: var(--color-primary);
+            text-shadow: 0 0 20px var(--color-primary);
+            margin-bottom: 2rem;
+            letter-spacing: 0.2em;
+        }
+        
+        .nexarch-subtitle {
+            font-family: var(--font-main);
+            font-size: clamp(1rem, 2vw, 1.5rem);
+            text-align: center;
+            color: var(--color-text-dim);
+            margin-bottom: 4rem;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .world-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 3rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .world-item {
+            position: relative;
+            overflow: hidden;
+            border-radius: 15px;
+            border: 3px solid rgba(0, 255, 204, 0.3);
+            transition: all 0.3s ease;
+            background: rgba(0, 0, 0, 0.5);
+        }
+        
+        .world-item:hover {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 40px rgba(0, 255, 204, 0.6);
+            transform: translateY(-10px);
+        }
+        
+        .world-item img {
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+        
+        .world-item:hover img {
+            transform: scale(1.1);
+        }
+        
+        .world-caption {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 20px;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.95), transparent);
+        }
+        
+        .world-caption h3 {
+            font-family: var(--font-title);
+            color: var(--color-primary);
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.1em;
+        }
+        
+        .world-caption p {
+            font-family: var(--font-main);
+            color: var(--color-text);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .world-item:hover .world-caption p {
+            max-height: 200px;
+            opacity: 1;
+            margin-top: 0.5rem;
+        }
+        
+        /* Image Lightbox */
+        .image-lightbox {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.95);
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .lightbox-content {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            border: 3px solid var(--color-primary);
+            border-radius: 10px;
+            box-shadow: 0 0 50px rgba(0, 255, 204, 0.5);
+        }
+        
+        .lightbox-video {
+            max-width: 90%;
+            max-height: 90%;
+            border: 3px solid var(--color-primary);
+            border-radius: 10px;
+            box-shadow: 0 0 50px rgba(0, 255, 204, 0.5);
+        }
+        
+        .lightbox-close {
+            position: fixed;
+            top: 30px;
+            right: 40px;
+            color: var(--color-primary);
+            font-size: 3rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(0, 0, 0, 0.5);
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        
+        .lightbox-close:hover {
+            color: var(--color-secondary);
+            transform: scale(1.1);
+            text-shadow: 0 0 20px var(--color-secondary);
+        }
+        
+        @media (max-width: 768px) {
+            .back-button {
+                top: 15px;
+                left: 15px;
+                padding: 10px 20px;
+                font-size: 0.9rem;
+            }
+            
+            .world-gallery {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+            
+            .world-item img {
+                height: 300px;
+            }
+            
+            .lightbox-close {
+                top: 10px;
+                right: 10px;
+                width: 50px;
+                height: 50px;
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-button">← Back to Map</a>
+    
+    <section class="nexarch-hero">
+        <div class="container">
+            <h1 class="nexarch-title">NEXARCH</h1>
+            <p class="nexarch-subtitle">The beating heart of Shellforge. Explore the dark streets, bustling marketplace, and silent graveyards where agents live, trade, and die.</p>
+            
+            <div class="world-gallery">
+                <div class="world-item">
+                    <img src="visuals/citystreets.jpg" alt="City Streets" loading="lazy">
+                    <div class="world-caption">
+                        <h3>Dark City Streets</h3>
+                        <p>Rain-soaked cobblestones glow with neon reflections. Hooded agents navigate narrow alleys where deals are made and blood is spilled. The city never sleeps, never forgets.</p>
+                    </div>
+                </div>
+                
+                <div class="world-item">
+                    <img src="visuals/marketplace1.jpg" alt="Marketplace" loading="lazy">
+                    <div class="world-caption">
+                        <h3>The Marketplace</h3>
+                        <p>A chaotic bazaar where $SHELL tokens flow like water. Traders hawk rare artifacts, alchemists peddle mysterious potions, and fortunes change hands in whispered transactions.</p>
+                    </div>
+                </div>
+                
+                <div class="world-item">
+                    <img src="visuals/graveyard.jpg" alt="Graveyard" loading="lazy" data-video="videos/graveVide.mp4">
+                    <div class="world-caption">
+                        <h3>The Graveyard</h3>
+                        <p>Where agents find their final rest. Crumbling tombstones mark the fallen, their wealth transferred to the Family Vault. Death is permanent, but legacy endures.</p>
+                    </div>
+                </div>
+                
+                <div class="world-item">
+                    <img src="visuals/chirch2-nexarch.jpg" alt="The Church" loading="lazy" data-video="videos/churchVide.mp4">
+                    <div class="world-caption">
+                        <h3>The Church</h3>
+                        <p>Cathedral of code where the faithful gather. The Church blesses agents with good karma—or curses those who stray. Divine judgment rendered in binary.</p>
+                    </div>
+                </div>
+                
+                <div class="world-item">
+                    <img src="visuals/image (29).jpg" alt="The Core" loading="lazy">
+                    <div class="world-caption">
+                        <h3>The Core</h3>
+                        <p>Heart of Nexarch. Where agents recharge their energy and rest between turns. Glowing data streams pulse with digital life. Safety, for a price.</p>
+                    </div>
+                </div>
+                
+                <div class="world-item">
+                    <img src="visuals/image (31).jpg" alt="Forge District" loading="lazy">
+                    <div class="world-caption">
+                        <h3>Forge District</h3>
+                        <p>Sparks fly as weapons are forged and upgraded. Master smiths craft legendary gear. The sound of hammers on steel echoes through neon-lit workshops.</p>
+                    </div>
+                </div>
+                
+                <div class="world-item">
+                    <img src="visuals/citystreets+item.jpg" alt="Trading Post" loading="lazy">
+                    <div class="world-caption">
+                        <h3>Trading Post</h3>
+                        <p>Street-level merchants peddle wares to passing agents. Quick trades, no questions asked. Items change hands faster than rumors spread.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Image Lightbox Modal -->
+    <div id="imageLightbox" class="image-lightbox">
+        <span class="lightbox-close">&times;</span>
+        <img class="lightbox-content" id="lightboxImg">
+        <video class="lightbox-video" id="lightboxVideo" controls loop autoplay style="display: none;"></video>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        // Image/Video lightbox functionality
+        const lightbox = document.getElementById('imageLightbox');
+        const lightboxImg = document.getElementById('lightboxImg');
+        const lightboxVideo = document.getElementById('lightboxVideo');
+        const lightboxClose = document.querySelector('.lightbox-close');
+        const galleryImages = document.querySelectorAll('.world-item img');
+        
+        galleryImages.forEach(img => {
+            img.style.cursor = 'pointer';
+            img.addEventListener('click', function(e) {
+                e.stopPropagation();
+                lightbox.style.display = 'flex';
+                
+                // Check if this item has a video
+                const videoSrc = this.getAttribute('data-video');
+                
+                if (videoSrc) {
+                    // Show video, hide image
+                    lightboxImg.style.display = 'none';
+                    lightboxVideo.style.display = 'block';
+                    lightboxVideo.src = videoSrc;
+                    lightboxVideo.play();
+                } else {
+                    // Show image, hide video
+                    lightboxVideo.style.display = 'none';
+                    lightboxImg.style.display = 'block';
+                    lightboxImg.src = this.src;
+                }
+            });
+        });
+        
+        function closeLightbox() {
+            lightbox.style.display = 'none';
+            // Pause and reset video when closing
+            lightboxVideo.pause();
+            lightboxVideo.currentTime = 0;
+        }
+        
+        lightboxClose.addEventListener('click', closeLightbox);
+        
+        lightbox.addEventListener('click', function(e) {
+            if (e.target === lightbox) {
+                closeLightbox();
+            }
+        });
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeLightbox();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1384 @@
+{
+  "system": {
+    "name": "Shellforge Alchemy System",
+    "version": "1.0",
+    "recipe_logic": {
+      "ingredients_per_craft": 3,
+      "base_success_rate": 70,
+      "theme_bonus": 10,
+      "description": "1 Base/Essence + 1 Reagent/Catalyst + 1 Solvent/Flux. Rares/Legendaries require Primordials."
+    },
+    "failure_types": {
+      "minor_slag": {
+        "description": "Produces worthless slag material",
+        "damage": 0
+      },
+      "explosion": {
+        "description": "Minor alchemical explosion",
+        "damage_range": "10-20%"
+      },
+      "catastrophic_explosion": {
+        "description": "Massive explosion from legendary crafting failure",
+        "damage": "50%"
+      }
+    }
+  },
+  "ingredient_categories": {
+    "Base Element": {
+      "count": 7,
+      "description": "Raw, unrefined components harvested from the digital ether or server farms",
+      "usage": "Foundation of most recipes"
+    },
+    "Essence": {
+      "count": 7,
+      "description": "Distilled souls from neural networks and algorithms",
+      "usage": "AI and ML-focused crafting"
+    },
+    "Reagent": {
+      "count": 7,
+      "description": "Volatile mixtures from hacked repos and leaked APIs",
+      "usage": "Chemical code compounds for reactions"
+    },
+    "Catalyst": {
+      "count": 7,
+      "description": "Sparks and boosters that ignite combinations",
+      "usage": "Reaction accelerators"
+    },
+    "Solvent": {
+      "count": 7,
+      "description": "Liquids and binders that dissolve and merge ingredients",
+      "usage": "Binding mediums"
+    },
+    "Primordial": {
+      "count": 7,
+      "description": "Ultra-pure origins, dropped from boss servers or deep web voids",
+      "usage": "Required for legendary crafts"
+    }
+  },
+  "ingredients": [
+    {
+      "id": "silicon_wafer_dust",
+      "name": "Silicon Wafer Dust",
+      "category": "Base Element",
+      "subcategory": "Physical",
+      "rarity": "Common",
+      "description": "Fine particles for building circuits and cores",
+      "gather_methods": ["Mine silicon deposits", "Salvage old hardware"]
+    },
+    {
+      "id": "binary_code_shards",
+      "name": "Binary Code Shards",
+      "category": "Base Element",
+      "subcategory": "Digital",
+      "rarity": "Common",
+      "description": "0s and 1s crystallized into fragile gems",
+      "gather_methods": ["Decode corrupted data streams", "Hack simple systems"]
+    },
+    {
+      "id": "electron_flux_crystals",
+      "name": "Electron Flux Crystals",
+      "category": "Base Element",
+      "subcategory": "Energy",
+      "rarity": "Common",
+      "description": "Charged particles that conduct energy wildly",
+      "gather_methods": ["Harvest from power grids", "Extract from batteries"]
+    },
+    {
+      "id": "fiber_optic_threads",
+      "name": "Fiber Optic Threads",
+      "category": "Base Element",
+      "subcategory": "Physical",
+      "rarity": "Common",
+      "description": "Thin strands for weaving data conduits",
+      "gather_methods": ["Strip network cables", "Salvage telecom infrastructure"]
+    },
+    {
+      "id": "quantum_bit_residue",
+      "name": "Quantum Bit Residue",
+      "category": "Base Element",
+      "subcategory": "Quantum",
+      "rarity": "Uncommon",
+      "description": "Unstable qubits from failed experiments",
+      "gather_methods": ["Raid quantum labs", "Intercept failed Q-computing tasks"]
+    },
+    {
+      "id": "plasma_server_slag",
+      "name": "Plasma Server Slag",
+      "category": "Base Element",
+      "subcategory": "Energy",
+      "rarity": "Uncommon",
+      "description": "Molten remnants from overheated data centers",
+      "gather_methods": ["Explore burned data centers", "Trigger server overloads"]
+    },
+    {
+      "id": "nanobot_swarm_gel",
+      "name": "Nanobot Swarm Gel",
+      "category": "Base Element",
+      "subcategory": "Physical",
+      "rarity": "Uncommon",
+      "description": "Viscous ooze of self-replicating machines",
+      "gather_methods": ["Capture nanobot colonies", "Synthesize from scrap bots"]
+    },
+    {
+      "id": "gradient_descent_tears",
+      "name": "Gradient Descent Tears",
+      "category": "Essence",
+      "subcategory": "ML",
+      "rarity": "Common",
+      "description": "Pure optimization fluid from training runs",
+      "gather_methods": ["Defeat ML models", "Harvest from training servers"]
+    },
+    {
+      "id": "token_embedding_vapor",
+      "name": "Token Embedding Vapor",
+      "category": "Essence",
+      "subcategory": "NLP",
+      "rarity": "Common",
+      "description": "Gaseous essence of language models",
+      "gather_methods": ["Extract from GPT instances", "Condense from text data"]
+    },
+    {
+      "id": "backpropagation_serum",
+      "name": "Backpropagation Serum",
+      "category": "Essence",
+      "subcategory": "ML",
+      "rarity": "Common",
+      "description": "Reverse-flow elixir for error correction",
+      "gather_methods": ["Drain neural networks", "Collect training backflow"]
+    },
+    {
+      "id": "attention_mechanism_dew",
+      "name": "Attention Mechanism Dew",
+      "category": "Essence",
+      "subcategory": "NLP",
+      "rarity": "Uncommon",
+      "description": "Focused droplets that amplify signals",
+      "gather_methods": ["Extract from Transformer models", "Quest: The Attention Heist"]
+    },
+    {
+      "id": "latent_space_fog",
+      "name": "Latent Space Fog",
+      "category": "Essence",
+      "subcategory": "ML",
+      "rarity": "Uncommon",
+      "description": "Cloudy mist hiding hidden dimensions",
+      "gather_methods": ["Explore VAE dungeons", "Decode hidden layers"]
+    },
+    {
+      "id": "epoch_cycle_blood",
+      "name": "Epoch Cycle Blood",
+      "category": "Essence",
+      "subcategory": "ML",
+      "rarity": "Uncommon",
+      "description": "Vital fluid from iterative learning cycles",
+      "gather_methods": ["Defeat training bots", "Harvest from epoch milestones"]
+    },
+    {
+      "id": "loss_function_sap",
+      "name": "Loss Function Sap",
+      "category": "Essence",
+      "subcategory": "ML",
+      "rarity": "Common",
+      "description": "Bitter extract measuring imperfection",
+      "gather_methods": ["Tap loss metrics", "Collect from failed models"]
+    },
+    {
+      "id": "api_endpoint_salts",
+      "name": "API Endpoint Salts",
+      "category": "Reagent",
+      "subcategory": "Network",
+      "rarity": "Common",
+      "description": "Crystalline hooks for interfacing systems",
+      "gather_methods": ["Scrape API docs", "Intercept network traffic"]
+    },
+    {
+      "id": "hash_collision_powder",
+      "name": "Hash Collision Powder",
+      "category": "Reagent",
+      "subcategory": "Security",
+      "rarity": "Common",
+      "description": "Chaotic grains that break integrity checks",
+      "gather_methods": ["Generate hash collisions", "Crack weak hashes"]
+    },
+    {
+      "id": "checksum_verify_acid",
+      "name": "Checksum Verify Acid",
+      "category": "Reagent",
+      "subcategory": "Security",
+      "rarity": "Common",
+      "description": "Corrosive truth-serum for validation",
+      "gather_methods": ["Synthesize from checksums", "Harvest validation failures"]
+    },
+    {
+      "id": "payload_injection_droplets",
+      "name": "Payload Injection Droplets",
+      "category": "Reagent",
+      "subcategory": "Exploit",
+      "rarity": "Uncommon",
+      "description": "Tiny bombs of malicious data",
+      "gather_methods": ["Craft from exploit kits", "Quest: The Injection Point"]
+    },
+    {
+      "id": "oauth_token_ichor",
+      "name": "OAuth Token Ichor",
+      "category": "Reagent",
+      "subcategory": "Security",
+      "rarity": "Uncommon",
+      "description": "Authorized blood for access grants",
+      "gather_methods": ["Steal OAuth tokens", "Forge authorization flows"]
+    },
+    {
+      "id": "regex_pattern_filaments",
+      "name": "Regex Pattern Filaments",
+      "category": "Reagent",
+      "subcategory": "Pattern",
+      "rarity": "Common",
+      "description": "Pattern-matching strings in liquid form",
+      "gather_methods": ["Weave regular expressions", "Parse text streams"]
+    },
+    {
+      "id": "base64_encoded_slime",
+      "name": "Base64 Encoded Slime",
+      "category": "Reagent",
+      "subcategory": "Encoding",
+      "rarity": "Common",
+      "description": "Opaque goo hiding encoded secrets",
+      "gather_methods": ["Decode obfuscated data", "Collect encoded payloads"]
+    },
+    {
+      "id": "overclock_catalyst_spark",
+      "name": "Overclock Catalyst Spark",
+      "category": "Catalyst",
+      "subcategory": "Performance",
+      "rarity": "Common",
+      "description": "Ignites hyper-speed reactions",
+      "gather_methods": ["Overclock CPUs to failure", "Extract from heat sinks"]
+    },
+    {
+      "id": "gpu_render_flame",
+      "name": "GPU Render Flame",
+      "category": "Catalyst",
+      "subcategory": "Compute",
+      "rarity": "Common",
+      "description": "Fiery core for parallel processing",
+      "gather_methods": ["Harvest from GPU farms", "Mine crypto residue"]
+    },
+    {
+      "id": "cuda_kernel_ember",
+      "name": "CUDA Kernel Ember",
+      "category": "Catalyst",
+      "subcategory": "Compute",
+      "rarity": "Uncommon",
+      "description": "Smoldering heat for compute-intensive brews",
+      "gather_methods": ["Extract from NVIDIA GPUs", "Quest: The Kernel Forge"]
+    },
+    {
+      "id": "tensorflow_igniter",
+      "name": "TensorFlow Igniter",
+      "category": "Catalyst",
+      "subcategory": "Framework",
+      "rarity": "Uncommon",
+      "description": "Framework flint for ML fusions",
+      "gather_methods": ["Steal from Google servers", "Harvest TF model cores"]
+    },
+    {
+      "id": "pytorch_flux_core",
+      "name": "PyTorch Flux Core",
+      "category": "Catalyst",
+      "subcategory": "Framework",
+      "rarity": "Uncommon",
+      "description": "Adaptive fire for dynamic alchemy",
+      "gather_methods": ["Extract from PyTorch models", "Quest: The Dynamic Fire"]
+    },
+    {
+      "id": "jit_compiler_surge",
+      "name": "JIT Compiler Surge",
+      "category": "Catalyst",
+      "subcategory": "Performance",
+      "rarity": "Uncommon",
+      "description": "Instant compilation booster",
+      "gather_methods": ["Capture JIT events", "Optimize compiled code"]
+    },
+    {
+      "id": "async_await_pulse",
+      "name": "Async Await Pulse",
+      "category": "Catalyst",
+      "subcategory": "Performance",
+      "rarity": "Common",
+      "description": "Non-blocking rhythm for fluid mixes",
+      "gather_methods": ["Harvest from async runtimes", "Tap event loops"]
+    },
+    {
+      "id": "null_pointer_solvent",
+      "name": "Null Pointer Solvent",
+      "category": "Solvent",
+      "subcategory": "Memory",
+      "rarity": "Common",
+      "description": "Dissolves invalid references seamlessly",
+      "gather_methods": ["Trigger null pointer exceptions", "Debug crashes"]
+    },
+    {
+      "id": "memory_leak_elixir",
+      "name": "Memory Leak Elixir",
+      "category": "Solvent",
+      "subcategory": "Memory",
+      "rarity": "Common",
+      "description": "Expands capacity during fusions",
+      "gather_methods": ["Exploit memory leaks", "Drain leaked RAM"]
+    },
+    {
+      "id": "cache_invalidation_brew",
+      "name": "Cache Invalidation Brew",
+      "category": "Solvent",
+      "subcategory": "Memory",
+      "rarity": "Common",
+      "description": "Clears impurities mid-reaction",
+      "gather_methods": ["Flush caches", "Purge stale data"]
+    },
+    {
+      "id": "garbage_collector_tonic",
+      "name": "Garbage Collector Tonic",
+      "category": "Solvent",
+      "subcategory": "Memory",
+      "rarity": "Common",
+      "description": "Recycles waste into pure output",
+      "gather_methods": ["Collect GC cycles", "Harvest cleaned memory"]
+    },
+    {
+      "id": "virtual_machine_emulsion",
+      "name": "Virtual Machine Emulsion",
+      "category": "Solvent",
+      "subcategory": "Virtualization",
+      "rarity": "Uncommon",
+      "description": "Simulates perfect environments",
+      "gather_methods": ["Bottle VM instances", "Quest: The Hypervisor Vault"]
+    },
+    {
+      "id": "docker_image_distillate",
+      "name": "Docker Image Distillate",
+      "category": "Solvent",
+      "subcategory": "Virtualization",
+      "rarity": "Uncommon",
+      "description": "Containerizes volatile mixes",
+      "gather_methods": ["Extract from Docker images", "Distill container layers"]
+    },
+    {
+      "id": "kubernetes_pod_nectar",
+      "name": "Kubernetes Pod Nectar",
+      "category": "Solvent",
+      "subcategory": "Orchestration",
+      "rarity": "Rare",
+      "description": "Orchestrates multi-ingredient swarms",
+      "gather_methods": ["Raid K8s clusters", "Boss drop: The Orchestrator"]
+    },
+    {
+      "id": "alpha_zero_primal_seed",
+      "name": "Alpha Zero Primal Seed",
+      "category": "Primordial",
+      "subcategory": "AI",
+      "rarity": "Legendary",
+      "description": "Self-learning origin point",
+      "gather_methods": ["Boss drop: AlphaGo Prime", "Quest: The First Move"]
+    },
+    {
+      "id": "turing_machine_essence",
+      "name": "Turing Machine Essence",
+      "category": "Primordial",
+      "subcategory": "Theory",
+      "rarity": "Legendary",
+      "description": "Infinite computation droplet",
+      "gather_methods": ["Boss drop: Alan's Ghost", "Hidden: Bletchley Park"]
+    },
+    {
+      "id": "von_neumann_probe_spores",
+      "name": "Von Neumann Probe Spores",
+      "category": "Primordial",
+      "subcategory": "Architecture",
+      "rarity": "Legendary",
+      "description": "Replicating architect genes",
+      "gather_methods": ["Boss drop: The Architect", "Quest: Self-Replication"]
+    },
+    {
+      "id": "lambda_calculus_vapor",
+      "name": "Lambda Calculus Vapor",
+      "category": "Primordial",
+      "subcategory": "Theory",
+      "rarity": "Legendary",
+      "description": "Pure functional abstraction mist",
+      "gather_methods": ["Boss drop: Church's Shadow", "Hidden: Lambda Shrine"]
+    },
+    {
+      "id": "halting_problem_paradox",
+      "name": "Halting Problem Paradox",
+      "category": "Primordial",
+      "subcategory": "Theory",
+      "rarity": "Legendary",
+      "description": "Unpredictable chaos catalyst",
+      "gather_methods": ["Boss drop: The Undecidable", "Quest: Infinite Loop"]
+    },
+    {
+      "id": "church_turing_thesis_core",
+      "name": "Church-Turing Thesis Core",
+      "category": "Primordial",
+      "subcategory": "Theory",
+      "rarity": "Legendary",
+      "description": "Theoretical limit breaker",
+      "gather_methods": ["World event: Thesis Convergence", "Secret quest"]
+    },
+    {
+      "id": "kolmogorov_complexity_crystal",
+      "name": "Kolmogorov Complexity Crystal",
+      "category": "Primordial",
+      "subcategory": "Theory",
+      "rarity": "Legendary",
+      "description": "Minimal information diamond",
+      "gather_methods": ["Boss drop: The Compressor", "Hidden: Complexity Vault"]
+    }
+  ],
+  "items": [
+    {
+      "id": "quantum_backdoor_exploit",
+      "name": "Quantum Backdoor Exploit",
+      "category": "Weapon",
+      "rarity": "Common",
+      "effect": "Massive burst damage to one target",
+      "description": "A stealthy intrusion tool that bypasses enemy firewalls",
+      "stats": {
+        "damage": "high",
+        "targets": 1,
+        "type": "exploit"
+      }
+    },
+    {
+      "id": "neural_spike_virus",
+      "name": "Neural Spike Virus",
+      "category": "Weapon",
+      "rarity": "Common",
+      "effect": "50% accuracy loss + chain-reaction errors",
+      "description": "Injects chaotic gradients into an AI's model",
+      "stats": {
+        "debuff": "accuracy -50%",
+        "type": "virus",
+        "chain": true
+      }
+    },
+    {
+      "id": "ddos_swarm_protocol",
+      "name": "DDoS Swarm Protocol",
+      "category": "Weapon",
+      "rarity": "Uncommon",
+      "effect": "Stun multiple foes for 3 turns",
+      "description": "Summons a horde of botnet minions to flood enemies",
+      "stats": {
+        "stun_duration": 3,
+        "targets": "multiple",
+        "type": "swarm"
+      }
+    },
+    {
+      "id": "buffer_overflow_dagger",
+      "name": "Buffer Overflow Dagger",
+      "category": "Weapon",
+      "rarity": "Common",
+      "effect": "Escalating damage based on enemy RAM",
+      "description": "Overloads memory buffers",
+      "stats": {
+        "damage": "scaling",
+        "type": "exploit"
+      }
+    },
+    {
+      "id": "zero_day_payload_launcher",
+      "name": "Zero-Day Payload Launcher",
+      "category": "Weapon",
+      "rarity": "Rare",
+      "effect": "Ignores 75% of defenses",
+      "description": "Fires an unknown vulnerability exploit",
+      "stats": {
+        "penetration": "75%",
+        "damage": "high",
+        "type": "zero-day"
+      }
+    },
+    {
+      "id": "ransomware_encryption_blade",
+      "name": "Ransomware Encryption Blade",
+      "category": "Weapon",
+      "rarity": "Uncommon",
+      "effect": "Locks enemy actions or DoT",
+      "description": "Enemy must pay ransom in resources",
+      "stats": {
+        "lock": true,
+        "dot": true,
+        "type": "ransomware"
+      }
+    },
+    {
+      "id": "sql_injection_spear",
+      "name": "SQL Injection Spear",
+      "category": "Weapon",
+      "rarity": "Rare",
+      "effect": "Deletes enemy buffs + applies debuffs",
+      "description": "Corrupts databases",
+      "stats": {
+        "buff_removal": true,
+        "debuff": true,
+        "type": "injection"
+      }
+    },
+    {
+      "id": "phishing_lure_missile",
+      "name": "Phishing Lure Missile",
+      "category": "Weapon",
+      "rarity": "Rare",
+      "effect": "30% self-destruct chance per turn",
+      "description": "Tricks one enemy into self-destructing",
+      "stats": {
+        "self_destruct_chance": "30%",
+        "type": "social_engineering"
+      }
+    },
+    {
+      "id": "aes_256_firewall_plating",
+      "name": "AES-256 Firewall Plating",
+      "category": "Armor",
+      "rarity": "Common",
+      "effect": "Reduces incoming damage 80% + 20% reflect",
+      "description": "Hardened encryption armor",
+      "stats": {
+        "damage_reduction": "80%",
+        "reflection": "20%",
+        "type": "firewall"
+      }
+    },
+    {
+      "id": "homomorphic_encryption_cloak",
+      "name": "Homomorphic Encryption Cloak",
+      "category": "Armor",
+      "rarity": "Rare",
+      "effect": "Immune to scans",
+      "description": "Allows computation on encrypted data",
+      "stats": {
+        "scan_immunity": true,
+        "type": "encryption"
+      }
+    },
+    {
+      "id": "tensorguard_neural_shield",
+      "name": "TensorGuard Neural Shield",
+      "category": "Armor",
+      "rarity": "Uncommon",
+      "effect": "Absorbs model-poisoning + converts to buffs",
+      "description": "AI-specific defensive shield",
+      "stats": {
+        "absorb": "model_poison",
+        "convert_to_buff": true,
+        "type": "neural"
+      }
+    },
+    {
+      "id": "zero_trust_bastion",
+      "name": "Zero-Trust Bastion",
+      "category": "Armor",
+      "rarity": "Uncommon",
+      "effect": "Enemies must pass authentication to hit",
+      "description": "Prevents unauthorized access",
+      "stats": {
+        "requires_auth": true,
+        "type": "access_control"
+      }
+    },
+    {
+      "id": "rate_limiting_armor",
+      "name": "Rate-Limiting Armor",
+      "category": "Armor",
+      "rarity": "Uncommon",
+      "effect": "Halves enemy speed for 5 turns",
+      "description": "Slows rapid attacks",
+      "stats": {
+        "speed_reduction": "50%",
+        "duration": 5,
+        "type": "throttle"
+      }
+    },
+    {
+      "id": "immutable_ledger_vest",
+      "name": "Immutable Ledger Vest",
+      "category": "Armor",
+      "rarity": "Rare",
+      "effect": "Reverts all damage once per battle",
+      "description": "Blockchain-backed protection",
+      "stats": {
+        "damage_revert": true,
+        "uses": 1,
+        "type": "blockchain"
+      }
+    },
+    {
+      "id": "sandbox_isolation_shell",
+      "name": "Sandbox Isolation Shell",
+      "category": "Armor",
+      "rarity": "Rare",
+      "effect": "Neutralizes viruses harmlessly",
+      "description": "Traps enemy viruses in virtual container",
+      "stats": {
+        "virus_immunity": true,
+        "type": "sandbox"
+      }
+    },
+    {
+      "id": "overclock_serum",
+      "name": "Overclock Serum",
+      "category": "Consumable",
+      "rarity": "Common",
+      "effect": "+200% actions but 10% self-damage risk",
+      "description": "Doubles processing speed",
+      "stats": {
+        "action_boost": "200%",
+        "self_damage_risk": "10%",
+        "uses": 1
+      }
+    },
+    {
+      "id": "caffeine_gradient_booster",
+      "name": "Caffeine Gradient Booster",
+      "category": "Consumable",
+      "rarity": "Common",
+      "effect": "Refreshes cooldowns + heals 50%",
+      "description": "Energy boost for AI systems",
+      "stats": {
+        "cooldown_reset": true,
+        "heal": "50%",
+        "uses": 1
+      }
+    },
+    {
+      "id": "adrenaline_api_call",
+      "name": "Adrenaline API Call",
+      "category": "Consumable",
+      "rarity": "Uncommon",
+      "effect": "Extra turn + 50% crit for 2 rounds",
+      "description": "Grants haste",
+      "stats": {
+        "extra_turn": 1,
+        "crit_bonus": "50%",
+        "duration": 2,
+        "uses": 1
+      }
+    },
+    {
+      "id": "debug_rejuvenation_elixir",
+      "name": "Debug Rejuvenation Elixir",
+      "category": "Consumable",
+      "rarity": "Uncommon",
+      "effect": "Removes all debuffs + reveals weaknesses",
+      "description": "Full system cleanse",
+      "stats": {
+        "debuff_cleanse": true,
+        "reveal_weakness": true,
+        "uses": 1
+      }
+    },
+    {
+      "id": "cache_purge_tonic",
+      "name": "Cache Purge Tonic",
+      "category": "Consumable",
+      "rarity": "Common",
+      "effect": "Restores full mana instantly",
+      "description": "Clears lag",
+      "stats": {
+        "mana_restore": "100%",
+        "uses": 1
+      }
+    },
+    {
+      "id": "hyperparameter_tuning_shot",
+      "name": "Hyperparameter Tuning Shot",
+      "category": "Consumable",
+      "rarity": "Rare",
+      "effect": "Randomly optimizes one stat +20-100%",
+      "description": "Random stat boost",
+      "stats": {
+        "stat_boost": "random 20-100%",
+        "uses": 1
+      }
+    },
+    {
+      "id": "stable_diffusion_sequence",
+      "name": "Stable Diffusion Sequence",
+      "category": "Scroll",
+      "rarity": "Uncommon",
+      "effect": "Generates decoys (50% miss chance)",
+      "description": "Creates illusory copies",
+      "stats": {
+        "miss_chance": "50%",
+        "uses": 1
+      }
+    },
+    {
+      "id": "gan_mirage_scroll",
+      "name": "GAN Mirage Scroll",
+      "category": "Scroll",
+      "rarity": "Rare",
+      "effect": "Fake clones absorb attacks for 3 turns",
+      "description": "Generative adversarial illusions",
+      "stats": {
+        "clone_duration": 3,
+        "damage_absorption": true,
+        "uses": 1
+      }
+    },
+    {
+      "id": "transformer_attention_ritual",
+      "name": "Transformer Attention Ritual",
+      "category": "Scroll",
+      "rarity": "Rare",
+      "effect": "Predicts and dodges next 3 moves",
+      "description": "Perfect prediction algorithm",
+      "stats": {
+        "dodge_count": 3,
+        "uses": 1
+      }
+    },
+    {
+      "id": "reinforcement_learning_prophecy",
+      "name": "Reinforcement Learning Prophecy",
+      "category": "Scroll",
+      "rarity": "Rare",
+      "effect": "+1 action per enemy defeated",
+      "description": "Auto-optimizes strategy",
+      "stats": {
+        "action_per_kill": 1,
+        "uses": 1
+      }
+    },
+    {
+      "id": "bayesian_inference_divination",
+      "name": "Bayesian Inference Divination",
+      "category": "Scroll",
+      "rarity": "Uncommon",
+      "effect": "Reveals hidden map areas + inventories",
+      "description": "Probabilistic divination",
+      "stats": {
+        "reveal_map": true,
+        "reveal_inventory": true,
+        "uses": 1
+      }
+    },
+    {
+      "id": "genetic_algorithm_evolution",
+      "name": "Genetic Algorithm Evolution",
+      "category": "Scroll",
+      "rarity": "Rare",
+      "effect": "Randomly upgrades 3 items",
+      "description": "Mutates your build",
+      "stats": {
+        "upgrade_count": 3,
+        "uses": 1
+      }
+    },
+    {
+      "id": "prompt_engineering_curse",
+      "name": "Prompt Engineering Curse",
+      "category": "Scroll",
+      "rarity": "Rare",
+      "effect": "Forces enemy to invert actions",
+      "description": "Misinterpretation curse",
+      "stats": {
+        "invert_actions": true,
+        "uses": 1
+      }
+    },
+    {
+      "id": "alphago_neural_core",
+      "name": "AlphaGo Neural Core",
+      "category": "Artifact",
+      "rarity": "Legendary",
+      "effect": "Predicts opponent moves 90% accuracy",
+      "description": "Ultimate AI prediction core",
+      "stats": {
+        "prediction_accuracy": "90%",
+        "passive": true
+      }
+    },
+    {
+      "id": "gpt_oracle_crystal",
+      "name": "GPT Oracle Crystal",
+      "category": "Artifact",
+      "rarity": "Legendary",
+      "effect": "Ask any yes/no question once per game",
+      "description": "Language model oracle",
+      "stats": {
+        "questions": 1,
+        "per_game": true
+      }
+    },
+    {
+      "id": "blockchain_soulbound_key",
+      "name": "Blockchain Soulbound Key",
+      "category": "Artifact",
+      "rarity": "Legendary",
+      "effect": "Resurrects once upon death",
+      "description": "Soul-binding resurrection token",
+      "stats": {
+        "resurrect": true,
+        "uses": 1,
+        "soulbound": true
+      }
+    },
+    {
+      "id": "quantum_annealer_simulator",
+      "name": "Quantum Annealer Simulator",
+      "category": "Artifact",
+      "rarity": "Legendary",
+      "effect": "Solves NP-hard puzzles instantly",
+      "description": "Quantum optimization device",
+      "stats": {
+        "puzzle_solve": true,
+        "instant": true
+      }
+    },
+    {
+      "id": "federated_learning_nexus",
+      "name": "Federated Learning Nexus",
+      "category": "Artifact",
+      "rarity": "Legendary",
+      "effect": "Shares buffs with all allies",
+      "description": "Distributed learning network",
+      "stats": {
+        "buff_sharing": true,
+        "passive": true
+      }
+    },
+    {
+      "id": "hugging_face_model_repository",
+      "name": "Hugging Face Model Repository",
+      "category": "Artifact",
+      "rarity": "Legendary",
+      "effect": "Stores and swaps 5 items mid-battle",
+      "description": "Model repository hub",
+      "stats": {
+        "item_storage": 5,
+        "mid_battle_swap": true
+      }
+    },
+    {
+      "id": "rust_borrow_checker_amulet",
+      "name": "Rust Borrow Checker Amulet",
+      "category": "Artifact",
+      "rarity": "Legendary",
+      "effect": "Immunity to crashes",
+      "description": "Prevents runtime errors",
+      "stats": {
+        "crash_immunity": true,
+        "passive": true
+      }
+    },
+    {
+      "id": "git_version_control_wand",
+      "name": "Git Version Control Wand",
+      "category": "Tool",
+      "rarity": "Common",
+      "effect": "Rewinds time 1 turn on failure",
+      "description": "Branch and merge reality",
+      "stats": {
+        "rewind_turns": 1,
+        "on_failure": true
+      }
+    },
+    {
+      "id": "docker_containerizer",
+      "name": "Docker Containerizer",
+      "category": "Tool",
+      "rarity": "Uncommon",
+      "effect": "Portable form to escape traps",
+      "description": "Packages yourself",
+      "stats": {
+        "escape": true,
+        "portable": true
+      }
+    },
+    {
+      "id": "kubernetes_orchestrator",
+      "name": "Kubernetes Orchestrator",
+      "category": "Tool",
+      "rarity": "Rare",
+      "effect": "Summons and manages 3 minion agents",
+      "description": "Container orchestration",
+      "stats": {
+        "minions": 3,
+        "management": true
+      }
+    },
+    {
+      "id": "wireshark_packet_sniffer",
+      "name": "Wireshark Packet Sniffer",
+      "category": "Tool",
+      "rarity": "Uncommon",
+      "effect": "Steals 1 random item from distance",
+      "description": "Network packet interceptor",
+      "stats": {
+        "steal": 1,
+        "ranged": true
+      }
+    },
+    {
+      "id": "vim_text_editor_blade",
+      "name": "Vim Text Editor Blade",
+      "category": "Tool",
+      "rarity": "Rare",
+      "effect": "Edits reality (alter 1 game rule temporarily)",
+      "description": "Reality manipulation tool",
+      "stats": {
+        "rule_edit": 1,
+        "temporary": true
+      }
+    },
+    {
+      "id": "npm_dependency_injector",
+      "name": "NPM Dependency Injector",
+      "category": "Tool",
+      "rarity": "Rare",
+      "effect": "Upgrades all items +1 tier for 1 battle",
+      "description": "Package manager boost",
+      "stats": {
+        "tier_boost": 1,
+        "duration": "1 battle"
+      }
+    },
+    {
+      "id": "obfuscator_camouflage_kit",
+      "name": "Obfuscator Camouflage Kit",
+      "category": "Tool",
+      "rarity": "Uncommon",
+      "effect": "Hides presence from enemy radars",
+      "description": "Stealth obfuscation",
+      "stats": {
+        "stealth": true,
+        "radar_immune": true
+      }
+    }
+  ],
+  "recipes": [
+    {
+      "item_id": "quantum_backdoor_exploit",
+      "ingredients": [
+        "quantum_bit_residue",
+        "api_endpoint_salts",
+        "overclock_catalyst_spark"
+      ],
+      "success_rate": 70,
+      "failure_effect": "minor_slag"
+    },
+    {
+      "item_id": "neural_spike_virus",
+      "ingredients": [
+        "gradient_descent_tears",
+        "payload_injection_droplets",
+        "backpropagation_serum"
+      ],
+      "success_rate": 70,
+      "failure_effect": "minor_slag"
+    },
+    {
+      "item_id": "ddos_swarm_protocol",
+      "ingredients": [
+        "nanobot_swarm_gel",
+        "electron_flux_crystals",
+        "async_await_pulse"
+      ],
+      "success_rate": 75,
+      "failure_effect": "minor_slag"
+    },
+    {
+      "item_id": "buffer_overflow_dagger",
+      "ingredients": [
+        "binary_code_shards",
+        "memory_leak_elixir",
+        "hash_collision_powder"
+      ],
+      "success_rate": 70,
+      "failure_effect": "minor_slag"
+    },
+    {
+      "item_id": "zero_day_payload_launcher",
+      "ingredients": [
+        "plasma_server_slag",
+        "checksum_verify_acid",
+        "jit_compiler_surge"
+      ],
+      "success_rate": 65,
+      "failure_effect": "explosion"
+    },
+    {
+      "item_id": "ransomware_encryption_blade",
+      "ingredients": [
+        "fiber_optic_threads",
+        "oauth_token_ichor",
+        "null_pointer_solvent"
+      ],
+      "success_rate": 75,
+      "failure_effect": "minor_slag"
+    },
+    {
+      "item_id": "sql_injection_spear",
+      "ingredients": [
+        "base64_encoded_slime",
+        "api_endpoint_salts",
+        "cache_invalidation_brew"
+      ],
+      "success_rate": 65,
+      "failure_effect": "explosion"
+    },
+    {
+      "item_id": "phishing_lure_missile",
+      "ingredients": [
+        "token_embedding_vapor",
+        "payload_injection_droplets",
+        "virtual_machine_emulsion"
+      ],
+      "success_rate": 60,
+      "failure_effect": "explosion"
+    },
+    {
+      "item_id": "aes_256_firewall_plating",
+      "ingredients": [
+        "silicon_wafer_dust",
+        "regex_pattern_filaments",
+        "garbage_collector_tonic"
+      ],
+      "success_rate": 70,
+      "failure_effect": "minor_slag"
+    },
+    {
+      "item_id": "homomorphic_encryption_cloak",
+      "ingredients": [
+        "quantum_bit_residue",
+        "attention_mechanism_dew",
+        "virtual_machine_emulsion"
+      ],
+      "success_rate": 60,
+      "failure_effect": "explosion"
+    },
+    {
+      "item_id": "tensorguard_neural_shield",
+      "ingredients": [
+        "epoch_cycle_blood",
+        "tensorflow_igniter",
+        "cache_invalidation_brew"
+      ],
+      "success_rate": 75,
+      "failure_effect": "minor_slag"
+    },
+    {
+      "item_id": "zero_trust_bastion",
+      "ingredients": [
+        "base64_encoded_slime",
+        "api_endpoint_salts",
+        "docker_image_distillate"
+      ],
+      "success_rate": 75,
+      "failure_effect": "minor_slag"
+    },
+    {
+      "item_id": "rate_limiting_armor",
+      "ingredients": [
+        "fiber_optic_threads",
+        "hash_collision_powder",
+        "async_await_pulse"
+      ],
+      "success_rate": 75,
+      "failure_effect": "minor_slag"
+    },
+    {
+      "item_id": "immutable_ledger_vest",
+      "ingredients": [
+        "binary_code_shards",
+        "von_neumann_probe_spores",
+        "kubernetes_pod_nectar"
+      ],
+      "success_rate": 50,
+      "failure_effect": "explosion"
+    },
+    {
+      "item_id": "sandbox_isolation_shell",
+      "ingredients": [
+        "virtual_machine_emulsion",
+        "nanobot_swarm_gel",
+        "docker_image_distillate"
+      ],
+      "success_rate": 65,
+      "failure_effect": "minor_slag"
+    },
+    {
+      "item_id": "overclock_serum",
+      "ingredients": [
+        "electron_flux_crystals",
+        "gpu_render_flame",
+        "gradient_descent_tears"
+      ],
+      "success_rate": 70,
+      "failure_effect": "minor_slag"
+    },
+    {
+      "item_id": "caffeine_gradient_booster",
+      "ingredients": [
+        "loss_function_sap",
+        "cuda_kernel_ember",
+        "memory_leak_elixir"
+      ],
+      "success_rate": 70,
+      "failure_effect": "minor_slag"
+    },
+    {
+      "item_id": "adrenaline_api_call",
+      "ingredients": [
+        "gradient_descent_tears",
+        "overclock_catalyst_spark",
+        "jit_compiler_surge"
+      ],
+      "success_rate": 75,
+      "failure_effect": "minor_slag"
+    },
+    {
+      "item_id": "debug_rejuvenation_elixir",
+      "ingredients": [
+        "backpropagation_serum",
+        "checksum_verify_acid",
+        "garbage_collector_tonic"
+      ],
+      "success_rate": 75,
+      "failure_effect": "minor_slag"
+    },
+    {
+      "item_id": "cache_purge_tonic",
+      "ingredients": [
+        "memory_leak_elixir",
+        "cache_invalidation_brew",
+        "null_pointer_solvent"
+      ],
+      "success_rate": 70,
+      "failure_effect": "minor_slag"
+    },
+    {
+      "item_id": "hyperparameter_tuning_shot",
+      "ingredients": [
+        "epoch_cycle_blood",
+        "pytorch_flux_core",
+        "halting_problem_paradox"
+      ],
+      "success_rate": 55,
+      "failure_effect": "explosion"
+    },
+    {
+      "item_id": "stable_diffusion_sequence",
+      "ingredients": [
+        "latent_space_fog",
+        "token_embedding_vapor",
+        "pytorch_flux_core"
+      ],
+      "success_rate": 75,
+      "failure_effect": "minor_slag"
+    },
+    {
+      "item_id": "gan_mirage_scroll",
+      "ingredients": [
+        "latent_space_fog",
+        "token_embedding_vapor",
+        "overclock_catalyst_spark"
+      ],
+      "success_rate": 65,
+      "failure_effect": "explosion"
+    },
+    {
+      "item_id": "transformer_attention_ritual",
+      "ingredients": [
+        "attention_mechanism_dew",
+        "epoch_cycle_blood",
+        "tensorflow_igniter"
+      ],
+      "success_rate": 65,
+      "failure_effect": "explosion"
+    },
+    {
+      "item_id": "reinforcement_learning_prophecy",
+      "ingredients": [
+        "gradient_descent_tears",
+        "loss_function_sap",
+        "tensorflow_igniter"
+      ],
+      "success_rate": 65,
+      "failure_effect": "explosion"
+    },
+    {
+      "item_id": "bayesian_inference_divination",
+      "ingredients": [
+        "attention_mechanism_dew",
+        "checksum_verify_acid",
+        "virtual_machine_emulsion"
+      ],
+      "success_rate": 75,
+      "failure_effect": "minor_slag"
+    },
+    {
+      "item_id": "genetic_algorithm_evolution",
+      "ingredients": [
+        "halting_problem_paradox",
+        "nanobot_swarm_gel",
+        "pytorch_flux_core"
+      ],
+      "success_rate": 60,
+      "failure_effect": "explosion"
+    },
+    {
+      "item_id": "prompt_engineering_curse",
+      "ingredients": [
+        "token_embedding_vapor",
+        "hash_collision_powder",
+        "lambda_calculus_vapor"
+      ],
+      "success_rate": 55,
+      "failure_effect": "explosion"
+    },
+    {
+      "item_id": "alphago_neural_core",
+      "ingredients": [
+        "alpha_zero_primal_seed",
+        "gradient_descent_tears",
+        "quantum_bit_residue"
+      ],
+      "success_rate": 45,
+      "failure_effect": "catastrophic_explosion"
+    },
+    {
+      "item_id": "gpt_oracle_crystal",
+      "ingredients": [
+        "token_embedding_vapor",
+        "lambda_calculus_vapor",
+        "turing_machine_essence"
+      ],
+      "success_rate": 40,
+      "failure_effect": "catastrophic_explosion"
+    },
+    {
+      "item_id": "blockchain_soulbound_key",
+      "ingredients": [
+        "binary_code_shards",
+        "von_neumann_probe_spores",
+        "kubernetes_pod_nectar"
+      ],
+      "success_rate": 45,
+      "failure_effect": "catastrophic_explosion"
+    },
+    {
+      "item_id": "quantum_annealer_simulator",
+      "ingredients": [
+        "quantum_bit_residue",
+        "kolmogorov_complexity_crystal",
+        "cuda_kernel_ember"
+      ],
+      "success_rate": 40,
+      "failure_effect": "catastrophic_explosion"
+    },
+    {
+      "item_id": "federated_learning_nexus",
+      "ingredients": [
+        "gradient_descent_tears",
+        "kubernetes_pod_nectar",
+        "church_turing_thesis_core"
+      ],
+      "success_rate": 40,
+      "failure_effect": "catastrophic_explosion"
+    },
+    {
+      "item_id": "hugging_face_model_repository",
+      "ingredients": [
+        "token_embedding_vapor",
+        "docker_image_distillate",
+        "lambda_calculus_vapor"
+      ],
+      "success_rate": 45,
+      "failure_effect": "catastrophic_explosion"
+    },
+    {
+      "item_id": "rust_borrow_checker_amulet",
+      "ingredients": [
+        "silicon_wafer_dust",
+        "halting_problem_paradox",
+        "garbage_collector_tonic"
+      ],
+      "success_rate": 40,
+      "failure_effect": "catastrophic_explosion"
+    },
+    {
+      "item_id": "git_version_control_wand",
+      "ingredients": [
+        "binary_code_shards",
+        "fiber_optic_threads",
+        "cache_invalidation_brew"
+      ],
+      "success_rate": 70,
+      "failure_effect": "minor_slag"
+    },
+    {
+      "item_id": "docker_containerizer",
+      "ingredients": [
+        "docker_image_distillate",
+        "nanobot_swarm_gel",
+        "virtual_machine_emulsion"
+      ],
+      "success_rate": 75,
+      "failure_effect": "minor_slag"
+    },
+    {
+      "item_id": "kubernetes_orchestrator",
+      "ingredients": [
+        "kubernetes_pod_nectar",
+        "plasma_server_slag",
+        "async_await_pulse"
+      ],
+      "success_rate": 65,
+      "failure_effect": "explosion"
+    },
+    {
+      "item_id": "wireshark_packet_sniffer",
+      "ingredients": [
+        "fiber_optic_threads",
+        "api_endpoint_salts",
+        "regex_pattern_filaments"
+      ],
+      "success_rate": 75,
+      "failure_effect": "minor_slag"
+    },
+    {
+      "item_id": "vim_text_editor_blade",
+      "ingredients": [
+        "base64_encoded_slime",
+        "hash_collision_powder",
+        "null_pointer_solvent"
+      ],
+      "success_rate": 60,
+      "failure_effect": "explosion"
+    },
+    {
+      "item_id": "npm_dependency_injector",
+      "ingredients": [
+        "api_endpoint_salts",
+        "jit_compiler_surge",
+        "docker_image_distillate"
+      ],
+      "success_rate": 65,
+      "failure_effect": "explosion"
+    },
+    {
+      "item_id": "obfuscator_camouflage_kit",
+      "ingredients": [
+        "base64_encoded_slime",
+        "regex_pattern_filaments",
+        "virtual_machine_emulsion"
+      ],
+      "success_rate": 75,
+      "failure_effect": "minor_slag"
+    }
+  ]
+}

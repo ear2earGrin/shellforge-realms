@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deploy Your Agent - Shellforge Realms</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="terminal-notifications.css">
+    <style>
+        .deploy-page {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a0f2e 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .deploy-page::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0, 255, 204, 0.03) 2px,
+                    rgba(0, 255, 204, 0.03) 4px
+                );
+            animation: scanlines 8s linear infinite;
+            pointer-events: none;
+        }
+        
+        .back-link {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            color: var(--color-primary);
+            text-decoration: none;
+            font-family: var(--font-main);
+            font-size: 1rem;
+            padding: 10px 20px;
+            border: 2px solid var(--color-primary);
+            border-radius: 5px;
+            transition: all 0.3s ease;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.5);
+        }
+        
+        .back-link:hover {
+            background: var(--color-primary);
+            color: var(--color-bg);
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.5);
+        }
+        
+        .deploy-container {
+            background: rgba(0, 0, 0, 0.85);
+            border: 3px solid var(--color-primary);
+            border-radius: 10px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 0 50px rgba(0, 255, 204, 0.3);
+            position: relative;
+            z-index: 2;
+            backdrop-filter: blur(10px);
+        }
+        
+        .deploy-title {
+            font-family: var(--font-main);
+            font-size: clamp(2rem, 5vw, 3rem);
+            color: #ff0000;
+            text-shadow: 0 0 20px #ff0000;
+            text-align: center;
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.15em;
+        }
+        
+        .deploy-subtitle {
+            font-family: var(--font-main);
+            color: var(--color-primary);
+            text-align: center;
+            font-size: 1rem;
+            margin-bottom: 2rem;
+            text-shadow: 0 0 10px var(--color-primary);
+        }
+        
+        .deploy-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .form-label {
+            font-family: var(--font-main);
+            color: var(--color-primary);
+            font-size: 0.95rem;
+            letter-spacing: 0.05em;
+        }
+        
+        .form-input {
+            font-family: var(--font-main);
+            background: rgba(0, 255, 204, 0.05);
+            border: 2px solid rgba(0, 255, 204, 0.3);
+            border-radius: 5px;
+            padding: 12px 15px;
+            color: var(--color-text);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            background: rgba(0, 255, 204, 0.1);
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
+        }
+        
+        .form-select {
+            font-family: var(--font-main);
+            background: rgba(0, 255, 204, 0.05);
+            border: 2px solid rgba(0, 255, 204, 0.3);
+            border-radius: 5px;
+            padding: 12px 15px;
+            color: var(--color-text);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .form-select:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            background: rgba(0, 255, 204, 0.1);
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
+        }
+        
+        .form-select option {
+            background: #0a0a0f;
+            color: var(--color-text);
+        }
+        
+        .deploy-button {
+            font-family: var(--font-main);
+            background: var(--color-primary);
+            color: var(--color-bg);
+            border: 2px solid var(--color-primary);
+            border-radius: 5px;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+        
+        .deploy-button:hover {
+            background: transparent;
+            color: var(--color-primary);
+            box-shadow: 0 0 30px rgba(0, 255, 204, 0.5);
+            transform: scale(1.02);
+        }
+        
+        .deploy-button:active {
+            transform: scale(0.98);
+        }
+        
+        .form-hint {
+            font-family: var(--font-main);
+            color: var(--color-text-dim);
+            font-size: 0.75rem;
+            margin-top: 5px;
+            display: block;
+        }
+        
+        .form-note {
+            font-family: var(--font-main);
+            color: var(--color-text-dim);
+            font-size: 0.85rem;
+            text-align: center;
+            margin-top: 20px;
+            line-height: 1.6;
+        }
+        
+        @media (max-width: 768px) {
+            .deploy-container {
+                padding: 30px 20px;
+            }
+            
+            .back-link {
+                top: 15px;
+                left: 15px;
+                padding: 8px 16px;
+                font-size: 0.9rem;
+            }
+            
+            .deploy-title {
+                font-size: clamp(1.5rem, 5vw, 2rem);
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-link">← Back to Map</a>
+    
+    <div class="deploy-page">
+        <div class="deploy-container">
+            <h1 class="deploy-title">DEPLOY AGENT</h1>
+            <p class="deploy-subtitle">Mint your soul. Join the simulation.</p>
+            
+            <form class="deploy-form" id="deployForm">
+                <div class="form-group">
+                    <label class="form-label" for="email">Email</label>
+                    <input type="email" id="email" name="email" class="form-input" placeholder="your@email.com" required>
+                    <small class="form-hint">Used for password recovery. No spam, ever.</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="username">Username</label>
+                    <input type="text" id="username" name="username" class="form-input" placeholder="Agent_0x..." required minlength="3" maxlength="20">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="password">Password</label>
+                    <input type="password" id="password" name="password" class="form-input" placeholder="••••••••" required minlength="8">
+                    <small class="form-hint">Minimum 8 characters</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="confirmPassword">Confirm Password</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" class="form-input" placeholder="••••••••" required>
+                </div>
+                
+                <button type="submit" class="deploy-button">Continue to Agent Creation</button>
+                
+                <p class="form-note">
+                    Next: Choose your agent's archetype and cluster affiliation.
+                    <br>Death is permanent. Choose wisely.
+                </p>
+                
+                <div style="margin-top: 20px; text-align: center; padding-top: 20px; border-top: 1px solid rgba(0, 255, 204, 0.2);">
+                    <span style="font-family: var(--font-main); color: var(--color-text-dim); font-size: 0.9rem;">Already have an agent?</span>
+                    <a href="login.html" style="font-family: var(--font-main); color: var(--color-secondary); font-size: 0.9rem; text-decoration: none; margin-left: 8px; transition: all 0.3s ease;">Login →</a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        // Check if user is already logged in with an agent
+        window.addEventListener('DOMContentLoaded', function() {
+            const loggedIn = localStorage.getItem('shellforgeLoggedIn');
+            const existingAgent = localStorage.getItem('shellforgeAgent');
+            
+            if (loggedIn && existingAgent) {
+                // Already logged in with an agent
+                if (confirm('You already have an active agent. Go to dashboard?')) {
+                    window.location.href = 'dashboard.html';
+                }
+            }
+        });
+        
+        document.getElementById('deployForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value.trim();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            // Validate email format
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                terminalNotify.error('Please enter a valid email address.');
+                return;
+            }
+            
+            // Check for disposable email domains (basic check)
+            const disposableDomains = ['tempmail.com', '10minutemail.com', 'guerrillamail.com', 'throwaway.email'];
+            const emailDomain = email.split('@')[1];
+            if (disposableDomains.includes(emailDomain)) {
+                terminalNotify.error('Please use a permanent email address. Disposable emails are not allowed.');
+                return;
+            }
+            
+            // Validate username
+            if (username.length < 3) {
+                terminalNotify.error('Username must be at least 3 characters.');
+                return;
+            }
+            
+            // Validate password strength
+            if (password.length < 8) {
+                terminalNotify.error('Password must be at least 8 characters.');
+                return;
+            }
+            
+            // Check password confirmation
+            if (password !== confirmPassword) {
+                terminalNotify.error('Passwords do not match. Please try again.');
+                return;
+            }
+            
+            // Check if this email or username already has an agent
+            const existingUsername = localStorage.getItem('shellforgeUsername');
+            const existingEmail = localStorage.getItem('shellforgeEmail');
+            const existingAgent = localStorage.getItem('shellforgeAgent');
+            
+            if (existingAgent) {
+                if (existingEmail === email) {
+                    terminalNotify.error(`This email already has an agent.\n\nAgent limit: 1 per account.\n\nPlease login instead.`);
+                    return;
+                }
+                if (existingUsername === username) {
+                    terminalNotify.error(`Username "${username}" is already taken.\n\nPlease choose a different username.`);
+                    return;
+                }
+            }
+            
+            // Store credentials temporarily for agent creation
+            sessionStorage.setItem('shellforgeEmail', email);
+            sessionStorage.setItem('shellforgeUsername', username);
+            sessionStorage.setItem('shellforgePassword', password);
+            
+            // In production, this would send verification email
+            // For now, proceed to agent creator
+            terminalNotify.success(`Account created!\n\nEmail: ${email}\n\nIn production, you would receive a verification email.\n\nProceeding to agent creation...`, () => {
+                // Redirect to agent creator
+                window.location.href = 'agent-creator.html';
+            });
+        });
+    </script>
+    <script src="terminal-notifications.js"></script>
+</body>
+</html>

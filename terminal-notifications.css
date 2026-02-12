@@ -1,0 +1,225 @@
+/* Terminal-Style Notifications */
+.terminal-notification-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.terminal-notification-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.terminal-notification {
+    background: #0a0a0f;
+    border: 3px solid;
+    border-radius: 8px;
+    padding: 30px 40px;
+    max-width: 500px;
+    min-width: 350px;
+    box-shadow: 0 0 40px;
+    font-family: 'Courier New', monospace;
+    text-align: center;
+    transform: scale(0.9) translateY(-20px);
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.terminal-notification-overlay.active .terminal-notification {
+    transform: scale(1) translateY(0);
+}
+
+/* Success variant (green) */
+.terminal-notification.success {
+    border-color: #00ff00;
+    box-shadow: 0 0 40px rgba(0, 255, 0, 0.5);
+}
+
+.terminal-notification.success::before {
+    content: '✓ SUCCESS';
+    display: block;
+    color: #00ff00;
+    font-size: 0.8rem;
+    font-weight: bold;
+    letter-spacing: 0.15em;
+    margin-bottom: 15px;
+    text-shadow: 0 0 10px #00ff00;
+}
+
+/* Error variant (red) */
+.terminal-notification.error {
+    border-color: #ff0000;
+    box-shadow: 0 0 40px rgba(255, 0, 0, 0.5);
+}
+
+.terminal-notification.error::before {
+    content: '✗ ERROR';
+    display: block;
+    color: #ff0000;
+    font-size: 0.8rem;
+    font-weight: bold;
+    letter-spacing: 0.15em;
+    margin-bottom: 15px;
+    text-shadow: 0 0 10px #ff0000;
+}
+
+/* Warning variant (yellow) */
+.terminal-notification.warning {
+    border-color: #ffcc00;
+    box-shadow: 0 0 40px rgba(255, 204, 0, 0.5);
+}
+
+.terminal-notification.warning::before {
+    content: '⚠ WARNING';
+    display: block;
+    color: #ffcc00;
+    font-size: 0.8rem;
+    font-weight: bold;
+    letter-spacing: 0.15em;
+    margin-bottom: 15px;
+    text-shadow: 0 0 10px #ffcc00;
+}
+
+/* Info variant (cyan) */
+.terminal-notification.info {
+    border-color: #00ffcc;
+    box-shadow: 0 0 40px rgba(0, 255, 204, 0.5);
+}
+
+.terminal-notification.info::before {
+    content: 'ℹ INFO';
+    display: block;
+    color: #00ffcc;
+    font-size: 0.8rem;
+    font-weight: bold;
+    letter-spacing: 0.15em;
+    margin-bottom: 15px;
+    text-shadow: 0 0 10px #00ffcc;
+}
+
+/* Message text */
+.terminal-notification-message {
+    color: #ffffff;
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 25px;
+    letter-spacing: 0.02em;
+}
+
+/* Terminal prompt decoration */
+.terminal-notification-message::before {
+    content: '> ';
+    color: inherit;
+    opacity: 0.5;
+    margin-right: 5px;
+}
+
+/* Close button */
+.terminal-notification-button {
+    background: transparent;
+    border: 2px solid;
+    padding: 10px 30px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    font-weight: bold;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    border-radius: 4px;
+}
+
+.terminal-notification.success .terminal-notification-button {
+    border-color: #00ff00;
+    color: #00ff00;
+}
+
+.terminal-notification.success .terminal-notification-button:hover {
+    background: #00ff00;
+    color: #0a0a0f;
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+}
+
+.terminal-notification.error .terminal-notification-button {
+    border-color: #ff0000;
+    color: #ff0000;
+}
+
+.terminal-notification.error .terminal-notification-button:hover {
+    background: #ff0000;
+    color: #0a0a0f;
+    box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+}
+
+.terminal-notification.warning .terminal-notification-button {
+    border-color: #ffcc00;
+    color: #ffcc00;
+}
+
+.terminal-notification.warning .terminal-notification-button:hover {
+    background: #ffcc00;
+    color: #0a0a0f;
+    box-shadow: 0 0 20px rgba(255, 204, 0, 0.5);
+}
+
+.terminal-notification.info .terminal-notification-button {
+    border-color: #00ffcc;
+    color: #00ffcc;
+}
+
+.terminal-notification.info .terminal-notification-button:hover {
+    background: #00ffcc;
+    color: #0a0a0f;
+    box-shadow: 0 0 20px rgba(0, 255, 204, 0.5);
+}
+
+/* Scanning line effect */
+.terminal-notification::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, currentColor, transparent);
+    opacity: 0.3;
+    animation: scanLine 2s linear infinite;
+}
+
+@keyframes scanLine {
+    0% {
+        transform: translateY(0);
+    }
+    100% {
+        transform: translateY(200px);
+    }
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .terminal-notification {
+        max-width: 90%;
+        min-width: 280px;
+        padding: 25px 30px;
+    }
+
+    .terminal-notification-message {
+        font-size: 0.9rem;
+    }
+
+    .terminal-notification-button {
+        padding: 8px 25px;
+        font-size: 0.85rem;
+    }
+}

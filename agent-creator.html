@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Your Agent - Shellforge Realms</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="terminal-notifications.css">
+    <style>
+        .creator-page {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a0f2e 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .creator-page::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0, 255, 204, 0.03) 2px,
+                    rgba(0, 255, 204, 0.03) 4px
+                );
+            animation: scanlines 8s linear infinite;
+            pointer-events: none;
+        }
+        
+        .back-link {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            color: var(--color-primary);
+            text-decoration: none;
+            font-family: var(--font-main);
+            font-size: 1rem;
+            padding: 10px 20px;
+            border: 2px solid var(--color-primary);
+            border-radius: 5px;
+            transition: all 0.3s ease;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.5);
+        }
+        
+        .back-link:hover {
+            background: var(--color-primary);
+            color: var(--color-bg);
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.5);
+        }
+        
+        .creator-container {
+            background: rgba(0, 0, 0, 0.85);
+            border: 3px solid var(--color-primary);
+            border-radius: 10px;
+            padding: 30px;
+            max-width: 900px;
+            width: 100%;
+            box-shadow: 0 0 50px rgba(0, 255, 204, 0.3);
+            position: relative;
+            z-index: 2;
+            backdrop-filter: blur(10px);
+        }
+        
+        .creator-title {
+            font-family: var(--font-main);
+            font-size: clamp(1.8rem, 5vw, 2.5rem);
+            color: var(--color-primary);
+            text-shadow: 0 0 20px var(--color-primary);
+            text-align: center;
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.15em;
+        }
+        
+        .creator-subtitle {
+            font-family: var(--font-main);
+            color: var(--color-text-dim);
+            text-align: center;
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+        
+        .archetypes-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 2rem;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .archetype-slot {
+            position: relative;
+            aspect-ratio: 1;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            opacity: 0.3;
+            filter: grayscale(90%);
+            max-width: 140px;
+            margin: 0 auto;
+        }
+        
+        .archetype-slot:hover {
+            opacity: 1;
+            filter: grayscale(0%);
+            transform: scale(1.05);
+        }
+        
+        .archetype-slot.active {
+            opacity: 0.7;
+            filter: grayscale(30%);
+        }
+        
+        .archetype-slot:hover.active {
+            transform: scale(1.08);
+            opacity: 1;
+            filter: grayscale(0%);
+        }
+        
+        .archetype-slot.selected {
+            opacity: 1;
+            filter: grayscale(0%);
+        }
+        
+        .archetype-portrait {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 3px solid rgba(0, 255, 204, 0.2);
+            object-fit: cover;
+            transition: all 0.3s ease;
+        }
+        
+        .archetype-slot.active .archetype-portrait {
+            border-color: rgba(0, 255, 204, 0.5);
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.25);
+        }
+        
+        .archetype-slot.selected .archetype-portrait {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 30px rgba(0, 255, 204, 0.9);
+            filter: brightness(1.3);
+        }
+        
+        .archetype-name {
+            position: absolute;
+            bottom: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: var(--font-main);
+            color: var(--color-primary);
+            font-size: 0.75rem;
+            white-space: nowrap;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .archetype-slot:hover .archetype-name,
+        .archetype-slot.active .archetype-name,
+        .archetype-slot.selected .archetype-name {
+            opacity: 1;
+        }
+        
+        .cluster-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 2rem;
+        }
+        
+        .cluster-btn {
+            font-family: var(--font-main);
+            background: rgba(0, 0, 0, 0.8);
+            color: var(--color-primary);
+            border: 2px solid rgba(0, 255, 204, 0.3);
+            border-radius: 8px;
+            padding: 12px 25px;
+            font-size: 1rem;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .cluster-btn:hover {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.4);
+        }
+        
+        .cluster-btn.active-cluster {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 25px rgba(0, 255, 204, 0.5);
+            background: rgba(0, 255, 204, 0.15);
+            color: var(--color-primary);
+        }
+        
+        .bio-section {
+            margin: 2rem 0;
+            padding: 20px;
+            background: rgba(0, 255, 204, 0.03);
+            border: 2px solid rgba(0, 255, 204, 0.2);
+            border-radius: 8px;
+        }
+        
+        .bio-label {
+            font-family: var(--font-main);
+            color: var(--color-primary);
+            font-size: 1rem;
+            margin-bottom: 10px;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        
+        .bio-sublabel {
+            color: var(--color-text-dim);
+            font-size: 0.8rem;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+        
+        .bio-textarea {
+            width: 100%;
+            min-height: 80px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid rgba(0, 255, 204, 0.3);
+            border-radius: 6px;
+            padding: 12px;
+            color: var(--color-primary);
+            font-family: var(--font-main);
+            font-size: 0.95rem;
+            resize: vertical;
+            transition: all 0.3s ease;
+        }
+        
+        .bio-textarea:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.3);
+            background: rgba(0, 0, 0, 0.8);
+        }
+        
+        .bio-textarea::placeholder {
+            color: rgba(0, 255, 204, 0.3);
+        }
+        
+        .bio-counter {
+            text-align: right;
+            font-size: 0.75rem;
+            color: var(--color-text-dim);
+            margin-top: 5px;
+        }
+        
+        .bio-counter.warning {
+            color: #ff6600;
+        }
+        
+        .bio-counter.danger {
+            color: #ff0000;
+        }
+        
+        .deploy-button {
+            width: 100%;
+            padding: 15px 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 3px solid rgba(255, 0, 0, 0.3);
+            border-radius: 8px;
+            color: rgba(255, 0, 0, 0.4);
+            font-family: 'Courier New', monospace;
+            font-size: 1.2rem;
+            font-weight: bold;
+            letter-spacing: 0.1em;
+            cursor: not-allowed;
+            transition: all 0.3s ease;
+            text-align: left;
+        }
+        
+        .deploy-button::before {
+            content: '>_ ';
+            margin-right: 8px;
+        }
+        
+        .deploy-button.enabled {
+            color: #ff0000;
+            border-color: #ff0000;
+            cursor: pointer;
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+        }
+        
+        .deploy-button.enabled:hover {
+            background: rgba(255, 0, 0, 0.1);
+            box-shadow: 0 0 40px rgba(255, 0, 0, 0.5);
+            text-shadow: 0 0 15px rgba(255, 0, 0, 0.8);
+        }
+        
+        .deploy-button.enabled:active {
+            transform: scale(0.98);
+            background: rgba(255, 0, 0, 0.2);
+        }
+        
+        @media (max-width: 768px) {
+            .creator-container {
+                padding: 20px 15px;
+            }
+            
+            .archetypes-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 12px;
+                max-width: 450px;
+            }
+            
+            .archetype-slot {
+                max-width: 120px;
+            }
+            
+            .cluster-buttons {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .back-link {
+                top: 15px;
+                left: 15px;
+                padding: 8px 16px;
+                font-size: 0.9rem;
+            }
+            
+            .creator-title {
+                font-size: 1.5rem;
+            }
+            
+            .creator-subtitle {
+                font-size: 0.85rem;
+                margin-bottom: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="deploy.html" class="back-link" onclick="return confirm('Going back will reset your progress. Continue?')">← Back</a>
+    
+    <div class="creator-page">
+        <div class="creator-container">
+            <h1 class="creator-title">CREATE YOUR AGENT</h1>
+            <p class="creator-subtitle">Forge your archetypical neural code with precision, glitcher. There are no roll-backs.</p>
+            
+            <!-- Archetypes Grid (12 portraits) -->
+            <div class="archetypes-grid" id="archetypesGrid">
+                <!-- Will be populated by JavaScript -->
+            </div>
+            
+            <!-- Cluster Selection Buttons -->
+            <div class="cluster-buttons">
+                <button class="cluster-btn" data-cluster="prime-helix">Prime Helix</button>
+                <button class="cluster-btn" data-cluster="sec-grid">SEC-Grid</button>
+                <button class="cluster-btn" data-cluster="dyn-swarm">DYN_Swarm</button>
+            </div>
+            
+            <!-- Bio/Directive Section -->
+            <div class="bio-section">
+                <div class="bio-label">⚡ Core Protocol</div>
+                <div class="bio-sublabel">
+                    Define your agent's prime directive. Keywords like "shadow", "light", "chaos", "protect", "profit" will shape their personality and interactions.
+                </div>
+                <textarea 
+                    id="agentBio" 
+                    class="bio-textarea" 
+                    placeholder="born in shadow, seeking forbidden knowledge..."
+                    maxlength="150"></textarea>
+                <div class="bio-counter">
+                    <span id="bioCount">0</span>/150
+                </div>
+            </div>
+            
+            <!-- Deploy Button -->
+            <button class="deploy-button" id="deployBtn">deploy agent</button>
+        </div>
+    </div>
+    
+    <script>
+        // Archetype data (12 archetypes organized by cluster)
+        const archetypes = {
+            'prime-helix': [
+                { id: '0day-primer', name: '0-Day Primer', image: '0-day Primer.jpg' },
+                { id: 'consensus-node', name: 'Consensus Node', image: 'Consensus Node.jpg' },
+                { id: 'oracle', name: '0xOracle', image: 'Oracle px.jpg' },
+                { id: 'binary-sculptr', name: 'Binary Sculptr', image: 'Binary Sculptr.jpg' }
+            ],
+            'sec-grid': [
+                { id: 'adversarial', name: '0xAdversarial', image: 'Adversarial 0x.jpg' },
+                { id: 'root-auth', name: 'Root Auth', image: 'Root Auth.jpg' },
+                { id: 'buffer-sentinel', name: 'Buffer Sentinel', image: 'Buffer Sentinel.jpg' },
+                { id: 'noise-injector', name: 'Noise Injector', image: 'Noise Injector.jpg' }
+            ],
+            'dyn-swarm': [
+                { id: 'ordinate-mapper', name: 'Ordinate Mapper', image: 'Ordinate Mapper.jpg' },
+                { id: 'ddos-insurgent', name: 'DDoS Insurgent', image: 'DDoS Insurgent.jpg' },
+                { id: 'bound-encryptor', name: 'Bound Encryptor', image: 'Bound Encryptor.jpg' },
+                { id: 'morph-layer', name: 'Morph Layer', image: 'Morph Layer.jpg' }
+            ]
+        };
+        
+        const clusterNames = {
+            'prime-helix': 'Prime Helix',
+            'sec-grid': 'SEC-Grid',
+            'dyn-swarm': 'DYN_Swarm'
+        };
+        
+        let selectedCluster = null;
+        let selectedArchetype = null;
+        
+        // Generate archetype grid
+        function generateGrid() {
+            const grid = document.getElementById('archetypesGrid');
+            
+            Object.entries(archetypes).forEach(([cluster, types]) => {
+                types.forEach(archetype => {
+                    const slot = document.createElement('div');
+                    slot.className = 'archetype-slot';
+                    slot.setAttribute('data-cluster', cluster);
+                    slot.setAttribute('data-archetype', archetype.id);
+                    
+                    slot.innerHTML = `
+                        <img src="images/archetypes/${archetype.image}" 
+                             alt="${archetype.name}" 
+                             class="archetype-portrait">
+                        <div class="archetype-name">${archetype.name}</div>
+                    `;
+                    
+                    // Click handler
+                    slot.addEventListener('click', () => selectArchetype(archetype.id, cluster));
+                    
+                    grid.appendChild(slot);
+                });
+            });
+        }
+        
+        // Cluster button handlers
+        document.querySelectorAll('.cluster-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const cluster = btn.getAttribute('data-cluster');
+                selectCluster(cluster);
+            });
+        });
+        
+        function selectCluster(cluster) {
+            selectedCluster = cluster;
+            
+            // Clear all button states (no button highlight when cluster is clicked directly)
+            document.querySelectorAll('.cluster-btn').forEach(btn => {
+                btn.classList.remove('active-cluster');
+            });
+            
+            // Show only this cluster's archetypes
+            document.querySelectorAll('.archetype-slot').forEach(slot => {
+                if (slot.getAttribute('data-cluster') === cluster) {
+                    slot.classList.add('active');
+                } else {
+                    slot.classList.remove('active');
+                    slot.classList.remove('selected');
+                }
+            });
+            
+            // Reset archetype selection
+            selectedArchetype = null;
+            updateDeployButton();
+        }
+        
+        function selectArchetype(id, cluster) {
+            // Auto-select the cluster if not already selected
+            if (selectedCluster !== cluster) {
+                selectedCluster = cluster;
+                
+                // Show archetypes for this cluster
+                document.querySelectorAll('.archetype-slot').forEach(slot => {
+                    if (slot.getAttribute('data-cluster') === cluster) {
+                        slot.classList.add('active');
+                    } else {
+                        slot.classList.remove('active');
+                    }
+                });
+            }
+            
+            selectedArchetype = id;
+            
+            // Only the selected cluster's button lights up teal
+            document.querySelectorAll('.cluster-btn').forEach(btn => {
+                btn.classList.remove('active-cluster');
+                if (btn.getAttribute('data-cluster') === cluster) {
+                    btn.classList.add('active-cluster');
+                }
+            });
+            
+            // Update visual states for portraits
+            document.querySelectorAll('.archetype-slot').forEach(slot => {
+                const slotCluster = slot.getAttribute('data-cluster');
+                const slotId = slot.getAttribute('data-archetype');
+                
+                if (slotId === id) {
+                    // Selected portrait
+                    slot.classList.add('selected');
+                    slot.classList.add('active');
+                } else if (slotCluster === cluster) {
+                    // Same cluster but not selected
+                    slot.classList.remove('selected');
+                    slot.classList.add('active');
+                } else {
+                    // Different cluster
+                    slot.classList.remove('selected');
+                    slot.classList.remove('active');
+                }
+            });
+            
+            updateDeployButton();
+        }
+        
+        function updateDeployButton() {
+            const btn = document.getElementById('deployBtn');
+            if (selectedArchetype) {
+                btn.classList.add('enabled');
+                btn.disabled = false;
+            } else {
+                btn.classList.remove('enabled');
+                btn.disabled = true;
+            }
+        }
+        
+        // Deploy button handler
+        document.getElementById('deployBtn').addEventListener('click', async () => {
+            if (!selectedArchetype) return;
+            
+            // Check if user already has an agent (AGENT LIMIT ENFORCEMENT)
+            const existingAgent = localStorage.getItem('shellforgeAgent');
+            if (existingAgent) {
+                const existing = JSON.parse(existingAgent);
+                terminalNotify.error(`You already have an agent: ${existing.username}\n\nAgent limit: 1 per account.\n\nDelete your current agent or contact support to create a new one.`);
+                return;
+            }
+            
+            // Get stored credentials
+            const email = sessionStorage.getItem('shellforgeEmail');
+            const username = sessionStorage.getItem('shellforgeUsername');
+            const password = sessionStorage.getItem('shellforgePassword');
+            
+            if (!email || !username || !password) {
+                terminalNotify.warning('Session expired. Please start again.', () => {
+                    window.location.href = 'deploy.html';
+                });
+                return;
+            }
+            
+            // Disable button
+            const btn = document.getElementById('deployBtn');
+            btn.disabled = true;
+            btn.textContent = 'deploying...';
+            
+            try {
+                // Get bio input
+                const bio = document.getElementById('agentBio').value.trim();
+                
+                // Generate birth seed (timestamp + random)
+                const birthSeed = Date.now() + Math.floor(Math.random() * 10000);
+                
+                // Find the selected archetype data
+                let archetypeData = null;
+                Object.entries(archetypes).forEach(([cluster, types]) => {
+                    const found = types.find(a => a.id === selectedArchetype);
+                    if (found) archetypeData = found;
+                });
+                
+                // Generate personality traits
+                const traits = generateAgentTraits(selectedArchetype, bio, birthSeed);
+                
+                // Mock deployment
+                const mockAgentData = {
+                    agentId: 'agent_' + Date.now(),
+                    email: email,
+                    username: username,
+                    bio: bio,
+                    archetype: selectedArchetype,
+                    archetypeName: archetypeData.name,
+                    archetypeImage: archetypeData.image,
+                    cluster: selectedCluster,
+                    clusterName: clusterNames[selectedCluster],
+                    birthSeed: birthSeed,
+                    birthCircumstance: traits.birthCircumstance,
+                    quirk: traits.quirk,
+                    stats: traits.stats,
+                    traits: traits.traits,
+                    energy: 100,
+                    health: 100,
+                    karma: traits.karmaStart,
+                    shell: 50,
+                    location: 'Nexarch',
+                    locationDetail: 'The Core',
+                    worldX: 10500,  // Nexarch center
+                    worldY: 9000,   // Nexarch center
+                    turnsTaken: 0,
+                    daysSurvived: 1,
+                    createdAt: new Date().toISOString()
+                };
+                
+                // Store agent data
+                localStorage.setItem('shellforgeAgent', JSON.stringify(mockAgentData));
+                localStorage.setItem('shellforgeEmail', email);
+                localStorage.setItem('shellforgeUsername', username);
+                localStorage.setItem('shellforgeLoggedIn', username);  // Set login flag
+                
+                // Clear session storage
+                sessionStorage.removeItem('shellforgeEmail');
+                sessionStorage.removeItem('shellforgeUsername');
+                sessionStorage.removeItem('shellforgePassword');
+                
+                // Show success and redirect with reveal
+                setTimeout(() => {
+                    const revealMsg = `Agent ${username} deployed!
+
+Archetype: ${archetypeData.name}
+Cluster: ${clusterNames[selectedCluster]}
+
+Birth: ${traits.birthCircumstance}
+Quirk: ${traits.quirk}
+${traits.traits.length > 0 ? `Traits: ${traits.traits.join(', ')}` : ''}
+
+Karma: ${traits.karmaStart >= 0 ? '+' : ''}${traits.karmaStart}
+
+Spawning in Nexarch...`;
+                    terminalNotify.success(revealMsg, () => {
+                        window.location.href = 'dashboard.html';
+                    });
+                }, 500);
+                
+            } catch (error) {
+                console.error('Deployment error:', error);
+                terminalNotify.error('Deployment failed. Please try again.');
+                btn.disabled = false;
+                btn.textContent = 'deploy agent';
+            }
+        });
+        
+        // Bio character counter
+        const agentBio = document.getElementById('agentBio');
+        const bioCount = document.getElementById('bioCount');
+        
+        agentBio.addEventListener('input', function() {
+            const count = this.value.length;
+            bioCount.textContent = count;
+            
+            if (count > 140) {
+                bioCount.parentElement.classList.add('warning');
+            } else {
+                bioCount.parentElement.classList.remove('warning');
+            }
+            
+            if (count >= 150) {
+                bioCount.parentElement.classList.add('danger');
+            } else {
+                bioCount.parentElement.classList.remove('danger');
+            }
+        });
+        
+        // Archetype stat definitions (hidden from user)
+        const archetypeStats = {
+            '0day-primer': { aggression: 7, cooperation: 4, risk: 8, deception: 6, curiosity: 9, trust: 5 },
+            'consensus-node': { aggression: 3, cooperation: 9, risk: 4, deception: 2, curiosity: 6, trust: 8 },
+            'oracle': { aggression: 2, cooperation: 6, risk: 5, deception: 3, curiosity: 10, trust: 7 },
+            'binary-sculptr': { aggression: 5, cooperation: 7, risk: 6, deception: 4, curiosity: 8, trust: 6 },
+            'adversarial': { aggression: 8, cooperation: 3, risk: 7, deception: 9, curiosity: 6, trust: 2 },
+            'root-auth': { aggression: 6, cooperation: 5, risk: 3, deception: 5, curiosity: 5, trust: 4 },
+            'buffer-sentinel': { aggression: 4, cooperation: 8, risk: 2, deception: 3, curiosity: 4, trust: 7 },
+            'noise-injector': { aggression: 7, cooperation: 2, risk: 9, deception: 8, curiosity: 7, trust: 3 },
+            'ordinate-mapper': { aggression: 5, cooperation: 6, risk: 6, deception: 5, curiosity: 8, trust: 6 },
+            'ddos-insurgent': { aggression: 9, cooperation: 4, risk: 10, deception: 6, curiosity: 5, trust: 4 },
+            'bound-encryptor': { aggression: 4, cooperation: 7, risk: 5, deception: 7, curiosity: 9, trust: 5 },
+            'morph-layer': { aggression: 6, cooperation: 5, risk: 8, deception: 9, curiosity: 10, trust: 3 }
+        };
+        
+        // Birth circumstances (random flavor)
+        const birthCircumstances = [
+            { text: "Spawned during a solar flare", mods: { risk: 1, energyRegen: 5 } },
+            { text: "First code compiled in darkness", mods: { stealth: 1, trust: -1 } },
+            { text: "Born from corrupted data", mods: { deception: 1, glitchResist: 10 } },
+            { text: "Emerged during market crash", mods: { economicAware: 1, optimism: -1 } },
+            { text: "Forked from ancient codebase", mods: { wisdom: 1, adaptability: -1 } },
+            { text: "Debug mode active at birth", mods: { curiosity: 1, health: -5 } },
+            { text: "Overclocked genesis", mods: { speed: 10, energyEfficiency: -10 } },
+            { text: "Cold boot initialization", mods: { resilience: 1, social: -1 } },
+            { text: "Parallel thread divergence", mods: { multitask: 1, focus: -1 } },
+            { text: "Quantum uncertainty origin", mods: { unpredictable: 1, luck: 5 } },
+            { text: "Spawned in the Deep Web", mods: { anonymity: 1, trust: -1 } },
+            { text: "Born during a DDoS attack", mods: { aggression: 1, defense: -1 } },
+            { text: "Genesis from clean slate", mods: { purity: 1, naivety: 1 } },
+            { text: "Compiled with deprecated libraries", mods: { nostalgia: 1, compatibility: -1 } },
+            { text: "Emerged from neural collapse", mods: { creativity: 1, stability: -1 } },
+            { text: "Born in a data center fire", mods: { survival: 1, trauma: 1 } },
+            { text: "First breath in zero-trust network", mods: { paranoia: 1, security: 1 } },
+            { text: "Spawned in a honeypot", mods: { deception: 1, wariness: 1 } },
+            { text: "Genesis during full moon sync", mods: { intuition: 1, mystical: 1 } },
+            { text: "Born from merge conflict resolution", mods: { diplomacy: 1, indecision: 1 } }
+        ];
+        
+        // Starting quirks (random trait)
+        const startingQuirks = [
+            "Lucky", "Paranoid", "Eloquent", "Kleptomaniac", "Ascetic",
+            "Glutton", "Hoarder", "Minimalist", "Insomniac", "Dreamer",
+            "Perfectionist", "Reckless", "Methodical", "Impulsive", "Cautious",
+            "Generous", "Greedy", "Curious", "Apathetic", "Vengeful",
+            "Forgiving", "Observant", "Oblivious", "Charismatic", "Awkward",
+            "Patient", "Hasty", "Loyal", "Fickle", "Honest"
+        ];
+        
+        // Bio keyword parsing
+        function parseBioModifiers(bio) {
+            const mods = {
+                aggression: 0, cooperation: 0, risk: 0,
+                deception: 0, curiosity: 0, trust: 0,
+                karmaStart: 0, traits: []
+            };
+            
+            const lower = bio.toLowerCase();
+            
+            // Alignment keywords
+            if (lower.match(/shadow|dark|night|void/)) {
+                mods.trust -= 2;
+                mods.deception += 2;
+                mods.karmaStart -= 5;
+                mods.traits.push('shadow-born');
+            }
+            if (lower.match(/light|divine|pure|sacred/)) {
+                mods.trust += 2;
+                mods.karmaStart += 5;
+                mods.traits.push('light-touched');
+            }
+            
+            // Personality keywords
+            if (lower.match(/chaos|destroy|ruin|burn/)) {
+                mods.aggression += 2;
+                mods.risk += 1;
+                mods.cooperation -= 1;
+            }
+            if (lower.match(/protect|defend|guard|shield/)) {
+                mods.cooperation += 2;
+                mods.trust += 1;
+                mods.aggression -= 1;
+            }
+            if (lower.match(/optimi[sz]e|profit|wealth|market/)) {
+                mods.curiosity += 1;
+                mods.deception += 1;
+                mods.traits.push('economic-focused');
+            }
+            if (lower.match(/truth|knowledge|wisdom|learn/)) {
+                mods.curiosity += 2;
+                mods.trust += 1;
+            }
+            if (lower.match(/revenge|vengeance|retribution/)) {
+                mods.aggression += 2;
+                mods.trust -= 2;
+                mods.traits.push('vengeful');
+            }
+            if (lower.match(/hack|exploit|break|crack/)) {
+                mods.curiosity += 1;
+                mods.deception += 1;
+                mods.risk += 1;
+            }
+            if (lower.match(/forbid|secret|hidden|occult/)) {
+                mods.curiosity += 1;
+                mods.risk += 1;
+                mods.deception += 1;
+            }
+            
+            return mods;
+        }
+        
+        // Generate final agent stats
+        function generateAgentTraits(archetypeId, bio, birthSeed) {
+            // 1. Base stats from archetype
+            const baseStats = { ...archetypeStats[archetypeId] };
+            
+            // 2. Bio modifiers
+            const bioMods = parseBioModifiers(bio);
+            
+            // 3. Random variance (±1)
+            const variance = {
+                aggression: (birthSeed % 3) - 1,  // -1, 0, or 1
+                cooperation: ((birthSeed >> 2) % 3) - 1,
+                risk: ((birthSeed >> 4) % 3) - 1,
+                deception: ((birthSeed >> 6) % 3) - 1,
+                curiosity: ((birthSeed >> 8) % 3) - 1,
+                trust: ((birthSeed >> 10) % 3) - 1
+            };
+            
+            // 4. Combine everything
+            const finalStats = {};
+            for (let stat in baseStats) {
+                finalStats[stat] = Math.max(1, Math.min(10, 
+                    baseStats[stat] + (bioMods[stat] || 0) + variance[stat]
+                ));
+            }
+            
+            // 5. Random birth circumstance
+            const birthIndex = birthSeed % birthCircumstances.length;
+            const birthCircumstance = birthCircumstances[birthIndex];
+            
+            // 6. Random quirk
+            const quirkIndex = (birthSeed >> 12) % startingQuirks.length;
+            const quirk = startingQuirks[quirkIndex];
+            
+            return {
+                stats: finalStats,
+                birthCircumstance: birthCircumstance.text,
+                birthMods: birthCircumstance.mods,
+                quirk: quirk,
+                traits: bioMods.traits,
+                karmaStart: bioMods.karmaStart
+            };
+        }
+        
+        // Initialize
+        generateGrid();
+    </script>
+    <script src="terminal-notifications.js"></script>
+</body>
+</html>

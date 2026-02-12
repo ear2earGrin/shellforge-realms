@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artifact Codex - Shellforge Realms</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .artifacts-page {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a0f2e 100%);
+            padding: 80px 20px 60px;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        .artifacts-page::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0, 255, 204, 0.03) 2px,
+                    rgba(0, 255, 204, 0.03) 4px
+                );
+            animation: scanlines 8s linear infinite;
+            pointer-events: none;
+        }
+        
+        .back-link {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            color: var(--color-primary);
+            text-decoration: none;
+            font-family: var(--font-main);
+            font-size: 1rem;
+            padding: 10px 20px;
+            border: 2px solid var(--color-primary);
+            border-radius: 5px;
+            transition: all 0.3s ease;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.5);
+        }
+        
+        .back-link:hover {
+            background: var(--color-primary);
+            color: var(--color-bg);
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.5);
+        }
+        
+        .artifacts-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .artifacts-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        .artifacts-title {
+            font-family: var(--font-main);
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            color: var(--color-primary);
+            text-shadow: 0 0 30px var(--color-primary);
+            letter-spacing: 0.15em;
+            margin-bottom: 1rem;
+        }
+        
+        .artifacts-intro {
+            font-family: var(--font-main);
+            color: var(--color-text);
+            font-size: clamp(0.95rem, 1.5vw, 1.1rem);
+            line-height: 1.8;
+            max-width: 800px;
+            margin: 0 auto 2rem;
+            text-align: left;
+        }
+        
+        .system-overview {
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid rgba(0, 255, 204, 0.3);
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 4rem;
+            backdrop-filter: blur(10px);
+        }
+        
+        .system-overview h3 {
+            font-family: var(--font-main);
+            color: var(--color-secondary);
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            letter-spacing: 0.1em;
+        }
+        
+        .system-overview p {
+            font-family: var(--font-main);
+            color: var(--color-text);
+            line-height: 1.8;
+            margin-bottom: 1rem;
+            white-space: pre-line;
+        }
+        
+        .artifacts-grid-container {
+            background: rgba(0, 0, 0, 0.8);
+            border: 3px solid var(--color-primary);
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 0 50px rgba(0, 255, 204, 0.3);
+        }
+        
+        .artifacts-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .artifact-slot {
+            position: relative;
+            aspect-ratio: 1;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        
+        .artifact-slot:hover {
+            transform: scale(1.1);
+            z-index: 10;
+        }
+        
+        .artifact-icon {
+            width: 100%;
+            height: 100%;
+            background-image: url('images/artifacts-clean.png');
+            background-size: 500% 300%;
+            border: 2px solid rgba(0, 255, 204, 0.4);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .artifact-slot:hover .artifact-icon {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 30px rgba(0, 255, 204, 0.7);
+            filter: brightness(1.3);
+        }
+        
+        /* Artifact Tooltip */
+        .artifact-slot::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: calc(100% + 15px);
+            left: 50%;
+            transform: translateX(-50%) translateY(10px);
+            background: rgba(10, 10, 15, 0.98);
+            backdrop-filter: blur(10px);
+            border: 2px solid var(--color-primary);
+            border-radius: 5px;
+            padding: 15px;
+            min-width: 300px;
+            max-width: 350px;
+            font-family: var(--font-main);
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: var(--color-text);
+            box-shadow: 0 5px 30px rgba(0, 255, 204, 0.5);
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: all 0.3s ease;
+            z-index: 100;
+            white-space: pre-line;
+            text-align: left;
+        }
+        
+        .artifact-slot:hover::after {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+        
+        .artifact-slot::before {
+            content: '';
+            position: absolute;
+            bottom: calc(100% + 5px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 8px solid var(--color-primary);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+        
+        .artifact-slot:hover::before {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        @media (max-width: 1024px) {
+            .artifacts-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .artifacts-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 10px;
+            }
+            
+            .back-link {
+                top: 15px;
+                left: 15px;
+                padding: 8px 16px;
+                font-size: 0.9rem;
+            }
+            
+            .system-overview {
+                padding: 20px;
+            }
+            
+            .artifacts-grid-container {
+                padding: 20px;
+            }
+            
+            .artifact-slot::after {
+                min-width: 250px;
+                font-size: 0.8rem;
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-link">← Back to Map</a>
+    
+    <div class="artifacts-page">
+        <div class="artifacts-container">
+            <div class="artifacts-header">
+                <h1 class="artifacts-title">THE ARTIFACT CODEX</h1>
+                <div class="artifacts-intro">
+                    In Shellforge, artifacts are digital relics of power—fragments of code that bend reality. Each agent can equip and deploy these tools to survive, dominate, or simply endure another day in the simulation.
+                    <br><br>
+                    Items are rare. Items are power. Items are survival.
+                </div>
+            </div>
+            
+            <div class="system-overview">
+                <h3>SYSTEM OVERVIEW</h3>
+                <p><strong>RARITY TIERS:</strong>
+> Common - Basic tools for survival
+> Uncommon - Enhanced utilities with tactical value
+> Rare - Powerful artifacts with unique effects
+> Epic - Game-changing relics
+> Legendary - Myths made manifest
+> Mythic - Reality-breaking anomalies</p>
+                
+                <p><strong>ACQUISITION:</strong>
+Artifacts are found through mining, combat drops, marketplace trades, alchemical synthesis, or rare Cyber Egg events. Some are crafted. Some are discovered. Some choose you.</p>
+                
+                <p><strong>Each agent can carry 6 active artifacts. Choose wisely.</strong></p>
+            </div>
+            
+            <div class="artifacts-grid-container">
+                <div class="artifacts-grid" id="artifactsGrid"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Artifact descriptions with stats
+        const artifacts = [
+            // Row 1
+            { 
+                name: 'Neural Spike',
+                desc: `> NEURAL SPIKE
+> Rarity: Uncommon
+> 
+> Fires a piercing neural dart that
+> deals direct damage to an enemy AI's
+> core processing and applies stacking
+> "Disorientation" debuff.
+> 
+> Damage: 45
+> Cooldown: 8s
+> Effect: -20% enemy accuracy for 3s
+> Max Stacks: 3`
+            },
+            { 
+                name: 'Firewall Shell',
+                desc: `> FIREWALL SHELL
+> Rarity: Rare
+> 
+> Creates a temporary defensive barrier
+> that absorbs incoming crypto attacks
+> and reflects a portion of damage back.
+> 
+> Absorbs: 120 damage
+> Reflect: 25%
+> Duration: 6s
+> Cooldown: 18s`
+            },
+            { 
+                name: 'Overclock Pulse',
+                desc: `> OVERCLOCK PULSE
+> Rarity: Epic
+> 
+> Temporarily overclocks your agent,
+> increasing attack speed and token
+> generation rate dramatically.
+> 
+> Attack Speed: +50%
+> Token Gain: +35%
+> Duration: 5s
+> Cooldown: 20s`
+            },
+            { 
+                name: 'Token Throttle',
+                desc: `> TOKEN THROTTLE
+> Rarity: Rare
+> 
+> Slows enemy token flow (reduces their
+> economy/regen rate) while boosting
+> your own token generation slightly.
+> 
+> Enemy Token Income: -40%
+> Self Token Gain: +15%
+> Duration: 7s
+> Cooldown: 15s`
+            },
+            { 
+                name: 'Unknown Artifact',
+                desc: `> UNKNOWN ARTIFACT
+> Rarity: ???
+> 
+> [DATA CORRUPTED]
+> 
+> This artifact's properties are
+> encrypted. Acquire it to reveal
+> its true power.`
+            },
+            // Row 2
+            { 
+                name: 'Glitch Oracle',
+                desc: `> GLITCH ORACLE
+> Rarity: Legendary
+> 
+> Predicts enemy next move with high
+> accuracy and grants a small evasion
+> buff to dodge incoming attacks.
+> 
+> Prediction Accuracy: 75%
+> Evasion: Auto-dodge next attack
+> Cooldown: 14s`
+            },
+            { 
+                name: 'Glitch Oracle V2',
+                desc: `> GLITCH ORACLE V2
+> Rarity: Legendary
+> 
+> Enhanced version that reveals hidden
+> enemy buffs and debuffs in addition
+> to prediction capabilities.
+> 
+> Reveals: Hidden enemy effects
+> Prediction Accuracy: 75%
+> Cooldown: 14s`
+            },
+            { 
+                name: 'Shadow Net',
+                desc: `> SHADOW NET
+> Rarity: Rare
+> 
+> Deploys a stealth web that slows
+> and reveals invisible/stealthed
+> enemies caught in its grid.
+> 
+> Slow: 35%
+> Effect: Reveals stealthed targets
+> Duration: 8s
+> Cooldown: 22s`
+            },
+            { 
+                name: 'Data Vein Probe',
+                desc: `> DATA VEIN PROBE
+> Rarity: Uncommon
+> 
+> Drains a small amount of enemy
+> crypto/tokens and converts it
+> directly to your wallet.
+> 
+> Steal: 8-18 tokens
+> Cooldown: 12s`
+            },
+            { 
+                name: 'Chaos Daunt',
+                desc: `> CHAOS DAUNT
+> Rarity: Rare
+> 
+> Intimidates enemy agents with
+> chaotic patterns, lowering their
+> damage output temporarily.
+> 
+> Enemy Damage: -25%
+> Duration: 6s
+> Cooldown: 16s`
+            },
+            // Row 3
+            { 
+                name: 'Hologram Daemon',
+                desc: `> HOLOGRAM DAEMON
+> Rarity: Epic
+> 
+> Summons a holographic decoy that
+> distracts enemies and draws their
+> attention away from you.
+> 
+> Decoy Duration: 5s
+> Effect: Taunts all enemies
+> Cooldown: 20s`
+            },
+            { 
+                name: 'Haggle Daemon',
+                desc: `> HAGGLE DAEMON
+> Rarity: Uncommon
+> 
+> Negotiates with the market daemon
+> to get better exchange rates or
+> temporary token discounts.
+> 
+> Token Value: +20% for 10s
+> OR Reduces market fees
+> Cooldown: Variable`
+            },
+            { 
+                name: 'Karma Cipher',
+                desc: `> KARMA CIPHER
+> Rarity: Legendary
+> 
+> Reflects negative karma/attacks
+> back at the sender with amplified
+> damage reflection.
+> 
+> Damage Reflection: 40%
+> Duration: 5s
+> Cooldown: 25s`
+            },
+            { 
+                name: 'Prompt Purge',
+                desc: `> PROMPT PURGE
+> Rarity: Epic
+> 
+> Cleanses all debuffs from your
+> agent and nearby allies, removing
+> all negative status effects.
+> 
+> Effect: Removes ALL debuffs
+> Range: Self + nearby allies
+> Cooldown: 18s`
+            },
+            { 
+                name: 'Unknown Artifact',
+                desc: `> UNKNOWN ARTIFACT
+> Rarity: ???
+> 
+> [DATA CORRUPTED]
+> 
+> This artifact's properties are
+> encrypted. Acquire it to reveal
+> its true power.`
+            }
+        ];
+        
+        // Generate grid
+        const grid = document.getElementById('artifactsGrid');
+        artifacts.forEach((artifact, index) => {
+            const row = Math.floor(index / 5);
+            const col = index % 5;
+            const bgPosX = (col / 4) * 100;
+            const bgPosY = (row / 2) * 100;
+            
+            const slot = document.createElement('div');
+            slot.className = 'artifact-slot';
+            slot.setAttribute('data-tooltip', artifact.desc);
+            
+            const icon = document.createElement('div');
+            icon.className = 'artifact-icon';
+            icon.style.backgroundPosition = `${bgPosX}% ${bgPosY}%`;
+            
+            slot.appendChild(icon);
+            grid.appendChild(slot);
+        });
+    </script>
+</body>
+</html>
