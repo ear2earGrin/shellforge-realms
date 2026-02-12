@@ -1122,6 +1122,28 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
     color: var(--color-secondary);
 }
 
+.feature-card .terminal-title {
+    color: #ff3333;
+    font-family: var(--font-main);
+    letter-spacing: 0.05em;
+}
+
+.blink-cursor {
+    display: inline-block;
+    margin-right: 0.3em;
+    animation: blink 1s step-end infinite;
+    color: #ff3333;
+}
+
+@keyframes blink {
+    0%, 50% {
+        opacity: 1;
+    }
+    51%, 100% {
+        opacity: 0;
+    }
+}
+
 .feature-card p {
     color: var(--color-text-dim);
     line-height: 1.6;
