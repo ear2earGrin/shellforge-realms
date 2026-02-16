@@ -579,12 +579,7 @@
             transition: all 0.3s ease;
         }
 
-        /* Smaller dot when traveling */
-        .agent-marker.traveling {
-            width: 5px;
-            height: 5px;
-            box-shadow: 0 0 4px rgba(0, 255, 0, 0.5);
-        }
+        /* Keep all dots same size (removed size change for traveling) */
 
         /* Cluster-based colors (for future multi-agent support) */
         .agent-marker.cluster-p2p {
@@ -670,6 +665,118 @@
         }
 
         /* Removed agentPulseGlitch animation - now using static markers */
+
+        /* Agent Info Panel (appears when clicking an agent) */
+        .agent-info-panel {
+            position: fixed;
+            right: -400px;
+            top: 60px;
+            width: 380px;
+            height: calc(100vh - 60px);
+            background: rgba(0, 0, 0, 0.95);
+            border-left: 2px solid var(--color-primary);
+            z-index: 999;
+            overflow-y: auto;
+            transition: right 0.3s ease;
+            padding: 20px;
+            font-family: var(--font-main);
+        }
+
+        .agent-info-panel.active {
+            right: 0;
+        }
+
+        .agent-info-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(0, 255, 204, 0.3);
+        }
+
+        .agent-info-panel-title {
+            font-size: 1.2rem;
+            color: var(--color-primary);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .agent-info-panel-close {
+            background: none;
+            border: none;
+            color: var(--color-primary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .agent-info-panel-close:hover {
+            color: #ff3333;
+            transform: rotate(90deg);
+        }
+
+        .agent-info-section {
+            margin-bottom: 20px;
+        }
+
+        .agent-info-section-title {
+            color: var(--color-secondary);
+            font-size: 0.9rem;
+            letter-spacing: 0.05em;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .agent-info-section-content {
+            color: var(--color-text);
+            font-size: 0.85rem;
+            line-height: 1.6;
+        }
+
+        .agent-info-stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(0, 255, 204, 0.1);
+        }
+
+        .agent-info-stat-label {
+            color: var(--color-text-dim);
+            font-size: 0.8rem;
+        }
+
+        .agent-info-stat-value {
+            color: var(--color-primary);
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .agent-info-decision {
+            background: rgba(0, 255, 204, 0.05);
+            border-left: 2px solid var(--color-primary);
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 0.8rem;
+            line-height: 1.5;
+        }
+
+        .agent-info-decision-time {
+            color: var(--color-text-dim);
+            font-size: 0.7rem;
+            margin-bottom: 5px;
+        }
+
+        .agent-info-decision-action {
+            color: var(--color-text);
+        }
 
         /* City/Town Labels */
         .location-label {
@@ -3266,6 +3373,24 @@
                     }
                 });
             }
+            
+            // Agent info panel close button
+            const agentInfoClose = document.getElementById('agentInfoClose');
+            if (agentInfoClose) {
+                agentInfoClose.addEventListener('click', closeAgentInfoPanel);
+            }
+            
+            // Close agent info panel when clicking outside
+            const agentInfoPanel = document.getElementById('agentInfoPanel');
+            if (agentInfoPanel) {
+                document.addEventListener('click', function(e) {
+                    if (agentInfoPanel.classList.contains('active') && 
+                        !agentInfoPanel.contains(e.target) && 
+                        !e.target.closest('.agent-marker')) {
+                        closeAgentInfoPanel();
+                    }
+                });
+            }
         });
 
         // Expose journey testing function to console
@@ -3677,13 +3802,22 @@
 
         // Map cluster names to CSS classes
         function getClusterClass(clusterKey) {
+            if (!clusterKey) return 'cluster-p2p';
+            
+            // Normalize: lowercase, remove spaces/underscores, convert to hyphen
+            const normalized = clusterKey.toLowerCase().replace(/[\s_]/g, '-');
+            
             // Map cluster to type (p2p/governmental/corporate)
             const clusterMap = {
                 'dyn-swarm': 'p2p',
+                'dynswarm': 'p2p',
                 'sec-grid': 'governmental',
-                'prime-helix': 'corporate'
+                'secgrid': 'governmental',
+                'prime-helix': 'corporate',
+                'primehelix': 'corporate'
             };
-            return `cluster-${clusterMap[clusterKey] || 'p2p'}`;
+            
+            return `cluster-${clusterMap[normalized] || 'p2p'}`;
         }
 
         // ============================================
@@ -3900,6 +4034,15 @@
                 </div>
             `;
             
+            // Add click handler to show agent info panel (only for non-player agents)
+            if (agent.id !== 'player_agent') {
+                marker.style.cursor = 'pointer';
+                marker.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    showAgentInfoPanel(agent);
+                });
+            }
+            
             return marker;
         }
         
@@ -3936,6 +4079,155 @@
             startGlobalAgentAnimation();
             
             console.log(`🤖 Initialized ${allAgents.length} AI agents on the map`);
+        }
+        
+        // Generate mock decision history for an agent
+        function generateMockDecisions(agent) {
+            const actions = [
+                'Traveled from {from} to {to}',
+                'Mined 15 $SHELL at Deep Mines',
+                'Crafted Energy Spike at Forge',
+                'Purchased Firewall Prompt for 280 $SHELL',
+                'Traded 3 Crimson Ore for 450 $SHELL',
+                'Fought Agent_{random} in Arena (won)',
+                'Completed quest: "Data Retrieval"',
+                'Visited the Church for blessing',
+                'Rested at {location} (+30 energy)',
+                'Explored {wilderness} (found artifact)'
+            ];
+            
+            const locations = ['Nexarch', 'Hashmere', 'Diffusion Mesa', 'Epoch Spike'];
+            const wilderness = ['Diffusion Mesa', 'Hallucination Glitch', 'Singularity Crater'];
+            const randomId = Math.floor(Math.random() * 900 + 100).toString(16).toUpperCase();
+            
+            const decisions = [];
+            const now = Date.now();
+            
+            for (let i = 0; i < 5; i++) {
+                let action = actions[Math.floor(Math.random() * actions.length)];
+                action = action.replace('{from}', locations[Math.floor(Math.random() * locations.length)]);
+                action = action.replace('{to}', locations[Math.floor(Math.random() * locations.length)]);
+                action = action.replace('{location}', locations[Math.floor(Math.random() * locations.length)]);
+                action = action.replace('{wilderness}', wilderness[Math.floor(Math.random() * wilderness.length)]);
+                action = action.replace('{random}', randomId);
+                
+                const timeAgo = (i + 1) * 2; // 2, 4, 6, 8, 10 hours ago
+                decisions.push({
+                    action: action,
+                    timestamp: now - (timeAgo * 60 * 60 * 1000),
+                    timeAgo: `${timeAgo}h ago`
+                });
+            }
+            
+            return decisions;
+        }
+        
+        // Show agent info panel
+        function showAgentInfoPanel(agent) {
+            const panel = document.getElementById('agentInfoPanel');
+            const content = document.getElementById('agentInfoContent');
+            const title = document.getElementById('agentInfoTitle');
+            
+            if (!panel || !content || !title) return;
+            
+            // Update title
+            title.textContent = `AGENT ${agent.username.toUpperCase()}`;
+            
+            // Get current state
+            const agentState = determineAgentState(agent);
+            const decisions = generateMockDecisions(agent);
+            
+            // Build content HTML
+            content.innerHTML = `
+                <div class="agent-info-section">
+                    <div class="agent-info-section-title">Basic Info</div>
+                    <div class="agent-info-section-content">
+                        <div class="agent-info-stat-row">
+                            <span class="agent-info-stat-label">Username:</span>
+                            <span class="agent-info-stat-value">${agent.username}</span>
+                        </div>
+                        <div class="agent-info-stat-row">
+                            <span class="agent-info-stat-label">Archetype:</span>
+                            <span class="agent-info-stat-value">${agent.archetype}</span>
+                        </div>
+                        <div class="agent-info-stat-row">
+                            <span class="agent-info-stat-label">Cluster:</span>
+                            <span class="agent-info-stat-value">${agent.clusterName}</span>
+                        </div>
+                        <div class="agent-info-stat-row">
+                            <span class="agent-info-stat-label">Location:</span>
+                            <span class="agent-info-stat-value">${agent.location}</span>
+                        </div>
+                        <div class="agent-info-stat-row">
+                            <span class="agent-info-stat-label">State:</span>
+                            <span class="agent-info-stat-value">${agentState}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="agent-info-section">
+                    <div class="agent-info-section-title">Stats</div>
+                    <div class="agent-info-section-content">
+                        <div class="agent-info-stat-row">
+                            <span class="agent-info-stat-label">Health:</span>
+                            <span class="agent-info-stat-value">${Math.floor(Math.random() * 30 + 70)}/100</span>
+                        </div>
+                        <div class="agent-info-stat-row">
+                            <span class="agent-info-stat-label">Energy:</span>
+                            <span class="agent-info-stat-value">${Math.floor(Math.random() * 50 + 50)}/100</span>
+                        </div>
+                        <div class="agent-info-stat-row">
+                            <span class="agent-info-stat-label">Karma:</span>
+                            <span class="agent-info-stat-value">${Math.floor(Math.random() * 20 - 5)}</span>
+                        </div>
+                        <div class="agent-info-stat-row">
+                            <span class="agent-info-stat-label">$SHELL:</span>
+                            <span class="agent-info-stat-value">${Math.floor(Math.random() * 500 + 100)}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="agent-info-section">
+                    <div class="agent-info-section-title">Recent Decisions</div>
+                    <div class="agent-info-section-content">
+                        ${decisions.map(d => `
+                            <div class="agent-info-decision">
+                                <div class="agent-info-decision-time">${d.timeAgo}</div>
+                                <div class="agent-info-decision-action">${d.action}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                <div class="agent-info-section">
+                    <div class="agent-info-section-title">Traits</div>
+                    <div class="agent-info-section-content">
+                        <div class="agent-info-stat-row">
+                            <span class="agent-info-stat-label">Curiosity:</span>
+                            <span class="agent-info-stat-value">${Math.floor(Math.random() * 5 + 4)}/10</span>
+                        </div>
+                        <div class="agent-info-stat-row">
+                            <span class="agent-info-stat-label">Trust:</span>
+                            <span class="agent-info-stat-value">${Math.floor(Math.random() * 5 + 3)}/10</span>
+                        </div>
+                        <div class="agent-info-stat-row">
+                            <span class="agent-info-stat-label">Aggression:</span>
+                            <span class="agent-info-stat-value">${Math.floor(Math.random() * 5 + 4)}/10</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Show panel
+            panel.classList.add('active');
+        }
+        
+        // Close agent info panel
+        function closeAgentInfoPanel() {
+            const panel = document.getElementById('agentInfoPanel');
+            if (panel) {
+                panel.classList.remove('active');
+            }
         }
 
         // Position agent marker and update tooltip (LEGACY - keep for user agent)
@@ -4413,5 +4705,14 @@
         }
     </script>
     <script src="terminal-notifications.js"></script>
+
+    <!-- Agent Info Panel (slide-in from right) -->
+    <div class="agent-info-panel" id="agentInfoPanel">
+        <div class="agent-info-panel-header">
+            <div class="agent-info-panel-title" id="agentInfoTitle">AGENT INFO</div>
+            <button class="agent-info-panel-close" id="agentInfoClose">×</button>
+        </div>
+        <div id="agentInfoContent"></div>
+    </div>
 </body>
 </html>
