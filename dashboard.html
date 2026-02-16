@@ -3163,14 +3163,20 @@
         // Update turn timer display
         function updateTurnTimer() {
             const agentData = localStorage.getItem('shellforgeAgent');
-            if (!agentData) return;
+            if (!agentData) {
+                console.log('⏰ Turn timer: No agent data found');
+                return;
+            }
             
             const agent = JSON.parse(agentData);
             const timeRemaining = getTimeUntilNextTurn(agent);
             const timerElement = document.getElementById('nextTurnTimer');
             const timerRow = timerElement?.closest('.turn-timer');
             
-            if (!timerElement) return;
+            if (!timerElement) {
+                console.log('⏰ Turn timer: Element not found');
+                return;
+            }
             
             const formatted = formatTimeRemaining(timeRemaining);
             timerElement.textContent = formatted;
@@ -3180,6 +3186,12 @@
                 timerRow?.classList.add('ready');
             } else {
                 timerRow?.classList.remove('ready');
+            }
+            
+            // Log on first update only
+            if (!window.turnTimerInitialized) {
+                console.log(`⏰ Turn timer initialized: ${formatted} (${Math.floor(timeRemaining / 1000)}s remaining)`);
+                window.turnTimerInitialized = true;
             }
         }
         
