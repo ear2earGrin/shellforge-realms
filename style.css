@@ -499,7 +499,7 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
 .mechanic-name {
     font-family: var(--font-main);
     color: #ff3333;
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     text-align: center;
     font-weight: normal;
     letter-spacing: 0.05em;
@@ -1419,7 +1419,7 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
     }
     
     .mechanic-name {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
     }
     
     .mechanic-item::after {
