@@ -567,58 +567,61 @@
 
         .agent-marker {
             position: absolute;
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: #00ff00;
-            border: 1px solid #00ff00;
-            box-shadow: 0 0 6px rgba(0, 255, 0, 0.6);
+            width: 8px;
+            height: 8px;
             z-index: 10;
             transform: translate(-50%, -50%);
             cursor: pointer;
             transition: all 0.3s ease;
-            opacity: 0.7;
+            opacity: 0.6;
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            font-weight: bold;
+            color: #ff3333;
+            text-shadow: 0 0 4px rgba(255, 51, 51, 0.6);
+            line-height: 8px;
+            text-align: center;
         }
 
-        /* Player agent marker - larger and brighter */
+        /* AI agent marker - red X symbol */
+        .agent-marker:not(.player-agent)::before {
+            content: '×';
+            display: block;
+        }
+
+        /* Player agent marker - larger colored dot */
         .agent-marker.player-agent {
             width: 10px;
             height: 10px;
+            border-radius: 50%;
+            background: #00ff00;
+            border: 2px solid #00ff00;
             opacity: 1;
             z-index: 15;
-            border-width: 2px;
+            font-size: 0;
+        }
+
+        .agent-marker.player-agent::before {
+            content: none;
         }
 
         /* Player agent cluster colors - enhanced glow */
         .agent-marker.player-agent.cluster-p2p {
+            background: #88ff88;
+            border-color: #88ff88;
             box-shadow: 0 0 12px rgba(136, 255, 136, 0.9);
         }
 
         .agent-marker.player-agent.cluster-governmental {
+            background: #0088ff;
+            border-color: #0088ff;
             box-shadow: 0 0 12px rgba(0, 136, 255, 0.9);
         }
 
         .agent-marker.player-agent.cluster-corporate {
-            box-shadow: 0 0 12px rgba(255, 153, 0, 0.9);
-        }
-
-        /* Cluster-based colors (for future multi-agent support) */
-        .agent-marker.cluster-p2p {
-            background: #88ff88;
-            border-color: #88ff88;
-            box-shadow: 0 0 6px rgba(136, 255, 136, 0.6);
-        }
-
-        .agent-marker.cluster-governmental {
-            background: #0088ff;
-            border-color: #0088ff;
-            box-shadow: 0 0 6px rgba(0, 136, 255, 0.6);
-        }
-
-        .agent-marker.cluster-corporate {
             background: #ff9900;
             border-color: #ff9900;
-            box-shadow: 0 0 6px rgba(255, 153, 0, 0.6);
+            box-shadow: 0 0 12px rgba(255, 153, 0, 0.9);
         }
 
         /* Agent Tooltip */
@@ -4013,15 +4016,15 @@
             // Add player-agent class if this is the player's agent
             if (agent.id === 'player_agent') {
                 marker.classList.add('player-agent');
+                
+                // Only add cluster class to player agent
+                if (agent.cluster) {
+                    const clusterClass = getClusterClass(agent.cluster);
+                    marker.classList.add(clusterClass);
+                }
             }
             
-            // Add cluster class
-            if (agent.cluster) {
-                const clusterClass = getClusterClass(agent.cluster);
-                marker.classList.add(clusterClass);
-            }
-            
-            // Add traveling class if active
+            // Add traveling class if active (not used for styling anymore but kept for logic)
             if (agent.journey && agent.journey.status === 'active') {
                 marker.classList.add('traveling');
             }
