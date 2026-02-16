@@ -268,6 +268,45 @@
             font-weight: bold;
         }
 
+        /* Turn Timer */
+        .stat-row.turn-timer {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0, 255, 204, 0.08);
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            border-radius: 5px;
+        }
+
+        .stat-row.turn-timer label {
+            color: var(--color-secondary);
+            font-weight: bold;
+        }
+
+        .stat-row.turn-timer span {
+            color: var(--color-primary);
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+        }
+
+        .stat-row.turn-timer.ready {
+            background: rgba(0, 255, 204, 0.2);
+            border-color: var(--color-primary);
+            animation: pulse-turn 2s ease-in-out infinite;
+        }
+
+        .stat-row.turn-timer.ready span {
+            color: var(--color-secondary);
+        }
+
+        @keyframes pulse-turn {
+            0%, 100% {
+                box-shadow: 0 0 5px rgba(0, 255, 204, 0.3);
+            }
+            50% {
+                box-shadow: 0 0 15px rgba(0, 255, 204, 0.6);
+            }
+        }
+
         /* Cluster Badge */
         .cluster-badge {
             margin-top: 15px;
@@ -1586,6 +1625,11 @@
             <div class="stat-row">
                 <label>Days Survived</label>
                 <span id="daysValue">1</span>
+            </div>
+
+            <div class="stat-row turn-timer">
+                <label>Next Turn</label>
+                <span id="nextTurnTimer">--:--:--</span>
             </div>
 
             <!-- Cluster Badge -->
@@ -3074,6 +3118,109 @@
             return true;
         }
 
+        // ============================================
+        // TURN SCHEDULER SYSTEM
+        // ============================================
+        
+        const TURN_INTERVAL_MS = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
+        // For testing: const TURN_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+        
+        // Check if agent is due for a turn
+        function checkTurnDue(agent) {
+            if (!agent.lastTurnAt) {
+                // First turn - use creation date or set to 3 hours ago
+                agent.lastTurnAt = agent.createdAt || (Date.now() - TURN_INTERVAL_MS);
+            }
+            
+            const timeSinceLastTurn = Date.now() - agent.lastTurnAt;
+            return timeSinceLastTurn >= TURN_INTERVAL_MS;
+        }
+        
+        // Get time remaining until next turn
+        function getTimeUntilNextTurn(agent) {
+            if (!agent.lastTurnAt) {
+                return 0; // Turn is ready
+            }
+            
+            const timeSinceLastTurn = Date.now() - agent.lastTurnAt;
+            const timeRemaining = TURN_INTERVAL_MS - timeSinceLastTurn;
+            
+            return Math.max(0, timeRemaining);
+        }
+        
+        // Format milliseconds to HH:MM:SS
+        function formatTimeRemaining(ms) {
+            if (ms <= 0) return 'READY';
+            
+            const totalSeconds = Math.floor(ms / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+        
+        // Update turn timer display
+        function updateTurnTimer() {
+            const agentData = localStorage.getItem('shellforgeAgent');
+            if (!agentData) return;
+            
+            const agent = JSON.parse(agentData);
+            const timeRemaining = getTimeUntilNextTurn(agent);
+            const timerElement = document.getElementById('nextTurnTimer');
+            const timerRow = timerElement?.closest('.turn-timer');
+            
+            if (!timerElement) return;
+            
+            const formatted = formatTimeRemaining(timeRemaining);
+            timerElement.textContent = formatted;
+            
+            // Add/remove ready class for visual feedback
+            if (timeRemaining <= 0) {
+                timerRow?.classList.add('ready');
+            } else {
+                timerRow?.classList.remove('ready');
+            }
+        }
+        
+        // Execute a turn (placeholder for now)
+        function executeTurn(agent) {
+            console.log(`🎮 Turn ${(agent.turnsTaken || 0) + 1} executing for ${agent.username}...`);
+            
+            // Update turn counter
+            agent.turnsTaken = (agent.turnsTaken || 0) + 1;
+            
+            // Set last turn timestamp
+            agent.lastTurnAt = Date.now();
+            
+            // Save updated agent data
+            localStorage.setItem('shellforgeAgent', JSON.stringify(agent));
+            
+            // Reload page to show updates
+            location.reload();
+        }
+        
+        // Manual turn trigger (for testing)
+        window.triggerTurn = function() {
+            const agentData = localStorage.getItem('shellforgeAgent');
+            if (!agentData) {
+                console.error('❌ No agent found');
+                return;
+            }
+            
+            const agent = JSON.parse(agentData);
+            
+            if (!checkTurnDue(agent)) {
+                const timeRemaining = getTimeUntilNextTurn(agent);
+                console.warn(`⏰ Turn not ready yet. Wait ${formatTimeRemaining(timeRemaining)}`);
+                return;
+            }
+            
+            executeTurn(agent);
+        };
+        
+        console.log('💡 Test turn system: triggerTurn()');
+
         // Load agent data from localStorage (replace with API call later)
         function loadAgentData() {
             if (!checkLoginStatus()) return;
@@ -3360,6 +3507,10 @@
             
             // Update debug every second
             setInterval(updateJourneyDebug, 1000);
+            
+            // Initialize turn timer (update every second)
+            updateTurnTimer();
+            setInterval(updateTurnTimer, 1000);
             
             // Cancel journey button
             const cancelBtn = document.getElementById('cancelJourneyBtn');
