@@ -2711,8 +2711,8 @@
                 <!-- Wilderness Markers (positioned dynamically) -->
                 <div id="wildernessMarkers"></div>
 
-                <!-- Agent marker positioned dynamically -->
-                <div class="agent-marker" id="agentMarker"></div>
+                <!-- Agent markers positioned dynamically -->
+                <div id="agentMarkers"></div>
             </div>
         </div>
 
@@ -3052,6 +3052,28 @@
             if (agent.journey && agent.journey.status === 'active') {
                 startJourneyAnimation(agent);
             }
+            
+            // Add player's agent to the global agents array for map rendering
+            if (allAgents && allAgents.length > 0) {
+                // Add player agent with special ID
+                const playerAgent = {
+                    ...agent,
+                    id: 'player_agent',
+                    cluster: agent.cluster || 'DYN_Swarm',
+                    clusterName: agent.clusterName || 'DYN_Swarm (P2P)'
+                };
+                
+                // Check if player agent already exists in array
+                const existingIndex = allAgents.findIndex(a => a.id === 'player_agent');
+                if (existingIndex >= 0) {
+                    allAgents[existingIndex] = playerAgent;
+                } else {
+                    allAgents.push(playerAgent);
+                }
+                
+                // Re-render all agents to include player
+                renderAllAgents(allAgents);
+            }
 
             // Update shell balance
             document.querySelector('.shell-balance').textContent = `${agent.shell || 50} $SHELL`;
@@ -3223,6 +3245,9 @@
         // Load agent data on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadAgentData();
+            
+            // Initialize multi-agent system
+            initializeAgentSystem();
             
             // Update debug every second
             setInterval(updateJourneyDebug, 1000);
@@ -3661,9 +3686,263 @@
             return `cluster-${clusterMap[clusterKey] || 'p2p'}`;
         }
 
-        // Position agent marker and update tooltip
+        // ============================================
+        // MULTI-AGENT SYSTEM
+        // ============================================
+        
+        // Mock AI agents for world activity
+        function generateMockAgents() {
+            const clusters = ['DYN_Swarm', 'Prime Helix', 'SEC-Grid'];
+            const names = ['0xA2F', '0xB7C', '0x4D1', '0x9E3', '0xC8B', '0x5F2', '0x1A9', '0x7D4'];
+            const archetypes = ['Shadow', 'Trickster', 'Hero', 'Sage', 'Innocent', 'Magician'];
+            
+            const agents = [];
+            const now = Date.now();
+            
+            // Agent 1: Traveling from Nexarch to Hashmere
+            agents.push({
+                id: 'mock_agent_1',
+                username: names[0],
+                archetype: archetypes[0],
+                cluster: clusters[0], // P2P
+                clusterName: clusters[0],
+                location: 'Nexarch',
+                locationKey: 'nexarch',
+                visualX: 77, visualY: 33,
+                state: 'traveling',
+                journey: {
+                    destination: 'Hashmere',
+                    destinationKey: 'hashmere',
+                    start_pos: { x: 77, y: 33 },
+                    end_pos: { x: 66, y: 56 },
+                    start_time: now - (30 * 60 * 1000), // Started 30 min ago
+                    end_time: now + (60 * 60 * 1000), // 60 min remaining
+                    duration_ms: 90 * 60 * 1000,
+                    status: 'active',
+                    waypoints: [180, 349, 370] // Nexarch → Hashmere path
+                }
+            });
+            
+            // Agent 2: Idle at Hashmere
+            agents.push({
+                id: 'mock_agent_2',
+                username: names[1],
+                archetype: archetypes[1],
+                cluster: clusters[1], // Corporate
+                clusterName: clusters[1],
+                location: 'Hashmere',
+                locationKey: 'hashmere',
+                visualX: 66, visualY: 56,
+                state: 'idle',
+                activity: 'trading'
+            });
+            
+            // Agent 3: Traveling from Hashmere to Diffusion Mesa
+            agents.push({
+                id: 'mock_agent_3',
+                username: names[2],
+                archetype: archetypes[2],
+                cluster: clusters[2], // Governmental
+                clusterName: clusters[2],
+                location: 'Hashmere',
+                locationKey: 'hashmere',
+                visualX: 66, visualY: 56,
+                state: 'traveling',
+                journey: {
+                    destination: 'Diffusion Mesa',
+                    destinationKey: 'diffusion-mesa',
+                    start_pos: { x: 66, y: 56 },
+                    end_pos: { x: 23, y: 45 },
+                    start_time: now - (15 * 60 * 1000), // Started 15 min ago
+                    end_time: now + (105 * 60 * 1000), // 105 min remaining
+                    duration_ms: 120 * 60 * 1000,
+                    status: 'active',
+                    waypoints: [370, 349, 180, 170, 126] // Hashmere → Diffusion Mesa
+                }
+            });
+            
+            // Agent 4: Idle at Nexarch Deep Mines
+            agents.push({
+                id: 'mock_agent_4',
+                username: names[3],
+                archetype: archetypes[3],
+                cluster: clusters[0], // P2P
+                clusterName: clusters[0],
+                location: 'Nexarch',
+                locationKey: 'nexarch',
+                visualX: 77, visualY: 33,
+                state: 'idle',
+                activity: 'mining'
+            });
+            
+            // Agent 5: Traveling to Epoch Spike
+            agents.push({
+                id: 'mock_agent_5',
+                username: names[4],
+                archetype: archetypes[4],
+                cluster: clusters[1], // Corporate
+                clusterName: clusters[1],
+                location: 'Nexarch',
+                locationKey: 'nexarch',
+                visualX: 77, visualY: 33,
+                state: 'traveling',
+                journey: {
+                    destination: 'Epoch Spike',
+                    destinationKey: 'epoch-spike',
+                    start_pos: { x: 77, y: 33 },
+                    end_pos: { x: 17, y: 7 },
+                    start_time: now - (60 * 60 * 1000), // Started 1 hour ago
+                    end_time: now + (120 * 60 * 1000), // 2 hours remaining
+                    duration_ms: 180 * 60 * 1000,
+                    status: 'active',
+                    waypoints: [180, 170, 98, 30, 7] // Nexarch → Epoch Spike
+                }
+            });
+            
+            // Agent 6: Idle at Diffusion Mesa
+            agents.push({
+                id: 'mock_agent_6',
+                username: names[5],
+                archetype: archetypes[5],
+                cluster: clusters[2], // Governmental
+                clusterName: clusters[2],
+                location: 'Diffusion Mesa',
+                locationKey: 'diffusion-mesa',
+                visualX: 23, visualY: 45,
+                state: 'idle',
+                activity: 'exploring'
+            });
+            
+            // Agent 7: Traveling from Proof of Death to Nexarch
+            agents.push({
+                id: 'mock_agent_7',
+                username: names[6],
+                archetype: archetypes[0],
+                cluster: clusters[0], // P2P
+                clusterName: clusters[0],
+                location: 'Proof-of-Death',
+                locationKey: 'proof-of-death',
+                visualX: 40, visualY: 78,
+                state: 'traveling',
+                journey: {
+                    destination: 'Nexarch',
+                    destinationKey: 'nexarch',
+                    start_pos: { x: 40, y: 78 },
+                    end_pos: { x: 77, y: 33 },
+                    start_time: now - (45 * 60 * 1000), // Started 45 min ago
+                    end_time: now + (90 * 60 * 1000), // 90 min remaining
+                    duration_ms: 135 * 60 * 1000,
+                    status: 'active',
+                    waypoints: [429, 398, 349, 180] // Proof-of-Death → Nexarch
+                }
+            });
+            
+            // Agent 8: Idle at Singularity Crater
+            agents.push({
+                id: 'mock_agent_8',
+                username: names[7],
+                archetype: archetypes[1],
+                cluster: clusters[1], // Corporate
+                clusterName: clusters[1],
+                location: 'Singularity Crater',
+                locationKey: 'singularity-crater',
+                visualX: 22, visualY: 15,
+                state: 'idle',
+                activity: 'investigating'
+            });
+            
+            return agents;
+        }
+        
+        // Render all agent markers on the map
+        function renderAllAgents(agents) {
+            const container = document.getElementById('agentMarkers');
+            if (!container) return;
+            
+            // Clear existing markers
+            container.innerHTML = '';
+            
+            agents.forEach(agent => {
+                const pos = getCurrentPosition(agent);
+                const marker = createAgentMarker(agent, pos);
+                container.appendChild(marker);
+            });
+        }
+        
+        // Create individual agent marker element
+        function createAgentMarker(agent, position) {
+            const marker = document.createElement('div');
+            marker.className = 'agent-marker';
+            marker.id = `agent_${agent.id}`;
+            marker.style.left = `${position.x}%`;
+            marker.style.top = `${position.y}%`;
+            
+            // Add cluster class
+            if (agent.cluster) {
+                const clusterClass = getClusterClass(agent.cluster);
+                marker.classList.add(clusterClass);
+            }
+            
+            // Add traveling class if active
+            if (agent.journey && agent.journey.status === 'active') {
+                marker.classList.add('traveling');
+            }
+            
+            // Add tooltip
+            const agentState = determineAgentState(agent);
+            const clusterName = agent.clusterName || 'No Cluster';
+            
+            marker.innerHTML = `
+                <div class="agent-tooltip">
+                    <div class="agent-tooltip-name">${agent.username.toUpperCase()}</div>
+                    <div class="agent-tooltip-state">${agentState}</div>
+                    <div class="agent-tooltip-cluster">[${clusterName}]</div>
+                </div>
+            `;
+            
+            return marker;
+        }
+        
+        // Global animation loop for all agents
+        let allAgents = [];
+        let animationFrameId = null;
+        
+        function startGlobalAgentAnimation() {
+            function animate() {
+                allAgents.forEach(agent => {
+                    const pos = getCurrentPosition(agent);
+                    const marker = document.getElementById(`agent_${agent.id}`);
+                    if (marker) {
+                        marker.style.left = `${pos.x}%`;
+                        marker.style.top = `${pos.y}%`;
+                    }
+                });
+                
+                animationFrameId = requestAnimationFrame(animate);
+            }
+            
+            animate();
+        }
+        
+        // Initialize multi-agent system
+        function initializeAgentSystem() {
+            // Generate mock agents
+            allAgents = generateMockAgents();
+            
+            // Render them
+            renderAllAgents(allAgents);
+            
+            // Start animation loop
+            startGlobalAgentAnimation();
+            
+            console.log(`🤖 Initialized ${allAgents.length} AI agents on the map`);
+        }
+
+        // Position agent marker and update tooltip (LEGACY - keep for user agent)
         // Position agent marker using VISUAL coordinates (0-100)
         function positionAgentMarker(visualX, visualY, agent) {
+            // This function is now only used for the player's agent in the dashboard stats
+            // The actual map rendering uses renderAllAgents()
             const marker = document.getElementById('agentMarker');
             if (!marker) return;
 
