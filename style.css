@@ -479,14 +479,14 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 10px;
+    padding: 12px 10px;
     background: rgba(0, 255, 204, 0.05);
     border: 2px solid rgba(0, 255, 204, 0.3);
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s ease;
     position: relative;
-    min-height: 70px;
+    min-height: 50px;
 }
 
 .mechanic-item:hover {
@@ -496,37 +496,29 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
     box-shadow: 0 0 20px rgba(0, 255, 204, 0.4);
 }
 
-.mechanic-icon {
-    font-size: 1.5rem;
-    margin-bottom: 5px;
-}
-
-.mechanic-icon-sprite {
-    width: 50px;
-    height: 50px;
-    background-image: url('images/mechanics/3row mechanics.jpg');
-    background-size: 300% 400%;
-    margin-bottom: 5px;
-    transition: all 0.3s ease;
-    border-radius: 5px;
-}
-
-.mechanic-item:hover .mechanic-icon-sprite {
-    filter: brightness(1.4) drop-shadow(0 0 15px rgba(0, 255, 204, 0.8));
-    transform: scale(1.1);
-}
-
 .mechanic-name {
     font-family: var(--font-main);
-    color: var(--color-primary);
-    font-size: 0.75rem;
+    color: #ff3333;
+    font-size: 0.8rem;
     text-align: center;
-    font-weight: bold;
+    font-weight: normal;
     letter-spacing: 0.05em;
+    margin: 0;
 }
 
-/* Hardcore mechanic gets red text */
+.mechanic-name .blink-cursor {
+    display: inline-block;
+    margin-right: 0.2em;
+    animation: blink 1s step-end infinite;
+    color: #ff3333;
+}
+
+/* Hardcore mechanic keeps red text (already red via terminal-title) */
 .mechanic-item[data-mechanic="hardcore"] .mechanic-name {
+    color: #ff0000;
+}
+
+.mechanic-item[data-mechanic="hardcore"] .mechanic-name .blink-cursor {
     color: #ff0000;
 }
 
@@ -1424,15 +1416,6 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
     .mechanic-item {
         padding: 8px;
         min-height: 60px;
-    }
-    
-    .mechanic-icon {
-        font-size: 1.3rem;
-    }
-    
-    .mechanic-icon-sprite {
-        width: 40px;
-        height: 40px;
     }
     
     .mechanic-name {
