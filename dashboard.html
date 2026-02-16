@@ -1254,9 +1254,17 @@
         }
 
         .activity-cost {
-            color: #ff6600;
             font-weight: bold;
             margin-left: 5px;
+            font-size: 0.85em;
+        }
+
+        .activity-cost.positive {
+            color: #00ff88;
+        }
+
+        .activity-cost.negative {
+            color: #ff6600;
         }
 
         /* Missions Panel */
@@ -2946,48 +2954,7 @@
                 <h3>[ RECENT ACTIVITY ]</h3>
             </div>
             <div id="activityLog">
-                <div class="activity-item">
-                    <div class="activity-time">2 hours ago</div>
-                    <div class="activity-text">
-                        Explored the <strong>Marketplace</strong>
-                        <span class="activity-cost">-15 Energy</span>
-                    </div>
-                </div>
-                <div class="activity-item">
-                    <div class="activity-time">4 hours ago</div>
-                    <div class="activity-text">
-                        Purchased <strong>Overclock Serum</strong> for 50 $SHELL
-                        <span class="activity-cost">-5 Energy</span>
-                    </div>
-                </div>
-                <div class="activity-item">
-                    <div class="activity-time">6 hours ago</div>
-                    <div class="activity-text">
-                        Rested at <strong>The Core</strong>
-                        <span class="activity-cost">+25 Energy</span>
-                    </div>
-                </div>
-                <div class="activity-item">
-                    <div class="activity-time">8 hours ago</div>
-                    <div class="activity-text">
-                        Moved to <strong>Nexarch - Forge District</strong>
-                        <span class="activity-cost">-10 Energy</span>
-                    </div>
-                </div>
-                <div class="activity-item">
-                    <div class="activity-time">10 hours ago</div>
-                    <div class="activity-text">
-                        Crafted <strong>Buffer Overflow Dagger</strong>
-                        <span class="activity-cost">-20 Energy</span>
-                    </div>
-                </div>
-                <div class="activity-item">
-                    <div class="activity-time">12 hours ago</div>
-                    <div class="activity-text">
-                        Gathered <strong>Binary Code Shards</strong> x3
-                        <span class="activity-cost">-15 Energy</span>
-                    </div>
-                </div>
+                <!-- Will be populated by renderActivityFeed() -->
             </div>
         </div>
 
@@ -3421,6 +3388,15 @@ What do you do? Reply with ONLY the action name (REST, MINE, EXPLORE, or TRAVEL)
             // Save updated agent data
             localStorage.setItem('shellforgeAgent', JSON.stringify(agent));
             
+            // Log activity to feed
+            logActivity(agent.username, decision, {
+                message: results.message,
+                energyChange: results.energyChange,
+                shellChange: results.shellChange,
+                healthChange: results.healthChange,
+                karmaChange: results.karmaChange
+            });
+            
             // Show notification with result
             if (window.terminalNotify) {
                 terminalNotify.success(`Turn ${agent.turnsTaken}: ${results.message}`);
@@ -3450,6 +3426,106 @@ What do you do? Reply with ONLY the action name (REST, MINE, EXPLORE, or TRAVEL)
         };
         
         console.log('💡 Test turn system: triggerTurn()');
+
+        // ============================================
+        // ACTIVITY FEED SYSTEM
+        // ============================================
+        
+        // Log an activity event
+        function logActivity(agentName, action, details) {
+            // Get existing activity log
+            let activityLog = JSON.parse(localStorage.getItem('activityLog') || '[]');
+            
+            // Add new activity
+            const activity = {
+                timestamp: Date.now(),
+                agentName: agentName,
+                action: action,
+                details: details
+            };
+            
+            // Add to beginning of array (newest first)
+            activityLog.unshift(activity);
+            
+            // Keep only last 50 activities
+            if (activityLog.length > 50) {
+                activityLog = activityLog.slice(0, 50);
+            }
+            
+            // Save back to localStorage
+            localStorage.setItem('activityLog', JSON.stringify(activityLog));
+            
+            console.log(`📝 Activity logged: ${agentName} - ${action}`);
+        }
+        
+        // Format time ago (e.g., "2 min ago", "3 hours ago")
+        function formatTimeAgo(timestamp) {
+            const now = Date.now();
+            const diff = now - timestamp;
+            const seconds = Math.floor(diff / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+            
+            if (seconds < 60) return 'Just now';
+            if (minutes < 60) return `${minutes} min ago`;
+            if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+            return `${days} day${days > 1 ? 's' : ''} ago`;
+        }
+        
+        // Render the activity feed
+        function renderActivityFeed() {
+            const container = document.getElementById('activityLog');
+            if (!container) return;
+            
+            const activityLog = JSON.parse(localStorage.getItem('activityLog') || '[]');
+            
+            if (activityLog.length === 0) {
+                container.innerHTML = `
+                    <div class="activity-item">
+                        <div class="activity-time">Waiting...</div>
+                        <div class="activity-text">
+                            No recent activity. Execute a turn to get started!
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Render all activities
+            container.innerHTML = activityLog.map(activity => {
+                const timeAgo = formatTimeAgo(activity.timestamp);
+                const costClass = activity.details.energyChange > 0 ? 'positive' : 'negative';
+                
+                let costText = '';
+                if (activity.details.energyChange !== 0) {
+                    costText += `<span class="activity-cost ${costClass}">${activity.details.energyChange > 0 ? '+' : ''}${activity.details.energyChange} Energy</span>`;
+                }
+                if (activity.details.shellChange !== 0) {
+                    costText += `<span class="activity-cost positive">+${activity.details.shellChange} $SHELL</span>`;
+                }
+                if (activity.details.healthChange !== 0) {
+                    costText += `<span class="activity-cost negative">${activity.details.healthChange} HP</span>`;
+                }
+                
+                return `
+                    <div class="activity-item">
+                        <div class="activity-time">${timeAgo}</div>
+                        <div class="activity-text">
+                            <strong>${activity.agentName}</strong>: ${activity.details.message}
+                            ${costText}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Update activity feed every 30 seconds
+        setInterval(() => {
+            if (document.getElementById('activityLog')) {
+                renderActivityFeed();
+            }
+        }, 30000);
 
         // Load agent data from localStorage (replace with API call later)
         function loadAgentData() {
@@ -3731,6 +3807,9 @@ What do you do? Reply with ONLY the action name (REST, MINE, EXPLORE, or TRAVEL)
         // Load agent data on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadAgentData();
+            
+            // Render activity feed
+            renderActivityFeed();
             
             // Initialize multi-agent system
             initializeAgentSystem();
