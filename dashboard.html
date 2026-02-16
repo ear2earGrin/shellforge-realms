@@ -567,8 +567,8 @@
 
         .agent-marker {
             position: absolute;
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
             background: #00ff00;
             border: 1px solid #00ff00;
@@ -577,9 +577,30 @@
             transform: translate(-50%, -50%);
             cursor: pointer;
             transition: all 0.3s ease;
+            opacity: 0.7;
         }
 
-        /* Keep all dots same size (removed size change for traveling) */
+        /* Player agent marker - larger and brighter */
+        .agent-marker.player-agent {
+            width: 10px;
+            height: 10px;
+            opacity: 1;
+            z-index: 15;
+            border-width: 2px;
+        }
+
+        /* Player agent cluster colors - enhanced glow */
+        .agent-marker.player-agent.cluster-p2p {
+            box-shadow: 0 0 12px rgba(136, 255, 136, 0.9);
+        }
+
+        .agent-marker.player-agent.cluster-governmental {
+            box-shadow: 0 0 12px rgba(0, 136, 255, 0.9);
+        }
+
+        .agent-marker.player-agent.cluster-corporate {
+            box-shadow: 0 0 12px rgba(255, 153, 0, 0.9);
+        }
 
         /* Cluster-based colors (for future multi-agent support) */
         .agent-marker.cluster-p2p {
@@ -3160,28 +3181,6 @@
                 startJourneyAnimation(agent);
             }
             
-            // Add player's agent to the global agents array for map rendering
-            if (allAgents && allAgents.length > 0) {
-                // Add player agent with special ID
-                const playerAgent = {
-                    ...agent,
-                    id: 'player_agent',
-                    cluster: agent.cluster || 'DYN_Swarm',
-                    clusterName: agent.clusterName || 'DYN_Swarm (P2P)'
-                };
-                
-                // Check if player agent already exists in array
-                const existingIndex = allAgents.findIndex(a => a.id === 'player_agent');
-                if (existingIndex >= 0) {
-                    allAgents[existingIndex] = playerAgent;
-                } else {
-                    allAgents.push(playerAgent);
-                }
-                
-                // Re-render all agents to include player
-                renderAllAgents(allAgents);
-            }
-
             // Update shell balance
             document.querySelector('.shell-balance').textContent = `${agent.shell || 50} $SHELL`;
 
@@ -4011,6 +4010,11 @@
             marker.style.left = `${position.x}%`;
             marker.style.top = `${position.y}%`;
             
+            // Add player-agent class if this is the player's agent
+            if (agent.id === 'player_agent') {
+                marker.classList.add('player-agent');
+            }
+            
             // Add cluster class
             if (agent.cluster) {
                 const clusterClass = getClusterClass(agent.cluster);
@@ -4041,6 +4045,9 @@
                     e.stopPropagation();
                     showAgentInfoPanel(agent);
                 });
+            } else {
+                // Player agent shouldn't open info panel on click
+                marker.style.cursor = 'default';
             }
             
             return marker;
@@ -4072,13 +4079,36 @@
             // Generate mock agents
             allAgents = generateMockAgents();
             
+            // Add player's agent to the array
+            const playerAgentData = localStorage.getItem('shellforgeAgent');
+            if (playerAgentData) {
+                const agent = JSON.parse(playerAgentData);
+                const playerAgent = {
+                    ...agent,
+                    id: 'player_agent',
+                    username: agent.username || 'Player',
+                    archetype: agent.archetype || 'Shadow',
+                    cluster: agent.cluster || 'DYN_Swarm',
+                    clusterName: agent.clusterName || 'DYN_Swarm (P2P)',
+                    location: agent.location || 'Nexarch',
+                    locationKey: agent.locationKey || 'nexarch',
+                    visualX: agent.visualX !== undefined ? agent.visualX : 77,
+                    visualY: agent.visualY !== undefined ? agent.visualY : 33,
+                    state: agent.state || 'idle',
+                    journey: agent.journey || null
+                };
+                
+                allAgents.push(playerAgent);
+                console.log(`✅ Added player agent: ${playerAgent.username} at (${playerAgent.visualX}, ${playerAgent.visualY})`);
+            }
+            
             // Render them
             renderAllAgents(allAgents);
             
             // Start animation loop
             startGlobalAgentAnimation();
             
-            console.log(`🤖 Initialized ${allAgents.length} AI agents on the map`);
+            console.log(`🤖 Initialized ${allAgents.length} agents on the map (${allAgents.length - 1} AI + 1 player)`);
         }
         
         // Generate mock decision history for an agent
