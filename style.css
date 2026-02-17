@@ -1375,6 +1375,13 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
 }
 
 /* Responsive */
+@media (max-width: 1500px) {
+    /* Hide activity feed on MacBook Air and similar laptops to prevent overlap */
+    .activity-feed-hero {
+        display: none;
+    }
+}
+
 @media (max-width: 1024px) {
     .items-sidebar {
         left: 15px;
