@@ -90,11 +90,12 @@
 
         .dashboard-container {
             min-height: 100vh;
+            max-height: 100vh;
             background: linear-gradient(135deg, #0a0a0f 0%, #1a0f2e 100%);
             padding: 80px 20px 20px;
             display: grid;
             grid-template-columns: 300px 1fr 320px;
-            grid-template-rows: auto auto auto auto;
+            grid-template-rows: minmax(0, auto) minmax(0, auto) minmax(0, auto) minmax(0, 1fr);
             gap: 15px;
             grid-template-areas:
                 "agent-status map-view whisper-panel"
@@ -103,6 +104,7 @@
                 "quest-log quest-log quest-log";
             max-width: 100%;
             overflow-x: hidden;
+            overflow-y: auto;
         }
 
         /* Agent Status Card */
@@ -1477,16 +1479,16 @@
         }
 
         /* Responsive */
-        @media (max-width: 1400px) {
+        @media (max-width: 1600px) {
             .dashboard-container {
                 grid-template-columns: 280px 1fr 280px;
             }
         }
 
-        /* Medium screens (laptops ~13-14"): Switch to 2-column to prevent overlap */
-        @media (max-width: 1300px) {
+        /* Medium screens (MacBook Air 13-14", laptops): Switch to 2-column to prevent overlap */
+        @media (max-width: 1440px) {
             .dashboard-container {
-                grid-template-columns: 300px 1fr;
+                grid-template-columns: 280px 1fr;
                 grid-template-rows: auto auto auto auto auto;
                 grid-template-areas:
                     "agent-status map-view"
@@ -1498,6 +1500,12 @@
 
             .quest-log-panel {
                 margin-top: 15px;
+                max-height: 200px;
+                overflow-y: auto;
+            }
+
+            .map-container {
+                max-height: 400px;
             }
         }
 
