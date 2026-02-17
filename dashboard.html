@@ -101,6 +101,8 @@
                 "agent-status map-view missions-panel"
                 "agent-status map-view inventory-panel"
                 "quest-log quest-log quest-log";
+            max-width: 100%;
+            overflow-x: hidden;
         }
 
         /* Agent Status Card */
@@ -1481,6 +1483,50 @@
             }
         }
 
+        /* Medium screens (laptops ~13-14"): Switch to 2-column to prevent overlap */
+        @media (max-width: 1300px) {
+            .dashboard-container {
+                grid-template-columns: 300px 1fr;
+                grid-template-rows: auto auto auto auto auto;
+                grid-template-areas:
+                    "agent-status map-view"
+                    "agent-status whisper-panel"
+                    "agent-status missions-panel"
+                    "agent-status inventory-panel"
+                    "quest-log quest-log";
+            }
+
+            .quest-log-panel {
+                margin-top: 15px;
+            }
+        }
+
+        /* Tablets: Single column */
+        @media (max-width: 1024px) {
+            .dashboard-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto auto auto auto;
+                grid-template-areas:
+                    "agent-status"
+                    "map-view"
+                    "whisper-panel"
+                    "missions-panel"
+                    "inventory-panel"
+                    "quest-log";
+            }
+
+            .quest-log-panel,
+            .whisper-panel {
+                max-height: 300px;
+            }
+
+            .missions-panel,
+            .inventory-panel {
+                max-height: 280px;
+            }
+        }
+
+        /* Mobile phones */
         @media (max-width: 768px) {
             .dashboard-nav {
                 padding: 0 15px;
@@ -1502,30 +1548,6 @@
 
             .dashboard-container {
                 padding-top: 70px;
-            }
-        }
-
-        @media (max-width: 1200px) {
-            .dashboard-container {
-                grid-template-columns: 1fr;
-                grid-template-rows: auto auto auto auto auto auto;
-                grid-template-areas:
-                    "agent-status"
-                    "map-view"
-                    "whisper-panel"
-                    "missions-panel"
-                    "inventory-panel"
-                    "quest-log";
-            }
-
-            .quest-log-panel,
-            .whisper-panel {
-                max-height: 300px;
-            }
-
-            .missions-panel,
-            .inventory-panel {
-                max-height: 280px;
             }
         }
 
