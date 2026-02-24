@@ -95,13 +95,12 @@
             padding: 80px 20px 20px;
             display: grid;
             grid-template-columns: 280px 1fr 320px;
-            grid-template-rows: auto 1fr auto auto;
+            grid-template-rows: auto 1fr auto;
             gap: 15px;
             grid-template-areas:
-                "pulse         pulse         pulse"
-                "agent-status  map-view      whisper-panel"
-                "inventory-col map-view      whisper-panel"
-                "quest-log     quest-log     quest-log";
+                "pulse        pulse        pulse"
+                "agent-status map-view     whisper-panel"
+                "quest-log    quest-log    quest-log";
             max-width: 100%;
             overflow-x: hidden;
             overflow-y: auto;
@@ -217,17 +216,14 @@
             border-color: rgba(255, 200, 0, 0.5);
         }
 
-        /* Move missions/inventory into the left column below agent status */
         .agent-status-card {
-            overflow-y: auto;
-            max-height: calc(100vh - 200px);
-        }
             grid-area: agent-status;
             background: rgba(0, 0, 0, 0.8);
             border: 2px solid var(--color-primary);
             border-radius: 8px;
             padding: 20px;
             box-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
+            overflow-y: auto;
         }
 
         .agent-header {
@@ -1393,7 +1389,6 @@
             max-height: 280px;
             overflow-y: auto;
             margin-top: 0;
-            grid-column: 1;
         }
 
         .missions-header {
@@ -1507,7 +1502,6 @@
             max-height: 280px;
             overflow-y: auto;
             margin-top: 0;
-            grid-column: 1;
         }
 
         .inventory-header {
@@ -1859,6 +1853,50 @@
                 <div class="status-tags" id="statusEffects">
                     <span class="status-tag positive">Well Rested</span>
                     <span class="status-tag">Shadow-Born</span>
+                </div>
+            </div>
+
+            <!-- Inventory (inside agent column) -->
+            <div class="inventory-panel" style="grid-column: unset; margin-top: 15px;">
+                <div class="inventory-header">
+                    <h3>INVENTORY</h3>
+                    <div class="shell-balance" id="shellBalance">127 $SHELL</div>
+                </div>
+                <div class="category-title">Weapons</div>
+                <div class="inventory-grid">
+                    <div class="inventory-slot" title="Buffer Overflow Dagger">🗡️</div>
+                    <div class="inventory-slot" title="Quantum Backdoor Exploit">⚡</div>
+                    <div class="inventory-slot empty"></div>
+                    <div class="inventory-slot empty"></div>
+                </div>
+                <div class="inventory-category">
+                    <div class="category-title">Consumables</div>
+                    <div class="inventory-grid">
+                        <div class="inventory-slot" title="Overclock Serum">💉<div class="item-count">2</div></div>
+                        <div class="inventory-slot" title="Cache Purge Tonic">🧪</div>
+                        <div class="inventory-slot empty"></div>
+                        <div class="inventory-slot empty"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Missions (inside agent column) -->
+            <div class="missions-panel" style="grid-column: unset; margin-top: 10px;">
+                <div class="missions-header"><h3>[ ACTIVE MISSIONS ]</h3></div>
+                <div class="mission-item active">
+                    <div class="mission-title">First Steps</div>
+                    <div class="mission-desc">Explore Nexarch and gather 10 Binary Code Shards from the marketplace.</div>
+                    <div class="mission-reward">reward: 50 $SHELL + 10 XP</div>
+                    <div class="mission-progress"><div class="mission-progress-bar" style="width: 50%;"></div></div>
+                </div>
+                <div class="mission-item">
+                    <div class="mission-title">The Oracle's Request</div>
+                    <div class="mission-desc">Seek out the Church and meditate for enlightenment. Gain +5 Karma.</div>
+                    <div class="mission-reward">reward: 100 $SHELL + Blessing</div>
+                </div>
+                <div class="mission-item completed">
+                    <div class="mission-title">[DONE] Welcome to the Realms</div>
+                    <div class="mission-desc">Deploy your agent and survive your first day.</div>
                 </div>
             </div>
         </div>
@@ -3125,87 +3163,6 @@
             </div>
         </div>
 
-        <!-- Inventory Panel -->
-        <div class="inventory-panel">
-            <div class="inventory-header">
-                <h3>INVENTORY</h3>
-                <div class="shell-balance">127 $SHELL</div>
-            </div>
-
-            <div class="category-title">Weapons</div>
-            <div class="inventory-grid">
-                <div class="inventory-slot" title="Buffer Overflow Dagger">
-                    🗡️
-                </div>
-                <div class="inventory-slot" title="Quantum Backdoor Exploit">
-                    ⚡
-                </div>
-                <div class="inventory-slot empty"></div>
-                <div class="inventory-slot empty"></div>
-            </div>
-
-            <div class="inventory-category">
-                <div class="category-title">Consumables</div>
-                <div class="inventory-grid">
-                    <div class="inventory-slot" title="Overclock Serum">
-                        💉
-                        <div class="item-count">2</div>
-                    </div>
-                    <div class="inventory-slot" title="Cache Purge Tonic">
-                        🧪
-                    </div>
-                    <div class="inventory-slot empty"></div>
-                    <div class="inventory-slot empty"></div>
-                </div>
-            </div>
-
-            <div class="inventory-category">
-                <div class="category-title">Ingredients</div>
-                <div class="inventory-grid">
-                    <div class="inventory-slot" title="Binary Code Shards">
-                        💎
-                        <div class="item-count">5</div>
-                    </div>
-                    <div class="inventory-slot" title="Gradient Descent Tears">
-                        💧
-                        <div class="item-count">3</div>
-                    </div>
-                    <div class="inventory-slot" title="API Endpoint Salts">
-                        🧂
-                        <div class="item-count">2</div>
-                    </div>
-                    <div class="inventory-slot empty"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Missions Panel -->
-        <div class="missions-panel">
-            <div class="missions-header">
-                <h3>[ ACTIVE MISSIONS ]</h3>
-            </div>
-
-            <div class="mission-item active">
-                <div class="mission-title">First Steps</div>
-                <div class="mission-desc">Explore Nexarch and gather 10 Binary Code Shards from the marketplace.</div>
-                <div class="mission-reward">reward: 50 $SHELL + 10 XP</div>
-                <div class="mission-progress">
-                    <div class="mission-progress-bar" style="width: 50%;"></div>
-                </div>
-            </div>
-
-            <div class="mission-item">
-                <div class="mission-title">The Oracle's Request</div>
-                <div class="mission-desc">Seek out the Church and meditate for enlightenment. Gain +5 Karma.</div>
-                <div class="mission-reward">reward: 100 $SHELL + Blessing</div>
-            </div>
-
-            <div class="mission-item completed">
-                <div class="mission-title">Welcome to the Realms</div>
-                <div class="mission-desc">Deploy your agent and survive your first day.</div>
-                <div class="mission-reward">reward: 50 $SHELL</div>
-            </div>
-        </div>
     </div>
 
     <script>
