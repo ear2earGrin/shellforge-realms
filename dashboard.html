@@ -1590,31 +1590,29 @@
         /* Responsive */
         @media (max-width: 1600px) {
             .dashboard-container {
-                grid-template-columns: 280px 1fr 280px;
+                grid-template-columns: 260px 1fr 300px;
             }
         }
 
-        /* Medium screens (MacBook Air 13-14", laptops): Switch to 2-column to prevent overlap */
+        /* Medium screens (MacBook Air 13-14", laptops) */
         @media (max-width: 1440px) {
             .dashboard-container {
-                grid-template-columns: 280px 1fr;
-                grid-template-rows: auto auto auto auto auto;
+                grid-template-columns: 260px 1fr 280px;
+                grid-template-rows: auto 1fr auto;
                 grid-template-areas:
-                    "agent-status map-view"
-                    "agent-status whisper-panel"
-                    "agent-status missions-panel"
-                    "agent-status inventory-panel"
-                    "quest-log quest-log";
+                    "pulse        pulse        pulse"
+                    "agent-status map-view     whisper-panel"
+                    "quest-log    quest-log    quest-log";
             }
 
             .quest-log-panel {
-                margin-top: 15px;
+                margin-top: 0;
                 max-height: 200px;
                 overflow-y: auto;
             }
 
             .map-container {
-                max-height: 400px;
+                max-height: 380px;
             }
         }
 
@@ -1622,24 +1620,18 @@
         @media (max-width: 1024px) {
             .dashboard-container {
                 grid-template-columns: 1fr;
-                grid-template-rows: auto auto auto auto auto auto;
+                grid-template-rows: auto auto auto auto auto;
                 grid-template-areas:
+                    "pulse"
                     "agent-status"
                     "map-view"
                     "whisper-panel"
-                    "missions-panel"
-                    "inventory-panel"
                     "quest-log";
             }
 
             .quest-log-panel,
             .whisper-panel {
                 max-height: 300px;
-            }
-
-            .missions-panel,
-            .inventory-panel {
-                max-height: 280px;
             }
         }
 
