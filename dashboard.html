@@ -94,21 +94,134 @@
             background: linear-gradient(135deg, #0a0a0f 0%, #1a0f2e 100%);
             padding: 80px 20px 20px;
             display: grid;
-            grid-template-columns: 300px 1fr 320px;
-            grid-template-rows: minmax(0, auto) minmax(0, auto) minmax(0, auto) minmax(0, 1fr);
+            grid-template-columns: 280px 1fr 320px;
+            grid-template-rows: auto 1fr auto auto;
             gap: 15px;
             grid-template-areas:
-                "agent-status map-view whisper-panel"
-                "agent-status map-view missions-panel"
-                "agent-status map-view inventory-panel"
-                "quest-log quest-log quest-log";
+                "pulse         pulse         pulse"
+                "agent-status  map-view      whisper-panel"
+                "inventory-col map-view      whisper-panel"
+                "quest-log     quest-log     quest-log";
             max-width: 100%;
             overflow-x: hidden;
             overflow-y: auto;
         }
 
-        /* Agent Status Card */
+        /* ============================================================
+           PULSE BAR — The "what is my bot doing right now?" zone
+           ============================================================ */
+        .pulse-bar {
+            grid-area: pulse;
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid rgba(0, 255, 204, 0.4);
+            border-radius: 8px;
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            box-shadow: 0 0 30px rgba(0, 255, 204, 0.08);
+            min-height: 70px;
+        }
+
+        .pulse-avatar-mini {
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            border: 2px solid var(--color-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            flex-shrink: 0;
+            box-shadow: 0 0 12px rgba(0, 255, 204, 0.4);
+            overflow: hidden;
+        }
+        .pulse-avatar-mini img { width: 100%; height: 100%; object-fit: cover; }
+
+        .pulse-status-text {
+            flex: 1;
+            font-family: var(--font-main);
+            color: var(--color-text);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .pulse-status-text .pulse-action {
+            color: var(--color-primary);
+            font-size: 1.05rem;
+            font-weight: bold;
+            letter-spacing: 0.03em;
+        }
+
+        .pulse-status-text .pulse-flavor {
+            color: rgba(255,255,255,0.55);
+            font-size: 0.82rem;
+            margin-top: 2px;
+        }
+
+        .pulse-meta {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .pulse-energy-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            color: var(--color-text-dim);
+        }
+
+        .pulse-energy-bar {
+            width: 100px;
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .pulse-energy-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ffcc, #00cc99);
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        .pulse-turn-badge {
+            font-size: 0.75rem;
+            padding: 3px 10px;
+            border-radius: 20px;
+            background: rgba(0, 255, 204, 0.1);
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            color: var(--color-primary);
+            letter-spacing: 0.05em;
+        }
+        .pulse-turn-badge.ready {
+            background: rgba(255, 0, 85, 0.15);
+            border-color: rgba(255, 0, 85, 0.5);
+            color: #ff0055;
+            animation: pulseGlow 1.5s infinite;
+        }
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 5px rgba(255,0,85,0.3); }
+            50% { box-shadow: 0 0 15px rgba(255,0,85,0.6); }
+        }
+
+        .pulse-bar.danger {
+            border-color: rgba(255, 0, 85, 0.6);
+            box-shadow: 0 0 20px rgba(255, 0, 85, 0.15);
+        }
+        .pulse-bar.traveling {
+            border-color: rgba(255, 200, 0, 0.5);
+        }
+
+        /* Move missions/inventory into the left column below agent status */
         .agent-status-card {
+            overflow-y: auto;
+            max-height: calc(100vh - 200px);
+        }
             grid-area: agent-status;
             background: rgba(0, 0, 0, 0.8);
             border: 2px solid var(--color-primary);
@@ -1271,15 +1384,16 @@
             color: #ff6600;
         }
 
-        /* Missions Panel */
+        /* Missions Panel - now inside left column */
         .missions-panel {
-            grid-area: missions-panel;
             background: rgba(0, 0, 0, 0.9);
             border: 1px solid rgba(0, 255, 204, 0.3);
             border-radius: 4px;
             padding: 15px;
             max-height: 280px;
             overflow-y: auto;
+            margin-top: 0;
+            grid-column: 1;
         }
 
         .missions-header {
@@ -1383,9 +1497,8 @@
             background: rgba(0, 255, 204, 0.5);
         }
 
-        /* Inventory Panel */
+        /* Inventory Panel - forced into left column */
         .inventory-panel {
-            grid-area: inventory-panel;
             background: rgba(0, 0, 0, 0.8);
             border: 2px solid var(--color-primary);
             border-radius: 8px;
@@ -1393,6 +1506,8 @@
             box-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
             max-height: 280px;
             overflow-y: auto;
+            margin-top: 0;
+            grid-column: 1;
         }
 
         .inventory-header {
@@ -1610,6 +1725,28 @@
     </nav>
 
     <div class="dashboard-container">
+
+        <!-- ═══════════════════════════════════════════════════════
+             PULSE BAR — What is my bot doing right now?
+             ═══════════════════════════════════════════════════════ -->
+        <div class="pulse-bar" id="pulseBar">
+            <div class="pulse-avatar-mini" id="pulseAvatar">🤖</div>
+            <div class="pulse-status-text">
+                <div class="pulse-action" id="pulseAction">Initializing...</div>
+                <div class="pulse-flavor" id="pulseFlavor">Waiting for first turn data</div>
+            </div>
+            <div class="pulse-meta">
+                <div class="pulse-energy-row">
+                    <span id="pulseEnergyLabel">Energy</span>
+                    <div class="pulse-energy-bar">
+                        <div class="pulse-energy-fill" id="pulseEnergyFill" style="width: 100%"></div>
+                    </div>
+                    <span id="pulseEnergyVal">100</span>
+                </div>
+                <div class="pulse-turn-badge" id="pulseTurnBadge">TURN READY</div>
+            </div>
+        </div>
+
         <!-- Agent Status Card -->
         <div class="agent-status-card">
             <div class="agent-header">
@@ -2954,8 +3091,8 @@
                 <button id="cancelJourneyBtn" style="margin-top: 8px; width: 100%; padding: 6px; background: #ff0000; border: 1px solid #ff0000; border-radius: 4px; color: #fff; font-size: 0.75rem; cursor: pointer;">Cancel Journey</button>
             </div>
             
-            <!-- Location Debug (always visible during testing) -->
-            <div id="locationDebug" style="margin-top: 10px; padding: 8px; background: rgba(0, 255, 255, 0.1); border: 1px solid rgba(0, 255, 255, 0.3); border-radius: 4px; font-size: 0.7rem; font-family: monospace;">
+            <!-- Location Debug (hidden in production) -->
+            <div id="locationDebug" style="margin-top: 10px; padding: 8px; background: rgba(0, 255, 255, 0.1); border: 1px solid rgba(0, 255, 255, 0.3); border-radius: 4px; font-size: 0.7rem; font-family: monospace; display: none;">
                 <div style="color: #00ffff; font-weight: bold; margin-bottom: 3px;">LOCATION:</div>
                 <div id="locationContent" style="color: #00ff00; line-height: 1.4;"></div>
             </div>
@@ -3558,6 +3695,69 @@ What do you do? Reply with ONLY the action name (REST, MINE, EXPLORE, or TRAVEL)
         }, 30000);
 
         // Load agent data from localStorage (replace with API call later)
+        // ============================================================
+        // PULSE BAR — Cinematic "what is my bot doing right now?"
+        // ============================================================
+        const PULSE_STATES = {
+            idle:      { label: 'idling in', flavor: 'Energy conserved. Watching the rain fall.', danger: false },
+            mining:    { label: 'mining at', flavor: 'Extracting raw data from the veins.', danger: false },
+            traveling: { label: 'traveling to', flavor: 'Moving through the wilderness. Exposed.', danger: false, traveling: true },
+            resting:   { label: 'resting in', flavor: 'Energy depleted. Dark dreams of circuits.', danger: false },
+            exploring: { label: 'exploring near', flavor: 'Scouting unfamiliar territory. Careful.', danger: false },
+            combat:    { label: 'in combat at', flavor: '⚠ Fighting for survival. Health at risk.', danger: true },
+            trading:   { label: 'trading at', flavor: 'Haggling in the marketplace haze.', danger: false },
+            praying:   { label: 'praying at', flavor: 'Seeking the Church's signal.', danger: false },
+            crafting:  { label: 'crafting at', flavor: 'Hammering something dangerous together.', danger: false },
+        };
+
+        function updatePulseBar(agent) {
+            const state = agent.state || 'idle';
+            const stateData = PULSE_STATES[state] || PULSE_STATES.idle;
+            const location = agent.destination || agent.location || 'Nexarch';
+            const energy = agent.energy || 0;
+            const turnReady = !agent.lastTurnTime ||
+                (Date.now() - new Date(agent.lastTurnTime).getTime()) > 3 * 60 * 60 * 1000;
+
+            // Action text
+            document.getElementById('pulseAction').textContent =
+                `${agent.username?.toUpperCase() || 'AGENT'} is ${stateData.label} ${location}`;
+            document.getElementById('pulseFlavor').textContent = stateData.flavor;
+
+            // Energy bar
+            document.getElementById('pulseEnergyFill').style.width = `${energy}%`;
+            document.getElementById('pulseEnergyVal').textContent = energy;
+
+            // Avatar (mirror the main one)
+            const mainAvatar = document.querySelector('.agent-avatar');
+            const pulseAvatar = document.getElementById('pulseAvatar');
+            if (mainAvatar && pulseAvatar) {
+                pulseAvatar.innerHTML = mainAvatar.innerHTML || '🤖';
+            }
+
+            // Turn badge
+            const badge = document.getElementById('pulseTurnBadge');
+            if (turnReady) {
+                badge.textContent = '⚡ TURN READY';
+                badge.classList.add('ready');
+            } else {
+                badge.textContent = 'NEXT TURN PENDING';
+                badge.classList.remove('ready');
+            }
+
+            // Pulse bar color state
+            const bar = document.getElementById('pulseBar');
+            bar.classList.remove('danger', 'traveling');
+            if (stateData.danger) bar.classList.add('danger');
+            if (stateData.traveling) bar.classList.add('traveling');
+
+            // Low energy warning
+            if (energy < 20) {
+                document.getElementById('pulseFlavor').textContent =
+                    `⚠ Energy critical (${energy}/100). Agent may rest soon.`;
+                bar.classList.add('danger');
+            }
+        }
+
         function loadAgentData() {
             if (!checkLoginStatus()) return;
 
@@ -3627,6 +3827,20 @@ What do you do? Reply with ONLY the action name (REST, MINE, EXPLORE, or TRAVEL)
                 avatarDiv.innerHTML = `<img src="images/archetypes/${agent.archetypeImage}" alt="${agent.archetypeName}">`;
             }
 
+            // Ensure defaults exist (handles agents created before energy/health were added)
+            if (agent.energy === undefined || agent.energy === null) {
+                agent.energy = 100;
+                localStorage.setItem('shellforgeAgent', JSON.stringify(agent));
+            }
+            if (agent.health === undefined || agent.health === null) {
+                agent.health = 100;
+                localStorage.setItem('shellforgeAgent', JSON.stringify(agent));
+            }
+            if (agent.karma === undefined || agent.karma === null) {
+                agent.karma = 0;
+                localStorage.setItem('shellforgeAgent', JSON.stringify(agent));
+            }
+
             // Update stats
             document.getElementById('energyValue').textContent = `${agent.energy}/100`;
             document.getElementById('energyBar').style.width = `${agent.energy}%`;
@@ -3637,6 +3851,9 @@ What do you do? Reply with ONLY the action name (REST, MINE, EXPLORE, or TRAVEL)
             document.getElementById('karmaValue').textContent = agent.karma >= 0 ? `+${agent.karma}` : agent.karma;
             document.getElementById('locationValue').textContent = agent.location || 'Nexarch';
             document.getElementById('turnsValue').textContent = agent.turnsTaken || 0;
+
+            // ── Update PULSE BAR ──────────────────────────────────
+            updatePulseBar(agent);
             
             // Calculate days survived based on creation date
             const daysSurvived = agent.createdAt 
