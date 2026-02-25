@@ -713,12 +713,7 @@
             height: 100%;
             box-sizing: border-box;
         }
-        .map-container {
-            height: calc(100% - 48px);
-        }
-        .map-container img {
-            width: 100%; height: 100%; object-fit: cover; display: block;
-        }
+        /* map-container sizing handled below */
 
         .map-view-header {
             display: flex;
@@ -749,20 +744,44 @@
         .map-container {
             position: relative;
             width: 100%;
-            aspect-ratio: 3 / 2;
+            height: 100%;
             border-radius: 8px;
             overflow: hidden;
             border: 1px solid rgba(0, 255, 204, 0.3);
             user-select: none;
+            cursor: grab;
         }
-
-        .map-container img {
+        .map-container.dragging {
+            cursor: grabbing;
+        }
+        /* The inner draggable canvas — bigger than the viewport */
+        .map-drag-inner {
+            position: absolute;
+            top: 0; left: 0;
+            width: 160%;
+            height: 160%;
+            transform: translate(0px, 0px);
+            will-change: transform;
+        }
+        .map-drag-inner img {
             width: 100%;
             height: 100%;
             object-fit: cover;
             display: block;
-            filter: brightness(0.7);
+            pointer-events: none;
+            filter: brightness(0.8);
         }
+        /* SVG overlays follow the drag transform too */
+        .map-drag-inner .map-paths,
+        .map-drag-inner .map-paths-overlay,
+        .map-drag-inner #agentMarkers,
+        .map-drag-inner #wildernessMarkers {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+        }
+
+        /* map img handled by .map-drag-inner img */
 
         .map-paths {
             position: absolute;
@@ -1763,7 +1782,8 @@
                 <h3>[ WORLD MAP ]</h3>
                 <div class="location-badge" id="currentLocation">Nexarch - Dark Streets</div>
             </div>
-            <div class="map-container">
+            <div class="map-container" id="mapContainer">
+                <div class="map-drag-inner" id="mapDragInner">
                 <img src="images/main map.png" alt="Shellforge Map">
 
                 <!-- Waypoint Reference Numbers (for path building) -->
@@ -2957,8 +2977,9 @@
 
                 <!-- Agent marker positioned dynamically -->
                 <div class="agent-marker" id="agentMarker"></div>
-            </div>
-        </div>
+                </div><!-- /map-drag-inner -->
+            </div><!-- /map-container -->
+        </div><!-- /map-view-panel -->
 
         <!-- Whisper Panel -->
     </div><!-- end dashboard-container -->
@@ -3265,6 +3286,11 @@
 
             const agent = JSON.parse(agentData);
             
+            // Ensure numeric fields exist
+            if (agent.energy === undefined || agent.energy === null) agent.energy = 100;
+            if (agent.health === undefined || agent.health === null) agent.health = 100;
+            if (agent.karma === undefined || agent.karma === null) agent.karma = 0;
+            
             // Initialize agent position if not set
             if (!agent.location || agent.location === '') {
                 agent.location = 'Nexarch';
@@ -3323,6 +3349,12 @@
             document.getElementById('energyValue').textContent = `${agent.energy}/100`;
             updatePulseStrip(agent);
             document.getElementById('energyBar').style.width = `${agent.energy}%`;
+            // Pan map to center on agent after render
+            setTimeout(function() {
+                if (window.panMapToAgent && agent.visualX !== undefined && agent.visualY !== undefined) {
+                    window.panMapToAgent(agent.visualX, agent.visualY);
+                }
+            }, 200);
 
             document.getElementById('healthValue').textContent = `${agent.health}/100`;
             document.getElementById('healthBar').style.width = `${agent.health}%`;
@@ -4476,6 +4508,106 @@
             if (pef) pef.style.width = energy + '%';
             if (pev) pev.textContent = energy;
         }
+
+        // ─── Map drag-to-pan ───────────────────────────────────────
+        (function() {
+            var container = null, inner = null;
+            var isDragging = false;
+            var startX = 0, startY = 0;
+            var offsetX = 0, offsetY = 0;
+            var curX = 0, curY = 0;
+
+            function initMapDrag() {
+                container = document.getElementById('mapContainer');
+                inner = document.getElementById('mapDragInner');
+                if (!container || !inner) return;
+
+                // Start centered (show middle of map)
+                var cw = container.offsetWidth;
+                var ch = container.offsetHeight;
+                var iw = inner.offsetWidth;
+                var ih = inner.offsetHeight;
+                curX = -(iw - cw) / 2;
+                curY = -(ih - ch) / 2;
+                inner.style.transform = 'translate(' + curX + 'px, ' + curY + 'px)';
+
+                container.addEventListener('mousedown', onMouseDown);
+                window.addEventListener('mousemove', onMouseMove);
+                window.addEventListener('mouseup', onMouseUp);
+                container.addEventListener('touchstart', onTouchStart, { passive: true });
+                window.addEventListener('touchmove', onTouchMove, { passive: false });
+                window.addEventListener('touchend', onTouchEnd);
+            }
+
+            function clamp(val, min, max) {
+                return Math.max(min, Math.min(max, val));
+            }
+
+            function getBounds() {
+                var cw = container.offsetWidth;
+                var ch = container.offsetHeight;
+                var iw = inner.offsetWidth;
+                var ih = inner.offsetHeight;
+                return {
+                    minX: -(iw - cw), maxX: 0,
+                    minY: -(ih - ch), maxY: 0
+                };
+            }
+
+            function applyTransform(x, y) {
+                var b = getBounds();
+                curX = clamp(x, b.minX, b.maxX);
+                curY = clamp(y, b.minY, b.maxY);
+                inner.style.transform = 'translate(' + curX + 'px, ' + curY + 'px)';
+            }
+
+            function onMouseDown(e) {
+                if (e.button !== 0) return;
+                isDragging = true;
+                startX = e.clientX - curX;
+                startY = e.clientY - curY;
+                container.classList.add('dragging');
+                e.preventDefault();
+            }
+            function onMouseMove(e) {
+                if (!isDragging) return;
+                applyTransform(e.clientX - startX, e.clientY - startY);
+            }
+            function onMouseUp() {
+                isDragging = false;
+                if (container) container.classList.remove('dragging');
+            }
+            function onTouchStart(e) {
+                if (e.touches.length !== 1) return;
+                isDragging = true;
+                startX = e.touches[0].clientX - curX;
+                startY = e.touches[0].clientY - curY;
+            }
+            function onTouchMove(e) {
+                if (!isDragging || e.touches.length !== 1) return;
+                e.preventDefault();
+                applyTransform(e.touches[0].clientX - startX, e.touches[0].clientY - startY);
+            }
+            function onTouchEnd() { isDragging = false; }
+
+            // Also expose pan-to for agent marker centering
+            window.panMapToAgent = function(visualX, visualY) {
+                if (!container || !inner) return;
+                var cw = container.offsetWidth;
+                var ch = container.offsetHeight;
+                var iw = inner.offsetWidth;
+                var ih = inner.offsetHeight;
+                var targetX = -(visualX / 100 * iw) + cw / 2;
+                var targetY = -(visualY / 100 * ih) + ch / 2;
+                applyTransform(targetX, targetY);
+            };
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initMapDrag);
+            } else {
+                setTimeout(initMapDrag, 100);
+            }
+        })();
     </script>
     <script src="terminal-notifications.js"></script>
 </body>
