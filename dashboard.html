@@ -337,32 +337,18 @@
         }
         .btn-forge-attempt:hover { background: rgba(255,200,0,0.09); border-color: #ffcc00; box-shadow: 0 0 18px rgba(255,200,0,0.18); }
 
-        /* agent status card full height */
-        .agent-status-card {
-            grid-area: unset;
-            height: 100%;
-            overflow-y: auto;
-        }
-        .map-view-panel {
-            grid-area: unset;
-            height: 100%;
-            overflow: hidden;
-        }
-        .map-container {
-            height: calc(100% - 50px);
-        }
-        .map-container img {
-            width: 100%; height: 100%; object-fit: cover;
-        }
+        /* agent/map panel sizing handled below */
 
         /* Agent Status Card */
         .agent-status-card {
-            grid-area: agent-status;
             background: rgba(0, 0, 0, 0.8);
             border: 2px solid var(--color-primary);
             border-radius: 8px;
             padding: 20px;
             box-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
+            height: 100%;
+            overflow-y: auto;
+            box-sizing: border-box;
         }
 
         .agent-header {
@@ -717,7 +703,6 @@
 
         /* Map View */
         .map-view-panel {
-            grid-area: map-view;
             background: rgba(0, 0, 0, 0.8);
             border: 2px solid var(--color-primary);
             border-radius: 8px;
@@ -725,7 +710,14 @@
             box-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
             position: relative;
             overflow: hidden;
-            height: fit-content;
+            height: 100%;
+            box-sizing: border-box;
+        }
+        .map-container {
+            height: calc(100% - 48px);
+        }
+        .map-container img {
+            width: 100%; height: 100%; object-fit: cover; display: block;
         }
 
         .map-view-header {
@@ -4441,6 +4433,48 @@
                 marker.appendChild(tooltip);
                 container.appendChild(marker);
             });
+        }
+
+        // ─── Modal system ───────────────────────────────────────────
+        function openModal(id) {
+            document.querySelectorAll('.modal-overlay').forEach(function(m) {
+                m.classList.remove('open');
+            });
+            var el = document.getElementById('modal-' + id);
+            if (el) el.classList.add('open');
+        }
+        function closeModal(id) {
+            var el = document.getElementById('modal-' + id);
+            if (el) el.classList.remove('open');
+        }
+        function closeOnOverlay(e, id) {
+            if (e.target === e.currentTarget) closeModal(id);
+        }
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal-overlay').forEach(function(m) {
+                    m.classList.remove('open');
+                });
+            }
+        });
+
+        // ─── Pulse strip sync ───────────────────────────────────────
+        function updatePulseStrip(agent) {
+            var pa = document.getElementById('pulseAction');
+            var pef = document.getElementById('pulseEfill');
+            var pev = document.getElementById('pulseEnergyVal');
+            if (!agent || !pa) return;
+            var energy = (agent.energy !== undefined) ? agent.energy : 100;
+            var loc = agent.location || 'Unknown';
+            var stateMap = {
+                idle:'idling in', mining:'mining at', traveling:'traveling to',
+                combat:'in combat at', resting:'resting at', trading:'trading in',
+                praying:'praying at', crafting:'crafting at'
+            };
+            var verb = stateMap[agent.state] || 'in';
+            pa.innerHTML = '<span>' + (agent.username || 'AGENT') + ' is </span>' + verb + ' ' + loc;
+            if (pef) pef.style.width = energy + '%';
+            if (pev) pev.textContent = energy;
         }
     </script>
     <script src="terminal-notifications.js"></script>
