@@ -100,17 +100,79 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
 }
 
 @media (max-width: 768px) {
-    .music-toggle {
-        top: 15px;
-        right: 15px;
-        width: 44px;
-        height: 44px;
+    /* Switch from 3-col grid to single column scroll */
+    .hero {
+        height: auto;
+        min-height: 100vh;
+        overflow-y: auto;
+        align-items: flex-start;
     }
-    
-    .music-icon {
-        width: 20px;
-        height: 20px;
+    .hero-grid {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 12px;
+        pointer-events: auto;
+        top: auto; left: auto; right: auto; bottom: auto;
     }
+    .hero-col-left,
+    .hero-col-center,
+    .hero-col-right { width: 100%; }
+    /* Order: title first, then live feed, then mechanics + artifacts side by side */
+    .hero-col-center { order: 1; }
+    .hero-col-left   { order: 2; }
+    .hero-col-right  { order: 3; }
+
+    .left-bottom-stack { flex-direction: column; }
+
+    .shellforge-title {
+        font-size: clamp(2rem, 8vw, 4rem);
+        margin-bottom: 0.5rem;
+        margin-top: 0;
+    }
+    .shellforge-tagline { font-size: 0.85rem; margin-bottom: 1rem; }
+    .panel-image { max-width: 100%; }
+    .main-panel { max-width: 100%; padding: 0; }
+
+    .mechanics-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+    .mechanic-item { min-height: 50px; }
+    .mechanic-item::after {
+        left: 50%; right: auto; top: auto;
+        bottom: calc(100% + 15px);
+        transform: translateX(-50%) translateY(10px);
+        min-width: 240px;
+    }
+    .mechanic-item:hover::after { transform: translateX(-50%) translateY(0); }
+    .mechanic-item::before {
+        left: 50%; right: auto; top: auto;
+        bottom: calc(100% + 5px);
+        transform: translateX(-50%) rotate(90deg);
+    }
+
+    .sidebar-items-grid { grid-template-columns: repeat(4, 1fr); }
+    .sidebar-item { width: 52px; height: 52px; }
+    .sidebar-item::after {
+        right: auto; left: 50%; top: auto;
+        bottom: calc(100% + 15px);
+        transform: translateX(-50%) translateY(10px);
+    }
+    .sidebar-item:hover::after { transform: translateX(-50%) translateY(0); }
+
+    .curl-command { font-size: 0.85rem; padding: 10px 16px; }
+    .map-modal { padding: 60px 0 10px; }
+    .map-modal-container { max-width: 95%; }
+    .map-modal-close { top: 10px; right: 10px; font-size: 2rem; width: 50px; height: 50px; }
+    .marker-dot { width: 12px; height: 12px; }
+    .marker-label { font-size: 0.65rem; left: 18px; }
+    .cta-buttons { flex-direction: column; align-items: stretch; }
+    .subscribe-form { flex-direction: column; }
+    .social-links { flex-direction: column; align-items: center; }
+    .activity-console { min-height: 120px; max-height: 160px; padding: 10px; }
+    .activity-line { font-size: 0.75rem; }
 }
 
 .container {
@@ -128,6 +190,62 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
     align-items: center;
     overflow: hidden;
 }
+
+/* ─── Hero 3-Column Grid Layout ─────────────────────────── */
+.hero-grid {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: minmax(155px, 195px) 1fr minmax(195px, 235px);
+    grid-template-rows: 1fr;
+    padding: 16px;
+    gap: 12px;
+    pointer-events: none; /* let map bg be clickable */
+}
+.hero-grid > * { pointer-events: auto; }
+
+.hero-col-left {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 0;
+}
+
+.left-bottom-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.hero-col-center {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 0;
+}
+
+.hero-col-right {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 0;
+}
+
+/* ─── Panel base style (shared between all overlay panels) ── */
+.items-sidebar,
+.info-sidebar,
+.activity-feed-hero {
+    background: rgba(8, 12, 16, 0.82);
+    border: 1px solid rgba(74, 222, 128, 0.22);
+    border-radius: 6px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+
 
 /* Map Background */
 .map-background {
@@ -274,11 +392,10 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
 
 /* Main Panel (Loading Screen Image) */
 .main-panel {
-    position: relative;
-    z-index: 2;
     text-align: center;
-    max-width: 700px;
-    padding: 0 20px;
+    width: 100%;
+    max-width: min(700px, 100%);
+    padding: 0 12px;
 }
 
 .shellforge-title {
@@ -423,13 +540,7 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
 
 /* Agent Login Link (Below Activity Feed) */
 .agent-login-link {
-    position: absolute;
-    left: 30px;
-    bottom: 15px;
-    z-index: 2;
-    max-width: 500px;
     width: 100%;
-    text-align: center;
 }
 
 .login-button-link {
@@ -457,17 +568,8 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
 
 /* Mechanics Sidebar (Right) */
 .info-sidebar {
-    position: absolute;
-    right: 30px;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 2;
-    background: rgba(10, 10, 15, 0.85);
-    border: 2px solid rgba(74, 222, 128, 0.4);
-    border-radius: 10px;
-    padding: 15px;
-    backdrop-filter: blur(10px);
-    max-width: 280px;
+    padding: 12px;
+    width: 100%;
 }
 
 .mechanics-grid {
@@ -635,15 +737,8 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
 
 /* Artifacts Sidebar (Left) */
 .items-sidebar {
-    position: absolute;
-    left: 30px;
-    top: 8%;
-    z-index: 2;
-    background: rgba(10, 10, 15, 0.85);
-    border: 2px solid rgba(74, 222, 128, 0.4);
-    border-radius: 10px;
-    padding: 15px;
-    backdrop-filter: blur(10px);
+    padding: 12px;
+    width: 100%;
 }
 
 .sidebar-title-link {
@@ -685,7 +780,7 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
 .sidebar-items-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
+    gap: 8px;
 }
 
 .sidebar-item {
@@ -922,11 +1017,8 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
 
 /* Activity Feed in Hero (Left) */
 .activity-feed-hero {
-    position: absolute;
-    left: 30px;
-    bottom: 80px;
-    z-index: 2;
-    max-width: 500px;
+    width: 100%;
+    padding: 10px 12px;
 }
 
 .activity-title {
@@ -1486,197 +1578,7 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
     }
 }
 
-@media (max-width: 768px) {
-    .hero {
-        padding: 0 20px;
-        flex-direction: column;
-    }
-    
-    .shellforge-title {
-        font-size: clamp(2rem, 8vw, 4rem);
-        margin-bottom: 0.5rem;
-        margin-top: -1rem;
-    }
-    
-    .shellforge-tagline {
-        font-size: clamp(0.8rem, 2vw, 1rem);
-        margin-bottom: 1rem;
-        padding: 0 10px;
-    }
-    
-    .panel-image {
-        max-width: 100%;
-    }
-    
-    .panel-image-link {
-        display: block;
-        width: 100%;
-    }
-    
-    .main-panel {
-        order: 1;
-        margin: 20px 0;
-    }
-    
-    .info-sidebar {
-        position: relative;
-        right: auto;
-        top: auto;
-        transform: none;
-        margin: 20px auto;
-        max-width: 90%;
-        order: 2;
-    }
-    
-    .mechanics-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
-    }
-    
-    .mechanic-item {
-        min-height: 70px;
-    }
-    
-    .mechanic-item::after {
-        left: 50%;
-        right: auto;
-        top: auto;
-        bottom: calc(100% + 15px);
-        transform: translateX(-50%) translateY(10px);
-        min-width: 250px;
-    }
-    
-    .mechanic-item:hover::after {
-        transform: translateX(-50%) translateY(0);
-    }
-    
-    .mechanic-item::before {
-        left: 50%;
-        right: auto;
-        top: auto;
-        bottom: calc(100% + 5px);
-        transform: translateX(-50%) rotate(90deg);
-    }
-    
-    .items-sidebar {
-        position: relative;
-        left: auto;
-        top: auto;
-        transform: none;
-        margin: 20px auto;
-        width: fit-content;
-        order: 1;
-    }
-    
-    .sidebar-items-grid {
-        grid-template-columns: repeat(4, 1fr);
-    }
-    
-    .sidebar-item::after {
-        right: auto;
-        left: 50%;
-        top: auto;
-        bottom: calc(100% + 15px);
-        transform: translateX(-50%) translateY(10px);
-    }
-    
-    .sidebar-item:hover::after {
-        transform: translateX(-50%) translateY(0);
-    }
-    
-    .sidebar-item::before {
-        right: auto;
-        left: 50%;
-        top: auto;
-        bottom: calc(100% + 5px);
-        transform: translateX(-50%);
-        border-left: 8px solid transparent;
-        border-right: 8px solid transparent;
-        border-top: 8px solid var(--color-primary);
-        border-bottom: none;
-    }
-    
-    .curl-command {
-        font-size: 0.9rem;
-        padding: 12px 20px;
-    }
-    
-    .command-label {
-        font-size: 0.9rem;
-    }
-    
-    .cta-buttons {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .subscribe-form {
-        flex-direction: column;
-    }
-    
-    .social-links {
-        flex-direction: column;
-        align-items: center;
-    }
-    
-    .marker-dot {
-        width: 12px;
-        height: 12px;
-    }
-    
-    .marker-label {
-        font-size: 0.65rem;
-        left: 18px;
-    }
-    
-    .map-modal {
-        padding: 60px 0 10px;
-    }
-    
-    .map-modal-container {
-        max-width: 95%;
-    }
-    
-    .map-modal-close {
-        top: 10px;
-        right: 10px;
-        font-size: 2rem;
-        width: 50px;
-        height: 50px;
-    }
-    
-    .activity-feed-hero {
-        position: relative;
-        left: auto;
-        bottom: auto;
-        margin: 20px auto;
-        max-width: 90%;
-        order: 0;
-    }
-    
-    .agent-login-link {
-        position: relative;
-        left: auto;
-        bottom: auto;
-        margin: 15px auto 20px;
-        max-width: 90%;
-    }
-    
-    .activity-console {
-        padding: 12px;
-        min-height: 140px;
-        max-height: 180px;
-    }
-    
-    .activity-line {
-        font-size: 0.8rem;
-        line-height: 1.5;
-    }
-    
-    .activity-title {
-        font-size: 0.85rem;
-    }
-}
+
 
 /* Smooth Scrolling */
 html {
