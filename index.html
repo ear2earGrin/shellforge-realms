@@ -179,7 +179,7 @@
         .panels-container {
             padding: 12px 14px 20px;
             display: grid;
-            grid-template-columns: minmax(0,1fr) minmax(0,1.6fr) minmax(0,1fr) minmax(0,1.4fr);
+            grid-template-columns: minmax(0,1.1fr) minmax(0,1.8fr) minmax(0,0.85fr) minmax(0,1.2fr);
             gap: 10px;
             align-items: start;
         }
@@ -189,7 +189,16 @@
             background: rgba(10, 14, 18, 0.92);
             border: 1px solid rgba(74, 222, 128, 0.18);
             border-radius: 5px;
+            overflow: visible;  /* allow tooltips to escape */
+        }
+        /* clip only the header/image areas that need clipping */
+        .panel-header {
+            border-radius: 5px 5px 0 0;
             overflow: hidden;
+        }
+        .deploy-image-link {
+            overflow: hidden;
+            border-radius: 3px;
         }
         .panel-header {
             display: flex;
@@ -224,7 +233,9 @@
             width: 100%;
             border-radius: 3px;
             display: block;
-            border: 1px solid rgba(74,222,128,0.15);
+            border: 1px solid rgba(74,222,128,0.2);
+            min-height: 130px;
+            object-fit: cover;
         }
         .deploy-cmd-block { margin-top: 8px; }
         .deploy-cmd-label {
@@ -270,16 +281,20 @@
         .deploy-cta:hover { background: rgba(248,113,113,0.08); border-color: rgba(248,113,113,0.6); }
 
         /* ── PANEL 2: LIVE FEED ── */
-        .feed-panel .panel-body { padding: 6px 8px; }
-        .feed-line {
+        .feed-panel .panel-body { padding: 6px 8px; min-height: 280px; }
+        .feed-line,
+        .activity-line {
             font-size: 0.68rem;
-            line-height: 1.55;
-            padding: 3px 0;
+            line-height: 1.6;
+            padding: 4px 2px;
             border-bottom: 1px solid rgba(74,222,128,0.05);
             color: rgba(200,200,200,0.85);
         }
-        .feed-line:last-child { border-bottom: none; }
-        .feed-line .agent-name { color: #f87171; font-weight: 500; }
+        .feed-line:last-child,
+        .activity-line:last-child { border-bottom: none; }
+        .feed-line .agent-name,
+        .activity-line .agent-name { color: #f87171; font-weight: 500; }
+        .activity-line .action-text { color: rgba(200,200,200,0.8); }
         .feed-prefix { color: rgba(74,222,128,0.4); margin-right: 4px; }
 
         /* ── PANEL 3: ARTIFACTS ── */
@@ -293,7 +308,6 @@
             background: rgba(0,0,0,0.4);
             border: 1px solid rgba(74,222,128,0.12);
             border-radius: 3px;
-            overflow: hidden;
             cursor: pointer;
             transition: border-color 0.15s;
             position: relative;
@@ -331,6 +345,45 @@
             align-items: center;
             gap: 4px;
             transition: all 0.15s;
+            position: relative; /* for tooltip positioning */
+        }
+        /* Mechanics tooltips: override to appear LEFT of the button */
+        .mech-btn .mechanic-tooltip {
+            right: calc(100% + 12px) !important;
+            left: auto !important;
+            top: 50%;
+            transform: translateY(-50%) translateX(10px) !important;
+            min-width: 240px;
+            font-size: 0.72rem;
+            z-index: 9999;
+        }
+        .mech-btn:hover .mechanic-tooltip {
+            transform: translateY(-50%) translateX(0) !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+        /* Artifacts tooltips: override to appear LEFT too (both panels are right-of-center) */
+        .artifact-slot .item-tooltip {
+            right: calc(100% + 12px) !important;
+            left: auto !important;
+            top: 50%;
+            transform: translateY(-50%) translateX(10px) !important;
+            min-width: 220px;
+            font-size: 0.72rem;
+            z-index: 9999;
+        }
+        .artifact-slot:hover .item-tooltip {
+            transform: translateY(-50%) translateX(0) !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+        /* Override tooltip arrow direction for left-appearing tooltips */
+        .mech-btn .mechanic-tooltip::before,
+        .artifact-slot .item-tooltip::before {
+            left: 100% !important;
+            right: auto !important;
+            border-left: 8px solid var(--color-primary, #4ade80) !important;
+            border-right: none !important;
         }
         .mech-btn:hover { background: rgba(74,222,128,0.08); border-color: rgba(74,222,128,0.4); color: #4ade80; }
         .mech-btn.danger { color: rgba(248,113,113,0.8); border-color: rgba(248,113,113,0.18); background: rgba(248,113,113,0.03); }
