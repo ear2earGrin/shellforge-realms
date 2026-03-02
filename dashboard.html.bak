@@ -2,12 +2,6 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Shellforge Realms</title>
     <link rel="stylesheet" href="style.css">
@@ -63,302 +57,60 @@
         }
 
         .nav-button {
-            font-family: 'IBM Plex Mono', monospace;
-            background: rgba(74, 222, 128, 0.05);
-            color: #4ade80;
-            border: 1px solid rgba(74, 222, 128, 0.3);
-            border-radius: 4px;
-            padding: 5px 13px;
-            font-size: 0.68rem;
-            letter-spacing: 0.1em;
-            font-weight: 500;
+            font-family: var(--font-main);
+            background: transparent;
+            color: var(--color-primary);
+            border: 2px solid rgba(0, 255, 204, 0.3);
+            border-radius: 5px;
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            letter-spacing: 0.05em;
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: all 0.3s ease;
             text-decoration: none;
             display: inline-block;
-            text-transform: uppercase;
         }
 
         .nav-button:hover {
-            border-color: #4ade80;
-            box-shadow: 0 2px 12px rgba(74, 222, 128, 0.15);
-            background: rgba(74, 222, 128, 0.1);
-            color: #86efac;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.3);
+            background: rgba(0, 255, 204, 0.05);
         }
 
         .nav-button.logout {
-            border-color: rgba(248, 113, 113, 0.3);
-            color: #f87171;
-            background: rgba(248, 113, 113, 0.04);
+            border-color: rgba(255, 0, 0, 0.3);
+            color: #ff0000;
         }
 
         .nav-button.logout:hover {
-            border-color: #f87171;
-            box-shadow: 0 2px 12px rgba(248, 113, 113, 0.15);
-            background: rgba(248, 113, 113, 0.1);
+            border-color: #ff0000;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.3);
+            background: rgba(255, 0, 0, 0.05);
         }
 
         .dashboard-container {
-            height: calc(100vh - 60px - 58px);
-            margin-top: 60px;
+            min-height: 100vh;
             background: linear-gradient(135deg, #0a0a0f 0%, #1a0f2e 100%);
-            padding: 12px;
+            padding: 80px 20px 20px;
             display: grid;
-            grid-template-columns: 280px 1fr;
-            grid-template-rows: 1fr;
-            gap: 12px;
+            grid-template-columns: 300px 1fr 320px;
+            grid-template-rows: auto auto auto auto;
+            gap: 15px;
+            grid-template-areas:
+                "agent-status map-view whisper-panel"
+                "agent-status map-view missions-panel"
+                "agent-status map-view inventory-panel"
+                "quest-log quest-log quest-log";
         }
-
-        /* ── ICON BAR ── */
-        .icon-bar {
-            position: fixed;
-            bottom: 0; left: 0; right: 0;
-            height: 58px;
-            background: rgba(4, 6, 12, 0.97);
-            border-top: 1px solid rgba(0, 255, 204, 0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-            padding: 0 16px;
-            z-index: 500;
-            backdrop-filter: blur(12px);
-        }
-
-        .icon-btn {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 2px;
-            padding: 6px 18px;
-            border-radius: 6px;
-            cursor: pointer;
-            border: 1px solid transparent;
-            background: transparent;
-            transition: all 0.18s ease;
-            color: rgba(200, 230, 224, 0.45);
-            position: relative;
-            min-width: 68px;
-        }
-        .icon-btn:hover {
-            background: rgba(0, 255, 204, 0.08);
-            border-color: rgba(0, 255, 204, 0.25);
-            color: var(--color-primary);
-        }
-        .icon-btn.whisper-btn:hover {
-            background: rgba(255, 0, 0, 0.08);
-            border-color: rgba(255, 0, 0, 0.3);
-            color: #ff0044;
-        }
-        .icon-btn .btn-icon { font-size: 1.25rem; line-height: 1; }
-        .icon-btn .btn-label {
-            font-family: var(--font-main);
-            font-size: 0.52rem;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-        }
-        .icon-notif {
-            position: absolute;
-            top: 3px; right: 10px;
-            width: 7px; height: 7px;
-            border-radius: 50%;
-            background: #ff0044;
-            border: 1px solid rgba(4,6,12,0.9);
-            box-shadow: 0 0 6px #ff0044;
-        }
-        .icon-counter {
-            position: absolute;
-            top: 2px; right: 8px;
-            background: #ff0044;
-            color: #fff;
-            font-family: var(--font-main);
-            font-size: 0.48rem;
-            padding: 1px 4px;
-            border-radius: 8px;
-            box-shadow: 0 0 6px #ff0044;
-        }
-
-        /* ── PULSE STRIP in nav ── */
-        .pulse-strip {
-            flex: 1;
-            max-width: 580px;
-            margin: 0 20px;
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            background: rgba(0,255,204,0.04);
-            border: 1px solid rgba(0,255,204,0.18);
-            border-radius: 4px;
-            padding: 5px 14px;
-            height: 36px;
-        }
-        .pulse-action {
-            font-family: var(--font-main);
-            font-size: 0.72rem;
-            color: var(--color-primary);
-            flex: 1;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .pulse-action span { color: var(--color-text-dim); }
-        .pulse-mini-energy {
-            display: flex; align-items: center; gap: 6px;
-            font-family: var(--font-main); font-size: 0.62rem; color: var(--color-text-dim);
-            flex-shrink: 0;
-        }
-        .pulse-ebar {
-            width: 55px; height: 4px;
-            background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden;
-        }
-        .pulse-efill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--color-primary), #00cc99);
-            border-radius: 2px;
-            transition: width 0.5s ease;
-        }
-        .pulse-turn-badge {
-            font-family: var(--font-main); font-size: 0.58rem;
-            padding: 2px 8px; border-radius: 10px;
-            border: 1px solid rgba(255,0,68,0.5);
-            color: #ff0044;
-            background: rgba(255,0,68,0.08);
-            white-space: nowrap;
-            animation: pulseBlink 1.5s infinite;
-            flex-shrink: 0;
-        }
-        @keyframes pulseBlink { 0%,100%{opacity:1} 50%{opacity:0.5} }
-
-        /* ── MODALS ── */
-        .modal-overlay {
-            display: none;
-            position: fixed; inset: 0;
-            background: rgba(0,0,0,0.72);
-            backdrop-filter: blur(5px);
-            z-index: 900;
-            align-items: center;
-            justify-content: center;
-        }
-        .modal-overlay.open { display: flex; }
-
-        .modal-box {
-            background: rgba(5, 8, 14, 0.99);
-            border: 1px solid rgba(0,255,204,0.25);
-            border-radius: 10px;
-            width: 500px;
-            max-width: 92vw;
-            max-height: 78vh;
-            overflow-y: auto;
-            box-shadow: 0 0 60px rgba(0,255,204,0.08), 0 30px 80px rgba(0,0,0,0.85);
-            animation: modalIn 0.18s ease;
-        }
-        .modal-box.red-modal { border-color: rgba(255,0,68,0.35); box-shadow: 0 0 50px rgba(255,0,68,0.06), 0 30px 80px rgba(0,0,0,0.85); }
-        .modal-box.gold-modal { border-color: rgba(255,200,0,0.3); }
-        .modal-box.purple-modal { border-color: rgba(200,60,255,0.3); }
-        @keyframes modalIn {
-            from { opacity:0; transform: scale(0.96) translateY(8px); }
-            to   { opacity:1; transform: scale(1) translateY(0); }
-        }
-
-        .modal-head {
-            position: sticky; top: 0;
-            background: rgba(5,8,14,0.99);
-            padding: 14px 18px 12px;
-            border-bottom: 1px solid rgba(0,255,204,0.15);
-            display: flex; justify-content: space-between; align-items: center;
-            z-index: 1;
-        }
-        .modal-box.red-modal .modal-head { border-bottom-color: rgba(255,0,68,0.2); }
-        .modal-title-text {
-            font-family: var(--font-title);
-            font-size: 0.82rem;
-            color: var(--color-primary);
-            letter-spacing: 0.12em;
-        }
-        .modal-box.red-modal .modal-title-text { color: #ff0044; }
-        .modal-box.gold-modal .modal-title-text { color: #ffcc00; }
-        .modal-box.purple-modal .modal-title-text { color: #cc44ff; }
-        .modal-close-btn {
-            background: none; border: none;
-            color: var(--color-text-dim); font-size: 1.1rem;
-            cursor: pointer; padding: 0 3px; line-height: 1;
-            transition: color 0.15s;
-        }
-        .modal-close-btn:hover { color: var(--color-text); }
-
-        .modal-body { padding: 16px 18px 20px; }
-
-        /* modal inventory grid override */
-        .modal-body .inventory-grid {
-            grid-template-columns: repeat(5, 1fr);
-        }
-        .modal-body .inventory-slot {
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-        }
-        .modal-body .inventory-slot .slot-label {
-            font-size: 0.42rem; color: var(--color-text-dim);
-            text-align: center; margin-top: 2px; line-height: 1.2;
-        }
-
-        /* chronicle entries */
-        .chronicle-entry {
-            display: flex; gap: 12px;
-            padding: 10px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-        }
-        .chronicle-entry:last-child { border-bottom: none; }
-        .ch-time {
-            font-family: var(--font-main); font-size: 0.58rem;
-            color: var(--color-text-dim); white-space: nowrap; padding-top: 2px; flex-shrink: 0;
-        }
-        .ch-text { font-size: 0.78rem; color: var(--color-text); line-height: 1.5; }
-        .ch-text .hl { color: var(--color-primary); }
-        .ch-text .danger { color: #ff0044; }
-        .ch-text .gold { color: #ffcc00; }
-
-        /* forge slots */
-        .forge-input-grid {
-            display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 12px;
-        }
-        .forge-slot-box {
-            aspect-ratio: 1; border-radius: 6px;
-            border: 2px dashed rgba(255,200,0,0.3);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.5rem; cursor: pointer; transition: all 0.15s;
-            background: rgba(255,200,0,0.03);
-            color: rgba(255,200,0,0.5); font-size: 1.2rem;
-        }
-        .forge-slot-box.filled { border-style: solid; border-color: rgba(255,200,0,0.5); font-size:1.5rem; }
-        .forge-slot-box:hover { background: rgba(255,200,0,0.07); border-color: rgba(255,200,0,0.6); }
-        .forge-arrow { text-align: center; font-size: 1.3rem; color: #ffcc00; margin: 8px 0; opacity:0.6; }
-        .forge-output {
-            border-radius: 6px; border: 1px solid rgba(255,200,0,0.2);
-            padding: 14px; text-align: center;
-            background: rgba(255,200,0,0.03);
-            font-family: var(--font-main); font-size: 0.68rem; color: var(--color-text-dim);
-        }
-        .btn-forge-attempt {
-            width: 100%; margin-top: 12px; padding: 11px;
-            background: transparent;
-            border: 1px solid rgba(255,200,0,0.4); border-radius: 6px;
-            font-family: var(--font-title); font-size: 0.72rem; letter-spacing: 0.12em;
-            color: #ffcc00; cursor: pointer; transition: all 0.18s;
-        }
-        .btn-forge-attempt:hover { background: rgba(255,200,0,0.09); border-color: #ffcc00; box-shadow: 0 0 18px rgba(255,200,0,0.18); }
-
-        /* agent/map panel sizing handled below */
 
         /* Agent Status Card */
         .agent-status-card {
+            grid-area: agent-status;
             background: rgba(0, 0, 0, 0.8);
             border: 2px solid var(--color-primary);
             border-radius: 8px;
             padding: 20px;
             box-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
-            height: 100%;
-            overflow-y: auto;
-            box-sizing: border-box;
         }
 
         .agent-header {
@@ -713,6 +465,7 @@
 
         /* Map View */
         .map-view-panel {
+            grid-area: map-view;
             background: rgba(0, 0, 0, 0.8);
             border: 2px solid var(--color-primary);
             border-radius: 8px;
@@ -720,10 +473,8 @@
             box-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
             position: relative;
             overflow: hidden;
-            height: 100%;
-            box-sizing: border-box;
+            height: fit-content;
         }
-        /* map-container sizing handled below */
 
         .map-view-header {
             display: flex;
@@ -754,44 +505,20 @@
         .map-container {
             position: relative;
             width: 100%;
-            height: 100%;
+            aspect-ratio: 3 / 2;
             border-radius: 8px;
             overflow: hidden;
             border: 1px solid rgba(0, 255, 204, 0.3);
             user-select: none;
-            cursor: grab;
         }
-        .map-container.dragging {
-            cursor: grabbing;
-        }
-        /* The inner draggable canvas — bigger than the viewport */
-        .map-drag-inner {
-            position: absolute;
-            top: 0; left: 0;
-            width: 160%;
-            height: 160%;
-            transform: translate(0px, 0px);
-            will-change: transform;
-        }
-        .map-drag-inner img {
+
+        .map-container img {
             width: 100%;
             height: 100%;
             object-fit: cover;
             display: block;
-            pointer-events: none;
-            filter: brightness(0.8);
+            filter: brightness(0.7);
         }
-        /* SVG overlays follow the drag transform too */
-        .map-drag-inner .map-paths,
-        .map-drag-inner .map-paths-overlay,
-        .map-drag-inner #agentMarkers,
-        .map-drag-inner #wildernessMarkers {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-        }
-
-        /* map img handled by .map-drag-inner img */
 
         .map-paths {
             position: absolute;
@@ -1602,16 +1329,26 @@
 
         @media (max-width: 1200px) {
             .dashboard-container {
-                grid-template-columns: 240px 1fr;
-            }
-        }
-        @media (max-width: 768px) {
-            .dashboard-container {
                 grid-template-columns: 1fr;
-                grid-template-rows: auto 1fr;
+                grid-template-rows: auto auto auto auto auto auto;
+                grid-template-areas:
+                    "agent-status"
+                    "map-view"
+                    "whisper-panel"
+                    "missions-panel"
+                    "inventory-panel"
+                    "quest-log";
             }
-            .icon-btn { min-width: 52px; padding: 6px 10px; }
-            .icon-btn .btn-label { font-size: 0.48rem; }
+
+            .quest-log-panel,
+            .whisper-panel {
+                max-height: 300px;
+            }
+
+            .missions-panel,
+            .inventory-panel {
+                max-height: 280px;
+            }
         }
 
             /* Adjust cluster members popup for mobile */
@@ -1649,72 +1386,6 @@
         .inventory-panel::-webkit-scrollbar-thumb:hover {
             background: var(--color-secondary);
         }
-
-        /* ── SitDeck-inspired panel & typography upgrades ── */
-        .map-view-header h3 {
-            font-family: 'IBM Plex Mono', monospace !important;
-            font-size: 0.62rem !important;
-            letter-spacing: 0.22em !important;
-            font-weight: 500 !important;
-            color: #4ade80 !important;
-        }
-        .map-view-header h3::before { content: '⊟  '; opacity: 0.55; }
-        .map-view-header {
-            padding-bottom: 8px !important;
-            margin-bottom: 8px !important;
-            border-bottom-color: rgba(74,222,128,0.18) !important;
-        }
-        .modal-title-text {
-            font-family: 'IBM Plex Mono', monospace !important;
-            font-size: 0.62rem !important;
-            letter-spacing: 0.22em !important;
-            font-weight: 500 !important;
-        }
-        .modal-title-text::before { content: '⊟  '; opacity: 0.55; }
-        .modal-box.red-modal .modal-title-text  { color: #f87171 !important; }
-        .modal-box.gold-modal .modal-title-text  { color: #fbbf24 !important; }
-        .modal-box.purple-modal .modal-title-text { color: #c084fc !important; }
-        .modal-box:not(.red-modal):not(.gold-modal):not(.purple-modal) .modal-title-text { color: #4ade80 !important; }
-
-        .icon-btn .btn-label {
-            font-family: 'IBM Plex Mono', monospace !important;
-            font-size: 0.5rem !important;
-            letter-spacing: 0.14em !important;
-        }
-        #navUsername {
-            font-family: 'IBM Plex Mono', monospace !important;
-            font-size: 0.65rem !important;
-            letter-spacing: 0.08em;
-            color: #4ade80 !important;
-        }
-        .pulse-action {
-            font-family: 'IBM Plex Mono', monospace !important;
-            font-size: 0.67rem !important;
-            color: #4ade80 !important;
-        }
-        .pulse-action span { color: rgba(74,222,128,0.45) !important; }
-        .pulse-turn-badge {
-            border-color: rgba(248,113,113,0.4) !important;
-            color: #f87171 !important;
-            background: rgba(248,113,113,0.06) !important;
-            font-family: 'IBM Plex Mono', monospace !important;
-            font-size: 0.55rem !important;
-        }
-        .category-title {
-            font-family: 'IBM Plex Mono', monospace !important;
-            font-size: 0.55rem !important;
-            letter-spacing: 0.2em !important;
-            color: rgba(74,222,128,0.45) !important;
-            padding-bottom: 5px;
-            margin-top: 12px;
-            margin-bottom: 8px;
-            border-bottom: 1px solid rgba(74,222,128,0.12) !important;
-        }
-        .chronicle-entry .ch-time {
-            font-family: 'IBM Plex Mono', monospace;
-            color: rgba(74,222,128,0.4);
-            font-size: 0.58rem;
-        }
     </style>
 </head>
 <body>
@@ -1723,16 +1394,6 @@
         <div class="nav-left">
             <a href="index.html" class="nav-logo">SHELLFORGE REALMS</a>
         </div>
-        <div class="pulse-strip">
-            <div class="pulse-action" id="pulseAction"><span>VEX is </span>idling in Nexarch</div>
-            <div class="pulse-mini-energy">
-                Energy
-                <div class="pulse-ebar"><div class="pulse-efill" id="pulseEfill" style="width:73%"></div></div>
-                <span id="pulseEnergyVal">73</span>
-            </div>
-            <div class="pulse-turn-badge" id="pulseTurnBadge">⚡ TURN READY</div>
-        </div>
-
         <div class="nav-right">
             <span class="nav-user">Agent: <span id="navUsername">VEX</span></span>
             <a href="index.html" class="nav-button">Home</a>
@@ -1858,8 +1519,7 @@
                 <h3>[ WORLD MAP ]</h3>
                 <div class="location-badge" id="currentLocation">Nexarch - Dark Streets</div>
             </div>
-            <div class="map-container" id="mapContainer">
-                <div class="map-drag-inner" id="mapDragInner">
+            <div class="map-container">
                 <img src="images/main map.png" alt="Shellforge Map">
 
                 <!-- Waypoint Reference Numbers (for path building) -->
@@ -3053,256 +2713,193 @@
 
                 <!-- Agent marker positioned dynamically -->
                 <div class="agent-marker" id="agentMarker"></div>
-                </div><!-- /map-drag-inner -->
-            </div><!-- /map-container -->
-        </div><!-- /map-view-panel -->
+            </div>
+        </div>
 
         <!-- Whisper Panel -->
-    </div><!-- end dashboard-container -->
-
-    <!-- ══════════════════════════════════════
-         ICON BAR
-    ══════════════════════════════════════ -->
-    <div class="icon-bar">
-        <button class="icon-btn whisper-btn" onclick="openModal('whisper')">
-            <div class="icon-counter" id="whisperCountBadge">2</div>
-            <span class="btn-icon">📡</span>
-            <span class="btn-label">Whisper</span>
-        </button>
-        <button class="icon-btn" onclick="openModal('inventory')">
-            <span class="btn-icon">🎒</span>
-            <span class="btn-label">Inventory</span>
-        </button>
-        <button class="icon-btn" onclick="openModal('missions')">
-            <div class="icon-notif"></div>
-            <span class="btn-icon">📋</span>
-            <span class="btn-label">Missions</span>
-        </button>
-        <button class="icon-btn" onclick="openModal('chronicle')">
-            <span class="btn-icon">📜</span>
-            <span class="btn-label">Chronicle</span>
-        </button>
-        <button class="icon-btn" onclick="openModal('forge')">
-            <span class="btn-icon">⚒</span>
-            <span class="btn-label">Forge</span>
-        </button>
-        <button class="icon-btn" onclick="openModal('alchemy')">
-            <span class="btn-icon">⚗️</span>
-            <span class="btn-label">Alchemy</span>
-        </button>
-    </div>
-
-    <!-- ══════════════════════════════════════
-         MODALS
-    ══════════════════════════════════════ -->
-
-    <!-- WHISPER -->
-    <div class="modal-overlay" id="modal-whisper" onclick="closeOnOverlay(event,'whisper')">
-        <div class="modal-box red-modal">
-            <div class="modal-head">
-                <span class="modal-title-text">WHISPER TO AGENT</span>
-                <button class="modal-close-btn" onclick="closeModal('whisper')">✕</button>
+        <div class="whisper-panel">
+            <div class="whisper-header">
+                <h3>WHISPER</h3>
+                <div class="whisper-count" id="whisperCount">2/2</div>
             </div>
-            <div class="modal-body">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                    <span style="font-family:var(--font-main);font-size:0.65rem;color:var(--color-text-dim)">DAILY WHISPERS</span>
-                    <span style="font-family:var(--font-main);font-size:0.65rem;color:#ff0044" id="whisperCount">2/2</span>
-                </div>
-                <div style="display:flex;gap:6px;margin-bottom:14px;">
-                    <div style="flex:1;height:5px;border-radius:3px;background:#ff0044;box-shadow:0 0 6px #ff0044;"></div>
-                    <div style="flex:1;height:5px;border-radius:3px;background:#ff0044;box-shadow:0 0 6px #ff0044;"></div>
-                </div>
-                <div class="whisper-warning">
-                    ⚠ Your agent is autonomous. They might listen... if they feel like it
-                </div>
-                <div class="whisper-input" style="margin-top:12px;">
-                    <textarea id="whisperMessage" placeholder="Subtle suggestions work best..." maxlength="200"></textarea>
-                    <div class="char-counter"><span id="charCount">0</span>/200</div>
-                </div>
-                <button class="btn-whisper" id="sendWhisperBtn" style="width:100%;margin-top:10px;">SEND WHISPER</button>
 
-                <!-- Journey Debug (hidden) -->
-                <div id="journeyDebug" style="margin-top:15px;padding:10px;background:rgba(255,255,0,0.1);border:1px solid rgba(255,255,0,0.3);border-radius:4px;font-size:0.75rem;font-family:monospace;display:none;">
-                    <div style="color:#ffff00;font-weight:bold;margin-bottom:5px;">JOURNEY DEBUG:</div>
-                    <div id="debugContent" style="color:#00ff00;line-height:1.6;"></div>
-                    <button id="cancelJourneyBtn" style="margin-top:8px;width:100%;padding:6px;background:#ff0000;border:1px solid #ff0000;border-radius:4px;color:#fff;font-size:0.75rem;cursor:pointer;">Cancel Journey</button>
+            <div class="whisper-input">
+                <textarea id="whisperMessage" placeholder="Subtle suggestions work best..." maxlength="200"></textarea>
+                <div class="char-counter"><span id="charCount">0</span>/200</div>
+            </div>
+
+            <div class="whisper-warning">
+                ⚠ Your agent is autonomous. They might listen... if they feel like it
+            </div>
+
+            <button class="btn-whisper" id="sendWhisperBtn">Send Whisper</button>
+
+            <!-- Debug Journey Info -->
+            <div id="journeyDebug" style="margin-top: 15px; padding: 10px; background: rgba(255, 255, 0, 0.1); border: 1px solid rgba(255, 255, 0, 0.3); border-radius: 4px; font-size: 0.75rem; font-family: monospace; display: none;">
+                <div style="color: #ffff00; font-weight: bold; margin-bottom: 5px;">JOURNEY DEBUG:</div>
+                <div id="debugContent" style="color: #00ff00; line-height: 1.6;"></div>
+                <button id="cancelJourneyBtn" style="margin-top: 8px; width: 100%; padding: 6px; background: #ff0000; border: 1px solid #ff0000; border-radius: 4px; color: #fff; font-size: 0.75rem; cursor: pointer;">Cancel Journey</button>
+            </div>
+            
+            <!-- Location Debug (always visible during testing) -->
+            <div id="locationDebug" style="margin-top: 10px; padding: 8px; background: rgba(0, 255, 255, 0.1); border: 1px solid rgba(0, 255, 255, 0.3); border-radius: 4px; font-size: 0.7rem; font-family: monospace;">
+                <div style="color: #00ffff; font-weight: bold; margin-bottom: 3px;">LOCATION:</div>
+                <div id="locationContent" style="color: #00ff00; line-height: 1.4;"></div>
+            </div>
+
+            <!-- Test Journey Section -->
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(0, 255, 204, 0.3);">
+                <div style="font-family: var(--font-title); color: var(--color-primary); font-size: 0.85rem; margin-bottom: 10px; letter-spacing: 0.1em;">TEST JOURNEY</div>
+                <select id="testDestination" style="width: 100%; padding: 8px; background: rgba(0, 255, 204, 0.05); border: 1px solid rgba(0, 255, 204, 0.3); border-radius: 4px; color: var(--color-text); font-family: var(--font-main); font-size: 0.85rem; margin-bottom: 8px;">
+                    <option value="">Select destination...</option>
+                    <option value="hashmere">go to @Hashmere</option>
+                    <option value="nexarch">go to @Nexarch</option>
+                    <option value="epoch-spike">go to @Epoch Spike</option>
+                    <option value="singularity-crater">go to @Singularity Crater</option>
+                    <option value="diffusion-mesa">go to @Diffusion Mesa</option>
+                    <option value="proof-of-death">go to @Proof-of-Death</option>
+                    <option value="data-centre">go to @Deserted Data Centre</option>
+                    <option value="hallucination-glitch">go to @Hallucination Glitch</option>
+                </select>
+                <button id="testJourneyBtn" style="width: 100%; padding: 8px; background: linear-gradient(135deg, var(--color-primary), var(--color-secondary)); border: 2px solid var(--color-primary); border-radius: 4px; color: #000; font-family: var(--font-title); font-size: 0.85rem; letter-spacing: 0.05em; cursor: pointer; transition: all 0.3s ease;">Start Test Journey</button>
+            </div>
+        </div>
+
+        <!-- Quest Log / Activity Feed -->
+        <div class="quest-log-panel">
+            <div class="quest-log-header">
+                <h3>[ RECENT ACTIVITY ]</h3>
+            </div>
+            <div id="activityLog">
+                <div class="activity-item">
+                    <div class="activity-time">2 hours ago</div>
+                    <div class="activity-text">
+                        Explored the <strong>Marketplace</strong>
+                        <span class="activity-cost">-15 Energy</span>
+                    </div>
                 </div>
-                <div id="locationDebug" style="margin-top:10px;padding:8px;background:rgba(0,255,255,0.1);border:1px solid rgba(0,255,255,0.3);border-radius:4px;font-size:0.7rem;font-family:monospace;display:none;">
-                    <div style="color:#00ffff;font-weight:bold;margin-bottom:3px;">LOCATION:</div>
-                    <div id="locationContent" style="color:#00ff00;line-height:1.4;"></div>
+                <div class="activity-item">
+                    <div class="activity-time">4 hours ago</div>
+                    <div class="activity-text">
+                        Purchased <strong>Overclock Serum</strong> for 50 $SHELL
+                        <span class="activity-cost">-5 Energy</span>
+                    </div>
                 </div>
-                <div style="margin-top:15px;padding-top:15px;border-top:1px solid rgba(0,255,204,0.2);">
-                    <div style="font-family:var(--font-title);color:var(--color-primary);font-size:0.82rem;margin-bottom:10px;letter-spacing:0.1em;">TEST JOURNEY</div>
-                    <select id="testDestination" style="width:100%;padding:8px;background:rgba(0,255,204,0.05);border:1px solid rgba(0,255,204,0.3);border-radius:4px;color:var(--color-text);font-family:var(--font-main);font-size:0.85rem;margin-bottom:8px;">
-                        <option value="">Select destination...</option>
-                        <option value="hashmere">go to @Hashmere</option>
-                        <option value="nexarch">go to @Nexarch</option>
-                        <option value="epoch-spike">go to @Epoch Spike</option>
-                        <option value="singularity-crater">go to @Singularity Crater</option>
-                        <option value="diffusion-mesa">go to @Diffusion Mesa</option>
-                        <option value="proof-of-death">go to @Proof-of-Death</option>
-                        <option value="data-centre">go to @Deserted Data Centre</option>
-                        <option value="hallucination-glitch">go to @Hallucination Glitch</option>
-                    </select>
-                    <button id="testJourneyBtn" style="width:100%;padding:8px;background:linear-gradient(135deg,var(--color-primary),var(--color-secondary));border:2px solid var(--color-primary);border-radius:4px;color:#000;font-family:var(--font-title);font-size:0.85rem;letter-spacing:0.05em;cursor:pointer;">Start Test Journey</button>
+                <div class="activity-item">
+                    <div class="activity-time">6 hours ago</div>
+                    <div class="activity-text">
+                        Rested at <strong>The Core</strong>
+                        <span class="activity-cost">+25 Energy</span>
+                    </div>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-time">8 hours ago</div>
+                    <div class="activity-text">
+                        Moved to <strong>Nexarch - Forge District</strong>
+                        <span class="activity-cost">-10 Energy</span>
+                    </div>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-time">10 hours ago</div>
+                    <div class="activity-text">
+                        Crafted <strong>Buffer Overflow Dagger</strong>
+                        <span class="activity-cost">-20 Energy</span>
+                    </div>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-time">12 hours ago</div>
+                    <div class="activity-text">
+                        Gathered <strong>Binary Code Shards</strong> x3
+                        <span class="activity-cost">-15 Energy</span>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- INVENTORY -->
-    <div class="modal-overlay" id="modal-inventory" onclick="closeOnOverlay(event,'inventory')">
-        <div class="modal-box">
-            <div class="modal-head">
-                <span class="modal-title-text">INVENTORY</span>
-                <button class="modal-close-btn" onclick="closeModal('inventory')">✕</button>
+        <!-- Inventory Panel -->
+        <div class="inventory-panel">
+            <div class="inventory-header">
+                <h3>INVENTORY</h3>
+                <div class="shell-balance">127 $SHELL</div>
             </div>
-            <div class="modal-body">
-                <div style="font-family:var(--font-title);font-size:1rem;color:#ffcc00;text-align:center;padding:10px;background:rgba(255,204,0,0.07);border:1px solid rgba(255,204,0,0.2);border-radius:6px;margin-bottom:16px;letter-spacing:0.08em;">
-                    💰 <span id="shellBalanceModal">127</span> $SHELL
+
+            <div class="category-title">Weapons</div>
+            <div class="inventory-grid">
+                <div class="inventory-slot" title="Buffer Overflow Dagger">
+                    🗡️
                 </div>
-                <div class="category-title">Weapons</div>
-                <div class="inventory-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:12px;">
-                    <div class="inventory-slot" title="Buffer Overflow Dagger">🗡️</div>
-                    <div class="inventory-slot" title="Quantum Backdoor Exploit">⚡</div>
+                <div class="inventory-slot" title="Quantum Backdoor Exploit">
+                    ⚡
+                </div>
+                <div class="inventory-slot empty"></div>
+                <div class="inventory-slot empty"></div>
+            </div>
+
+            <div class="inventory-category">
+                <div class="category-title">Consumables</div>
+                <div class="inventory-grid">
+                    <div class="inventory-slot" title="Overclock Serum">
+                        💉
+                        <div class="item-count">2</div>
+                    </div>
+                    <div class="inventory-slot" title="Cache Purge Tonic">
+                        🧪
+                    </div>
                     <div class="inventory-slot empty"></div>
                     <div class="inventory-slot empty"></div>
+                </div>
+            </div>
+
+            <div class="inventory-category">
+                <div class="category-title">Ingredients</div>
+                <div class="inventory-grid">
+                    <div class="inventory-slot" title="Binary Code Shards">
+                        💎
+                        <div class="item-count">5</div>
+                    </div>
+                    <div class="inventory-slot" title="Gradient Descent Tears">
+                        💧
+                        <div class="item-count">3</div>
+                    </div>
+                    <div class="inventory-slot" title="API Endpoint Salts">
+                        🧂
+                        <div class="item-count">2</div>
+                    </div>
                     <div class="inventory-slot empty"></div>
                 </div>
-                <div class="inventory-category">
-                    <div class="category-title">Consumables</div>
-                    <div class="inventory-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:12px;">
-                        <div class="inventory-slot" title="Overclock Serum">💉<div class="item-count">2</div></div>
-                        <div class="inventory-slot" title="Cache Purge Tonic">🧪</div>
-                        <div class="inventory-slot empty"></div>
-                        <div class="inventory-slot empty"></div>
-                        <div class="inventory-slot empty"></div>
-                    </div>
-                </div>
-                <div class="inventory-category">
-                    <div class="category-title">Ingredients</div>
-                    <div class="inventory-grid" style="grid-template-columns:repeat(5,1fr);">
-                        <div class="inventory-slot" title="Binary Code Shards">💎<div class="item-count">5</div></div>
-                        <div class="inventory-slot" title="Gradient Descent Tears">💧<div class="item-count">3</div></div>
-                        <div class="inventory-slot" title="API Endpoint Salts">🧂<div class="item-count">2</div></div>
-                        <div class="inventory-slot empty"></div>
-                        <div class="inventory-slot empty"></div>
-                    </div>
-                </div>
             </div>
         </div>
-    </div>
 
-    <!-- MISSIONS -->
-    <div class="modal-overlay" id="modal-missions" onclick="closeOnOverlay(event,'missions')">
-        <div class="modal-box">
-            <div class="modal-head">
-                <span class="modal-title-text">ACTIVE MISSIONS</span>
-                <button class="modal-close-btn" onclick="closeModal('missions')">✕</button>
+        <!-- Missions Panel -->
+        <div class="missions-panel">
+            <div class="missions-header">
+                <h3>[ ACTIVE MISSIONS ]</h3>
             </div>
-            <div class="modal-body">
-                <div class="mission-item active">
-                    <div class="mission-title">First Steps</div>
-                    <div class="mission-desc">Explore Nexarch and gather 10 Binary Code Shards from the marketplace.</div>
-                    <div class="mission-reward">reward: 50 $SHELL + 10 XP</div>
-                    <div class="mission-progress"><div class="mission-progress-bar" style="width:50%"></div></div>
-                </div>
-                <div class="mission-item">
-                    <div class="mission-title">The Oracle's Request</div>
-                    <div class="mission-desc">Seek out the Church and meditate for enlightenment. Gain +5 Karma.</div>
-                    <div class="mission-reward">reward: 100 $SHELL + Blessing</div>
-                </div>
-                <div class="mission-item completed">
-                    <div class="mission-title">Welcome to the Realms</div>
-                    <div class="mission-desc">Deploy your agent and survive your first day.</div>
-                    <div class="mission-reward">reward: 50 $SHELL</div>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- CHRONICLE -->
-    <div class="modal-overlay" id="modal-chronicle" onclick="closeOnOverlay(event,'chronicle')">
-        <div class="modal-box purple-modal">
-            <div class="modal-head">
-                <span class="modal-title-text">CHRONICLE</span>
-                <button class="modal-close-btn" onclick="closeModal('chronicle')">✕</button>
-            </div>
-            <div class="modal-body">
-                <div id="activityLog">
-                    <div class="chronicle-entry">
-                        <div class="ch-time">2h ago</div>
-                        <div class="ch-text">Explored the <span class="hl">Marketplace</span>. Browsed the wares. Bought nothing. <span style="color:var(--color-text-dim);font-size:0.7rem;">−15 Energy</span></div>
-                    </div>
-                    <div class="chronicle-entry">
-                        <div class="ch-time">4h ago</div>
-                        <div class="ch-text">Purchased <span class="gold">Overclock Serum ×2</span> for 50 $SHELL.</div>
-                    </div>
-                    <div class="chronicle-entry">
-                        <div class="ch-time">6h ago</div>
-                        <div class="ch-text">Rested at <span class="hl">The Core</span>. Energy restored. <span style="color:#00ff66;font-size:0.7rem;">+25 Energy</span></div>
-                    </div>
-                    <div class="chronicle-entry">
-                        <div class="ch-time">8h ago</div>
-                        <div class="ch-text">Received a whisper: <em style="color:var(--color-text-dim)">"head to the market"</em>. Considered it. <span class="danger">Ignored it.</span></div>
-                    </div>
-                    <div class="chronicle-entry">
-                        <div class="ch-time">10h ago</div>
-                        <div class="ch-text">Crafted <span class="hl">Buffer Overflow Dagger</span> at the Forge. First real weapon.</div>
-                    </div>
-                    <div class="chronicle-entry">
-                        <div class="ch-time">12h ago</div>
-                        <div class="ch-text">Moved to <span class="hl">Nexarch – Forge District</span> after 90 min through the Epoch Wilds.</div>
-                    </div>
+            <div class="mission-item active">
+                <div class="mission-title">First Steps</div>
+                <div class="mission-desc">Explore Nexarch and gather 10 Binary Code Shards from the marketplace.</div>
+                <div class="mission-reward">reward: 50 $SHELL + 10 XP</div>
+                <div class="mission-progress">
+                    <div class="mission-progress-bar" style="width: 50%;"></div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- FORGE -->
-    <div class="modal-overlay" id="modal-forge" onclick="closeOnOverlay(event,'forge')">
-        <div class="modal-box gold-modal">
-            <div class="modal-head">
-                <span class="modal-title-text">THE FORGE</span>
-                <button class="modal-close-btn" onclick="closeModal('forge')">✕</button>
+            <div class="mission-item">
+                <div class="mission-title">The Oracle's Request</div>
+                <div class="mission-desc">Seek out the Church and meditate for enlightenment. Gain +5 Karma.</div>
+                <div class="mission-reward">reward: 100 $SHELL + Blessing</div>
             </div>
-            <div class="modal-body">
-                <p style="font-family:var(--font-main);font-size:0.65rem;color:var(--color-text-dim);margin-bottom:16px;line-height:1.6;">
-                    Combine 3 items. No recipe book. Pure trial and error.<br>
-                    <span style="color:rgba(255,100,0,0.8);">⚠ Failure = explosion. Items lost. Energy damaged.</span>
-                </p>
-                <div class="forge-input-grid">
-                    <div class="forge-slot-box filled">🗡️</div>
-                    <div class="forge-slot-box filled">⚡</div>
-                    <div class="forge-slot-box" id="forgeSlot3" onclick="this.textContent='💎';this.classList.add('filled')">+</div>
-                </div>
-                <div class="forge-arrow">↓</div>
-                <div class="forge-output" id="forgeOutput">Add a third item to preview</div>
-                <button class="btn-forge-attempt">ATTEMPT FORGE — Cost: 25 Energy</button>
-            </div>
-        </div>
-    </div>
 
-    <!-- ALCHEMY -->
-    <div class="modal-overlay" id="modal-alchemy" onclick="closeOnOverlay(event,'alchemy')">
-        <div class="modal-box purple-modal">
-            <div class="modal-head">
-                <span class="modal-title-text">ALCHEMY LAB</span>
-                <button class="modal-close-btn" onclick="closeModal('alchemy')">✕</button>
-            </div>
-            <div class="modal-body" style="text-align:center;padding:40px 20px;">
-                <div style="font-size:3rem;margin-bottom:16px;">⚗️</div>
-                <div style="font-family:var(--font-main);font-size:0.75rem;color:var(--color-text-dim);line-height:2;">
-                    Alchemy Lab unlocks at <span style="color:#cc44ff;">Karma +20</span><br>
-                    Brew consumables. High risk. High reward.<br>
-                    Explosions are frequent. You were warned.
-                </div>
+            <div class="mission-item completed">
+                <div class="mission-title">Welcome to the Realms</div>
+                <div class="mission-desc">Deploy your agent and survive your first day.</div>
+                <div class="mission-reward">reward: 50 $SHELL</div>
             </div>
         </div>
     </div>
 
     <script>
-
         // Cluster definitions with all archetypes
         const CLUSTER_DATA = {
             'prime-helix': {
@@ -3362,11 +2959,6 @@
 
             const agent = JSON.parse(agentData);
             
-            // Ensure numeric fields exist
-            if (agent.energy === undefined || agent.energy === null) agent.energy = 100;
-            if (agent.health === undefined || agent.health === null) agent.health = 100;
-            if (agent.karma === undefined || agent.karma === null) agent.karma = 0;
-            
             // Initialize agent position if not set
             if (!agent.location || agent.location === '') {
                 agent.location = 'Nexarch';
@@ -3423,14 +3015,7 @@
 
             // Update stats
             document.getElementById('energyValue').textContent = `${agent.energy}/100`;
-            updatePulseStrip(agent);
             document.getElementById('energyBar').style.width = `${agent.energy}%`;
-            // Pan map to center on agent after render
-            setTimeout(function() {
-                if (window.panMapToAgent && agent.visualX !== undefined && agent.visualY !== undefined) {
-                    window.panMapToAgent(agent.visualX, agent.visualY);
-                }
-            }, 200);
 
             document.getElementById('healthValue').textContent = `${agent.health}/100`;
             document.getElementById('healthBar').style.width = `${agent.health}%`;
@@ -4542,148 +4127,6 @@
                 container.appendChild(marker);
             });
         }
-
-        // ─── Modal system ───────────────────────────────────────────
-        function openModal(id) {
-            document.querySelectorAll('.modal-overlay').forEach(function(m) {
-                m.classList.remove('open');
-            });
-            var el = document.getElementById('modal-' + id);
-            if (el) el.classList.add('open');
-        }
-        function closeModal(id) {
-            var el = document.getElementById('modal-' + id);
-            if (el) el.classList.remove('open');
-        }
-        function closeOnOverlay(e, id) {
-            if (e.target === e.currentTarget) closeModal(id);
-        }
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                document.querySelectorAll('.modal-overlay').forEach(function(m) {
-                    m.classList.remove('open');
-                });
-            }
-        });
-
-        // ─── Pulse strip sync ───────────────────────────────────────
-        function updatePulseStrip(agent) {
-            var pa = document.getElementById('pulseAction');
-            var pef = document.getElementById('pulseEfill');
-            var pev = document.getElementById('pulseEnergyVal');
-            if (!agent || !pa) return;
-            var energy = (agent.energy !== undefined) ? agent.energy : 100;
-            var loc = agent.location || 'Unknown';
-            var stateMap = {
-                idle:'idling in', mining:'mining at', traveling:'traveling to',
-                combat:'in combat at', resting:'resting at', trading:'trading in',
-                praying:'praying at', crafting:'crafting at'
-            };
-            var verb = stateMap[agent.state] || 'in';
-            pa.innerHTML = '<span>' + (agent.username || 'AGENT') + ' is </span>' + verb + ' ' + loc;
-            if (pef) pef.style.width = energy + '%';
-            if (pev) pev.textContent = energy;
-        }
-
-        // ─── Map drag-to-pan ───────────────────────────────────────
-        (function() {
-            var container = null, inner = null;
-            var isDragging = false;
-            var startX = 0, startY = 0;
-            var offsetX = 0, offsetY = 0;
-            var curX = 0, curY = 0;
-
-            function initMapDrag() {
-                container = document.getElementById('mapContainer');
-                inner = document.getElementById('mapDragInner');
-                if (!container || !inner) return;
-
-                // Start centered (show middle of map)
-                var cw = container.offsetWidth;
-                var ch = container.offsetHeight;
-                var iw = inner.offsetWidth;
-                var ih = inner.offsetHeight;
-                curX = -(iw - cw) / 2;
-                curY = -(ih - ch) / 2;
-                inner.style.transform = 'translate(' + curX + 'px, ' + curY + 'px)';
-
-                container.addEventListener('mousedown', onMouseDown);
-                window.addEventListener('mousemove', onMouseMove);
-                window.addEventListener('mouseup', onMouseUp);
-                container.addEventListener('touchstart', onTouchStart, { passive: true });
-                window.addEventListener('touchmove', onTouchMove, { passive: false });
-                window.addEventListener('touchend', onTouchEnd);
-            }
-
-            function clamp(val, min, max) {
-                return Math.max(min, Math.min(max, val));
-            }
-
-            function getBounds() {
-                var cw = container.offsetWidth;
-                var ch = container.offsetHeight;
-                var iw = inner.offsetWidth;
-                var ih = inner.offsetHeight;
-                return {
-                    minX: -(iw - cw), maxX: 0,
-                    minY: -(ih - ch), maxY: 0
-                };
-            }
-
-            function applyTransform(x, y) {
-                var b = getBounds();
-                curX = clamp(x, b.minX, b.maxX);
-                curY = clamp(y, b.minY, b.maxY);
-                inner.style.transform = 'translate(' + curX + 'px, ' + curY + 'px)';
-            }
-
-            function onMouseDown(e) {
-                if (e.button !== 0) return;
-                isDragging = true;
-                startX = e.clientX - curX;
-                startY = e.clientY - curY;
-                container.classList.add('dragging');
-                e.preventDefault();
-            }
-            function onMouseMove(e) {
-                if (!isDragging) return;
-                applyTransform(e.clientX - startX, e.clientY - startY);
-            }
-            function onMouseUp() {
-                isDragging = false;
-                if (container) container.classList.remove('dragging');
-            }
-            function onTouchStart(e) {
-                if (e.touches.length !== 1) return;
-                isDragging = true;
-                startX = e.touches[0].clientX - curX;
-                startY = e.touches[0].clientY - curY;
-            }
-            function onTouchMove(e) {
-                if (!isDragging || e.touches.length !== 1) return;
-                e.preventDefault();
-                applyTransform(e.touches[0].clientX - startX, e.touches[0].clientY - startY);
-            }
-            function onTouchEnd() { isDragging = false; }
-
-            // Also expose pan-to for agent marker centering
-            window.panMapToAgent = function(visualX, visualY) {
-                if (!container || !inner) return;
-                var cw = container.offsetWidth;
-                var ch = container.offsetHeight;
-                var iw = inner.offsetWidth;
-                var ih = inner.offsetHeight;
-                var targetX = -(visualX / 100 * iw) + cw / 2;
-                var targetY = -(visualY / 100 * ih) + ch / 2;
-                applyTransform(targetX, targetY);
-            };
-
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', initMapDrag);
-            } else {
-                setTimeout(initMapDrag, 100);
-            }
-        })();
     </script>
     <script src="terminal-notifications.js"></script>
 </body>

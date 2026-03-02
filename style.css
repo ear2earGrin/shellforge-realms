@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Orbitron:wght@400;700;900&display=swap');
+
 /* Reset & Base Styles */
 * {
     margin: 0;
@@ -17,8 +19,11 @@ html {
     --color-accent: #7b2cbf;
     --color-text: #e0e0e0;
     --color-text-dim: #888;
-    --font-main: 'Courier New', monospace;
-    --font-title: 'Arial Black', sans-serif;
+    --font-main: 'IBM Plex Mono', 'Courier New', monospace;
+    --font-title: 'Orbitron', 'Arial Black', sans-serif;
+    --color-sitgreen: #4ade80;
+    --color-sitgreen-dim: rgba(74, 222, 128, 0.15);
+    --color-sitgreen-border: rgba(74, 222, 128, 0.3);
 }
 
 body {
@@ -479,47 +484,49 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 12px 10px;
-    background: rgba(0, 255, 204, 0.05);
-    border: 2px solid rgba(0, 255, 204, 0.3);
-    border-radius: 8px;
+    padding: 9px 8px;
+    background: rgba(74, 222, 128, 0.04);
+    border: 1px solid rgba(74, 222, 128, 0.25);
+    border-radius: 4px;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     position: relative;
-    min-height: 50px;
+    min-height: 46px;
 }
 
 .mechanic-item:hover {
-    background: rgba(0, 255, 204, 0.15);
-    border-color: var(--color-primary);
-    transform: scale(1.05);
-    box-shadow: 0 0 20px rgba(0, 255, 204, 0.4);
+    background: rgba(74, 222, 128, 0.1);
+    border-color: var(--color-sitgreen);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(74, 222, 128, 0.2), inset 0 0 0 1px rgba(74, 222, 128, 0.1);
 }
 
 .mechanic-name {
-    font-family: var(--font-main);
-    color: #ff3333;
-    font-size: 0.85rem;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--color-sitgreen);
+    font-size: 0.72rem;
     text-align: center;
-    font-weight: normal;
-    letter-spacing: 0.05em;
+    font-weight: 500;
+    letter-spacing: 0.08em;
     margin: 0;
+    text-transform: uppercase;
 }
 
 .mechanic-name .blink-cursor {
     display: inline-block;
-    margin-right: 0.2em;
+    margin-right: 0.15em;
     animation: blink 1s step-end infinite;
-    color: #ff3333;
+    color: rgba(74, 222, 128, 0.5);
+    font-weight: 300;
 }
 
 /* Hardcore mechanic keeps red text (already red via terminal-title) */
 .mechanic-item[data-mechanic="hardcore"] .mechanic-name {
-    color: #ff0000;
+    color: #f87171;
 }
 
 .mechanic-item[data-mechanic="hardcore"] .mechanic-name .blink-cursor {
-    color: #ff0000;
+    color: rgba(248, 113, 113, 0.5);
 }
 
 /* Mechanic Tooltips (Right side, tooltip appears LEFT) */
@@ -649,20 +656,33 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
 }
 
 .sidebar-title-link:hover .sidebar-title {
-    color: var(--color-secondary);
-    text-shadow: 0 0 15px var(--color-secondary);
-    transform: scale(1.05);
+    color: #86efac;
+    border-left-color: #86efac;
+    background: rgba(74, 222, 128, 0.08);
 }
 
 .sidebar-title {
-    font-family: var(--font-main);
-    color: var(--color-primary);
-    font-size: 1rem;
-    text-align: center;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--color-sitgreen);
+    font-size: 0.65rem;
+    text-align: left;
     margin-bottom: 10px;
-    letter-spacing: 0.15em;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
-    transition: all 0.3s ease;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    padding: 6px 8px 6px 10px;
+    border-left: 2px solid var(--color-sitgreen);
+    background: rgba(74, 222, 128, 0.04);
+    border-radius: 0 3px 3px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.sidebar-title::before {
+    content: '⊟';
+    font-size: 0.8rem;
+    opacity: 0.7;
 }
 
 .sidebar-items-grid {
