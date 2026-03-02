@@ -232,31 +232,49 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
     overflow: hidden;
 }
 
-/* ─── Hero Grid Layout (2 rows: top 3-col + bottom strip) ── */
+/* ─── Hero 3-Column Grid ───────────────────────────────── */
 .hero-grid {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
     z-index: 2;
     display: grid;
-    grid-template-columns: minmax(155px, 190px) 1fr minmax(195px, 230px);
-    grid-template-rows: 1fr auto;
-    grid-template-areas:
-        "left  center right"
-        "strip strip  strip";
-    padding: 14px 14px 12px;
+    grid-template-columns: minmax(155px, 195px) 1fr minmax(195px, 235px);
+    grid-template-rows: 1fr;
+    padding: 14px;
     gap: 10px;
     pointer-events: none;
+    box-sizing: border-box;
 }
 .hero-grid > * { pointer-events: auto; }
 
-.hero-col-left   { grid-area: left;   display: flex; flex-direction: column; justify-content: flex-start; min-height: 0; }
-.hero-col-center { grid-area: center; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 0; }
-.hero-col-right  { grid-area: right;  display: flex; flex-direction: column; justify-content: center; min-height: 0; }
-.hero-bottom-strip {
-    grid-area: strip;
+/* Left column: artifacts on top, live feed fills remaining space, login at bottom */
+.hero-col-left {
     display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 0;
+    overflow: hidden;
+}
+.hero-col-left .items-sidebar { flex-shrink: 0; }
+.hero-col-left .activity-feed-hero {
+    flex: 1;          /* fills all remaining vertical space */
+    min-height: 0;
+    overflow: hidden;
+}
+.hero-col-left .agent-login-link { flex-shrink: 0; }
+
+.hero-col-center {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
     align-items: center;
-    gap: 12px;
+    min-height: 0;
+}
+.hero-col-right {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 0;
 }
 
 /* ─── Panel base glass style ────────────────────────────── */
@@ -565,7 +583,7 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
 
 /* Agent Login Link (Below Activity Feed) */
 .agent-login-link {
-    flex-shrink: 0;
+    width: 100%;
 }
 
 .login-button-link {
@@ -1042,9 +1060,7 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
 
 /* Activity Feed in Hero (Left) */
 .activity-feed-hero {
-    flex: 1;
-    padding: 8px 12px;
-    min-width: 0;
+    padding: 10px 12px;
 }
 
 .activity-title {
@@ -1059,16 +1075,18 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
 }
 
 .activity-console {
-    background: transparent;
-    border: none;
-    padding: 0;
-    min-height: 0;
-    max-height: none;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(74, 222, 128, 0.15);
+    border-radius: 4px;
+    padding: 8px 10px;
     overflow: hidden;
-    box-shadow: none;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 3px;
+    height: 100%;
+    min-height: 80px;
+    max-height: 220px;
+    box-sizing: border-box;
 }
 
 .activity-console::before {
