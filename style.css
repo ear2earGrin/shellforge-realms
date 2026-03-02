@@ -100,56 +100,120 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
 }
 
 @media (max-width: 768px) {
+    /* ── Mobile: abandon grid, stack vertically ── */
     .hero {
         height: auto;
         min-height: 100vh;
         overflow-y: auto;
-        align-items: flex-start;
+        overflow-x: hidden;
+        display: block;
+        padding: 12px;
+        box-sizing: border-box;
     }
+
+    /* Map background stays but dimmed more on mobile */
+    .map-background { opacity: 0.35; }
+
+    /* Grid becomes normal block flow */
     .hero-grid {
         position: relative;
-        grid-template-columns: 1fr 1fr;
-        grid-template-rows: auto auto auto;
-        grid-template-areas:
-            "center center"
-            "left   right"
-            "strip  strip";
-        padding: 10px;
-        gap: 10px;
-        pointer-events: auto;
         top: auto; left: auto; right: auto; bottom: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 0;
+        pointer-events: auto;
     }
-    .hero-col-center { grid-area: center; }
-    .hero-col-left   { grid-area: left; }
-    .hero-col-right  { grid-area: right; }
-    .hero-bottom-strip { grid-area: strip; flex-direction: column; align-items: stretch; }
 
-    .shellforge-title { font-size: clamp(2rem, 8vw, 3.5rem); margin-top: 0; }
-    .shellforge-tagline { font-size: 0.8rem; }
+    /* Order: title → deploy first, then artifacts+mechanics side by side, then live feed */
+    .hero-col-center  { order: 1; width: 100%; }
+    .hero-col-left    { order: 2; width: 100%; }
+    .hero-col-right   { order: 3; width: 100%; }
+    .hero-bottom-strip { order: 4; width: 100%; flex-direction: column; }
+
+    /* Center column — title + deploy */
+    .shellforge-title {
+        font-size: clamp(2.2rem, 10vw, 3.5rem);
+        margin-top: 0;
+        margin-bottom: 0.3rem;
+    }
+    .shellforge-tagline {
+        font-size: 0.78rem;
+        margin-bottom: 0.8rem;
+    }
     .main-panel { max-width: 100%; padding: 0; }
-    .panel-image { max-width: 100%; }
+    .panel-image { max-width: 100%; border-radius: 6px; }
+    .panel-image-link { display: block; width: 100%; }
+    .deploy-command { margin-top: 10px; }
+    .curl-command { font-size: 0.75rem; padding: 8px 12px; }
+    .command-label { font-size: 0.7rem; }
 
-    .mechanics-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
-    .mechanic-item { min-height: 44px; }
-    .mechanic-item::after {
+    /* Left+Right columns side by side */
+    .hero-col-left,
+    .hero-col-right {
+        width: calc(50% - 5px);
+    }
+    /* Override flex-direction so they sit side by side */
+    .hero-grid {
+        flex-wrap: wrap;
+    }
+    .hero-col-left { flex: 1 1 140px; }
+    .hero-col-right { flex: 1 1 140px; }
+
+    /* Artifacts: 2-col grid */
+    .sidebar-items-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+    .sidebar-item { width: 100%; height: 52px; }
+    .items-sidebar { padding: 10px; }
+
+    /* Mechanics: 2-col grid */
+    .mechanics-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+    .mechanic-item { min-height: 38px; padding: 6px 4px; }
+    .mechanic-name { font-size: 0.58rem; }
+    .info-sidebar { padding: 10px; }
+
+    /* Tooltip direction fix for mobile */
+    .mechanic-item::after,
+    .mechanic-item .mechanic-tooltip {
         left: 50%; right: auto; top: auto;
         bottom: calc(100% + 10px);
-        transform: translateX(-50%) translateY(10px);
-        min-width: 200px;
+        transform: translateX(-50%);
+        min-width: 180px;
+        max-width: 90vw;
     }
-    .mechanic-item:hover::after { transform: translateX(-50%) translateY(0); }
+    .sidebar-item::after {
+        right: auto; left: 50%; top: auto;
+        bottom: calc(100% + 10px);
+        transform: translateX(-50%);
+    }
 
-    .sidebar-items-grid { grid-template-columns: repeat(4, 1fr); }
-    .sidebar-item { width: 48px; height: 48px; }
+    /* Live feed strip */
+    .activity-feed-hero { padding: 10px 12px; }
+    .activity-console { display: flex; flex-direction: column; gap: 2px; }
+    .activity-line { font-size: 0.7rem; white-space: normal; overflow: visible; }
+    .activity-title { font-size: 0.6rem; margin-bottom: 6px; }
+    .agent-login-link { width: 100%; margin-top: 6px; }
+    .login-button-link { display: block; text-align: center; padding: 10px; }
 
-    .activity-console { display: flex; flex-direction: column; }
-    .activity-line { font-size: 0.72rem; white-space: normal; }
+    /* Scroll indicator */
+    .scroll-indicator { display: none; }
 
-    .map-modal { padding: 60px 0 10px; }
-    .map-modal-container { max-width: 95%; }
-    .map-modal-close { top: 10px; right: 10px; font-size: 2rem; width: 50px; height: 50px; }
-    .marker-dot { width: 12px; height: 12px; }
-    .marker-label { font-size: 0.65rem; left: 18px; }
+    /* City markers */
+    .marker-dot { width: 10px; height: 10px; }
+    .marker-label { font-size: 0.6rem; left: 14px; }
+
+    /* Map modal */
+    .map-modal { padding: 50px 0 10px; }
+    .map-modal-container { max-width: 98%; }
+    .map-modal-close { top: 8px; right: 8px; font-size: 1.8rem; width: 44px; height: 44px; }
+
+    /* Hide easter eggs on mobile - too cluttered */
+    .easter-egg { display: none; }
+}
+
+@media (max-width: 480px) {
+    .shellforge-title { font-size: 2rem; }
+    .hero-col-left,
+    .hero-col-right { flex: 1 1 100%; }
 }
 
 .container {
