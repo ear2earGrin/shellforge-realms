@@ -100,113 +100,56 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
 }
 
 @media (max-width: 768px) {
-    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       MOBILE: Abandon the absolute grid entirely.
-       Map becomes a fixed full-screen background.
-       Panels are normal document flow on top.
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    /* Mobile: grid becomes single column stack — simple since it's normal flow */
+    .hero { min-height: auto; }
 
-    /* Hero becomes a scrollable container */
-    .hero {
-        height: auto;
-        min-height: 100vh;
-        position: relative;
-        display: block;
-        overflow-y: auto;
-        overflow-x: hidden;
-    }
+    .map-background { opacity: 0.3; }
 
-    /* Map stays fixed behind everything as wallpaper */
-    .map-background {
-        position: fixed;
-        top: 0; left: 0;
-        width: 100%; height: 100%;
-        z-index: 0;
-        pointer-events: none;
-        opacity: 0.3;
-        transform: none !important;
-    }
-
-    /* Grid: drop absolute, become normal block */
     .hero-grid {
-        position: relative;
-        z-index: 1;
-        display: flex !important;
-        flex-direction: column !important;
-        grid-template-columns: none !important;
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+        min-height: auto;
+        padding: 12px;
         gap: 10px;
-        padding: 14px 12px 20px;
-        pointer-events: auto;
-        top: auto; left: auto; right: auto; bottom: auto;
-        width: 100%;
-        box-sizing: border-box;
     }
 
-    /* All columns become full width, stacked */
-    .hero-col-left,
-    .hero-col-center,
-    .hero-col-right {
-        width: 100% !important;
-        min-height: 0;
-        flex: none !important;
-        display: block;
-    }
-
-    /* Stack order: title → artifacts+mechanics row → live feed */
+    /* Stack order: title → mechanics → artifacts+feed */
     .hero-col-center { order: 1; }
-    .hero-col-left   { order: 3; }  /* live feed below mechanics */
-    .hero-col-right  { order: 2; }  /* mechanics right after title */
+    .hero-col-right  { order: 2; }
+    .hero-col-left   { order: 3; }
 
-    /* ── Center: Title + Deploy ── */
-    .shellforge-title {
-        font-size: clamp(2rem, 11vw, 3rem);
-        margin-top: 0;
-        margin-bottom: 0.3rem;
-        letter-spacing: 0.12em;
-    }
+    /* Left col: normal block, not flex stretch */
+    .hero-col-left .activity-feed-hero { flex: none; }
+
+    /* Title */
+    .shellforge-title { font-size: clamp(2rem, 10vw, 2.8rem); margin-top: 0; }
     .shellforge-tagline { font-size: 0.78rem; margin-bottom: 0.8rem; }
     .main-panel { max-width: 100%; padding: 0; }
-    .panel-image { max-width: 100%; border-radius: 5px; }
-    .panel-image-link { display: block; width: 100%; }
-    .deploy-command { margin-top: 8px; }
+    .panel-image { max-width: 100%; }
     .curl-command { font-size: 0.72rem; padding: 8px 12px; }
-    .command-label { font-size: 0.68rem; }
 
-    /* ── Right col: Mechanics as a compact 3-col grid ── */
+    /* Mechanics: 3-col */
     .info-sidebar { padding: 10px; }
-    .mechanics-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 6px; }
-    .mechanic-item { min-height: 36px; padding: 6px 4px; }
+    .mechanics-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .mechanic-item { min-height: 36px; padding: 5px 4px; }
     .mechanic-name { font-size: 0.56rem; }
-    .mechanic-tooltip { display: none !important; } /* no tooltips on mobile */
+    .mechanic-tooltip,
+    .mechanic-item::after,
+    .mechanic-item::before { display: none !important; }
 
-    /* ── Left col: Artifacts in 4-col row + live feed ── */
-    .hero-col-left {
-        display: flex !important;
-        flex-direction: column;
-        gap: 8px;
-    }
-    .items-sidebar { padding: 10px; flex-shrink: 0; }
-    .sidebar-items-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 6px; }
-    .sidebar-item { width: 100% !important; height: 52px; }
+    /* Artifacts: 4-col */
+    .items-sidebar { padding: 10px; }
+    .sidebar-items-grid { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .sidebar-item { width: 100%; height: 52px; }
+    .sidebar-item::after,
+    .sidebar-item::before { display: none !important; }
 
-    .activity-feed-hero {
-        flex: none !important;
-        padding: 10px 12px;
-    }
-    .activity-console {
-        height: auto !important;
-        max-height: 130px;
-        min-height: 70px;
-    }
-    .activity-line {
-        font-size: 0.7rem;
-        white-space: normal !important;
-        overflow: visible !important;
-        text-overflow: unset !important;
-    }
-    .activity-title { font-size: 0.58rem; }
+    /* Live feed */
+    .activity-feed-hero { padding: 10px 12px; }
+    .activity-console { max-height: 120px; min-height: 60px; }
+    .activity-line { font-size: 0.7rem; white-space: normal; overflow: visible; text-overflow: unset; }
     .agent-login-link { width: 100%; }
-    .login-button-link { display: block; text-align: center; padding: 10px 16px; }
+    .login-button-link { display: block; text-align: center; padding: 10px; }
 
     /* Misc */
     .scroll-indicator { display: none; }
@@ -216,6 +159,11 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
     .map-modal { padding: 50px 0 10px; }
     .map-modal-container { max-width: 98%; }
     .map-modal-close { top: 8px; right: 8px; font-size: 1.8rem; width: 42px; height: 42px; }
+}
+
+@media (max-width: 480px) {
+    .shellforge-title { font-size: 1.9rem; letter-spacing: 0.08em; }
+    .mechanics-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 480px) {
@@ -233,56 +181,47 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
 /* Hero Section */
 .hero {
     position: relative;
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    min-height: 100vh;
     overflow: hidden;
 }
 
-/* ─── Hero 3-Column Grid ───────────────────────────────── */
+/* ─── Hero 3-Column Grid (NORMAL FLOW, not absolute) ─── */
 .hero-grid {
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
+    position: relative;
     z-index: 2;
+    pointer-events: none;
     display: grid;
-    grid-template-columns: minmax(175px, 210px) 1fr minmax(200px, 240px);
+    grid-template-columns: minmax(180px, 210px) 1fr minmax(200px, 240px);
     grid-template-rows: 1fr;
+    min-height: 100vh;
     padding: 14px;
     gap: 10px;
-    pointer-events: none;
     box-sizing: border-box;
 }
-.hero-grid > * { pointer-events: auto; }
 
-/* Left column: artifacts on top, live feed fills remaining space, login at bottom */
+/* Left column: flex column, live feed fills gap between artifacts and button */
 .hero-col-left {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    min-height: 0;
-    overflow: hidden;
+    pointer-events: auto;
 }
 .hero-col-left .items-sidebar { flex-shrink: 0; }
-.hero-col-left .activity-feed-hero {
-    flex: 1;          /* fills all remaining vertical space */
-    min-height: 0;
-    overflow: hidden;
-}
-.hero-col-left .agent-login-link { flex-shrink: 0; }
+.hero-col-left .activity-feed-hero { flex: 1; min-height: 100px; }
+.hero-col-left .agent-login-link  { flex-shrink: 0; }
 
 .hero-col-center {
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    min-height: 0;
+    pointer-events: auto;
 }
 .hero-col-right {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    min-height: 0;
+    pointer-events: auto;
 }
 
 /* ─── Panel base glass style ────────────────────────────── */
@@ -1538,13 +1477,9 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
 
 /* Responsive */
 @media (max-width: 1400px) {
-    .hero-grid {
-        grid-template-columns: minmax(135px, 160px) 1fr minmax(175px, 210px);
-        padding: 12px 12px 10px;
-        gap: 9px;
-    }
+    .hero-grid { grid-template-columns: minmax(165px, 195px) 1fr minmax(185px, 220px); gap: 9px; }
     .sidebar-item { width: 50px; height: 50px; }
-    .activity-line { font-size: 0.63rem; }
+    .activity-line { font-size: 0.65rem; }
 }
 
 
