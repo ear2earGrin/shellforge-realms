@@ -100,114 +100,122 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
 }
 
 @media (max-width: 768px) {
-    /* ── Mobile: abandon grid, stack vertically ── */
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       MOBILE: Abandon the absolute grid entirely.
+       Map becomes a fixed full-screen background.
+       Panels are normal document flow on top.
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+    /* Hero becomes a scrollable container */
     .hero {
         height: auto;
         min-height: 100vh;
+        position: relative;
+        display: block;
         overflow-y: auto;
         overflow-x: hidden;
-        display: block;
-        padding: 12px;
+    }
+
+    /* Map stays fixed behind everything as wallpaper */
+    .map-background {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        z-index: 0;
+        pointer-events: none;
+        opacity: 0.3;
+        transform: none !important;
+    }
+
+    /* Grid: drop absolute, become normal block */
+    .hero-grid {
+        position: relative;
+        z-index: 1;
+        display: flex !important;
+        flex-direction: column !important;
+        grid-template-columns: none !important;
+        gap: 10px;
+        padding: 14px 12px 20px;
+        pointer-events: auto;
+        top: auto; left: auto; right: auto; bottom: auto;
+        width: 100%;
         box-sizing: border-box;
     }
 
-    /* Map background stays but dimmed more on mobile */
-    .map-background { opacity: 0.35; }
-
-    /* Grid becomes normal block flow */
-    .hero-grid {
-        position: relative;
-        top: auto; left: auto; right: auto; bottom: auto;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        padding: 0;
-        pointer-events: auto;
+    /* All columns become full width, stacked */
+    .hero-col-left,
+    .hero-col-center,
+    .hero-col-right {
+        width: 100% !important;
+        min-height: 0;
+        flex: none !important;
+        display: block;
     }
 
-    /* Order: title → deploy first, then artifacts+mechanics side by side, then live feed */
-    .hero-col-center  { order: 1; width: 100%; }
-    .hero-col-left    { order: 2; width: 100%; }
-    .hero-col-right   { order: 3; width: 100%; }
-    .hero-bottom-strip { order: 4; width: 100%; flex-direction: column; }
+    /* Stack order: title → artifacts+mechanics row → live feed */
+    .hero-col-center { order: 1; }
+    .hero-col-left   { order: 3; }  /* live feed below mechanics */
+    .hero-col-right  { order: 2; }  /* mechanics right after title */
 
-    /* Center column — title + deploy */
+    /* ── Center: Title + Deploy ── */
     .shellforge-title {
-        font-size: clamp(2.2rem, 10vw, 3.5rem);
+        font-size: clamp(2rem, 11vw, 3rem);
         margin-top: 0;
         margin-bottom: 0.3rem;
+        letter-spacing: 0.12em;
     }
-    .shellforge-tagline {
-        font-size: 0.78rem;
-        margin-bottom: 0.8rem;
-    }
+    .shellforge-tagline { font-size: 0.78rem; margin-bottom: 0.8rem; }
     .main-panel { max-width: 100%; padding: 0; }
-    .panel-image { max-width: 100%; border-radius: 6px; }
+    .panel-image { max-width: 100%; border-radius: 5px; }
     .panel-image-link { display: block; width: 100%; }
-    .deploy-command { margin-top: 10px; }
-    .curl-command { font-size: 0.75rem; padding: 8px 12px; }
-    .command-label { font-size: 0.7rem; }
+    .deploy-command { margin-top: 8px; }
+    .curl-command { font-size: 0.72rem; padding: 8px 12px; }
+    .command-label { font-size: 0.68rem; }
 
-    /* Left+Right columns side by side */
-    .hero-col-left,
-    .hero-col-right {
-        width: calc(50% - 5px);
-    }
-    /* Override flex-direction so they sit side by side */
-    .hero-grid {
-        flex-wrap: wrap;
-    }
-    .hero-col-left { flex: 1 1 140px; }
-    .hero-col-right { flex: 1 1 140px; }
-
-    /* Artifacts: 2-col grid */
-    .sidebar-items-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
-    .sidebar-item { width: 100%; height: 52px; }
-    .items-sidebar { padding: 10px; }
-
-    /* Mechanics: 2-col grid */
-    .mechanics-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
-    .mechanic-item { min-height: 38px; padding: 6px 4px; }
-    .mechanic-name { font-size: 0.58rem; }
+    /* ── Right col: Mechanics as a compact 3-col grid ── */
     .info-sidebar { padding: 10px; }
+    .mechanics-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 6px; }
+    .mechanic-item { min-height: 36px; padding: 6px 4px; }
+    .mechanic-name { font-size: 0.56rem; }
+    .mechanic-tooltip { display: none !important; } /* no tooltips on mobile */
 
-    /* Tooltip direction fix for mobile */
-    .mechanic-item::after,
-    .mechanic-item .mechanic-tooltip {
-        left: 50%; right: auto; top: auto;
-        bottom: calc(100% + 10px);
-        transform: translateX(-50%);
-        min-width: 180px;
-        max-width: 90vw;
+    /* ── Left col: Artifacts in 4-col row + live feed ── */
+    .hero-col-left {
+        display: flex !important;
+        flex-direction: column;
+        gap: 8px;
     }
-    .sidebar-item::after {
-        right: auto; left: 50%; top: auto;
-        bottom: calc(100% + 10px);
-        transform: translateX(-50%);
+    .items-sidebar { padding: 10px; flex-shrink: 0; }
+    .sidebar-items-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 6px; }
+    .sidebar-item { width: 100% !important; height: 52px; }
+
+    .activity-feed-hero {
+        flex: none !important;
+        padding: 10px 12px;
     }
+    .activity-console {
+        height: auto !important;
+        max-height: 130px;
+        min-height: 70px;
+    }
+    .activity-line {
+        font-size: 0.7rem;
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: unset !important;
+    }
+    .activity-title { font-size: 0.58rem; }
+    .agent-login-link { width: 100%; }
+    .login-button-link { display: block; text-align: center; padding: 10px 16px; }
 
-    /* Live feed strip */
-    .activity-feed-hero { padding: 10px 12px; }
-    .activity-console { display: flex; flex-direction: column; gap: 2px; }
-    .activity-line { font-size: 0.7rem; white-space: normal; overflow: visible; }
-    .activity-title { font-size: 0.6rem; margin-bottom: 6px; }
-    .agent-login-link { width: 100%; margin-top: 6px; }
-    .login-button-link { display: block; text-align: center; padding: 10px; }
-
-    /* Scroll indicator */
+    /* Misc */
     .scroll-indicator { display: none; }
-
-    /* City markers */
+    .easter-egg { display: none; }
     .marker-dot { width: 10px; height: 10px; }
-    .marker-label { font-size: 0.6rem; left: 14px; }
-
-    /* Map modal */
+    .marker-label { font-size: 0.6rem; }
     .map-modal { padding: 50px 0 10px; }
     .map-modal-container { max-width: 98%; }
-    .map-modal-close { top: 8px; right: 8px; font-size: 1.8rem; width: 44px; height: 44px; }
-
-    /* Hide easter eggs on mobile - too cluttered */
-    .easter-egg { display: none; }
+    .map-modal-close { top: 8px; right: 8px; font-size: 1.8rem; width: 42px; height: 42px; }
 }
 
 @media (max-width: 480px) {
@@ -238,7 +246,7 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
     top: 0; left: 0; right: 0; bottom: 0;
     z-index: 2;
     display: grid;
-    grid-template-columns: minmax(155px, 195px) 1fr minmax(195px, 235px);
+    grid-template-columns: minmax(175px, 210px) 1fr minmax(200px, 240px);
     grid-template-rows: 1fr;
     padding: 14px;
     gap: 10px;
