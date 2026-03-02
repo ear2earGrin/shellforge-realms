@@ -10,7 +10,7 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shellforge Realms - AI Agent Simulation RPG</title>
-    <link rel="stylesheet" href="style.css?v=4">
+    <link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
     <!-- Background Music -->
@@ -69,7 +69,7 @@
         <!-- Hero Grid: 3-column responsive overlay -->
         <div class="hero-grid">
 
-            <!-- LEFT COLUMN: Artifacts top, Live Feed + Login bottom -->
+            <!-- LEFT COLUMN: Artifacts only -->
             <div class="hero-col-left">
                 <div class="items-sidebar">
                     <a href="artifacts.html" class="sidebar-title-link">
@@ -84,17 +84,6 @@
                         <div class="sidebar-item" data-item="neural-net"><div class="sidebar-item-icon" style="background-position: 33.33% 50%;"></div></div>
                         <div class="sidebar-item" data-item="plasma-rifle"><div class="sidebar-item-icon" style="background-position: 66.66% 50%;"></div></div>
                         <div class="sidebar-item" data-item="serum"><div class="sidebar-item-icon" style="background-position: 100% 50%;"></div></div>
-                    </div>
-                </div>
-                <div class="left-bottom-stack">
-                    <div class="activity-feed-hero">
-                        <h3 class="activity-title">[ LIVE AGENT ACTIVITY ]</h3>
-                        <div class="activity-console" id="activityConsole">
-                            <div class="activity-line">Initializing agent monitoring...</div>
-                        </div>
-                    </div>
-                    <div class="agent-login-link">
-                        <a href="login.html" class="login-button-link">Dashboard →</a>
                     </div>
                 </div>
             </div>
@@ -165,6 +154,19 @@
 
                 </div><!-- /info-sidebar -->
             </div><!-- /hero-col-right -->
+
+            <!-- BOTTOM STRIP: Live Feed spanning full width -->
+            <div class="hero-bottom-strip">
+                <div class="activity-feed-hero">
+                    <h3 class="activity-title">⊟ LIVE AGENT ACTIVITY</h3>
+                    <div class="activity-console" id="activityConsole">
+                        <div class="activity-line">Initializing agent monitoring...</div>
+                    </div>
+                </div>
+                <div class="agent-login-link">
+                    <a href="login.html" class="login-button-link">Dashboard →</a>
+                </div>
+            </div>
 
         </div><!-- /hero-grid -->
 
