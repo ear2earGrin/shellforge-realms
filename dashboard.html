@@ -543,28 +543,14 @@
             text-transform: uppercase;
         }
 
-        /* Cluster Members Popup — appears above the button */
-        .cluster-members {
-            position: fixed;   /* fixed so it's never clipped by overflow:auto parents */
-            width: 200px;
-            background: rgba(5, 8, 12, 0.98);
-            border: 2px solid var(--color-primary);
-            border-radius: 8px;
-            padding: 12px;
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(6px);
-            transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
-            z-index: 9999;
-            box-shadow: 0 0 24px rgba(74, 222, 128, 0.4);
-            pointer-events: none;
-        }
-
-        .cluster-badge:hover .cluster-members {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0);
-            pointer-events: auto;
+        /* Cluster popup lives at body level — no CSS hover needed, JS controls it */
+        .cluster-members-title {
+            font-size: 0.65rem;
+            color: rgba(74,222,128,0.5);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            margin-bottom: 10px;
+            text-align: center;
         }
 
         .cluster-members-title {
@@ -1806,14 +1792,8 @@
             </div>
 
             <!-- Cluster Badge -->
-            <div class="cluster-badge" id="clusterBadge" onmouseenter="positionClusterPopup()" >
+            <div class="cluster-badge" id="clusterBadge">
                 <div class="cluster-name" id="clusterName">Prime Helix</div>
-                
-                <!-- Cluster Members Popup (populated by JS) -->
-                <div class="cluster-members" id="clusterMembers">
-                    <div class="cluster-members-title">Other Cluster Agents</div>
-                    <!-- Will be populated by loadAgentData() -->
-                </div>
             </div>
 
             <!-- Personality Traits -->
@@ -3548,43 +3528,62 @@
             }
         }
 
-        // Position cluster popup using fixed positioning (immune to overflow:hidden parents)
-        function positionClusterPopup() {
-            var badge = document.getElementById('clusterBadge');
-            var popup = document.getElementById('clusterMembers');
-            if (!badge || !popup) return;
-            var rect = badge.getBoundingClientRect();
-            // Try to the right first
-            var left = rect.right + 10;
-            var top  = rect.top;
-            // Flip left if off screen
-            if (left + 215 > window.innerWidth) left = rect.left - 215;
-            // Keep on screen vertically
-            var popupH = 170;
-            if (top + popupH > window.innerHeight - 10) top = window.innerHeight - popupH - 10;
-            if (top < 8) top = 8;
-            popup.style.top  = top + 'px';
-            popup.style.left = left + 'px';
-        }
+        // Cluster popup: show/hide at body level via JS
+        (function() {
+            var badge, popup, hideTimer;
+
+            function showPopup() {
+                badge  = document.getElementById('clusterBadge');
+                popup  = document.getElementById('clusterMembers');
+                if (!badge || !popup) return;
+                clearTimeout(hideTimer);
+                var rect = badge.getBoundingClientRect();
+                var left = rect.right + 12;
+                var top  = rect.top;
+                if (left + 220 > window.innerWidth) left = rect.left - 222;
+                var popupH = popup.offsetHeight || 180;
+                if (top + popupH > window.innerHeight - 8) top = window.innerHeight - popupH - 8;
+                if (top < 8) top = 8;
+                popup.style.left    = left + 'px';
+                popup.style.top     = top  + 'px';
+                popup.style.display = 'block';
+                popup.style.opacity = '0';
+                popup.style.transition = 'opacity 0.18s ease';
+                requestAnimationFrame(function() { popup.style.opacity = '1'; });
+            }
+
+            function hidePopup() {
+                hideTimer = setTimeout(function() {
+                    if (popup) { popup.style.opacity = '0'; }
+                    setTimeout(function() { if (popup) popup.style.display = 'none'; }, 180);
+                }, 120);
+            }
+
+            document.addEventListener('DOMContentLoaded', function() {
+                badge = document.getElementById('clusterBadge');
+                popup = document.getElementById('clusterMembers');
+                if (badge) {
+                    badge.addEventListener('mouseenter', showPopup);
+                    badge.addEventListener('mouseleave', hidePopup);
+                }
+                if (popup) {
+                    popup.addEventListener('mouseenter', function() { clearTimeout(hideTimer); });
+                    popup.addEventListener('mouseleave', hidePopup);
+                }
+            });
+        })();
 
         // Populate cluster members (show other 3 archetypes from same cluster)
         function populateClusterMembers(clusterKey, userArchetype) {
             const membersContainer = document.getElementById('clusterMembers');
             if (!membersContainer) return;
 
-            // Find the title div (keep it)
-            const titleDiv = membersContainer.querySelector('.cluster-members-title');
-            
-            // Clear existing members (but keep title)
+            // Clear and rebuild (keep just a fresh title)
             membersContainer.innerHTML = '';
-            if (titleDiv) {
-                membersContainer.appendChild(titleDiv);
-            } else {
-                const newTitle = document.createElement('div');
-                newTitle.className = 'cluster-members-title';
-                newTitle.textContent = 'Other Cluster Agents';
-                membersContainer.appendChild(newTitle);
-            }
+            const newTitle = document.createElement('div');
+            newTitle.className = 'cluster-members-title';
+            newTitle.textContent = 'Other Cluster Agents';
+            membersContainer.appendChild(newTitle);
 
             // Fallback: if clusterKey missing/invalid, derive from clusterName in DOM
             if (!clusterKey || !CLUSTER_DATA[clusterKey]) {
@@ -4793,5 +4792,20 @@
         })();
     </script>
     <script src="terminal-notifications.js"></script>
+    <!-- Cluster Members Popup — lives at body level, immune to overflow clipping -->
+    <div id="clusterMembers" style="
+        position: fixed;
+        display: none;
+        width: 210px;
+        background: rgba(5,8,12,0.97);
+        border: 2px solid #4ade80;
+        border-radius: 8px;
+        padding: 12px;
+        z-index: 99999;
+        box-shadow: 0 0 24px rgba(74,222,128,0.45);
+        font-family: 'IBM Plex Mono', monospace;
+    ">
+        <div class="cluster-members-title">Other Cluster Agents</div>
+    </div>
 </body>
 </html>
