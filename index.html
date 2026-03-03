@@ -765,7 +765,11 @@
                 'traded Shadow Net Fiber for 80 $SHELL','beast kill: dropped Neon Circuit',
                 'meditated at The Core +25 energy','quest completed: The Long Walk +120 $SHELL'
             ];
-            function ts(){var d=new Date();return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2);}
+            var boot=document.createElement('div');
+            boot.className='feed-line';
+            boot.innerHTML='<span class="feed-prefix">&rsaquo;</span><span style="color:#4ade80;">Initializing agent monitoring...</span>';
+            feed.appendChild(boot);
+                        function ts(){var d=new Date();return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2);}
             function addLine(ag,txt){
                 var isDeath=txt.indexOf('DIED')>-1;
                 var isGood=txt.indexOf('+')>-1||txt.indexOf('SUCCESS')>-1||txt.indexOf('inherited')>-1||txt.indexOf('completed')>-1;
