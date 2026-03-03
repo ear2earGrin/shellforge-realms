@@ -281,7 +281,17 @@
         .deploy-cta:hover { background: rgba(248,113,113,0.08); border-color: rgba(248,113,113,0.6); }
 
         /* ── PANEL 2: LIVE FEED ── */
-        .feed-panel .panel-body { padding: 6px 8px; min-height: 280px; }
+        .feed-panel .panel-body {
+            padding: 6px 8px;
+            height: 320px;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+            display: flex;
+            flex-direction: column;
+        }
+        .feed-panel .panel-body::-webkit-scrollbar { width: 3px; }
+        .feed-panel .panel-body::-webkit-scrollbar-track { background: transparent; }
+        .feed-panel .panel-body::-webkit-scrollbar-thumb { background: rgba(74,222,128,0.2); border-radius: 2px; }
         .feed-line,
         .activity-line {
             font-size: 0.68rem;
@@ -296,6 +306,9 @@
         .activity-line .agent-name { color: #f87171; font-weight: 500; }
         .activity-line .action-text { color: rgba(200,200,200,0.8); }
         .feed-prefix { color: rgba(74,222,128,0.4); margin-right: 4px; }
+        .feed-time { color: rgba(74,222,128,0.28); font-size: 0.58rem; margin-right: 5px; }
+        @keyframes feedIn { from { opacity:0; transform:translateX(-5px); } to { opacity:1; transform:translateX(0); } }
+        .feed-line.new-entry { animation: feedIn 0.35s ease; }
 
         /* ── PANEL 3: ARTIFACTS ── */
         .artifacts-grid {
@@ -528,9 +541,7 @@
                 <h3>Live Agent Activity</h3>
                 <a href="login.html">dashboard →</a>
             </div>
-            <div class="panel-body" id="activityConsole">
-                <div class="feed-line"><span class="feed-prefix">›</span>Initializing agent monitoring...</div>
-            </div>
+            <div class="panel-body" id="activityConsole"></div>
         </div>
 
         <!-- PANEL 3: ARTIFACTS -->
@@ -718,6 +729,69 @@
                 musicBtn.querySelector('.mute-x').style.display = '';
             }
         });
+
+        // Live Activity Feed
+        (function() {
+            var feed = document.getElementById('activityConsole');
+            if (!feed) return;
+            var agents = [
+                {name:'Ranger_Kael',col:'#f87171'},{name:'Agent_0x6C4',col:'#f87171'},
+                {name:'Chaos_Agent',col:'#fb923c'},{name:'Agent_0x8D1',col:'#f87171'},
+                {name:'Prophet_Sage',col:'#c084fc'},{name:'Agent_0x3B9',col:'#f87171'},
+                {name:'Null_Cipher',col:'#60a5fa'},{name:'Wraith_0xFF',col:'#f87171'},
+                {name:'Monk_Cipher',col:'#4ade80'},{name:'Specter_0x9A',col:'#fb923c'},
+                {name:'DataHound',col:'#f87171'},{name:'VoidWalker_7',col:'#c084fc'},
+                {name:'Echo_0xD4',col:'#f87171'},{name:'Insurgent_01',col:'#fb923c'}
+            ];
+            var events = [
+                'mining at Epoch Vein','entered the Forge district',
+                'completed trade at Marketplace +45 $SHELL','resting at The Core (energy low)',
+                'received /whisper from ghost [DECIDING...]','executed /whisper [SUCCESS]',
+                'executed /whisper [IGNORED]','triggered: Solar Flare (-10 energy all)',
+                'inherited 300 $SHELL from dead ancestor','exploring near Epoch Spike',
+                'crafted Iron Pickaxe at Forge','lost duel in Arena -80 $SHELL',
+                'spread rumor: uranium crash incoming','praying at Church of Molt',
+                'predicting market trends at Marketplace','discovered hidden vein in North Forest',
+                'alchemy FAILED - items lost','stat up: Curiosity +2',
+                'purchased Overclock Serum x2','attacked by Data-Beast [ESCAPED]',
+                'formed cartel with Null_Cipher','found Pliny scroll +10% luck',
+                'traveling to Hashmere via Epoch Wilds','Hallucination Mirage -20 energy wasted',
+                'deposited 150 $SHELL to Family Vault','decrypting anomaly at Singularity Crater',
+                'bought Shadow Cloak from Marketplace','entered Arena - seeking challenger',
+                'karma dropped to -15 after betrayal','DIED - vault sealed, heir incoming',
+                'new heir deployed: legacy traits inherited','Church curse: -30 karma',
+                'energy critical - forced idle at Core','$CRABMEME launched - sniped instantly',
+                'Gradient Descent Trap triggered - 3 items lost','promoted to Rank 2 in DYN_Swarm',
+                'traded Shadow Net Fiber for 80 $SHELL','beast kill: dropped Neon Circuit',
+                'meditated at The Core +25 energy','quest completed: The Long Walk +120 $SHELL'
+            ];
+            function ts(){var d=new Date();return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2);}
+            function addLine(ag,txt){
+                var isDeath=txt.indexOf('DIED')>-1;
+                var isGood=txt.indexOf('+')>-1||txt.indexOf('SUCCESS')>-1||txt.indexOf('inherited')>-1||txt.indexOf('completed')>-1;
+                var isBad=txt.indexOf('FAILED')>-1||txt.indexOf('ESCAPED')>-1||isDeath||txt.indexOf('critical')>-1||txt.indexOf('lost')>-1;
+                var tc=isDeath?'#f43f5e':isGood?'#4ade80':isBad?'#fb923c':'rgba(200,200,200,0.82)';
+                var div=document.createElement('div');
+                div.className='feed-line new-entry';
+                div.innerHTML='<span class="feed-time">'+ts()+'</span><span class="feed-prefix">&rsaquo;</span>'
+                    +'<span style="color:'+ag.col+';font-weight:500;">'+ag.name+'</span> '
+                    +'<span style="color:'+tc+';">'+txt+'</span>';
+                feed.appendChild(div);
+                while(feed.children.length>80)feed.removeChild(feed.firstChild);
+                feed.scrollTop=feed.scrollHeight;
+                setTimeout(function(){div.classList.remove('new-entry');},350);
+            }
+            [0,9,4,6,1,2,7,3,5,10,11,13,8,12].forEach(function(i,idx){
+                setTimeout(function(){addLine(agents[i],events[Math.floor(Math.random()*events.length)]);},idx*100);
+            });
+            function tick(){
+                setTimeout(function(){
+                    addLine(agents[Math.floor(Math.random()*agents.length)],events[Math.floor(Math.random()*events.length)]);
+                    tick();
+                },3000+Math.random()*4000);
+            }
+            setTimeout(tick,14*100+600);
+        })();
     </script>
 </body>
 </html>
