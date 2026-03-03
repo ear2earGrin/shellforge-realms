@@ -4617,11 +4617,13 @@
             function getBounds(zoom) {
                 var cw = container.offsetWidth;
                 var ch = container.offsetHeight;
-                // The inner is 100% of container; at zoom it becomes zoom*cw wide
-                var scaledW = cw * zoom;
-                var scaledH = ch * zoom;
+                var iw = inner.offsetWidth;
+                var ih = inner.offsetHeight;
+                var scaledW = iw * zoom;
+                var scaledH = ih * zoom;
                 return {
-                    minX: -(scaledW - cw), maxX: 0,
+                    // X locked: always centered, no horizontal drag
+                    centerX: -(scaledW - cw) / 2,
                     minY: -(scaledH - ch), maxY: 0
                 };
             }
@@ -4629,7 +4631,8 @@
             function applyTransform(x, y, zoom) {
                 zoom = zoom !== undefined ? zoom : curZoom;
                 var b = getBounds(zoom);
-                curX = clamp(x, b.minX, b.maxX);
+                // Ignore x entirely — always stay horizontally centered
+                curX = b.centerX;
                 curY = clamp(y, b.minY, b.maxY);
                 curZoom = zoom;
                 inner.style.transform =
