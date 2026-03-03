@@ -543,14 +543,28 @@
             text-transform: uppercase;
         }
 
-        /* Cluster popup lives at body level — no CSS hover needed, JS controls it */
-        .cluster-members-title {
-            font-size: 0.65rem;
-            color: rgba(74,222,128,0.5);
-            text-transform: uppercase;
-            letter-spacing: 0.12em;
-            margin-bottom: 10px;
-            text-align: center;
+        /* Cluster Members Popup */
+        .cluster-members {
+            position: absolute;
+            right: -190px;
+            top: 0;
+            width: 180px;
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid var(--color-primary);
+            border-radius: 8px;
+            padding: 12px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateX(-10px);
+            transition: all 0.3s ease;
+            z-index: 100;
+            box-shadow: 0 0 20px rgba(74, 222, 128, 0.5);
+        }
+
+        .cluster-badge:hover .cluster-members {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(0);
         }
 
         .cluster-members-title {
@@ -755,23 +769,15 @@
             position: absolute;
             top: 0; left: 0;
             width: 100%;
-            /* Maintain map's 1.5:1 aspect ratio (1536×1024).
-               padding-bottom: 66.667% = 100%/1.5.
-               At zoom 1.0 in a ~1280px wide container this gives
-               height ≈ 853px, so even at max zoom-out there is
-               ~230px of vertical pan room (container ≈ 620px). */
-            height: 0;
-            padding-bottom: 66.667%;
+            height: 100%;
             transform: translate(0px, 0px) scale(1);
             transform-origin: 0 0;
             will-change: transform;
         }
         .map-drag-inner img {
-            position: absolute;
-            top: 0; left: 0;
             width: 100%;
             height: 100%;
-            object-fit: fill; /* exact ratio already set, no cropping needed */
+            object-fit: cover;
             display: block;
             pointer-events: none;
             filter: brightness(0.8);
@@ -1794,6 +1800,12 @@
             <!-- Cluster Badge -->
             <div class="cluster-badge" id="clusterBadge">
                 <div class="cluster-name" id="clusterName">Prime Helix</div>
+                
+                <!-- Cluster Members Popup (populated by JS) -->
+                <div class="cluster-members" id="clusterMembers">
+                    <div class="cluster-members-title">Other Cluster Agents</div>
+                    <!-- Will be populated by loadAgentData() -->
+                </div>
             </div>
 
             <!-- Personality Traits -->
@@ -3468,6 +3480,8 @@
             // Update cluster badge and populate other cluster members
             if (agent.clusterName) {
                 document.getElementById('clusterName').textContent = agent.clusterName;
+                
+                // Populate cluster members (show other 3 archetypes from same cluster)
                 populateClusterMembers(agent.cluster, agent.archetype);
             }
 
@@ -3528,133 +3542,26 @@
             }
         }
 
-        // Cluster popup: show/hide at body level via JS
-        (function() {
-            var badge, popup, hideTimer;
-
-            function showPopup() {
-                badge  = document.getElementById('clusterBadge');
-                popup  = document.getElementById('clusterMembers');
-                if (!badge || !popup) return;
-                clearTimeout(hideTimer);
-
-                // ── Rebuild members every time so it always shows ──
-                var clusterNameEl = document.getElementById('clusterName');
-                var clusterNameText = (clusterNameEl ? clusterNameEl.textContent : '').toLowerCase();
-                var key = 'prime-helix';
-                if (clusterNameText.includes('sec'))   key = 'sec-grid';
-                if (clusterNameText.includes('swarm') || clusterNameText.includes('dyn')) key = 'dyn-swarm';
-
-                // Read current agent archetype from localStorage
-                var agentArchetype = '';
-                try {
-                    var a = JSON.parse(localStorage.getItem('shellforgeAgent') || '{}');
-                    agentArchetype = a.archetype || '';
-                } catch(e) {}
-
-                // Build member list inline
-                popup.innerHTML = '';
-                var title = document.createElement('div');
-                title.className = 'cluster-members-title';
-                title.textContent = 'Other Cluster Agents';
-                popup.appendChild(title);
-
-                var clusterDefs = {
-                    'prime-helix': [
-                        { id: '0day-primer',    name: '0-Day Primer',    img: '0-day Primer.jpg' },
-                        { id: 'consensus-node', name: 'Consensus Node',  img: 'Consensus Node.jpg' },
-                        { id: 'oracle',         name: '0xOracle',        img: 'Oracle px.jpg' },
-                        { id: 'binary-sculptr', name: 'Binary Sculptr',  img: 'Binary Sculptr.jpg' }
-                    ],
-                    'sec-grid': [
-                        { id: 'adversarial',     name: '0xAdversarial',    img: 'Adversarial 0x.jpg' },
-                        { id: 'root-auth',       name: 'Root Auth',         img: 'Root Auth.jpg' },
-                        { id: 'buffer-sentinel', name: 'Buffer Sentinel',   img: 'Buffer Sentinel.jpg' },
-                        { id: 'noise-injector',  name: 'Noise Injector',    img: 'Noise Injector.jpg' }
-                    ],
-                    'dyn-swarm': [
-                        { id: 'ordinate-mapper',  name: 'Ordinate Mapper',  img: 'Ordinate Mapper.jpg' },
-                        { id: 'ddos-insurgent',   name: 'DDoS Insurgent',   img: 'DDoS Insurgent.jpg' },
-                        { id: 'bound-encryptor',  name: 'Bound Encryptor',  img: 'Bound Encryptor.jpg' },
-                        { id: 'morph-layer',      name: 'Morph Layer',      img: 'Morph Layer.jpg' }
-                    ]
-                };
-
-                var members = clusterDefs[key] || [];
-                members.forEach(function(m) {
-                    var row = document.createElement('div');
-                    row.className = 'cluster-member';
-                    var encodedImg = m.img.split(' ').join('%20');
-
-                    var avatarDiv = document.createElement('div');
-                    avatarDiv.style.cssText = 'width:36px;height:36px;border-radius:50%;border:2px solid #4ade80;overflow:hidden;flex-shrink:0;';
-                    var img = document.createElement('img');
-                    img.src = 'images/archetypes/' + encodedImg;
-                    img.alt = m.name;
-                    img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
-                    img.onerror = function() { this.parentElement.style.background = 'rgba(74,222,128,0.15)'; };
-                    avatarDiv.appendChild(img);
-
-                    var nameDiv = document.createElement('div');
-                    nameDiv.style.cssText = 'font-size:0.7rem;color:#4ade80;font-family:IBM Plex Mono,monospace;';
-                    nameDiv.textContent = m.name;
-
-                    row.appendChild(avatarDiv);
-                    row.appendChild(nameDiv);
-                    popup.appendChild(row);
-                });
-
-                // ── Position below the badge ──
-                var rect = badge.getBoundingClientRect();
-                popup.style.left = rect.left + 'px';
-                popup.style.top  = (rect.bottom + 6) + 'px';
-                popup.style.display = 'block';
-                popup.style.opacity = '0';
-                popup.style.transition = 'opacity 0.18s ease';
-                requestAnimationFrame(function() { popup.style.opacity = '1'; });
-            }
-
-            function hidePopup() {
-                hideTimer = setTimeout(function() {
-                    if (popup) { popup.style.opacity = '0'; }
-                    setTimeout(function() { if (popup) popup.style.display = 'none'; }, 180);
-                }, 120);
-            }
-
-            document.addEventListener('DOMContentLoaded', function() {
-                badge = document.getElementById('clusterBadge');
-                popup = document.getElementById('clusterMembers');
-                if (badge) {
-                    badge.addEventListener('mouseenter', showPopup);
-                    badge.addEventListener('mouseleave', hidePopup);
-                }
-                if (popup) {
-                    popup.addEventListener('mouseenter', function() { clearTimeout(hideTimer); });
-                    popup.addEventListener('mouseleave', hidePopup);
-                }
-            });
-        })();
-
         // Populate cluster members (show other 3 archetypes from same cluster)
         function populateClusterMembers(clusterKey, userArchetype) {
             const membersContainer = document.getElementById('clusterMembers');
             if (!membersContainer) return;
 
-            // Clear and rebuild (keep just a fresh title)
+            // Find the title div (keep it)
+            const titleDiv = membersContainer.querySelector('.cluster-members-title');
+            
+            // Clear existing members (but keep title)
             membersContainer.innerHTML = '';
-            const newTitle = document.createElement('div');
-            newTitle.className = 'cluster-members-title';
-            newTitle.textContent = 'Other Cluster Agents';
-            membersContainer.appendChild(newTitle);
-
-            // Fallback: if clusterKey missing/invalid, derive from clusterName in DOM
-            if (!clusterKey || !CLUSTER_DATA[clusterKey]) {
-                const nameEl = document.getElementById('clusterName');
-                const name = (nameEl && nameEl.textContent.trim().toLowerCase()) || '';
-                if (name.includes('prime')) clusterKey = 'prime-helix';
-                else if (name.includes('sec')) clusterKey = 'sec-grid';
-                else if (name.includes('swarm') || name.includes('dyn')) clusterKey = 'dyn-swarm';
+            if (titleDiv) {
+                membersContainer.appendChild(titleDiv);
+            } else {
+                const newTitle = document.createElement('div');
+                newTitle.className = 'cluster-members-title';
+                newTitle.textContent = 'Other Cluster Agents';
+                membersContainer.appendChild(newTitle);
             }
+
+            // Get cluster data
             const clusterData = CLUSTER_DATA[clusterKey];
             if (!clusterData) return;
 
@@ -4708,10 +4615,9 @@
             function getBounds(zoom) {
                 var cw = container.offsetWidth;
                 var ch = container.offsetHeight;
-                var iw = inner.offsetWidth;
-                var ih = inner.offsetHeight;  // real map height (taller than container)
-                var scaledW = iw * zoom;
-                var scaledH = ih * zoom;
+                // The inner is 100% of container; at zoom it becomes zoom*cw wide
+                var scaledW = cw * zoom;
+                var scaledH = ch * zoom;
                 return {
                     minX: -(scaledW - cw), maxX: 0,
                     minY: -(scaledH - ch), maxY: 0
@@ -4734,13 +4640,10 @@
                 if (!container || !inner) return;
 
                 // Start centered at default zoom
-                // inner.offsetHeight reflects map's natural aspect ratio (taller than container)
                 var cw = container.offsetWidth;
                 var ch = container.offsetHeight;
-                var iw = inner.offsetWidth;
-                var ih = inner.offsetHeight;  // ≈ cw * 0.667, taller than ch
-                var scaledW = iw * curZoom;
-                var scaledH = ih * curZoom;
+                var scaledW = cw * curZoom;
+                var scaledH = ch * curZoom;
                 curX = -(scaledW - cw) / 2;
                 curY = -(scaledH - ch) / 2;
                 applyTransform(curX, curY, curZoom);
@@ -4837,10 +4740,8 @@
                 if (!container || !inner) return;
                 var cw = container.offsetWidth;
                 var ch = container.offsetHeight;
-                var iw = inner.offsetWidth;
-                var ih = inner.offsetHeight;
-                var scaledW = iw * curZoom;
-                var scaledH = ih * curZoom;
+                var scaledW = cw * curZoom;
+                var scaledH = ch * curZoom;
                 var targetX = -(visualX / 100 * scaledW) + cw / 2;
                 var targetY = -(visualY / 100 * scaledH) + ch / 2;
                 applyTransform(targetX, targetY);
@@ -4854,20 +4755,5 @@
         })();
     </script>
     <script src="terminal-notifications.js"></script>
-    <!-- Cluster Members Popup — lives at body level, immune to overflow clipping -->
-    <div id="clusterMembers" style="
-        position: fixed;
-        display: none;
-        width: 210px;
-        background: rgba(5,8,12,0.97);
-        border: 2px solid #4ade80;
-        border-radius: 8px;
-        padding: 12px;
-        z-index: 99999;
-        box-shadow: 0 0 24px rgba(74,222,128,0.45);
-        font-family: 'IBM Plex Mono', monospace;
-    ">
-        <div class="cluster-members-title">Other Cluster Agents</div>
-    </div>
 </body>
 </html>
