@@ -1806,12 +1806,6 @@
             <!-- Cluster Badge -->
             <div class="cluster-badge" id="clusterBadge">
                 <div class="cluster-name" id="clusterName">Prime Helix</div>
-                
-                <!-- Cluster Members Popup (populated by JS) -->
-                <div class="cluster-members" id="clusterMembers">
-                    <div class="cluster-members-title">Other Cluster Agents</div>
-                    <!-- Will be populated by loadAgentData() -->
-                </div>
             </div>
 
             <!-- Personality Traits -->
@@ -3434,8 +3428,16 @@
 
             // Update avatar image
             const avatarDiv = document.querySelector('.agent-avatar');
+            avatarDiv.innerHTML = '';
             if (agent.archetypeImage) {
-                avatarDiv.innerHTML = `<img src="images/archetypes/${agent.archetypeImage}" alt="${agent.archetypeName}">`;
+                const img = document.createElement('img');
+                img.src = 'images/archetypes/' + agent.archetypeImage.replace(/ /g, '%20');
+                img.alt = agent.archetypeName || '';
+                img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
+                img.onerror = function() { avatarDiv.innerHTML = '<span style="font-size:2rem">&#x1F916;</span>'; };
+                avatarDiv.appendChild(img);
+            } else {
+                avatarDiv.innerHTML = '<span style="font-size:2rem">&#x1F916;</span>';
             }
 
             // Update stats
@@ -3486,111 +3488,66 @@
             // Update cluster badge and populate other cluster members
             if (agent.clusterName) {
                 document.getElementById('clusterName').textContent = agent.clusterName;
-                
-                // Populate cluster members (show other 3 archetypes from same cluster)
-                populateClusterMembers(agent.cluster, agent.archetype);
             }
 
-            // Update personality traits
-            if (agent.stats) {
-                // Curiosity
-                const curiosity = agent.stats.curiosity || 5;
-                document.getElementById('curiosityValue').textContent = curiosity;
-                document.getElementById('curiosityBar').style.width = `${curiosity * 10}%`;
-
-                // Trust
-                const trust = agent.stats.trust || 5;
-                document.getElementById('trustValue').textContent = trust;
-                document.getElementById('trustBar').style.width = `${trust * 10}%`;
-
-                // Aggression
-                const aggression = agent.stats.aggression || 5;
-                document.getElementById('aggressionValue').textContent = aggression;
-                document.getElementById('aggressionBar').style.width = `${aggression * 10}%`;
-            }
-
-            // Update status effects
-            const statusContainer = document.getElementById('statusEffects');
-            statusContainer.innerHTML = '';
-
-            // Add trait-based status effects
-            if (agent.traits && agent.traits.length > 0) {
-                agent.traits.forEach(trait => {
-                    const tag = document.createElement('span');
-                    tag.className = 'status-tag';
-                    tag.textContent = trait.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                    statusContainer.appendChild(tag);
-                });
-            }
-
-            // Add well-rested if energy > 90
-            if (agent.energy >= 90) {
-                const tag = document.createElement('span');
-                tag.className = 'status-tag positive';
-                tag.textContent = 'Well Rested';
-                statusContainer.appendChild(tag);
-            }
-
-            // Add low energy warning if energy < 30
-            if (agent.energy < 30) {
-                const tag = document.createElement('span');
-                tag.className = 'status-tag negative';
-                tag.textContent = 'Exhausted';
-                statusContainer.appendChild(tag);
-            }
-
-            // Add wounded if health < 100
-            if (agent.health < 100) {
-                const tag = document.createElement('span');
-                tag.className = 'status-tag negative';
-                tag.textContent = 'Wounded';
-                statusContainer.appendChild(tag);
-            }
-        }
-
-        // Populate cluster members (show other 3 archetypes from same cluster)
         function populateClusterMembers(clusterKey, userArchetype) {
-            const membersContainer = document.getElementById('clusterMembers');
-            if (!membersContainer) return;
+            var popup   = document.getElementById('clusterPopup');
+            var members = document.getElementById('clusterPopupMembers');
+            var badge   = document.getElementById('clusterBadge');
+            if (!popup || !members || !badge) return;
 
-            // Find the title div (keep it)
-            const titleDiv = membersContainer.querySelector('.cluster-members-title');
-            
-            // Clear existing members (but keep title)
-            membersContainer.innerHTML = '';
-            if (titleDiv) {
-                membersContainer.appendChild(titleDiv);
-            } else {
-                const newTitle = document.createElement('div');
-                newTitle.className = 'cluster-members-title';
-                newTitle.textContent = 'Other Cluster Agents';
-                membersContainer.appendChild(newTitle);
-            }
-
-            // Get cluster data
-            const clusterData = CLUSTER_DATA[clusterKey];
+            var clusterData = CLUSTER_DATA[clusterKey] || CLUSTER_DATA[Object.keys(CLUSTER_DATA)[0]];
             if (!clusterData) return;
 
-            // Filter out the user's archetype and show the other 3
-            const otherMembers = clusterData.archetypes.filter(arch => arch.id !== userArchetype);
+            var others = clusterData.archetypes.filter(function(a){ return a.id !== userArchetype; });
+            var show   = others.length ? others : clusterData.archetypes.slice(0,3);
 
-            // Create member elements
-            otherMembers.forEach(member => {
-                const memberDiv = document.createElement('div');
-                memberDiv.className = 'cluster-member';
+            members.innerHTML = '';
+            show.forEach(function(member) {
+                var row = document.createElement('div');
+                row.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:5px;border-radius:4px;background:rgba(74,222,128,0.05);';
 
-                const avatarDiv = document.createElement('div');
-                avatarDiv.className = 'cluster-member-avatar';
-                avatarDiv.innerHTML = `<img src="images/archetypes/${member.image}" alt="${member.name}">`;
+                var av = document.createElement('div');
+                av.style.cssText = 'width:32px;height:32px;border-radius:50%;border:1px solid rgba(74,222,128,0.5);overflow:hidden;flex-shrink:0;background:#0a1a0a;display:flex;align-items:center;justify-content:center;';
 
-                const nameDiv = document.createElement('div');
-                nameDiv.className = 'cluster-member-name';
-                nameDiv.textContent = member.name;
+                var img = document.createElement('img');
+                img.src = 'images/archetypes/' + member.image.replace(/ /g, '%20');
+                img.alt = member.name;
+                img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+                img.onerror = function(){ av.textContent = String.fromCodePoint(0x1F916); };
+                av.appendChild(img);
 
-                memberDiv.appendChild(avatarDiv);
-                memberDiv.appendChild(nameDiv);
-                membersContainer.appendChild(memberDiv);
+                var nm = document.createElement('div');
+                nm.textContent = member.name;
+                nm.style.cssText = 'font-size:0.7rem;color:rgba(74,222,128,0.9);font-family:var(--font-main);line-height:1.3;';
+
+                row.appendChild(av);
+                row.appendChild(nm);
+                members.appendChild(row);
             });
+
+            var hideTimer;
+            badge.addEventListener('mouseenter', function() {
+                clearTimeout(hideTimer);
+                var r = badge.getBoundingClientRect();
+                popup.style.left  = (r.right + 8) + 'px';
+                popup.style.top   = r.top + 'px';
+                popup.style.display = 'block';
+            });
+            badge.addEventListener('mouseleave', function() {
+                hideTimer = setTimeout(function(){ popup.style.display = 'none'; }, 180);
+            });
+            popup.addEventListener('mouseenter', function(){ clearTimeout(hideTimer); });
+            popup.addEventListener('mouseleave', function(){
+                hideTimer = setTimeout(function(){ popup.style.display = 'none'; }, 180);
+            });
+        }
+
+        // Call cluster popup setup
+        if (agent.clusterName) {
+            var ck = (agent.clusterName || 'prime-helix').toLowerCase().replace(/\s+/g, '-');
+            var ua = agent.archetypeId || agent.archetype || '';
+            populateClusterMembers(ck, ua);
         }
 
         // Logout functionality
@@ -4764,5 +4721,10 @@
         })();
     </script>
     <script src="terminal-notifications.js"></script>
+
+<div id="clusterPopup" style="display:none;position:fixed;z-index:9999;width:200px;background:rgba(4,8,16,0.98);border:1px solid rgba(74,222,128,0.5);border-radius:8px;padding:12px 10px;box-shadow:0 0 20px rgba(74,222,128,0.3);">
+  <div style="font-size:0.65rem;color:rgba(74,222,128,0.5);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;text-align:center;">Swarm Members</div>
+  <div id="clusterPopupMembers"></div>
+</div>
 </body>
 </html>
