@@ -4618,7 +4618,7 @@
                 var cw = container.offsetWidth;
                 var ch = container.offsetHeight;
                 var iw = inner.offsetWidth;
-                var ih = inner.offsetHeight;
+                var ih = (inner.offsetHeight > 10) ? inner.offsetHeight : iw * (1024/1536);
                 var scaledW = iw * zoom;
                 var scaledH = ih * zoom;
                 return {
