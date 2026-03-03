@@ -4611,7 +4611,7 @@
 
             var MIN_ZOOM = 1.0;   // fully zoomed out = map fills container exactly
             var MAX_ZOOM = 2.5;   // max zoom in
-            var curZoom  = 1.25;  // default: slightly zoomed in so map feels alive
+            var curZoom  = 1.0;   // default: full map visible (zoom in with scroll)
 
             function clamp(val, min, max) {
                 return Math.max(min, Math.min(max, val));
