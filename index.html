@@ -316,9 +316,14 @@
         .artifact-slot .sidebar-item-icon {
             width: 100%;
             height: 100%;
-            background-image: url('images/items-sprite.png');
-            background-size: 200% auto;
-            image-rendering: pixelated;
+            background-image: url('images/items design1.jpg');
+            background-size: 400% 300%;
+            border-radius: 3px;
+            transition: all 0.2s ease;
+        }
+        .artifact-slot:hover .sidebar-item-icon {
+            filter: brightness(1.3);
+            box-shadow: 0 0 12px rgba(74, 222, 128, 0.5);
         }
 
         /* ── PANEL 4: MECHANICS ── */
@@ -579,7 +584,35 @@
     <!-- MAP MODAL -->
     <div id="mapModal" class="map-modal">
         <div class="map-modal-close" id="mapModalClose">&times;</div>
-        <img src="images/main map.png" alt="Shellforge World Map">
+        <div class="map-modal-container" style="position:relative; display:inline-block; width:100%;">
+            <img src="images/main map.png" alt="Shellforge World Map" class="map-modal-image" style="width:100%; border-radius:6px; display:block;">
+            <!-- City Hotspots -->
+            <div class="city-hotspot nexarch-hotspot" style="position:absolute; top:36%; right:20%; width:150px; height:150px;">
+                <div class="city-label"><span class="city-name">Nexarch</span></div>
+            </div>
+            <div class="city-hotspot hashmere-hotspot" style="position:absolute; bottom:15%; right:20%; width:150px; height:150px;">
+                <div class="city-label"><span class="city-name">Hashmere</span></div>
+            </div>
+            <!-- Location Labels -->
+            <div class="easter-egg" style="position:absolute; bottom:20%; left:40%;">
+                <span class="easter-egg-label">Diffusion Mesa</span>
+            </div>
+            <div class="easter-egg" style="position:absolute; bottom:9%; left:31%;">
+                <span class="easter-egg-label easter-egg-red">Proof-of-Death</span>
+            </div>
+            <div class="easter-egg" style="position:absolute; top:15%; left:35%;">
+                <span class="easter-egg-label">Epoch Spike</span>
+            </div>
+            <div class="easter-egg" style="position:absolute; top:45%; left:20%;">
+                <span class="easter-egg-label">Hallucination Glitch</span>
+            </div>
+            <div class="easter-egg" style="position:absolute; top:30%; left:25%;">
+                <span class="easter-egg-label">Singularity Crater</span>
+            </div>
+            <div class="easter-egg" style="position:absolute; top:52%; left:31%;">
+                <span class="easter-egg-label">Deserted Data Centre</span>
+            </div>
+        </div>
     </div>
 
     <!-- ROADMAP SECTION -->
