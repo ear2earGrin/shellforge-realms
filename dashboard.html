@@ -3488,26 +3488,6 @@
             // Update cluster badge and populate other cluster members
             if (agent.clusterName) {
                 document.getElementById('clusterName').textContent = agent.clusterName;
-                
-                // Position cluster popup using fixed coords (avoids overflow:hidden clipping)
-        function positionClusterPopup() {
-            var badge = document.getElementById('clusterBadge');
-            var popup = document.getElementById('clusterMembers');
-            if (!badge || !popup) return;
-            var rect = badge.getBoundingClientRect();
-            // Place popup above the button, aligned to left edge of badge
-            var popupH = popup.offsetHeight || 160; // estimate if not visible yet
-            var top = rect.top - popupH - 10;
-            // If it would go off top of screen, place below instead
-            if (top < 8) top = rect.bottom + 10;
-            var left = rect.right + 10; // to the right of badge
-            // If it goes off right of screen, flip left
-            if (left + 210 > window.innerWidth) left = rect.left - 210;
-            popup.style.top  = top + 'px';
-            popup.style.left = left + 'px';
-        }
-
-        // Populate cluster members (show other 3 archetypes from same cluster)
                 populateClusterMembers(agent.cluster, agent.archetype);
             }
 
@@ -3568,6 +3548,25 @@
             }
         }
 
+        // Position cluster popup using fixed positioning (immune to overflow:hidden parents)
+        function positionClusterPopup() {
+            var badge = document.getElementById('clusterBadge');
+            var popup = document.getElementById('clusterMembers');
+            if (!badge || !popup) return;
+            var rect = badge.getBoundingClientRect();
+            // Try to the right first
+            var left = rect.right + 10;
+            var top  = rect.top;
+            // Flip left if off screen
+            if (left + 215 > window.innerWidth) left = rect.left - 215;
+            // Keep on screen vertically
+            var popupH = 170;
+            if (top + popupH > window.innerHeight - 10) top = window.innerHeight - popupH - 10;
+            if (top < 8) top = 8;
+            popup.style.top  = top + 'px';
+            popup.style.left = left + 'px';
+        }
+
         // Populate cluster members (show other 3 archetypes from same cluster)
         function populateClusterMembers(clusterKey, userArchetype) {
             const membersContainer = document.getElementById('clusterMembers');
@@ -3587,7 +3586,14 @@
                 membersContainer.appendChild(newTitle);
             }
 
-            // Get cluster data
+            // Fallback: if clusterKey missing/invalid, derive from clusterName in DOM
+            if (!clusterKey || !CLUSTER_DATA[clusterKey]) {
+                const nameEl = document.getElementById('clusterName');
+                const name = (nameEl && nameEl.textContent.trim().toLowerCase()) || '';
+                if (name.includes('prime')) clusterKey = 'prime-helix';
+                else if (name.includes('sec')) clusterKey = 'sec-grid';
+                else if (name.includes('swarm') || name.includes('dyn')) clusterKey = 'dyn-swarm';
+            }
             const clusterData = CLUSTER_DATA[clusterKey];
             if (!clusterData) return;
 
