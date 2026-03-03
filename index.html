@@ -513,7 +513,7 @@
                 <div class="deploy-cmd-block">
                     <div class="deploy-cmd-label">Quick Deploy</div>
                     <div class="deploy-cmd" id="curlCommand">
-                        <span class="cmd-prefix">$</span><span class="command-text">curl -s https://shellforge.com/skill.md</span>
+                        <span class="cmd-prefix">$</span><span class="command-text">curl -s https://shellforge.xyz/skill.md</span>
                     </div>
                     <div class="copy-feedback" id="copyFeedback"></div>
                 </div>
@@ -697,7 +697,7 @@
 
         // Copy curl command
         document.getElementById('curlCommand').addEventListener('click', () => {
-            navigator.clipboard.writeText('curl -s https://shellforge.com/skill.md').then(() => {
+            navigator.clipboard.writeText('curl -s https://shellforge.xyz/skill.md').then(() => {
                 const fb = document.getElementById('copyFeedback');
                 fb.textContent = '✓ Copied!';
                 setTimeout(() => { fb.textContent = ''; }, 2000);
