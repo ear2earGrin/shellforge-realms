@@ -769,15 +769,23 @@
             position: absolute;
             top: 0; left: 0;
             width: 100%;
-            height: 100%;
+            /* Maintain map's 1.5:1 aspect ratio (1536×1024).
+               padding-bottom: 66.667% = 100%/1.5.
+               At zoom 1.0 in a ~1280px wide container this gives
+               height ≈ 853px, so even at max zoom-out there is
+               ~230px of vertical pan room (container ≈ 620px). */
+            height: 0;
+            padding-bottom: 66.667%;
             transform: translate(0px, 0px) scale(1);
             transform-origin: 0 0;
             will-change: transform;
         }
         .map-drag-inner img {
+            position: absolute;
+            top: 0; left: 0;
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: fill; /* exact ratio already set, no cropping needed */
             display: block;
             pointer-events: none;
             filter: brightness(0.8);
@@ -4615,9 +4623,10 @@
             function getBounds(zoom) {
                 var cw = container.offsetWidth;
                 var ch = container.offsetHeight;
-                // The inner is 100% of container; at zoom it becomes zoom*cw wide
-                var scaledW = cw * zoom;
-                var scaledH = ch * zoom;
+                var iw = inner.offsetWidth;
+                var ih = inner.offsetHeight;  // real map height (taller than container)
+                var scaledW = iw * zoom;
+                var scaledH = ih * zoom;
                 return {
                     minX: -(scaledW - cw), maxX: 0,
                     minY: -(scaledH - ch), maxY: 0
@@ -4640,10 +4649,13 @@
                 if (!container || !inner) return;
 
                 // Start centered at default zoom
+                // inner.offsetHeight reflects map's natural aspect ratio (taller than container)
                 var cw = container.offsetWidth;
                 var ch = container.offsetHeight;
-                var scaledW = cw * curZoom;
-                var scaledH = ch * curZoom;
+                var iw = inner.offsetWidth;
+                var ih = inner.offsetHeight;  // ≈ cw * 0.667, taller than ch
+                var scaledW = iw * curZoom;
+                var scaledH = ih * curZoom;
                 curX = -(scaledW - cw) / 2;
                 curY = -(scaledH - ch) / 2;
                 applyTransform(curX, curY, curZoom);
@@ -4740,8 +4752,10 @@
                 if (!container || !inner) return;
                 var cw = container.offsetWidth;
                 var ch = container.offsetHeight;
-                var scaledW = cw * curZoom;
-                var scaledH = ch * curZoom;
+                var iw = inner.offsetWidth;
+                var ih = inner.offsetHeight;
+                var scaledW = iw * curZoom;
+                var scaledH = ih * curZoom;
                 var targetX = -(visualX / 100 * scaledW) + cw / 2;
                 var targetY = -(visualY / 100 * scaledH) + ch / 2;
                 applyTransform(targetX, targetY);
