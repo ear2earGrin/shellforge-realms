@@ -232,43 +232,32 @@
         /* ── MODALS ── */
         .modal-overlay {
             display: none;
-            position: fixed;
-            /* Sits just above the icon bar — panel floats up */
-            bottom: 58px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: auto;
-            min-width: 360px;
-            max-width: 540px;
-            background: transparent;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.72);
+            backdrop-filter: blur(5px);
             z-index: 900;
-            align-items: flex-end;
+            align-items: center;
             justify-content: center;
-            pointer-events: none;
         }
-        .modal-overlay.open {
-            display: flex;
-            pointer-events: auto;
-        }
+        .modal-overlay.open { display: flex; }
 
         .modal-box {
-            background: rgba(5, 8, 14, 0.98);
-            border: 1px solid rgba(74, 222, 128,0.3);
+            background: rgba(5, 8, 14, 0.99);
+            border: 1px solid rgba(74, 222, 128,0.25);
             border-radius: 10px;
-            width: 460px;
+            width: 500px;
             max-width: 92vw;
-            max-height: 72vh;
+            max-height: 78vh;
             overflow-y: auto;
-            box-shadow: 0 0 40px rgba(74,222,128,0.12), 0 -8px 40px rgba(0,0,0,0.8);
-            animation: modalIn 0.16s ease;
-            pointer-events: auto;
+            box-shadow: 0 0 60px rgba(74, 222, 128,0.08), 0 30px 80px rgba(0,0,0,0.85);
+            animation: modalIn 0.18s ease;
         }
         .modal-box.red-modal { border-color: rgba(255,0,68,0.35); box-shadow: 0 0 50px rgba(255,0,68,0.06), 0 30px 80px rgba(0,0,0,0.85); }
         .modal-box.gold-modal { border-color: rgba(255,200,0,0.3); }
         .modal-box.purple-modal { border-color: rgba(200,60,255,0.3); }
         @keyframes modalIn {
-            from { opacity:0; transform: translateY(16px); }
-            to   { opacity:1; transform: translateY(0); }
+            from { opacity:0; transform: scale(0.96) translateY(8px); }
+            to   { opacity:1; transform: scale(1) translateY(0); }
         }
 
         .modal-head {
@@ -3074,29 +3063,29 @@
          ICON BAR
     ══════════════════════════════════════ -->
     <div class="icon-bar">
-        <button class="icon-btn whisper-btn" onmouseenter="hoverOpenModal('whisper',this)" onmouseleave="scheduleCloseModal('whisper')">
+        <button class="icon-btn whisper-btn" onmouseenter="openModal('whisper')" onclick="openModal('whisper')">
             <div class="icon-counter" id="whisperCountBadge">2</div>
             <span class="btn-icon">📡</span>
             <span class="btn-label">Whisper</span>
         </button>
-        <button class="icon-btn" onmouseenter="hoverOpenModal('inventory',this)" onmouseleave="scheduleCloseModal('inventory')">
+        <button class="icon-btn" onmouseenter="openModal('inventory')" onclick="openModal('inventory')">
             <span class="btn-icon">🎒</span>
             <span class="btn-label">Inventory</span>
         </button>
-        <button class="icon-btn" onmouseenter="hoverOpenModal('missions',this)" onmouseleave="scheduleCloseModal('missions')">
+        <button class="icon-btn" onmouseenter="openModal('missions')" onclick="openModal('missions')">
             <div class="icon-notif"></div>
             <span class="btn-icon">📋</span>
             <span class="btn-label">Missions</span>
         </button>
-        <button class="icon-btn" onmouseenter="hoverOpenModal('chronicle',this)" onmouseleave="scheduleCloseModal('chronicle')">
+        <button class="icon-btn" onmouseenter="openModal('chronicle')" onclick="openModal('chronicle')">
             <span class="btn-icon">📜</span>
             <span class="btn-label">Chronicle</span>
         </button>
-        <button class="icon-btn" onmouseenter="hoverOpenModal('forge',this)" onmouseleave="scheduleCloseModal('forge')">
+        <button class="icon-btn" onmouseenter="openModal('forge')" onclick="openModal('forge')">
             <span class="btn-icon">⚒</span>
             <span class="btn-label">Forge</span>
         </button>
-        <button class="icon-btn" onmouseenter="hoverOpenModal('alchemy',this)" onmouseleave="scheduleCloseModal('alchemy')">
+        <button class="icon-btn" onmouseenter="openModal('alchemy')" onclick="openModal('alchemy')">
             <span class="btn-icon">⚗️</span>
             <span class="btn-label">Alchemy</span>
         </button>
@@ -4647,7 +4636,6 @@
         }
 
         // ─── Modal system ───────────────────────────────────────────
-        // Click still works (for whisper which needs it)
         function openModal(id) {
             document.querySelectorAll('.modal-overlay').forEach(function(m) {
                 m.classList.remove('open');
@@ -4656,45 +4644,9 @@
             if (el) el.classList.add('open');
         }
         function closeModal(id) {
-            clearTimeout(window['_closeTimer_' + id]);
             var el = document.getElementById('modal-' + id);
             if (el) el.classList.remove('open');
         }
-
-        // Hover helpers — open immediately, close with 300ms grace period
-        // so user can move cursor into the panel without it closing
-        var _closeTimers = {};
-        function hoverOpenModal(id, btn) {
-            // Close any other open modals
-            document.querySelectorAll('.modal-overlay.open').forEach(function(m) {
-                if (m.id !== 'modal-' + id) m.classList.remove('open');
-            });
-            clearTimeout(_closeTimers[id]);
-            var el = document.getElementById('modal-' + id);
-            if (!el) return;
-            // Position panel just above the icon button
-            var rect = btn.getBoundingClientRect();
-            el.style.setProperty('--panel-btn-left', rect.left + 'px');
-            el.classList.add('open');
-        }
-        function scheduleCloseModal(id) {
-            _closeTimers[id] = setTimeout(function() {
-                var el = document.getElementById('modal-' + id);
-                if (el) el.classList.remove('open');
-            }, 300);
-        }
-        // When cursor enters the modal panel, cancel its close timer
-        document.addEventListener('DOMContentLoaded', function() {
-            document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
-                var id = overlay.id.replace('modal-', '');
-                overlay.addEventListener('mouseenter', function() {
-                    clearTimeout(_closeTimers[id]);
-                });
-                overlay.addEventListener('mouseleave', function() {
-                    scheduleCloseModal(id);
-                });
-            });
-        });
         function closeOnOverlay(e, id) {
             if (e.target === e.currentTarget) closeModal(id);
         }
