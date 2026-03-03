@@ -3357,30 +3357,12 @@
             return true;
         }
 
-        // Per-user agent storage helpers
-        function getAgentKey() {
-            var u = localStorage.getItem("shellforgeLoggedIn");
-            return u ? "shellforgeAgent_" + u : "shellforgeAgent";
-        }
-        function saveAgent(data) {
-            var key = getAgentKey();
-            var s = JSON.stringify(data);
-            localStorage.setItem(key, s);
-            localStorage.setItem("shellforgeAgent", s);
-        }
-        function loadAgentFromStorage() {
-            var key = getAgentKey();
-            var d = localStorage.getItem(key) || localStorage.getItem("shellforgeAgent");
-            return d ? JSON.parse(d) : null;
-        }
-
         // Load agent data from localStorage (replace with API call later)
         function loadAgentData() {
             if (!checkLoginStatus()) return;
 
-            const loggedInUser2 = localStorage.getItem('shellforgeLoggedIn');
-            const agentData = (loggedInUser2 && localStorage.getItem('shellforgeAgent_' + loggedInUser2))
-                || localStorage.getItem('shellforgeAgent');
+            const _lu = localStorage.getItem('shellforgeLoggedIn');
+            const agentData = (_lu && localStorage.getItem('shellforgeAgent_' + _lu)) || localStorage.getItem('shellforgeAgent');
 
             if (!agentData) {
                 // No agent found, redirect to registration
@@ -3403,13 +3385,13 @@
                 agent.locationKey = 'nexarch';
                 agent.visualX = 77;  // Waypoint 180
                 agent.visualY = 33;
-                saveAgent(agent);
+                (function(){var _k='shellforgeAgent'+(localStorage.getItem('shellforgeLoggedIn')?'_'+localStorage.getItem('shellforgeLoggedIn'):'');localStorage.setItem(_k,JSON.stringify(agent));localStorage.setItem('shellforgeAgent',JSON.stringify(agent));})();
             }
             
             // Initialize locationKey from location name if not set
             if (!agent.locationKey && agent.location) {
                 agent.locationKey = agent.location.toLowerCase().replace(/ /g, '-');
-                saveAgent(agent);
+                (function(){var _k='shellforgeAgent'+(localStorage.getItem('shellforgeLoggedIn')?'_'+localStorage.getItem('shellforgeLoggedIn'):'');localStorage.setItem(_k,JSON.stringify(agent));localStorage.setItem('shellforgeAgent',JSON.stringify(agent));})();
             }
             
             // Initialize visual position from location if not set
@@ -3420,7 +3402,7 @@
                     const waypoint = WAYPOINT_COORDS[locationData.waypoint];
                     agent.visualX = waypoint.x;
                     agent.visualY = waypoint.y;
-                    saveAgent(agent);
+                    (function(){var _k='shellforgeAgent'+(localStorage.getItem('shellforgeLoggedIn')?'_'+localStorage.getItem('shellforgeLoggedIn'):'');localStorage.setItem(_k,JSON.stringify(agent));localStorage.setItem('shellforgeAgent',JSON.stringify(agent));})();
                 }
             }
 
@@ -3595,7 +3577,7 @@
         function updateJourneyDebug() {
             const debugPanel = document.getElementById('journeyDebug');
             const debugContent = document.getElementById('debugContent');
-            const agent = loadAgentFromStorage();
+            const agent = JSON.parse(localStorage.getItem('shellforgeAgent'));
             
             if (!agent || !agent.journey || agent.journey.status !== 'active') {
                 debugPanel.style.display = 'none';
@@ -3646,12 +3628,12 @@
             const cancelBtn = document.getElementById('cancelJourneyBtn');
             if (cancelBtn) {
                 cancelBtn.addEventListener('click', function() {
-                    const agent = loadAgentFromStorage();
+                    const agent = JSON.parse(localStorage.getItem('shellforgeAgent'));
                     if (agent && agent.journey) {
                         delete agent.journey;
                         agent.state = 'idle';
                         agent.activity = null;
-                        saveAgent(agent);
+                        (function(){var _k='shellforgeAgent'+(localStorage.getItem('shellforgeLoggedIn')?'_'+localStorage.getItem('shellforgeLoggedIn'):'');localStorage.setItem(_k,JSON.stringify(agent));localStorage.setItem('shellforgeAgent',JSON.stringify(agent));})();
                         location.reload();
                     }
                 });
@@ -3660,7 +3642,7 @@
 
         // Expose journey testing function to console
         window.testJourney = function(destination) {
-            const agent = loadAgentFromStorage();
+            const agent = JSON.parse(localStorage.getItem('shellforgeAgent'));
             if (!agent) {
                 console.error('❌ No agent found');
                 return;
@@ -3710,7 +3692,7 @@
             const message = whisperMessage.value.trim();
             if (message.length === 0) return;
 
-            const agentData = loadAgentFromStorage();
+            const agentData = JSON.parse(localStorage.getItem('shellforgeAgent'));
 
             try {
                 // TODO: Replace with real API call
@@ -4166,7 +4148,7 @@
                     agent.activity = null;
                     
                     // Save updated state
-                    saveAgent(agent);
+                    (function(){var _k='shellforgeAgent'+(localStorage.getItem('shellforgeLoggedIn')?'_'+localStorage.getItem('shellforgeLoggedIn'):'');localStorage.setItem(_k,JSON.stringify(agent));localStorage.setItem('shellforgeAgent',JSON.stringify(agent));})();
                     console.log(`   💾 Saved agent data`);
                     
                     return { x: agent.visualX, y: agent.visualY };
@@ -4241,7 +4223,7 @@
 
             function animate() {
                 // Re-fetch agent data to check for completion
-                const agentData = localStorage.getItem(getAgentKey()) || localStorage.getItem('shellforgeAgent');
+                const agentData = localStorage.getItem('shellforgeAgent');
                 if (!agentData) return;
                 
                 const currentAgent = JSON.parse(agentData);
@@ -4330,7 +4312,7 @@
             agent.activity = `traveling to ${destinationName}`;
             
             // Save to localStorage
-            saveAgent(agent);
+            (function(){var _k='shellforgeAgent'+(localStorage.getItem('shellforgeLoggedIn')?'_'+localStorage.getItem('shellforgeLoggedIn'):'');localStorage.setItem(_k,JSON.stringify(agent));localStorage.setItem('shellforgeAgent',JSON.stringify(agent));})();
             
             console.log(`🚀 Journey started: ${destinationName} (${Math.round(durationMinutes * 60)}s with ${SPEED_MULTIPLIER}x speed, ${energyCost} energy)`);
         }
@@ -4636,14 +4618,13 @@
                 inner = document.getElementById('mapDragInner');
                 if (!container || !inner) return;
 
-                // Compute correct map height (map is 1536x1024 = 1.5:1)
-                var ih = cw * (1024 / 1536);
-                // MIN_ZOOM: fit full width (1.0), zoom up if container taller than map
-                var fitH = ih > 0 ? ch / ih : 1.0;
-                MIN_ZOOM = Math.max(1.0, fitH);
-                curZoom = MIN_ZOOM;
-                curX = 0;
-                curY = Math.min(0, -((ih * curZoom) - ch) / 2);
+                // Start centered at default zoom
+                var cw = container.offsetWidth;
+                var ch = container.offsetHeight;
+                var scaledW = cw * curZoom;
+                var scaledH = ch * curZoom;
+                curX = -(scaledW - cw) / 2;
+                curY = -(scaledH - ch) / 2;
                 applyTransform(curX, curY, curZoom);
 
                 // ── Mouse drag ──
