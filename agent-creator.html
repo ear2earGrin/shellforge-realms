@@ -547,7 +547,7 @@
             if (!selectedArchetype) return;
             
             // Check if user already has an agent (AGENT LIMIT ENFORCEMENT)
-            const existingAgent = localStorage.getItem('shellforgeAgent');
+            const existingAgent = localStorage.getItem('shellforgeAgent_' + username) || localStorage.getItem('shellforgeAgent');
             if (existingAgent) {
                 const existing = JSON.parse(existingAgent);
                 terminalNotify.error(`You already have an agent: ${existing.username}\n\nAgent limit: 1 per account.\n\nDelete your current agent or contact support to create a new one.`);
@@ -618,6 +618,7 @@
                 };
                 
                 // Store agent data
+                localStorage.setItem('shellforgeAgent_' + username, JSON.stringify(mockAgentData));
                 localStorage.setItem('shellforgeAgent', JSON.stringify(mockAgentData));
                 localStorage.setItem('shellforgeEmail', email);
                 localStorage.setItem('shellforgeUsername', username);
