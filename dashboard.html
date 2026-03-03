@@ -768,9 +768,10 @@
         .map-drag-inner {
             position: absolute;
             top: 0; left: 0;
-            width: 160%;
-            height: 160%;
-            transform: translate(0px, 0px);
+            width: 100%;
+            height: 100%;
+            transform: translate(0px, 0px) scale(1);
+            transform-origin: 0 0;
             will-change: transform;
         }
         .map-drag-inner img {
@@ -1859,6 +1860,16 @@
                 <div class="location-badge" id="currentLocation">Nexarch - Dark Streets</div>
             </div>
             <div class="map-container" id="mapContainer">
+                        <!-- Zoom level hint -->
+                        <div id="mapZoomHint" style="
+                            position:absolute; bottom:8px; right:10px; z-index:20;
+                            font-family:'IBM Plex Mono',monospace; font-size:0.58rem;
+                            letter-spacing:0.15em; color:rgba(74,222,128,0.7);
+                            background:rgba(8,12,16,0.75); padding:3px 7px;
+                            border:1px solid rgba(74,222,128,0.2); border-radius:3px;
+                            opacity:0; transition:opacity 0.3s ease;
+                            pointer-events:none;
+                        "></div>
                 <div class="map-drag-inner" id="mapDragInner">
                 <img src="images/main map.png" alt="Shellforge Map">
 
@@ -4585,56 +4596,70 @@
             if (pev) pev.textContent = energy;
         }
 
-        // ─── Map drag-to-pan ───────────────────────────────────────
+        // ─── Map drag-to-pan + scroll-to-zoom ─────────────────────
         (function() {
             var container = null, inner = null;
             var isDragging = false;
             var startX = 0, startY = 0;
-            var offsetX = 0, offsetY = 0;
             var curX = 0, curY = 0;
+
+            var MIN_ZOOM = 1.0;   // fully zoomed out = map fills container exactly
+            var MAX_ZOOM = 2.5;   // max zoom in
+            var curZoom  = 1.25;  // default: slightly zoomed in so map feels alive
+
+            function clamp(val, min, max) {
+                return Math.max(min, Math.min(max, val));
+            }
+
+            // At a given zoom level, how much can we translate before showing void?
+            function getBounds(zoom) {
+                var cw = container.offsetWidth;
+                var ch = container.offsetHeight;
+                // The inner is 100% of container; at zoom it becomes zoom*cw wide
+                var scaledW = cw * zoom;
+                var scaledH = ch * zoom;
+                return {
+                    minX: -(scaledW - cw), maxX: 0,
+                    minY: -(scaledH - ch), maxY: 0
+                };
+            }
+
+            function applyTransform(x, y, zoom) {
+                zoom = zoom !== undefined ? zoom : curZoom;
+                var b = getBounds(zoom);
+                curX = clamp(x, b.minX, b.maxX);
+                curY = clamp(y, b.minY, b.maxY);
+                curZoom = zoom;
+                inner.style.transform =
+                    'translate(' + curX + 'px, ' + curY + 'px) scale(' + curZoom + ')';
+            }
 
             function initMapDrag() {
                 container = document.getElementById('mapContainer');
                 inner = document.getElementById('mapDragInner');
                 if (!container || !inner) return;
 
-                // Start centered (show middle of map)
+                // Start centered at default zoom
                 var cw = container.offsetWidth;
                 var ch = container.offsetHeight;
-                var iw = inner.offsetWidth;
-                var ih = inner.offsetHeight;
-                curX = -(iw - cw) / 2;
-                curY = -(ih - ch) / 2;
-                inner.style.transform = 'translate(' + curX + 'px, ' + curY + 'px)';
+                var scaledW = cw * curZoom;
+                var scaledH = ch * curZoom;
+                curX = -(scaledW - cw) / 2;
+                curY = -(scaledH - ch) / 2;
+                applyTransform(curX, curY, curZoom);
 
+                // ── Mouse drag ──
                 container.addEventListener('mousedown', onMouseDown);
                 window.addEventListener('mousemove', onMouseMove);
                 window.addEventListener('mouseup', onMouseUp);
+
+                // ── Touch drag ──
                 container.addEventListener('touchstart', onTouchStart, { passive: true });
                 window.addEventListener('touchmove', onTouchMove, { passive: false });
                 window.addEventListener('touchend', onTouchEnd);
-            }
 
-            function clamp(val, min, max) {
-                return Math.max(min, Math.min(max, val));
-            }
-
-            function getBounds() {
-                var cw = container.offsetWidth;
-                var ch = container.offsetHeight;
-                var iw = inner.offsetWidth;
-                var ih = inner.offsetHeight;
-                return {
-                    minX: -(iw - cw), maxX: 0,
-                    minY: -(ih - ch), maxY: 0
-                };
-            }
-
-            function applyTransform(x, y) {
-                var b = getBounds();
-                curX = clamp(x, b.minX, b.maxX);
-                curY = clamp(y, b.minY, b.maxY);
-                inner.style.transform = 'translate(' + curX + 'px, ' + curY + 'px)';
+                // ── Scroll to zoom ──
+                container.addEventListener('wheel', onWheel, { passive: false });
             }
 
             function onMouseDown(e) {
@@ -4653,6 +4678,7 @@
                 isDragging = false;
                 if (container) container.classList.remove('dragging');
             }
+
             function onTouchStart(e) {
                 if (e.touches.length !== 1) return;
                 isDragging = true;
@@ -4666,15 +4692,58 @@
             }
             function onTouchEnd() { isDragging = false; }
 
-            // Also expose pan-to for agent marker centering
+            function onWheel(e) {
+                e.preventDefault();
+
+                var delta = e.deltaY > 0 ? -0.1 : 0.1;
+                var newZoom = clamp(curZoom + delta, MIN_ZOOM, MAX_ZOOM);
+                if (newZoom === curZoom) return;
+
+                // Zoom toward the mouse cursor position
+                var rect = container.getBoundingClientRect();
+                var mouseX = e.clientX - rect.left;  // mouse relative to container
+                var mouseY = e.clientY - rect.top;
+
+                // Point on the map under the mouse before zoom
+                var mapPointX = (mouseX - curX) / curZoom;
+                var mapPointY = (mouseY - curY) / curZoom;
+
+                // After zoom, translate so that same map point stays under mouse
+                var newX = mouseX - mapPointX * newZoom;
+                var newY = mouseY - mapPointY * newZoom;
+
+                applyTransform(newX, newY, newZoom);
+
+                // Show zoom hint briefly
+                showZoomHint(newZoom);
+            }
+
+            // Small zoom level indicator
+            var zoomHintTimeout = null;
+            function showZoomHint(zoom) {
+                var hint = document.getElementById('mapZoomHint');
+                if (!hint) return;
+                var pct = Math.round((zoom / MIN_ZOOM) * 100);
+                // Show "100%" when fully zoomed out (zoom === MIN_ZOOM)
+                hint.textContent = zoom <= MIN_ZOOM + 0.01
+                    ? '⊟ MAX OUT'
+                    : Math.round(zoom * 100) + '%';
+                hint.style.opacity = '1';
+                clearTimeout(zoomHintTimeout);
+                zoomHintTimeout = setTimeout(function() {
+                    hint.style.opacity = '0';
+                }, 1200);
+            }
+
+            // Expose pan-to for agent marker centering
             window.panMapToAgent = function(visualX, visualY) {
                 if (!container || !inner) return;
                 var cw = container.offsetWidth;
                 var ch = container.offsetHeight;
-                var iw = inner.offsetWidth;
-                var ih = inner.offsetHeight;
-                var targetX = -(visualX / 100 * iw) + cw / 2;
-                var targetY = -(visualY / 100 * ih) + ch / 2;
+                var scaledW = cw * curZoom;
+                var scaledH = ch * curZoom;
+                var targetX = -(visualX / 100 * scaledW) + cw / 2;
+                var targetY = -(visualY / 100 * scaledH) + ch / 2;
                 applyTransform(targetX, targetY);
             };
 
