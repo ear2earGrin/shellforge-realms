@@ -3426,18 +3426,28 @@
                 document.getElementById('agentBio').textContent = '"No directive set"';
             }
 
-            // Update avatar image
+            // Update avatar image — resolve image from archetypeImage field or look up by archetype id
             const avatarDiv = document.querySelector('.agent-avatar');
             avatarDiv.innerHTML = '';
-            if (agent.archetypeImage) {
+            // Build a flat id->image lookup from CLUSTER_DATA
+            const archetypeLookup = {};
+            Object.values(CLUSTER_DATA).forEach(function(cluster) {
+                cluster.archetypes.forEach(function(a) { archetypeLookup[a.id] = a.image; });
+            });
+            // Resolve image: use saved field, or look up by archetype id
+            const resolvedImage = agent.archetypeImage
+                || archetypeLookup[agent.archetype]
+                || archetypeLookup[agent.archetypeId]
+                || null;
+            if (resolvedImage) {
                 const img = document.createElement('img');
-                img.src = 'images/archetypes/' + agent.archetypeImage.replace(/ /g, '%20');
-                img.alt = agent.archetypeName || '';
+                img.src = 'images/archetypes/' + resolvedImage.replace(/ /g, '%20');
+                img.alt = agent.archetypeName || agent.archetype || '';
                 img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
-                img.onerror = function() { avatarDiv.innerHTML = '<span style="font-size:2rem">&#x1F916;</span>'; };
+                img.onerror = function() { avatarDiv.style.fontSize='2rem'; avatarDiv.textContent='🤖'; };
                 avatarDiv.appendChild(img);
             } else {
-                avatarDiv.innerHTML = '<span style="font-size:2rem">&#x1F916;</span>';
+                avatarDiv.style.fontSize='2rem'; avatarDiv.textContent='🤖';
             }
 
             // Update stats
@@ -3544,11 +3554,13 @@
         }
 
         // Call cluster popup setup
-        if (agent.clusterName) {
-            var ck = (agent.clusterName || 'prime-helix').toLowerCase().replace(/\s+/g, '-');
-            var ua = agent.archetypeId || agent.archetype || '';
-            populateClusterMembers(ck, ua);
-        }
+        // agent.cluster = 'prime-helix'/'sec-grid'/'dyn-swarm' (saved by agent-creator)
+        // agent.archetype = archetype id e.g. 'ddos-insurgent' (saved by agent-creator)
+        var ck = agent.cluster
+            || (agent.clusterName || '').toLowerCase().replace(/\s+/g, '-')
+            || 'prime-helix';
+        var ua = agent.archetype || agent.archetypeId || '';
+        populateClusterMembers(ck, ua);
 
         // Logout functionality
         document.getElementById('logoutBtn').addEventListener('click', function() {
