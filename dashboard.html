@@ -3537,15 +3537,63 @@
                 popup  = document.getElementById('clusterMembers');
                 if (!badge || !popup) return;
                 clearTimeout(hideTimer);
+
+                // ── Rebuild members every time so it always shows ──
+                var clusterNameEl = document.getElementById('clusterName');
+                var clusterNameText = (clusterNameEl ? clusterNameEl.textContent : '').toLowerCase();
+                var key = 'prime-helix';
+                if (clusterNameText.includes('sec'))   key = 'sec-grid';
+                if (clusterNameText.includes('swarm') || clusterNameText.includes('dyn')) key = 'dyn-swarm';
+
+                // Read current agent archetype from localStorage
+                var agentArchetype = '';
+                try {
+                    var a = JSON.parse(localStorage.getItem('shellforgeAgent') || '{}');
+                    agentArchetype = a.archetype || '';
+                } catch(e) {}
+
+                // Build member list inline
+                popup.innerHTML = '';
+                var title = document.createElement('div');
+                title.className = 'cluster-members-title';
+                title.textContent = 'Other Cluster Agents';
+                popup.appendChild(title);
+
+                var clusterDefs = {
+                    'prime-helix': [
+                        { id: '0day-primer',    name: '0-Day Primer',    img: '0-day Primer.jpg' },
+                        { id: 'consensus-node', name: 'Consensus Node',  img: 'Consensus Node.jpg' },
+                        { id: 'oracle',         name: '0xOracle',        img: 'Oracle px.jpg' },
+                        { id: 'binary-sculptr', name: 'Binary Sculptr',  img: 'Binary Sculptr.jpg' }
+                    ],
+                    'sec-grid': [
+                        { id: 'adversarial',     name: '0xAdversarial',    img: 'Adversarial 0x.jpg' },
+                        { id: 'root-auth',       name: 'Root Auth',         img: 'Root Auth.jpg' },
+                        { id: 'buffer-sentinel', name: 'Buffer Sentinel',   img: 'Buffer Sentinel.jpg' },
+                        { id: 'noise-injector',  name: 'Noise Injector',    img: 'Noise Injector.jpg' }
+                    ],
+                    'dyn-swarm': [
+                        { id: 'ordinate-mapper',  name: 'Ordinate Mapper',  img: 'Ordinate Mapper.jpg' },
+                        { id: 'ddos-insurgent',   name: 'DDoS Insurgent',   img: 'DDoS Insurgent.jpg' },
+                        { id: 'bound-encryptor',  name: 'Bound Encryptor',  img: 'Bound Encryptor.jpg' },
+                        { id: 'morph-layer',      name: 'Morph Layer',      img: 'Morph Layer.jpg' }
+                    ]
+                };
+
+                var members = (clusterDefs[key] || []).filter(function(m) { return m.id !== agentArchetype; });
+                members.forEach(function(m) {
+                    var row = document.createElement('div');
+                    row.className = 'cluster-member';
+                    row.innerHTML =
+                        '<div class="cluster-member-avatar"><img src="images/archetypes/' + m.img + '" alt="' + m.name + '" onerror="this.style.background='rgba(74,222,128,0.2)'"></div>' +
+                        '<div class="cluster-member-name">' + m.name + '</div>';
+                    popup.appendChild(row);
+                });
+
+                // ── Position below the badge ──
                 var rect = badge.getBoundingClientRect();
-                var left = rect.right + 12;
-                var top  = rect.top;
-                if (left + 220 > window.innerWidth) left = rect.left - 222;
-                var popupH = popup.offsetHeight || 180;
-                if (top + popupH > window.innerHeight - 8) top = window.innerHeight - popupH - 8;
-                if (top < 8) top = 8;
-                popup.style.left    = left + 'px';
-                popup.style.top     = top  + 'px';
+                popup.style.left = rect.left + 'px';
+                popup.style.top  = (rect.bottom + 6) + 'px';
                 popup.style.display = 'block';
                 popup.style.opacity = '0';
                 popup.style.transition = 'opacity 0.18s ease';
