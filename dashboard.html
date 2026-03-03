@@ -543,28 +543,28 @@
             text-transform: uppercase;
         }
 
-        /* Cluster Members Popup */
+        /* Cluster Members Popup — appears above the button */
         .cluster-members {
-            position: absolute;
-            right: -190px;
-            top: 0;
-            width: 180px;
-            background: rgba(0, 0, 0, 0.95);
+            position: fixed;   /* fixed so it's never clipped by overflow:auto parents */
+            width: 200px;
+            background: rgba(5, 8, 12, 0.98);
             border: 2px solid var(--color-primary);
             border-radius: 8px;
             padding: 12px;
             opacity: 0;
             visibility: hidden;
-            transform: translateX(-10px);
-            transition: all 0.3s ease;
-            z-index: 100;
-            box-shadow: 0 0 20px rgba(74, 222, 128, 0.5);
+            transform: translateY(6px);
+            transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+            z-index: 9999;
+            box-shadow: 0 0 24px rgba(74, 222, 128, 0.4);
+            pointer-events: none;
         }
 
         .cluster-badge:hover .cluster-members {
             opacity: 1;
             visibility: visible;
-            transform: translateX(0);
+            transform: translateY(0);
+            pointer-events: auto;
         }
 
         .cluster-members-title {
@@ -1806,7 +1806,7 @@
             </div>
 
             <!-- Cluster Badge -->
-            <div class="cluster-badge" id="clusterBadge">
+            <div class="cluster-badge" id="clusterBadge" onmouseenter="positionClusterPopup()" >
                 <div class="cluster-name" id="clusterName">Prime Helix</div>
                 
                 <!-- Cluster Members Popup (populated by JS) -->
@@ -3489,7 +3489,25 @@
             if (agent.clusterName) {
                 document.getElementById('clusterName').textContent = agent.clusterName;
                 
-                // Populate cluster members (show other 3 archetypes from same cluster)
+                // Position cluster popup using fixed coords (avoids overflow:hidden clipping)
+        function positionClusterPopup() {
+            var badge = document.getElementById('clusterBadge');
+            var popup = document.getElementById('clusterMembers');
+            if (!badge || !popup) return;
+            var rect = badge.getBoundingClientRect();
+            // Place popup above the button, aligned to left edge of badge
+            var popupH = popup.offsetHeight || 160; // estimate if not visible yet
+            var top = rect.top - popupH - 10;
+            // If it would go off top of screen, place below instead
+            if (top < 8) top = rect.bottom + 10;
+            var left = rect.right + 10; // to the right of badge
+            // If it goes off right of screen, flip left
+            if (left + 210 > window.innerWidth) left = rect.left - 210;
+            popup.style.top  = top + 'px';
+            popup.style.left = left + 'px';
+        }
+
+        // Populate cluster members (show other 3 archetypes from same cluster)
                 populateClusterMembers(agent.cluster, agent.archetype);
             }
 
