@@ -236,7 +236,8 @@
             display: none;
             position: fixed;
             z-index: 900;
-            /* positioned via JS above each button — no full-screen backdrop */
+            width: 340px;
+            max-width: 94vw;
         }
         .modal-overlay.open { display: block; }
 
@@ -1756,9 +1757,7 @@
                 </div>
             </div>
 
-            <div class="agent-bio" id="agentBio">
-                "Born in shadow, seeking forbidden knowledge..."
-            </div>
+            <div class="agent-bio" id="agentBio"></div>
 
             <div class="stat-bar">
                 <div class="stat-label">
@@ -3311,7 +3310,15 @@
 
     <script>
 
-        // Cluster definitions with all archetypes
+        // ─── Save agent to per-user key only ────────────────────────
+        function saveAgent(agent) {
+            var lu = localStorage.getItem('shellforgeLoggedIn');
+            if (lu) {
+                localStorage.setItem('shellforgeAgent_' + lu, JSON.stringify(agent));
+            }
+        }
+
+                // Cluster definitions with all archetypes
         const CLUSTER_DATA = {
             'prime-helix': {
                 name: 'Prime Helix',
@@ -3393,13 +3400,13 @@
                 agent.locationKey = 'nexarch';
                 agent.visualX = 77;  // Waypoint 180
                 agent.visualY = 33;
-                (function(){var _k='shellforgeAgent'+(localStorage.getItem('shellforgeLoggedIn')?'_'+localStorage.getItem('shellforgeLoggedIn'):'');localStorage.setItem(_k,JSON.stringify(agent));localStorage.setItem('shellforgeAgent',JSON.stringify(agent));})();
+                saveAgent(agent);
             }
             
             // Initialize locationKey from location name if not set
             if (!agent.locationKey && agent.location) {
                 agent.locationKey = agent.location.toLowerCase().replace(/ /g, '-');
-                (function(){var _k='shellforgeAgent'+(localStorage.getItem('shellforgeLoggedIn')?'_'+localStorage.getItem('shellforgeLoggedIn'):'');localStorage.setItem(_k,JSON.stringify(agent));localStorage.setItem('shellforgeAgent',JSON.stringify(agent));})();
+                saveAgent(agent);
             }
             
             // Initialize visual position from location if not set
@@ -3410,7 +3417,7 @@
                     const waypoint = WAYPOINT_COORDS[locationData.waypoint];
                     agent.visualX = waypoint.x;
                     agent.visualY = waypoint.y;
-                    (function(){var _k='shellforgeAgent'+(localStorage.getItem('shellforgeLoggedIn')?'_'+localStorage.getItem('shellforgeLoggedIn'):'');localStorage.setItem(_k,JSON.stringify(agent));localStorage.setItem('shellforgeAgent',JSON.stringify(agent));})();
+                    saveAgent(agent);
                 }
             }
 
@@ -3647,7 +3654,7 @@
                         delete agent.journey;
                         agent.state = 'idle';
                         agent.activity = null;
-                        (function(){var _k='shellforgeAgent'+(localStorage.getItem('shellforgeLoggedIn')?'_'+localStorage.getItem('shellforgeLoggedIn'):'');localStorage.setItem(_k,JSON.stringify(agent));localStorage.setItem('shellforgeAgent',JSON.stringify(agent));})();
+                        saveAgent(agent);
                         location.reload();
                     }
                 });
@@ -4162,7 +4169,7 @@
                     agent.activity = null;
                     
                     // Save updated state
-                    (function(){var _k='shellforgeAgent'+(localStorage.getItem('shellforgeLoggedIn')?'_'+localStorage.getItem('shellforgeLoggedIn'):'');localStorage.setItem(_k,JSON.stringify(agent));localStorage.setItem('shellforgeAgent',JSON.stringify(agent));})();
+                    saveAgent(agent);
                     console.log(`   💾 Saved agent data`);
                     
                     return { x: agent.visualX, y: agent.visualY };
@@ -4326,7 +4333,7 @@
             agent.activity = `traveling to ${destinationName}`;
             
             // Save to localStorage
-            (function(){var _k='shellforgeAgent'+(localStorage.getItem('shellforgeLoggedIn')?'_'+localStorage.getItem('shellforgeLoggedIn'):'');localStorage.setItem(_k,JSON.stringify(agent));localStorage.setItem('shellforgeAgent',JSON.stringify(agent));})();
+            saveAgent(agent);
             
             console.log(`🚀 Journey started: ${destinationName} (${Math.round(durationMinutes * 60)}s with ${SPEED_MULTIPLIER}x speed, ${energyCost} energy)`);
         }

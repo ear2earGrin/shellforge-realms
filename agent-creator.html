@@ -619,12 +619,9 @@
                     createdAt: new Date().toISOString()
                 };
                 
-                // Store agent data
+                // Store agent data — per-user key only
                 localStorage.setItem('shellforgeAgent_' + username, JSON.stringify(mockAgentData));
-                localStorage.setItem('shellforgeAgent', JSON.stringify(mockAgentData));
-                localStorage.setItem('shellforgeEmail', email);
-                localStorage.setItem('shellforgeUsername', username);
-                localStorage.setItem('shellforgeLoggedIn', username);  // Set login flag
+                localStorage.setItem('shellforgeLoggedIn', username);
                 
                 // Clear session storage
                 sessionStorage.removeItem('shellforgeEmail');
