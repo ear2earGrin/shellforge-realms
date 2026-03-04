@@ -563,9 +563,7 @@
             if (existingAgent) {
                 try {
                     const existing = JSON.parse(existingAgent);
-                    terminalNotify.error('You already have an agent: ' + existing.username + '
-
-Agent limit: 1 per account.');
+                    terminalNotify.error('Agent limit: 1 per account. Username already taken.');
                 } catch(e) {}
                 return;
             }
