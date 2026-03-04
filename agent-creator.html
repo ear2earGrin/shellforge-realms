@@ -545,24 +545,28 @@
         // Deploy button handler
         document.getElementById('deployBtn').addEventListener('click', async () => {
             if (!selectedArchetype) return;
-            
-            // Check if user already has an agent (AGENT LIMIT ENFORCEMENT)
-            const existingAgent = localStorage.getItem('shellforgeAgent_' + username) || localStorage.getItem('shellforgeAgent');
-            if (existingAgent) {
-                const existing = JSON.parse(existingAgent);
-                terminalNotify.error(`You already have an agent: ${existing.username}\n\nAgent limit: 1 per account.\n\nDelete your current agent or contact support to create a new one.`);
-                return;
-            }
-            
-            // Get stored credentials
+
+            // Get stored credentials first
             const email = sessionStorage.getItem('shellforgeEmail');
             const username = sessionStorage.getItem('shellforgeUsername');
             const password = sessionStorage.getItem('shellforgePassword');
-            
+
             if (!email || !username || !password) {
                 terminalNotify.warning('Session expired. Please start again.', () => {
                     window.location.href = 'deploy.html';
                 });
+                return;
+            }
+
+            // Check if this user already has an agent
+            const existingAgent = localStorage.getItem('shellforgeAgent_' + username);
+            if (existingAgent) {
+                try {
+                    const existing = JSON.parse(existingAgent);
+                    terminalNotify.error('You already have an agent: ' + existing.username + '
+
+Agent limit: 1 per account.');
+                } catch(e) {}
                 return;
             }
             
@@ -618,7 +622,6 @@
                 };
                 
                 // Store agent data
-                localStorage.setItem('shellforgeAgent_' + username, JSON.stringify(mockAgentData));
                 localStorage.setItem('shellforgeAgent_' + username, JSON.stringify(mockAgentData));
                 localStorage.setItem('shellforgeAgent', JSON.stringify(mockAgentData));
                 localStorage.setItem('shellforgeEmail', email);

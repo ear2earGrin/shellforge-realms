@@ -321,22 +321,14 @@
                 return;
             }
             
-            // Check if this email or username already has an agent
-            const existingUsername = localStorage.getItem('shellforgeUsername');
-            const existingEmail = localStorage.getItem('shellforgeEmail');
-            const existingAgent = localStorage.getItem('shellforgeAgent');
-            
-            if (existingAgent) {
-                if (existingEmail === email) {
-                    terminalNotify.error(`This email already has an agent.\n\nAgent limit: 1 per account.\n\nPlease login instead.`);
-                    return;
-                }
-                if (existingUsername === username) {
-                    terminalNotify.error(`Username "${username}" is already taken.\n\nPlease choose a different username.`);
-                    return;
-                }
+
+            // Only block if THIS specific username already has an agent
+            const existingForUser = localStorage.getItem('shellforgeAgent_' + username);
+            if (existingForUser) {
+                terminalNotify.error(`Username "${username}" is already taken.\n\nPlease choose a different username.`);
+                return;
             }
-            
+
             // Store credentials temporarily for agent creation
             sessionStorage.setItem('shellforgeEmail', email);
             sessionStorage.setItem('shellforgeUsername', username);
