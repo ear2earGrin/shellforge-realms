@@ -234,25 +234,22 @@
         /* ── MODALS ── */
         .modal-overlay {
             display: none;
-            position: fixed; inset: 0;
-            background: rgba(0,0,0,0.72);
-            backdrop-filter: blur(5px);
+            position: fixed;
             z-index: 900;
-            align-items: center;
-            justify-content: center;
+            /* positioned via JS above each button — no full-screen backdrop */
         }
-        .modal-overlay.open { display: flex; }
+        .modal-overlay.open { display: block; }
 
         .modal-box {
-            background: rgba(5, 8, 14, 0.99);
-            border: 1px solid rgba(74, 222, 128,0.25);
+            background: rgba(5, 8, 14, 0.98);
+            border: 1px solid rgba(74, 222, 128,0.3);
             border-radius: 10px;
-            width: 500px;
-            max-width: 92vw;
-            max-height: 78vh;
+            width: 340px;
+            max-width: 94vw;
+            max-height: 72vh;
             overflow-y: auto;
-            box-shadow: 0 0 60px rgba(74, 222, 128,0.08), 0 30px 80px rgba(0,0,0,0.85);
-            animation: modalIn 0.18s ease;
+            box-shadow: 0 0 40px rgba(74, 222, 128,0.12), 0 -8px 40px rgba(0,0,0,0.9);
+            animation: modalIn 0.15s ease;
         }
         .modal-box.red-modal { border-color: rgba(255,0,68,0.35); box-shadow: 0 0 50px rgba(255,0,68,0.06), 0 30px 80px rgba(0,0,0,0.85); }
         .modal-box.gold-modal { border-color: rgba(255,200,0,0.3); }
@@ -3075,29 +3072,29 @@
          ICON BAR
     ══════════════════════════════════════ -->
     <div class="icon-bar">
-        <button class="icon-btn whisper-btn" onmouseenter="openModal('whisper')" onclick="openModal('whisper')">
+        <button class="icon-btn whisper-btn" onmouseenter="openModal('whisper',this)" onmouseleave="scheduleClose('whisper')" onclick="openModal('whisper',this)">
             <div class="icon-counter" id="whisperCountBadge">2</div>
             <span class="btn-icon">📡</span>
             <span class="btn-label">Whisper</span>
         </button>
-        <button class="icon-btn" onmouseenter="openModal('inventory')" onclick="openModal('inventory')">
+        <button class="icon-btn" onmouseenter="openModal('inventory',this)" onmouseleave="scheduleClose('inventory')" onclick="openModal('inventory',this)">
             <span class="btn-icon">🎒</span>
             <span class="btn-label">Inventory</span>
         </button>
-        <button class="icon-btn" onmouseenter="openModal('missions')" onclick="openModal('missions')">
+        <button class="icon-btn" onmouseenter="openModal('missions',this)" onmouseleave="scheduleClose('missions')" onclick="openModal('missions',this)">
             <div class="icon-notif"></div>
             <span class="btn-icon">📋</span>
             <span class="btn-label">Missions</span>
         </button>
-        <button class="icon-btn" onmouseenter="openModal('chronicle')" onclick="openModal('chronicle')">
+        <button class="icon-btn" onmouseenter="openModal('chronicle',this)" onmouseleave="scheduleClose('chronicle')" onclick="openModal('chronicle',this)">
             <span class="btn-icon">📜</span>
             <span class="btn-label">Chronicle</span>
         </button>
-        <button class="icon-btn" onmouseenter="openModal('forge')" onclick="openModal('forge')">
+        <button class="icon-btn" onmouseenter="openModal('forge',this)" onmouseleave="scheduleClose('forge')" onclick="openModal('forge',this)">
             <span class="btn-icon">⚒</span>
             <span class="btn-label">Forge</span>
         </button>
-        <button class="icon-btn" onmouseenter="openModal('alchemy')" onclick="openModal('alchemy')">
+        <button class="icon-btn" onmouseenter="openModal('alchemy',this)" onmouseleave="scheduleClose('alchemy')" onclick="openModal('alchemy',this)">
             <span class="btn-icon">⚗️</span>
             <span class="btn-label">Alchemy</span>
         </button>
@@ -3362,7 +3359,18 @@
             if (!checkLoginStatus()) return;
 
             const _lu = localStorage.getItem('shellforgeLoggedIn');
-            const agentData = (_lu && localStorage.getItem('shellforgeAgent_' + _lu)) || localStorage.getItem('shellforgeAgent');
+            // Load user-specific key first; fall back to shared ONLY if it belongs to this user
+            let agentData = _lu ? localStorage.getItem('shellforgeAgent_' + _lu) : null;
+            if (!agentData) {
+                const shared = localStorage.getItem('shellforgeAgent');
+                if (shared) {
+                    try {
+                        const parsed = JSON.parse(shared);
+                        // Only use shared data if it actually belongs to this logged-in user
+                        if (!_lu || parsed.username === _lu) agentData = shared;
+                    } catch(e) {}
+                }
+            }
 
             if (!agentData) {
                 // No agent found, redirect to registration
@@ -3446,7 +3454,7 @@
                 || archetypeNameLookup[(agent.archetype || '').toLowerCase()];
             if (imgFile) {
                 const img = document.createElement('img');
-                img.src = 'images/archetypes/' + encodeURIComponent(imgFile);
+                img.src = 'images/archetypes/' + imgFile.replace(/ /g, '%20');
                 img.alt = agent.archetypeName || '';
                 img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
                 img.onerror = function() { avatarDiv.innerHTML = '🤖'; };
@@ -4536,20 +4544,48 @@
             });
         }
 
-        // ─── Modal system ───────────────────────────────────────────
-        function openModal(id) {
+        // ─── Modal system — popup above each icon button ─────────────
+        var _modalHideTimers = {};
+
+        function scheduleClose(id) {
+            _modalHideTimers[id] = setTimeout(function() { closeModal(id); }, 320);
+        }
+
+        function openModal(id, triggerEl) {
+            // Cancel any pending close for this panel
+            clearTimeout(_modalHideTimers[id]);
+            // Close all others
             document.querySelectorAll('.modal-overlay').forEach(function(m) {
-                m.classList.remove('open');
+                if (m.id !== 'modal-' + id) m.classList.remove('open');
             });
             var el = document.getElementById('modal-' + id);
-            if (el) el.classList.add('open');
+            if (!el) return;
+
+            // Position above the triggering button
+            var btn = triggerEl || document.querySelector('[onmouseenter*="openModal(\'' + id + '\')"]');
+            if (btn) {
+                var r = btn.getBoundingClientRect();
+                var boxW = 340;
+                var left = r.left + r.width / 2 - boxW / 2;
+                left = Math.max(8, Math.min(left, window.innerWidth - boxW - 8));
+                el.style.left = left + 'px';
+                el.style.bottom = (window.innerHeight - r.top + 10) + 'px';
+                el.style.top = 'auto';
+            }
+
+            el.classList.add('open');
+
+            // Keep panel open while mouse is inside it
+            el.onmouseleave = function() { scheduleClose(id); };
+            el.onmouseenter = function() { clearTimeout(_modalHideTimers[id]); };
         }
+
         function closeModal(id) {
             var el = document.getElementById('modal-' + id);
             if (el) el.classList.remove('open');
         }
         function closeOnOverlay(e, id) {
-            if (e.target === e.currentTarget) closeModal(id);
+            // no-op now — no backdrop click needed
         }
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
