@@ -620,8 +620,11 @@
                 };
                 
                 // Store agent data — per-user key only
+                console.log('🔧 AGENT-CREATOR: Saving agent to key: shellforgeAgent_' + username);
+                console.log('🔧 Agent data:', mockAgentData);
                 localStorage.setItem('shellforgeAgent_' + username, JSON.stringify(mockAgentData));
                 localStorage.setItem('shellforgeLoggedIn', username);
+                console.log('🔧 Saved! Verify:', localStorage.getItem('shellforgeAgent_' + username) ? 'SUCCESS' : 'FAILED');
                 
                 // Clear session storage
                 sessionStorage.removeItem('shellforgeEmail');

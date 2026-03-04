@@ -11,6 +11,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="version" content="modal-fix-v2">
     <!-- cache-bust: 20260304-212244 -->
+    <!-- VERSION: OPUS-FIX-001 -->
     <title>Dashboard - Shellforge Realms</title>
     <link rel="stylesheet" href="style-v2.css">
     <link rel="stylesheet" href="terminal-notifications.css">
@@ -1730,6 +1731,7 @@
     <nav class="dashboard-nav">
         <div class="nav-left">
             <a href="index.html" class="nav-logo">SHELLFORGE REALMS</a>
+            <span style="font-size:0.5rem;color:#ff0044;margin-left:8px;opacity:0.7;">v:OPUS-001</span>
         </div>
         <div class="pulse-strip">
             <div class="pulse-action" id="pulseAction"><span>VEX is </span>idling in Nexarch</div>
@@ -3312,6 +3314,8 @@
     </div>
 
     <script>
+        console.log('🔧 DASHBOARD.HTML VERSION: OPUS-FIX-001');
+        console.log('🔧 Logged in user:', localStorage.getItem('shellforgeLoggedIn'));
 
         // ─── Save agent to per-user key only ────────────────────────
         function saveAgent(agent) {

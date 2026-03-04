@@ -10,6 +10,7 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agent Login - Shellforge Realms</title>
+    <!-- VERSION: OPUS-FIX-001 -->
     <link rel="stylesheet" href="style-v2.css">
     <style>
         .login-page {
@@ -280,6 +281,7 @@
     </div>
     
     <script>
+        console.log('🔧 LOGIN.HTML VERSION: OPUS-FIX-001');
         // Auto-clear if ?reset=1 in URL (bypass HTML cache)
         (function(){
             var p = new URLSearchParams(window.location.search);
@@ -291,11 +293,15 @@
         })();
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
+            console.log('🔧 Login form submitted');
             
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             const errorMsg = document.getElementById('errorMessage');
             const submitBtn = this.querySelector('button[type="submit"]');
+            
+            console.log('🔧 Username:', username);
+            console.log('🔧 Checking localStorage key: shellforgeAgent_' + username);
             
             // Hide previous errors
             errorMsg.classList.remove('show');
@@ -329,8 +335,10 @@
                     return;
                     
                 } catch (apiError) {
+                    console.log('🔧 API failed (expected), checking localStorage fallback...');
                     // Fallback: check per-user key only (dev/testing)
                     const perUserAgent = localStorage.getItem('shellforgeAgent_' + username);
+                    console.log('🔧 Found agent data:', perUserAgent ? 'YES' : 'NO');
                     if (perUserAgent) {
                         localStorage.setItem('shellforgeLoggedIn', username);
                         window.location.href = 'dashboard.html';
