@@ -10,7 +10,7 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="version" content="modal-fix-v2">
-    <!-- cache-bust: 20260303-004612 -->
+    <!-- cache-bust: 20260304-212244 -->
     <title>Dashboard - Shellforge Realms</title>
     <link rel="stylesheet" href="style-v2.css">
     <link rel="stylesheet" href="terminal-notifications.css">
@@ -238,6 +238,9 @@
             z-index: 900;
             width: 340px;
             max-width: 94vw;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 70px;
         }
         .modal-overlay.open { display: block; }
 
@@ -3318,6 +3321,19 @@
             }
         }
 
+        // Helper to get agent data using the correct per-user key
+        function getAgent() {
+            var lu = localStorage.getItem('shellforgeLoggedIn');
+            if (!lu) return null;
+            var data = localStorage.getItem('shellforgeAgent_' + lu);
+            if (!data) return null;
+            try {
+                return JSON.parse(data);
+            } catch(e) {
+                return null;
+            }
+        }
+
                 // Cluster definitions with all archetypes
         const CLUSTER_DATA = {
             'prime-helix': {
@@ -3598,7 +3614,7 @@
         function updateJourneyDebug() {
             const debugPanel = document.getElementById('journeyDebug');
             const debugContent = document.getElementById('debugContent');
-            const agent = JSON.parse(localStorage.getItem('shellforgeAgent'));
+            const agent = getAgent();
             
             if (!agent || !agent.journey || agent.journey.status !== 'active') {
                 debugPanel.style.display = 'none';
@@ -3649,7 +3665,7 @@
             const cancelBtn = document.getElementById('cancelJourneyBtn');
             if (cancelBtn) {
                 cancelBtn.addEventListener('click', function() {
-                    const agent = JSON.parse(localStorage.getItem('shellforgeAgent'));
+                    const agent = getAgent();
                     if (agent && agent.journey) {
                         delete agent.journey;
                         agent.state = 'idle';
@@ -3663,7 +3679,7 @@
 
         // Expose journey testing function to console
         window.testJourney = function(destination) {
-            const agent = JSON.parse(localStorage.getItem('shellforgeAgent'));
+            const agent = getAgent();
             if (!agent) {
                 console.error('❌ No agent found');
                 return;
@@ -3713,7 +3729,7 @@
             const message = whisperMessage.value.trim();
             if (message.length === 0) return;
 
-            const agentData = JSON.parse(localStorage.getItem('shellforgeAgent'));
+            const agentData = getAgent();
 
             try {
                 // TODO: Replace with real API call
@@ -4244,7 +4260,8 @@
 
             function animate() {
                 // Re-fetch agent data to check for completion
-                const agentData = localStorage.getItem('shellforgeAgent');
+                const lu = localStorage.getItem('shellforgeLoggedIn');
+                const agentData = lu ? localStorage.getItem('shellforgeAgent_' + lu) : null;
                 if (!agentData) return;
                 
                 const currentAgent = JSON.parse(agentData);
