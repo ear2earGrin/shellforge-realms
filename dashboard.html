@@ -549,26 +549,26 @@
 
         /* Cluster Members Popup */
         .cluster-members {
-            position: absolute;
-            right: -190px;
-            top: 0;
-            width: 180px;
-            background: rgba(0, 0, 0, 0.95);
+            position: fixed;
+            width: 200px;
+            background: rgba(0, 0, 0, 0.98);
             border: 2px solid var(--color-primary);
             border-radius: 8px;
             padding: 12px;
             opacity: 0;
             visibility: hidden;
-            transform: translateX(-10px);
-            transition: all 0.3s ease;
-            z-index: 100;
-            box-shadow: 0 0 20px rgba(74, 222, 128, 0.5);
+            transform: translateY(-10px);
+            transition: all 0.2s ease;
+            z-index: 1000;
+            box-shadow: 0 0 30px rgba(74, 222, 128, 0.4);
+            pointer-events: none;
         }
 
         .cluster-badge:hover .cluster-members {
             opacity: 1;
             visibility: visible;
-            transform: translateX(0);
+            transform: translateY(0);
+            pointer-events: auto;
         }
 
         .cluster-members-title {
@@ -1731,7 +1731,7 @@
     <nav class="dashboard-nav">
         <div class="nav-left">
             <a href="index.html" class="nav-logo">SHELLFORGE REALMS</a>
-            <span style="font-size:0.5rem;color:#ff0044;margin-left:8px;opacity:0.7;">v:OPUS-007</span>
+            <span style="font-size:0.5rem;color:#ff0044;margin-left:8px;opacity:0.7;">v:OPUS-008</span>
         </div>
         <div class="pulse-strip">
             <div class="pulse-action" id="pulseAction"><span>Agent is </span>loading...</div>
@@ -3319,7 +3319,7 @@
     </div>
 
     <script>
-        console.log('🔧 DASHBOARD.HTML VERSION: OPUS-FIX-007');
+        console.log('🔧 DASHBOARD.HTML VERSION: OPUS-FIX-008');
         console.log('🔧 Logged in user:', localStorage.getItem('shellforgeLoggedIn'));
 
         // ─── Save agent to per-user key only ────────────────────────
@@ -3621,7 +3621,23 @@
             });
             
             // CSS handles hover show/hide via .cluster-badge:hover .cluster-members
-            // No JS event listeners needed - CSS does it all
+            // But we need JS to position the fixed popup
+            badge.addEventListener('mouseenter', function() {
+                var rect = badge.getBoundingClientRect();
+                // Position to the right of the badge if there's room, otherwise below
+                var popupWidth = 200;
+                var spaceOnRight = window.innerWidth - rect.right - 20;
+                
+                if (spaceOnRight >= popupWidth) {
+                    // Position to the right
+                    popup.style.left = (rect.right + 10) + 'px';
+                    popup.style.top = rect.top + 'px';
+                } else {
+                    // Position below
+                    popup.style.left = rect.left + 'px';
+                    popup.style.top = (rect.bottom + 10) + 'px';
+                }
+            });
         }
 
         // Call cluster popup setup - moved to be called from loadAgentData
