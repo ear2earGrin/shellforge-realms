@@ -1731,7 +1731,7 @@
     <nav class="dashboard-nav">
         <div class="nav-left">
             <a href="index.html" class="nav-logo">SHELLFORGE REALMS</a>
-            <span style="font-size:0.5rem;color:#ff0044;margin-left:8px;opacity:0.7;">v:OPUS-003</span>
+            <span style="font-size:0.5rem;color:#ff0044;margin-left:8px;opacity:0.7;">v:OPUS-004</span>
         </div>
         <div class="pulse-strip">
             <div class="pulse-action" id="pulseAction"><span>Agent is </span>loading...</div>
@@ -3314,7 +3314,7 @@
     </div>
 
     <script>
-        console.log('🔧 DASHBOARD.HTML VERSION: OPUS-FIX-003');
+        console.log('🔧 DASHBOARD.HTML VERSION: OPUS-FIX-004');
         console.log('🔧 Logged in user:', localStorage.getItem('shellforgeLoggedIn'));
 
         // ─── Save agent to per-user key only ────────────────────────
@@ -3550,6 +3550,9 @@
             if (agent.clusterName) {
                 document.getElementById('clusterName').textContent = agent.clusterName;
             }
+            
+            // Setup cluster popup with agent data
+            setupClusterPopup(agent);
 
         }  // ← end of loadAgentData()
 
@@ -3606,14 +3609,15 @@
             });
         }
 
-        // Call cluster popup setup
-        // agent.cluster = 'prime-helix'/'sec-grid'/'dyn-swarm' (saved by agent-creator)
-        // agent.archetype = archetype id e.g. 'ddos-insurgent' (saved by agent-creator)
-        var ck = agent.cluster
-            || (agent.clusterName || '').toLowerCase().replace(/\s+/g, '-')
-            || 'prime-helix';
-        var ua = agent.archetype || agent.archetypeId || '';
-        populateClusterMembers(ck, ua);
+        // Call cluster popup setup - moved to be called from loadAgentData
+        function setupClusterPopup(agent) {
+            if (!agent) return;
+            var ck = agent.cluster
+                || (agent.clusterName || '').toLowerCase().replace(/\s+/g, '-')
+                || 'prime-helix';
+            var ua = agent.archetype || agent.archetypeId || '';
+            populateClusterMembers(ck, ua);
+        }
 
         // Logout functionality
         document.getElementById('logoutBtn').addEventListener('click', function() {
