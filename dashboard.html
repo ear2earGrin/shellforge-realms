@@ -1731,7 +1731,7 @@
     <nav class="dashboard-nav">
         <div class="nav-left">
             <a href="index.html" class="nav-logo">SHELLFORGE REALMS</a>
-            <span style="font-size:0.5rem;color:#ff0044;margin-left:8px;opacity:0.7;">v:OPUS-002</span>
+            <span style="font-size:0.5rem;color:#ff0044;margin-left:8px;opacity:0.7;">v:OPUS-003</span>
         </div>
         <div class="pulse-strip">
             <div class="pulse-action" id="pulseAction"><span>Agent is </span>loading...</div>
@@ -3314,7 +3314,7 @@
     </div>
 
     <script>
-        console.log('🔧 DASHBOARD.HTML VERSION: OPUS-FIX-002');
+        console.log('🔧 DASHBOARD.HTML VERSION: OPUS-FIX-003');
         console.log('🔧 Logged in user:', localStorage.getItem('shellforgeLoggedIn'));
 
         // ─── Save agent to per-user key only ────────────────────────
@@ -3371,11 +3371,19 @@
 
         // Check login status
         function checkLoginStatus() {
+            console.log('🔧 checkLoginStatus called');
             const loggedInUser = localStorage.getItem('shellforgeLoggedIn');
+            console.log('🔧 shellforgeLoggedIn =', loggedInUser);
             if (!loggedInUser) {
-                terminalNotify.error('Please log in to access the dashboard.', () => {
+                console.log('🔧 No logged in user, redirecting...');
+                if (typeof terminalNotify !== 'undefined') {
+                    terminalNotify.error('Please log in to access the dashboard.', () => {
+                        window.location.href = 'login.html';
+                    });
+                } else {
+                    alert('Please log in first.');
                     window.location.href = 'login.html';
-                });
+                }
                 return false;
             }
             return true;
@@ -3383,11 +3391,14 @@
 
         // Load agent data from localStorage (replace with API call later)
         function loadAgentData() {
+            console.log('🔧 loadAgentData called');
             if (!checkLoginStatus()) return;
 
             const _lu = localStorage.getItem('shellforgeLoggedIn');
+            console.log('🔧 Looking for agent key: shellforgeAgent_' + _lu);
             // Load user-specific key first; fall back to shared ONLY if it belongs to this user
             let agentData = _lu ? localStorage.getItem('shellforgeAgent_' + _lu) : null;
+            console.log('🔧 Agent data found:', agentData ? 'YES (' + agentData.substring(0, 50) + '...)' : 'NO');
             if (!agentData) {
                 const shared = localStorage.getItem('shellforgeAgent');
                 if (shared) {
@@ -3660,7 +3671,12 @@
         
         // Load agent data on page load
         document.addEventListener('DOMContentLoaded', function() {
-            loadAgentData();
+            console.log('🔧 DOMContentLoaded fired');
+            try {
+                loadAgentData();
+            } catch(e) {
+                console.error('🔧 ERROR in loadAgentData:', e);
+            }
             
             // Update debug every second
             setInterval(updateJourneyDebug, 1000);
