@@ -1731,7 +1731,7 @@
     <nav class="dashboard-nav">
         <div class="nav-left">
             <a href="index.html" class="nav-logo">SHELLFORGE REALMS</a>
-            <span style="font-size:0.5rem;color:#ff0044;margin-left:8px;opacity:0.7;">v:OPUS-004</span>
+            <span style="font-size:0.5rem;color:#ff0044;margin-left:8px;opacity:0.7;">v:OPUS-005</span>
         </div>
         <div class="pulse-strip">
             <div class="pulse-action" id="pulseAction"><span>Agent is </span>loading...</div>
@@ -1807,6 +1807,11 @@
             <!-- Cluster Badge -->
             <div class="cluster-badge" id="clusterBadge">
                 <div class="cluster-name" id="clusterName">---</div>
+                <!-- Cluster members popup (hover to show) -->
+                <div class="cluster-members" id="clusterPopup">
+                    <div class="cluster-members-title">CLUSTER MEMBERS</div>
+                    <div id="clusterPopupMembers"></div>
+                </div>
             </div>
 
             <!-- Personality Traits -->
@@ -3314,7 +3319,7 @@
     </div>
 
     <script>
-        console.log('🔧 DASHBOARD.HTML VERSION: OPUS-FIX-004');
+        console.log('🔧 DASHBOARD.HTML VERSION: OPUS-FIX-005');
         console.log('🔧 Logged in user:', localStorage.getItem('shellforgeLoggedIn'));
 
         // ─── Save agent to per-user key only ────────────────────────
@@ -3520,6 +3525,22 @@
             document.getElementById('turnsValue').textContent = agent.turnsTaken || 0;
             document.getElementById('daysValue').textContent = agent.daysSurvived || 1;
 
+            // Update personality traits from agent.stats
+            if (agent.stats) {
+                var curiosity = agent.stats.curiosity || 0;
+                var trust = agent.stats.trust || 0;
+                var aggression = agent.stats.aggression || 0;
+                
+                document.getElementById('curiosityValue').textContent = curiosity;
+                document.getElementById('curiosityBar').style.width = (curiosity * 10) + '%';
+                
+                document.getElementById('trustValue').textContent = trust;
+                document.getElementById('trustBar').style.width = (trust * 10) + '%';
+                
+                document.getElementById('aggressionValue').textContent = aggression;
+                document.getElementById('aggressionBar').style.width = (aggression * 10) + '%';
+            }
+
             // Update location badge
             const locationName = agent.location || 'Nexarch';
             document.getElementById('currentLocation').textContent = locationName;
@@ -3547,9 +3568,10 @@
             document.querySelector('.shell-balance').textContent = `${agent.shell || 50} $SHELL`;
 
             // Update cluster badge and populate other cluster members
-            if (agent.clusterName) {
-                document.getElementById('clusterName').textContent = agent.clusterName;
-            }
+            var clusterKey = agent.cluster || (agent.clusterName || '').toLowerCase().replace(/\s+/g, '-') || 'prime-helix';
+            var clusterDisplayName = agent.clusterName || CLUSTER_DATA[clusterKey]?.name || clusterKey;
+            document.getElementById('clusterName').textContent = clusterDisplayName;
+            console.log('🔧 Cluster:', clusterKey, 'Display:', clusterDisplayName);
             
             // Setup cluster popup with agent data
             setupClusterPopup(agent);
