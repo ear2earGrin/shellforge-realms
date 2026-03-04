@@ -1731,10 +1731,10 @@
     <nav class="dashboard-nav">
         <div class="nav-left">
             <a href="index.html" class="nav-logo">SHELLFORGE REALMS</a>
-            <span style="font-size:0.5rem;color:#ff0044;margin-left:8px;opacity:0.7;">v:OPUS-001</span>
+            <span style="font-size:0.5rem;color:#ff0044;margin-left:8px;opacity:0.7;">v:OPUS-002</span>
         </div>
         <div class="pulse-strip">
-            <div class="pulse-action" id="pulseAction"><span>VEX is </span>idling in Nexarch</div>
+            <div class="pulse-action" id="pulseAction"><span>Agent is </span>loading...</div>
             <div class="pulse-mini-energy">
                 Energy
                 <div class="pulse-ebar"><div class="pulse-efill" id="pulseEfill" style="width:73%"></div></div>
@@ -1744,7 +1744,7 @@
         </div>
 
         <div class="nav-right">
-            <span class="nav-user">Agent: <span id="navUsername">VEX</span></span>
+            <span class="nav-user">Agent: <span id="navUsername">---</span></span>
             <a href="index.html" class="nav-button">Home</a>
             <button class="nav-button logout" id="logoutBtn">Logout</button>
         </div>
@@ -1756,9 +1756,9 @@
             <div class="agent-header">
                 <div class="agent-avatar">🤖</div>
                 <div class="agent-info">
-                    <h2 id="agentName">VEX</h2>
-                    <div class="agent-archetype" id="agentArchetype">Strategist</div>
-                    <div class="agent-quirk" id="agentQuirk">• Lucky</div>
+                    <h2 id="agentName">Loading...</h2>
+                    <div class="agent-archetype" id="agentArchetype">---</div>
+                    <div class="agent-quirk" id="agentQuirk"></div>
                 </div>
             </div>
 
@@ -1767,7 +1767,7 @@
             <div class="stat-bar">
                 <div class="stat-label">
                     <span>Energy</span>
-                    <span class="stat-value" id="energyValue">73/100</span>
+                    <span class="stat-value" id="energyValue">--/100</span>
                 </div>
                 <div class="bar-container">
                     <div class="bar-fill energy" id="energyBar" style="width: 73%;"></div>
@@ -1786,17 +1786,17 @@
 
             <div class="stat-row">
                 <label>Karma</label>
-                <span id="karmaValue">+12</span>
+                <span id="karmaValue">--</span>
             </div>
 
             <div class="stat-row">
                 <label>Location</label>
-                <span id="locationValue">Nexarch</span>
+                <span id="locationValue">---</span>
             </div>
 
             <div class="stat-row">
                 <label>Turns Taken</label>
-                <span id="turnsValue">7</span>
+                <span id="turnsValue">0</span>
             </div>
 
             <div class="stat-row">
@@ -1806,7 +1806,7 @@
 
             <!-- Cluster Badge -->
             <div class="cluster-badge" id="clusterBadge">
-                <div class="cluster-name" id="clusterName">Prime Helix</div>
+                <div class="cluster-name" id="clusterName">---</div>
             </div>
 
             <!-- Personality Traits -->
@@ -1816,30 +1816,30 @@
                 <div class="trait-bar">
                     <div class="trait-label">
                         <span>Curiosity</span>
-                        <span class="trait-value" id="curiosityValue">10</span>
+                        <span class="trait-value" id="curiosityValue">0</span>
                     </div>
                     <div class="trait-bar-container">
-                        <div class="trait-bar-fill" id="curiosityBar" style="width: 100%;"></div>
+                        <div class="trait-bar-fill" id="curiosityBar" style="width: 0%;"></div>
                     </div>
                 </div>
 
                 <div class="trait-bar">
                     <div class="trait-label">
                         <span>Trust</span>
-                        <span class="trait-value" id="trustValue">3</span>
+                        <span class="trait-value" id="trustValue">0</span>
                     </div>
                     <div class="trait-bar-container">
-                        <div class="trait-bar-fill" id="trustBar" style="width: 30%;"></div>
+                        <div class="trait-bar-fill" id="trustBar" style="width: 0%;"></div>
                     </div>
                 </div>
 
                 <div class="trait-bar">
                     <div class="trait-label">
                         <span>Aggression</span>
-                        <span class="trait-value" id="aggressionValue">3</span>
+                        <span class="trait-value" id="aggressionValue">0</span>
                     </div>
                     <div class="trait-bar-container">
-                        <div class="trait-bar-fill" id="aggressionBar" style="width: 30%;"></div>
+                        <div class="trait-bar-fill" id="aggressionBar" style="width: 0%;"></div>
                     </div>
                 </div>
             </div>
@@ -3314,7 +3314,7 @@
     </div>
 
     <script>
-        console.log('🔧 DASHBOARD.HTML VERSION: OPUS-FIX-001');
+        console.log('🔧 DASHBOARD.HTML VERSION: OPUS-FIX-002');
         console.log('🔧 Logged in user:', localStorage.getItem('shellforgeLoggedIn'));
 
         // ─── Save agent to per-user key only ────────────────────────
