@@ -1731,7 +1731,7 @@
     <nav class="dashboard-nav">
         <div class="nav-left">
             <a href="index.html" class="nav-logo">SHELLFORGE REALMS</a>
-            <span style="font-size:0.5rem;color:#ff0044;margin-left:8px;opacity:0.7;">v:OPUS-006</span>
+            <span style="font-size:0.5rem;color:#ff0044;margin-left:8px;opacity:0.7;">v:OPUS-007</span>
         </div>
         <div class="pulse-strip">
             <div class="pulse-action" id="pulseAction"><span>Agent is </span>loading...</div>
@@ -3319,7 +3319,7 @@
     </div>
 
     <script>
-        console.log('🔧 DASHBOARD.HTML VERSION: OPUS-FIX-006');
+        console.log('🔧 DASHBOARD.HTML VERSION: OPUS-FIX-007');
         console.log('🔧 Logged in user:', localStorage.getItem('shellforgeLoggedIn'));
 
         // ─── Save agent to per-user key only ────────────────────────
@@ -3619,22 +3619,9 @@
                 row.appendChild(nm);
                 members.appendChild(row);
             });
-
-            var hideTimer;
-            badge.addEventListener('mouseenter', function() {
-                clearTimeout(hideTimer);
-                var r = badge.getBoundingClientRect();
-                popup.style.left  = (r.right + 8) + 'px';
-                popup.style.top   = r.top + 'px';
-                popup.style.display = 'block';
-            });
-            badge.addEventListener('mouseleave', function() {
-                hideTimer = setTimeout(function(){ popup.style.display = 'none'; }, 180);
-            });
-            popup.addEventListener('mouseenter', function(){ clearTimeout(hideTimer); });
-            popup.addEventListener('mouseleave', function(){
-                hideTimer = setTimeout(function(){ popup.style.display = 'none'; }, 180);
-            });
+            
+            // CSS handles hover show/hide via .cluster-badge:hover .cluster-members
+            // No JS event listeners needed - CSS does it all
         }
 
         // Call cluster popup setup - moved to be called from loadAgentData
