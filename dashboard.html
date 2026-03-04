@@ -3427,28 +3427,32 @@
                 document.getElementById('agentBio').textContent = '"No directive set"';
             }
 
-            // Update avatar image — resolve image from archetypeImage field or look up by archetype id
+            // Update avatar image
             const avatarDiv = document.querySelector('.agent-avatar');
             avatarDiv.innerHTML = '';
-            // Build a flat id->image lookup from CLUSTER_DATA
+            // Build lookup tables: id->image AND name->image (for legacy agents)
             const archetypeLookup = {};
+            const archetypeNameLookup = {};
             Object.values(CLUSTER_DATA).forEach(function(cluster) {
-                cluster.archetypes.forEach(function(a) { archetypeLookup[a.id] = a.image; });
+                cluster.archetypes.forEach(function(a) {
+                    archetypeLookup[a.id] = a.image;
+                    archetypeNameLookup[a.name.toLowerCase()] = a.image;
+                });
             });
-            // Resolve image: use saved field, or look up by archetype id
-            const resolvedImage = agent.archetypeImage
+            const imgFile = agent.archetypeImage
                 || archetypeLookup[agent.archetype]
                 || archetypeLookup[agent.archetypeId]
-                || null;
-            if (resolvedImage) {
+                || archetypeNameLookup[(agent.archetypeName || '').toLowerCase()]
+                || archetypeNameLookup[(agent.archetype || '').toLowerCase()];
+            if (imgFile) {
                 const img = document.createElement('img');
-                img.src = 'images/archetypes/' + resolvedImage.replace(/ /g, '%20');
-                img.alt = agent.archetypeName || agent.archetype || '';
+                img.src = 'images/archetypes/' + encodeURIComponent(imgFile);
+                img.alt = agent.archetypeName || '';
                 img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
-                img.onerror = function() { avatarDiv.style.fontSize='2rem'; avatarDiv.textContent='🤖'; };
+                img.onerror = function() { avatarDiv.innerHTML = '🤖'; };
                 avatarDiv.appendChild(img);
             } else {
-                avatarDiv.style.fontSize='2rem'; avatarDiv.textContent='🤖';
+                avatarDiv.innerHTML = '🤖';
             }
 
             // Update stats
@@ -3500,6 +3504,8 @@
             if (agent.clusterName) {
                 document.getElementById('clusterName').textContent = agent.clusterName;
             }
+
+        }  // ← end of loadAgentData()
 
         function populateClusterMembers(clusterKey, userArchetype) {
             var popup   = document.getElementById('clusterPopup');
