@@ -1731,7 +1731,7 @@
     <nav class="dashboard-nav">
         <div class="nav-left">
             <a href="index.html" class="nav-logo">SHELLFORGE REALMS</a>
-            <span style="font-size:0.5rem;color:#ff0044;margin-left:8px;opacity:0.7;">v:OPUS-005</span>
+            <span style="font-size:0.5rem;color:#ff0044;margin-left:8px;opacity:0.7;">v:OPUS-006</span>
         </div>
         <div class="pulse-strip">
             <div class="pulse-action" id="pulseAction"><span>Agent is </span>loading...</div>
@@ -3319,7 +3319,7 @@
     </div>
 
     <script>
-        console.log('🔧 DASHBOARD.HTML VERSION: OPUS-FIX-005');
+        console.log('🔧 DASHBOARD.HTML VERSION: OPUS-FIX-006');
         console.log('🔧 Logged in user:', localStorage.getItem('shellforgeLoggedIn'));
 
         // ─── Save agent to per-user key only ────────────────────────
@@ -3564,13 +3564,19 @@
                 startJourneyAnimation(agent);
             }
 
-            // Update shell balance
-            document.querySelector('.shell-balance').textContent = `${agent.shell || 50} $SHELL`;
+            // Update shell balance (if element exists)
+            var shellBalanceEl = document.querySelector('.shell-balance');
+            if (shellBalanceEl) {
+                shellBalanceEl.textContent = `${agent.shell || 50} $SHELL`;
+            }
 
             // Update cluster badge and populate other cluster members
             var clusterKey = agent.cluster || (agent.clusterName || '').toLowerCase().replace(/\s+/g, '-') || 'prime-helix';
-            var clusterDisplayName = agent.clusterName || CLUSTER_DATA[clusterKey]?.name || clusterKey;
-            document.getElementById('clusterName').textContent = clusterDisplayName;
+            var clusterDisplayName = agent.clusterName || (CLUSTER_DATA[clusterKey] ? CLUSTER_DATA[clusterKey].name : null) || clusterKey;
+            var clusterNameEl = document.getElementById('clusterName');
+            if (clusterNameEl) {
+                clusterNameEl.textContent = clusterDisplayName;
+            }
             console.log('🔧 Cluster:', clusterKey, 'Display:', clusterDisplayName);
             
             // Setup cluster popup with agent data
