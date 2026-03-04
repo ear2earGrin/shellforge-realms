@@ -280,6 +280,15 @@
     </div>
     
     <script>
+        // Auto-clear if ?reset=1 in URL (bypass HTML cache)
+        (function(){
+            var p = new URLSearchParams(window.location.search);
+            if (p.get('reset') === '1') {
+                localStorage.clear();
+                sessionStorage.clear();
+                window.location.replace('login.html');
+            }
+        })();
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
@@ -320,26 +329,14 @@
                     return;
                     
                 } catch (apiError) {
-                    // Fallback: check localStorage for mock agent (dev/testing only)
-                    const storedAgent = localStorage.getItem('shellforgeAgent');
-                    
-                    if (storedAgent) {
-                        const agentData = JSON.parse(storedAgent);
-                        const storedUsername = localStorage.getItem('shellforgeUsername');
-                        
-                        // Simple username check (in production, this would be handled by backend)
-                        if (storedUsername === username) {
-                            // Set login flag
-                            localStorage.setItem('shellforgeLoggedIn', username);
-                            
-                            // Mock login successful
-                            window.location.href = 'dashboard.html';
-                            return;
-                        }
+                    // Fallback: check per-user key only (dev/testing)
+                    const perUserAgent = localStorage.getItem('shellforgeAgent_' + username);
+                    if (perUserAgent) {
+                        localStorage.setItem('shellforgeLoggedIn', username);
+                        window.location.href = 'dashboard.html';
+                        return;
                     }
-                    
-                    throw new Error('Invalid username or password');
-                }
+                    throw new Error('No agent found for that username. Deploy one first.');
                 
             } catch (error) {
                 console.error('Login error:', error);
