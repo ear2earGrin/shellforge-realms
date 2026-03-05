@@ -1731,7 +1731,7 @@
     <nav class="dashboard-nav">
         <div class="nav-left">
             <a href="index.html" class="nav-logo">SHELLFORGE REALMS</a>
-            <span style="font-size:0.5rem;color:#ff0044;margin-left:8px;opacity:0.7;">v:OPUS-011</span>
+            <span style="font-size:0.5rem;color:#ff0044;margin-left:8px;opacity:0.7;">v:OPUS-012</span>
         </div>
         <div class="pulse-strip">
             <div class="pulse-action" id="pulseAction"><span>Agent is </span>loading...</div>
@@ -4693,10 +4693,12 @@
             if (!agent || !pa) return;
             var energy = (agent.energy !== undefined) ? agent.energy : 100;
             var loc = agent.location || 'Unknown';
+            var state = agent.state || 'idle';
             
-            // If traveling, show destination instead of current location
-            if (agent.state === 'traveling' && agent.journey && agent.journey.destination) {
+            // If there's an active journey, use journey destination and traveling state
+            if (agent.journey && agent.journey.status === 'active' && agent.journey.destination) {
                 loc = agent.journey.destination;
+                state = 'traveling';
             }
             
             var stateMap = {
@@ -4704,7 +4706,7 @@
                 combat:'in combat at', resting:'resting at', trading:'trading in',
                 praying:'praying at', crafting:'crafting at'
             };
-            var verb = stateMap[agent.state] || 'in';
+            var verb = stateMap[state] || 'in';
             pa.innerHTML = '<span>' + (agent.username || 'AGENT') + ' is </span>' + verb + ' ' + loc;
             if (pef) pef.style.width = energy + '%';
             if (pev) pev.textContent = energy;
