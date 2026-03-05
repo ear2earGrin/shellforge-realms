@@ -1731,7 +1731,7 @@
     <nav class="dashboard-nav">
         <div class="nav-left">
             <a href="index.html" class="nav-logo">SHELLFORGE REALMS</a>
-            <span style="font-size:0.5rem;color:#ff0044;margin-left:8px;opacity:0.7;">v:OPUS-008</span>
+            <span style="font-size:0.5rem;color:#ff0044;margin-left:8px;opacity:0.7;">v:OPUS-009</span>
         </div>
         <div class="pulse-strip">
             <div class="pulse-action" id="pulseAction"><span>Agent is </span>loading...</div>
@@ -3561,7 +3561,10 @@
 
             // If agent is traveling, start animation loop
             if (agent.journey && agent.journey.status === 'active') {
+                console.log('🚀 Journey detected, starting animation...', agent.journey);
                 startJourneyAnimation(agent);
+            } else {
+                console.log('🚀 No active journey. journey=', agent.journey);
             }
 
             // Update shell balance (if element exists)
@@ -4308,6 +4311,7 @@
         let journeyAnimationId = null;
 
         function startJourneyAnimation(agent) {
+            console.log('🎬 startJourneyAnimation called');
             // Cancel any existing animation
             if (journeyAnimationId) {
                 cancelAnimationFrame(journeyAnimationId);
@@ -4317,12 +4321,16 @@
                 // Re-fetch agent data to check for completion
                 const lu = localStorage.getItem('shellforgeLoggedIn');
                 const agentData = lu ? localStorage.getItem('shellforgeAgent_' + lu) : null;
-                if (!agentData) return;
+                if (!agentData) {
+                    console.log('🎬 Animation stopped: no agent data');
+                    return;
+                }
                 
                 const currentAgent = JSON.parse(agentData);
                 
                 // Get current interpolated position
                 const currentPos = getCurrentPosition(currentAgent);
+                console.log('🎬 Animating position:', currentPos.x, currentPos.y);
                 
                 // Update marker position
                 positionAgentMarker(currentPos.x, currentPos.y, currentAgent);

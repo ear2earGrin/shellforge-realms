@@ -716,15 +716,26 @@
         // Music toggle
         const music = document.getElementById('bgMusic');
         const musicBtn = document.getElementById('musicToggle');
+        let musicPlaying = false;
+        
         musicBtn.addEventListener('click', () => {
-            if (music.paused) {
-                music.play();
-                musicBtn.querySelector('.waves').style.display = '';
-                musicBtn.querySelector('.mute-x').style.display = 'none';
-            } else {
+            console.log('🎵 Music button clicked, currently playing:', musicPlaying);
+            if (musicPlaying) {
                 music.pause();
+                music.currentTime = 0;
                 musicBtn.querySelector('.waves').style.display = 'none';
                 musicBtn.querySelector('.mute-x').style.display = '';
+                musicPlaying = false;
+                console.log('🎵 Music stopped');
+            } else {
+                music.play().then(() => {
+                    musicBtn.querySelector('.waves').style.display = '';
+                    musicBtn.querySelector('.mute-x').style.display = 'none';
+                    musicPlaying = true;
+                    console.log('🎵 Music playing');
+                }).catch(err => {
+                    console.error('🎵 Music play failed:', err);
+                });
             }
         });
 
