@@ -716,28 +716,40 @@
         // Music toggle
         const music = document.getElementById('bgMusic');
         const musicBtn = document.getElementById('musicToggle');
-        let musicPlaying = false;
         
-        musicBtn.addEventListener('click', () => {
-            console.log('🎵 Music button clicked, currently playing:', musicPlaying);
-            if (musicPlaying) {
-                music.pause();
-                music.currentTime = 0;
+        // Sync button state with actual audio state on load
+        function updateMusicButton() {
+            if (music.paused) {
                 musicBtn.querySelector('.waves').style.display = 'none';
                 musicBtn.querySelector('.mute-x').style.display = '';
-                musicPlaying = false;
+            } else {
+                musicBtn.querySelector('.waves').style.display = '';
+                musicBtn.querySelector('.mute-x').style.display = 'none';
+            }
+        }
+        
+        musicBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('🎵 Music button clicked. Paused:', music.paused, 'CurrentTime:', music.currentTime);
+            
+            if (!music.paused) {
+                // Music is playing, stop it
+                music.pause();
+                music.currentTime = 0;
                 console.log('🎵 Music stopped');
             } else {
-                music.play().then(() => {
-                    musicBtn.querySelector('.waves').style.display = '';
-                    musicBtn.querySelector('.mute-x').style.display = 'none';
-                    musicPlaying = true;
-                    console.log('🎵 Music playing');
-                }).catch(err => {
-                    console.error('🎵 Music play failed:', err);
-                });
+                // Music is paused, play it
+                music.play().catch(err => console.error('🎵 Play failed:', err));
+                console.log('🎵 Music started');
             }
+            updateMusicButton();
         });
+        
+        // Also update button when audio state changes externally
+        music.addEventListener('play', updateMusicButton);
+        music.addEventListener('pause', updateMusicButton);
+        music.addEventListener('ended', updateMusicButton);
 
         // Live Activity Feed
         (function() {
