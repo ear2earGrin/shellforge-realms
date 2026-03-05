@@ -1731,7 +1731,7 @@
     <nav class="dashboard-nav">
         <div class="nav-left">
             <a href="index.html" class="nav-logo">SHELLFORGE REALMS</a>
-            <span style="font-size:0.5rem;color:#ff0044;margin-left:8px;opacity:0.7;">v:OPUS-010</span>
+            <span style="font-size:0.5rem;color:#ff0044;margin-left:8px;opacity:0.7;">v:OPUS-011</span>
         </div>
         <div class="pulse-strip">
             <div class="pulse-action" id="pulseAction"><span>Agent is </span>loading...</div>
@@ -4334,6 +4334,9 @@
                 
                 // Update marker position
                 positionAgentMarker(currentPos.x, currentPos.y, currentAgent);
+                
+                // Update pulse strip to show journey destination
+                updatePulseStrip(currentAgent);
 
                 // Check if journey just completed
                 if (currentAgent.journey && currentAgent.journey.status === 'completed') {
@@ -4690,6 +4693,12 @@
             if (!agent || !pa) return;
             var energy = (agent.energy !== undefined) ? agent.energy : 100;
             var loc = agent.location || 'Unknown';
+            
+            // If traveling, show destination instead of current location
+            if (agent.state === 'traveling' && agent.journey && agent.journey.destination) {
+                loc = agent.journey.destination;
+            }
+            
             var stateMap = {
                 idle:'idling in', mining:'mining at', traveling:'traveling to',
                 combat:'in combat at', resting:'resting at', trading:'trading in',
