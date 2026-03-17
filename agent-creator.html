@@ -395,6 +395,35 @@
     </div>
     
     <script>
+        // ─── Supabase config ─────────────────────────────────────────
+        const SUPABASE_URL = 'https://wtzrxscdlqdgdiefsmru.supabase.co';
+        const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0enJ4c2NkbHFkZ2RpZWZzbXJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2OTI4MjcsImV4cCI6MjA4OTI2ODgyN30.dLheIKz9anuM58O3Ebsr2rVCOGA-xBGRD9voiXNvIcg';
+        const SB_HEADERS = { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON, 'Content-Type': 'application/json' };
+
+        async function sbGet(table, query) {
+            try {
+                const r = await fetch(SUPABASE_URL + '/rest/v1/' + table + '?' + query, { headers: SB_HEADERS });
+                if (!r.ok) return null;
+                return await r.json();
+            } catch(e) { return null; }
+        }
+
+        async function sbPost(table, body) {
+            try {
+                const r = await fetch(SUPABASE_URL + '/rest/v1/' + table, {
+                    method: 'POST',
+                    headers: { ...SB_HEADERS, 'Prefer': 'return=representation' },
+                    body: JSON.stringify(body)
+                });
+                if (!r.ok) {
+                    const err = await r.text();
+                    console.warn('Supabase POST error:', r.status, err);
+                    return null;
+                }
+                return await r.json();
+            } catch(e) { return null; }
+        }
+
         // Archetype data (12 archetypes organized by cluster)
         const archetypes = {
             'prime-helix': [
@@ -543,11 +572,11 @@
         }
         
         // Deploy button handler
+        // Deploy button handler
         document.getElementById('deployBtn').addEventListener('click', async () => {
             if (!selectedArchetype) return;
 
-            // Get stored credentials first
-            const email = sessionStorage.getItem('shellforgeEmail');
+            const email    = sessionStorage.getItem('shellforgeEmail');
             const username = sessionStorage.getItem('shellforgeUsername');
             const password = sessionStorage.getItem('shellforgePassword');
 
@@ -558,80 +587,121 @@
                 return;
             }
 
-            // Check if this user already has an agent
-            const existingAgent = localStorage.getItem('shellforgeAgent_' + username);
-            if (existingAgent) {
-                try {
-                    const existing = JSON.parse(existingAgent);
-                    terminalNotify.error('Agent limit: 1 per account. Username already taken.');
-                } catch(e) {}
+            // Check duplicate — Supabase first, then localStorage
+            const sbCheck = await sbGet('agents', 'agent_name=eq.' + encodeURIComponent(username) + '&select=agent_id&limit=1');
+            if (sbCheck && sbCheck.length > 0) {
+                terminalNotify.error('An agent named ' + username + ' already exists. One agent per account.');
                 return;
             }
-            
-            // Disable button
+            if (localStorage.getItem('shellforgeAgent_' + username)) {
+                terminalNotify.error('Agent limit: 1 per account. Username already taken.');
+                return;
+            }
+
             const btn = document.getElementById('deployBtn');
             btn.disabled = true;
             btn.textContent = 'deploying...';
-            
+
             try {
-                // Get bio input
                 const bio = document.getElementById('agentBio').value.trim();
-                
-                // Generate birth seed (timestamp + random)
                 const birthSeed = Date.now() + Math.floor(Math.random() * 10000);
-                
-                // Find the selected archetype data
+
                 let archetypeData = null;
                 Object.entries(archetypes).forEach(([cluster, types]) => {
                     const found = types.find(a => a.id === selectedArchetype);
                     if (found) archetypeData = found;
                 });
-                
-                // Generate personality traits
+
                 const traits = generateAgentTraits(selectedArchetype, bio, birthSeed);
-                
-                // Mock deployment
-                const mockAgentData = {
-                    agentId: 'agent_' + Date.now(),
-                    email: email,
-                    username: username,
-                    bio: bio,
-                    archetype: selectedArchetype,
-                    archetypeName: archetypeData.name,
-                    archetypeImage: archetypeData.image,
-                    cluster: selectedCluster,
-                    clusterName: clusterNames[selectedCluster],
-                    birthSeed: birthSeed,
+
+                // ── 1. Create user row in Supabase ──
+                let userId = null;
+                const userRow = await sbPost('users', {
+                    username:      username,
+                    email:         email || username + '@shellforge.local',
+                    password_hash: 'pending_real_auth'
+                });
+                if (userRow && userRow.length > 0) {
+                    userId = userRow[0].user_id;
+                    console.log('✅ User created in Supabase:', userId);
+                } else {
+                    // user may already exist
+                    const existing = await sbGet('users', 'username=eq.' + encodeURIComponent(username) + '&select=user_id&limit=1');
+                    if (existing && existing.length > 0) userId = existing[0].user_id;
+                }
+
+                // ── 2. Create agent row in Supabase ──
+                let agentId = 'agent_' + Date.now();
+                if (userId) {
+                    const agentRow = await sbPost('agents', {
+                        user_id:         userId,
+                        agent_name:      username,
+                        archetype:       selectedArchetype,
+                        archetype_name:  archetypeData.name,
+                        archetype_image: archetypeData.image,
+                        cluster:         selectedCluster,
+                        cluster_name:    clusterNames[selectedCluster],
+                        bio:             bio,
+                        energy:          100,
+                        health:          100,
+                        karma:           traits.karmaStart,
+                        shell_balance:   50,
+                        location:        'Nexarch',
+                        location_detail: 'The Core',
+                        position_x:      0.77,
+                        position_y:      0.33,
+                        stats:           traits.stats,
+                        traits:          traits.traits,
+                        turns_taken:     0,
+                        days_survived:   1
+                    });
+                    if (agentRow && agentRow.length > 0) {
+                        agentId = agentRow[0].agent_id;
+                        console.log('✅ Agent created in Supabase:', agentId);
+                        // Write spawn log entry
+                        await sbPost('activity_log', {
+                            agent_id:      agentId,
+                            turn_number:   0,
+                            action_type:   'spawn',
+                            action_detail: username + ' deployed in Nexarch. ' + (bio ? '"' + bio + '"' : 'No directive set.'),
+                            location:      'Nexarch'
+                        });
+                    } else {
+                        console.warn('\u26a0\ufe0f Agent DB write failed — saved to localStorage only');
+                    }
+                }
+
+                // ── 3. Cache to localStorage ──
+                const agentCache = {
+                    agentId, userId,
+                    username, email, bio,
+                    archetype:         selectedArchetype,
+                    archetypeName:     archetypeData.name,
+                    archetypeImage:    archetypeData.image,
+                    cluster:           selectedCluster,
+                    clusterName:       clusterNames[selectedCluster],
+                    birthSeed,
                     birthCircumstance: traits.birthCircumstance,
-                    quirk: traits.quirk,
-                    stats: traits.stats,
-                    traits: traits.traits,
-                    energy: 100,
-                    health: 100,
-                    karma: traits.karmaStart,
-                    shell: 50,
-                    location: 'Nexarch',
-                    locationDetail: 'The Core',
-                    worldX: 10500,  // Nexarch center
-                    worldY: 9000,   // Nexarch center
-                    turnsTaken: 0,
-                    daysSurvived: 1,
+                    quirk:             traits.quirk,
+                    stats:             traits.stats,
+                    traits:            traits.traits,
+                    energy: 100, health: 100,
+                    karma:  traits.karmaStart,
+                    shell:  50,
+                    location:          'Nexarch',
+                    locationDetail:    'The Core',
+                    visualX: 77, visualY: 33,
+                    turnsTaken: 0, daysSurvived: 1,
                     createdAt: new Date().toISOString()
                 };
-                
-                // Store agent data — per-user key only
-                console.log('🔧 AGENT-CREATOR: Saving agent to key: shellforgeAgent_' + username);
-                console.log('🔧 Agent data:', mockAgentData);
-                localStorage.setItem('shellforgeAgent_' + username, JSON.stringify(mockAgentData));
+                localStorage.setItem('shellforgeAgent_' + username, JSON.stringify(agentCache));
                 localStorage.setItem('shellforgeLoggedIn', username);
-                console.log('🔧 Saved! Verify:', localStorage.getItem('shellforgeAgent_' + username) ? 'SUCCESS' : 'FAILED');
-                
-                // Clear session storage
+
                 sessionStorage.removeItem('shellforgeEmail');
                 sessionStorage.removeItem('shellforgeUsername');
                 sessionStorage.removeItem('shellforgePassword');
-                
-                // Show success and redirect with reveal
+
+                // ── 4. Show success ──
                 setTimeout(() => {
                     const revealMsg = `Agent ${username} deployed!
 
@@ -649,7 +719,7 @@ Spawning in Nexarch...`;
                         window.location.href = 'dashboard.html';
                     });
                 }, 500);
-                
+
             } catch (error) {
                 console.error('Deployment error:', error);
                 terminalNotify.error('Deployment failed. Please try again.');

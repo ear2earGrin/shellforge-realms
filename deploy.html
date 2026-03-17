@@ -267,77 +267,72 @@
     </div>
     
     <script>
-        // Check if user is already logged in with an agent
+        const SUPABASE_URL = 'https://wtzrxscdlqdgdiefsmru.supabase.co';
+        const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0enJ4c2NkbHFkZ2RpZWZzbXJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2OTI4MjcsImV4cCI6MjA4OTI2ODgyN30.dLheIKz9anuM58O3Ebsr2rVCOGA-xBGRD9voiXNvIcg';
+
+        // Redirect if already logged in
         window.addEventListener('DOMContentLoaded', function() {
             const loggedIn = localStorage.getItem('shellforgeLoggedIn');
-            const existingAgent = localStorage.getItem('shellforgeAgent');
-            
-            if (loggedIn && existingAgent) {
-                // Already logged in with an agent
+            if (loggedIn && localStorage.getItem('shellforgeAgent_' + loggedIn)) {
                 if (confirm('You already have an active agent. Go to dashboard?')) {
                     window.location.href = 'dashboard.html';
                 }
             }
         });
-        
-        document.getElementById('deployForm').addEventListener('submit', function(e) {
+
+        document.getElementById('deployForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
-            const email = document.getElementById('email').value.trim();
+
+            const email    = document.getElementById('email').value.trim();
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
-            
-            // Validate email format
+
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(email)) {
-                terminalNotify.error('Please enter a valid email address.');
-                return;
+                terminalNotify.error('Please enter a valid email address.'); return;
             }
-            
-            // Check for disposable email domains (basic check)
             const disposableDomains = ['tempmail.com', '10minutemail.com', 'guerrillamail.com', 'throwaway.email'];
-            const emailDomain = email.split('@')[1];
-            if (disposableDomains.includes(emailDomain)) {
-                terminalNotify.error('Please use a permanent email address. Disposable emails are not allowed.');
-                return;
+            if (disposableDomains.includes(email.split('@')[1])) {
+                terminalNotify.error('Please use a permanent email address.'); return;
             }
-            
-            // Validate username
             if (username.length < 3) {
-                terminalNotify.error('Username must be at least 3 characters.');
-                return;
+                terminalNotify.error('Username must be at least 3 characters.'); return;
             }
-            
-            // Validate password strength
             if (password.length < 8) {
-                terminalNotify.error('Password must be at least 8 characters.');
-                return;
+                terminalNotify.error('Password must be at least 8 characters.'); return;
             }
-            
-            // Check password confirmation
             if (password !== confirmPassword) {
-                terminalNotify.error('Passwords do not match. Please try again.');
-                return;
-            }
-            
-
-            // Only block if THIS specific username already has an agent
-            const existingForUser = localStorage.getItem('shellforgeAgent_' + username);
-            if (existingForUser) {
-                terminalNotify.error(`Username "${username}" is already taken.\n\nPlease choose a different username.`);
-                return;
+                terminalNotify.error('Passwords do not match.'); return;
             }
 
-            // Store credentials temporarily for agent creation
+            // Check Supabase for taken username
+            try {
+                const r = await fetch(
+                    SUPABASE_URL + '/rest/v1/agents?agent_name=eq.' + encodeURIComponent(username) + '&select=agent_id&limit=1',
+                    { headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON } }
+                );
+                if (r.ok) {
+                    const rows = await r.json();
+                    if (rows && rows.length > 0) {
+                        terminalNotify.error('Username "' + username + '" is already taken. Please choose another.');
+                        return;
+                    }
+                }
+            } catch(e) {
+                // Supabase unavailable — fall back to localStorage check only
+            }
+
+            // Also check localStorage
+            if (localStorage.getItem('shellforgeAgent_' + username)) {
+                terminalNotify.error('Username "' + username + '" is already taken.'); return;
+            }
+
             sessionStorage.setItem('shellforgeEmail', email);
             sessionStorage.setItem('shellforgeUsername', username);
             sessionStorage.setItem('shellforgePassword', password);
-            
-            // In production, this would send verification email
-            // For now, proceed to agent creator
-            terminalNotify.success(`Account created!\n\nEmail: ${email}\n\nIn production, you would receive a verification email.\n\nProceeding to agent creation...`, () => {
-                // Redirect to agent creator
+
+            terminalNotify.success('Account created!\n\nProceeding to agent creation...', () => {
                 window.location.href = 'agent-creator.html';
             });
         });
