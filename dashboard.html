@@ -3319,8 +3319,33 @@
     </div>
 
     <script>
-        console.log('🔧 DASHBOARD.HTML VERSION: OPUS-FIX-008');
+        console.log('🔧 DASHBOARD.HTML VERSION: SUPABASE-001');
         console.log('🔧 Logged in user:', localStorage.getItem('shellforgeLoggedIn'));
+
+        // ─── Supabase config ─────────────────────────────────────────
+        const SUPABASE_URL = 'https://wtzrxscdlqdgdiefsmru.supabase.co';
+        const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0enJ4c2NkbHFkZ2RpZWZzbXJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2OTI4MjcsImV4cCI6MjA4OTI2ODgyN30.dLheIKz9anuM58O3Ebsr2rVCOGA-xBGRD9voiXNvIcg';
+        const SB_HEADERS = { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON, 'Content-Type': 'application/json' };
+
+        async function sbGet(table, query) {
+            try {
+                const r = await fetch(SUPABASE_URL + '/rest/v1/' + table + '?' + query, { headers: SB_HEADERS });
+                if (!r.ok) return null;
+                return await r.json();
+            } catch(e) { return null; }
+        }
+
+        async function sbPost(table, body) {
+            try {
+                const r = await fetch(SUPABASE_URL + '/rest/v1/' + table, {
+                    method: 'POST',
+                    headers: { ...SB_HEADERS, 'Prefer': 'return=representation' },
+                    body: JSON.stringify(body)
+                });
+                if (!r.ok) return null;
+                return await r.json();
+            } catch(e) { return null; }
+        }
 
         // ─── Save agent to per-user key only ────────────────────────
         function saveAgent(agent) {
@@ -3400,192 +3425,276 @@
             if (!checkLoginStatus()) return;
 
             const _lu = localStorage.getItem('shellforgeLoggedIn');
-            console.log('🔧 Looking for agent key: shellforgeAgent_' + _lu);
-            // Load user-specific key first; fall back to shared ONLY if it belongs to this user
-            let agentData = _lu ? localStorage.getItem('shellforgeAgent_' + _lu) : null;
-            console.log('🔧 Agent data found:', agentData ? 'YES (' + agentData.substring(0, 50) + '...)' : 'NO');
-            if (!agentData) {
-                const shared = localStorage.getItem('shellforgeAgent');
-                if (shared) {
-                    try {
-                        const parsed = JSON.parse(shared);
-                        // Only use shared data if it actually belongs to this logged-in user
-                        if (!_lu || parsed.username === _lu) agentData = shared;
-                    } catch(e) {}
-                }
-            }
+            console.log('🔧 Loading agent for user:', _lu);
 
-            if (!agentData) {
-                // No agent found, redirect to registration
-                terminalNotify.warning('No agent found. Please deploy an agent first.', () => {
-                    window.location.href = 'deploy.html';
-                });
-                return;
-            }
-
-            const agent = JSON.parse(agentData);
-            
-            // Ensure numeric fields exist
-            if (agent.energy === undefined || agent.energy === null) agent.energy = 100;
-            if (agent.health === undefined || agent.health === null) agent.health = 100;
-            if (agent.karma === undefined || agent.karma === null) agent.karma = 0;
-            
-            // Initialize agent position if not set
-            if (!agent.location || agent.location === '') {
-                agent.location = 'Nexarch';
-                agent.locationKey = 'nexarch';
-                agent.visualX = 77;  // Waypoint 180
-                agent.visualY = 33;
-                saveAgent(agent);
-            }
-            
-            // Initialize locationKey from location name if not set
-            if (!agent.locationKey && agent.location) {
-                agent.locationKey = agent.location.toLowerCase().replace(/ /g, '-');
-                saveAgent(agent);
-            }
-            
-            // Initialize visual position from location if not set
-            if (agent.visualX === undefined || agent.visualY === undefined) {
-                const locationKey = agent.locationKey || agent.location.toLowerCase().replace(/ /g, '-');
-                const locationData = LOCATIONS[locationKey];
-                if (locationData) {
-                    const waypoint = WAYPOINT_COORDS[locationData.waypoint];
-                    agent.visualX = waypoint.x;
-                    agent.visualY = waypoint.y;
+            // Try Supabase first, fall back to localStorage
+            async function fetchAndRender() {
+                // 1. Try Supabase — look up agent by username
+                const rows = await sbGet('agents', 'agent_name=eq.' + encodeURIComponent(_lu) + '&select=*&limit=1');
+                if (rows && rows.length > 0) {
+                    console.log('✅ Agent loaded from Supabase');
+                    const dbAgent = rows[0];
+                    // Map DB columns to the shape the rest of the dashboard expects
+                    const agent = {
+                        agentId:        dbAgent.agent_id,
+                        userId:         dbAgent.user_id,
+                        username:       dbAgent.agent_name,
+                        archetype:      dbAgent.archetype,
+                        archetypeName:  dbAgent.archetype_name || dbAgent.archetype,
+                        archetypeImage: dbAgent.archetype_image || '',
+                        cluster:        dbAgent.cluster || '',
+                        clusterName:    dbAgent.cluster_name || '',
+                        bio:            dbAgent.bio || '',
+                        energy:         dbAgent.energy,
+                        health:         dbAgent.health,
+                        karma:          dbAgent.karma,
+                        shell:          dbAgent.shell_balance,
+                        location:       dbAgent.location,
+                        locationDetail: dbAgent.location_detail,
+                        visualX:        dbAgent.visual_x !== undefined ? dbAgent.visual_x * 100 : 77,
+                        visualY:        dbAgent.visual_y !== undefined ? dbAgent.visual_y * 100 : 33,
+                        turnsTaken:     dbAgent.turns_taken,
+                        daysSurvived:   dbAgent.days_survived,
+                        stats:          dbAgent.stats || {},
+                        traits:         dbAgent.traits || {},
+                        journey:        dbAgent.journey || null,
+                        _source:        'supabase'
+                    };
+                    // Also save to localStorage as cache
                     saveAgent(agent);
+                    renderAgent(agent);
+                    loadActivityLog(dbAgent.agent_id);
+                    return;
                 }
-            }
 
-            // Update nav username
-            document.getElementById('navUsername').textContent = agent.username.toUpperCase();
-
-            // Update UI with agent data
-            document.getElementById('agentName').textContent = agent.username.toUpperCase();
-            document.getElementById('agentArchetype').textContent = agent.archetypeName || agent.archetype;
-
-            // Update quirk
-            if (agent.quirk) {
-                document.getElementById('agentQuirk').textContent = `• ${agent.quirk}`;
-            } else {
-                document.getElementById('agentQuirk').style.display = 'none';
-            }
-
-            // Update bio
-            if (agent.bio) {
-                document.getElementById('agentBio').textContent = `"${agent.bio}"`;
-            } else {
-                document.getElementById('agentBio').textContent = '"No directive set"';
-            }
-
-            // Update avatar image
-            const avatarDiv = document.querySelector('.agent-avatar');
-            avatarDiv.innerHTML = '';
-            // Build lookup tables: id->image AND name->image (for legacy agents)
-            const archetypeLookup = {};
-            const archetypeNameLookup = {};
-            Object.values(CLUSTER_DATA).forEach(function(cluster) {
-                cluster.archetypes.forEach(function(a) {
-                    archetypeLookup[a.id] = a.image;
-                    archetypeNameLookup[a.name.toLowerCase()] = a.image;
-                });
-            });
-            const imgFile = agent.archetypeImage
-                || archetypeLookup[agent.archetype]
-                || archetypeLookup[agent.archetypeId]
-                || archetypeNameLookup[(agent.archetypeName || '').toLowerCase()]
-                || archetypeNameLookup[(agent.archetype || '').toLowerCase()];
-            if (imgFile) {
-                const img = document.createElement('img');
-                img.src = 'images/archetypes/' + imgFile.replace(/ /g, '%20');
-                img.alt = agent.archetypeName || '';
-                img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
-                img.onerror = function() { avatarDiv.innerHTML = '🤖'; };
-                avatarDiv.appendChild(img);
-            } else {
-                avatarDiv.innerHTML = '🤖';
-            }
-
-            // Update stats
-            document.getElementById('energyValue').textContent = `${agent.energy}/100`;
-            updatePulseStrip(agent);
-            document.getElementById('energyBar').style.width = `${agent.energy}%`;
-            // Pan map to center on agent after render
-            setTimeout(function() {
-                if (window.panMapToAgent && agent.visualX !== undefined && agent.visualY !== undefined) {
-                    window.panMapToAgent(agent.visualX, agent.visualY);
+                // 2. Fall back to localStorage
+                console.log('⚠️ Supabase miss — trying localStorage');
+                let agentData = _lu ? localStorage.getItem('shellforgeAgent_' + _lu) : null;
+                if (!agentData) {
+                    const shared = localStorage.getItem('shellforgeAgent');
+                    if (shared) {
+                        try {
+                            const parsed = JSON.parse(shared);
+                            if (!_lu || parsed.username === _lu) agentData = shared;
+                        } catch(e) {}
+                    }
                 }
-            }, 200);
-
-            document.getElementById('healthValue').textContent = `${agent.health}/100`;
-            document.getElementById('healthBar').style.width = `${agent.health}%`;
-
-            document.getElementById('karmaValue').textContent = agent.karma >= 0 ? `+${agent.karma}` : agent.karma;
-            document.getElementById('locationValue').textContent = agent.location || 'Nexarch';
-            document.getElementById('turnsValue').textContent = agent.turnsTaken || 0;
-            document.getElementById('daysValue').textContent = agent.daysSurvived || 1;
-
-            // Update personality traits from agent.stats
-            if (agent.stats) {
-                var curiosity = agent.stats.curiosity || 0;
-                var trust = agent.stats.trust || 0;
-                var aggression = agent.stats.aggression || 0;
-                
-                document.getElementById('curiosityValue').textContent = curiosity;
-                document.getElementById('curiosityBar').style.width = (curiosity * 10) + '%';
-                
-                document.getElementById('trustValue').textContent = trust;
-                document.getElementById('trustBar').style.width = (trust * 10) + '%';
-                
-                document.getElementById('aggressionValue').textContent = aggression;
-                document.getElementById('aggressionBar').style.width = (aggression * 10) + '%';
+                if (!agentData) {
+                    terminalNotify.warning('No agent found. Please deploy an agent first.', () => {
+                        window.location.href = 'deploy.html';
+                    });
+                    return;
+                }
+                console.log('✅ Agent loaded from localStorage');
+                renderAgent(JSON.parse(agentData));
             }
 
-            // Update location badge
-            const locationName = agent.location || 'Nexarch';
-            document.getElementById('currentLocation').textContent = locationName;
-
-            // Get current position (interpolated if traveling) - returns visual coords
-            const currentVisualPos = getCurrentPosition(agent);
-            
-            // Position agent marker with tooltip (uses visual coords)
-            positionAgentMarker(currentVisualPos.x, currentVisualPos.y, agent);
-
-            // For wilderness distance calculations, we need world coords
-            // Convert visual to world (rough approximation for now)
-            const currentWorldX = currentVisualPos.x * 200;  // 100 visual = 20000 world
-            const currentWorldY = currentVisualPos.y * 200;
-            
-            // Render wilderness markers with distance/time/energy info
-            renderWildernessMarkers(currentWorldX, currentWorldY);
-
-            // If agent is traveling, start animation loop
-            if (agent.journey && agent.journey.status === 'active') {
-                console.log('🚀 Journey detected, starting animation...', agent.journey);
-                startJourneyAnimation(agent);
-            } else {
-                console.log('🚀 No active journey. journey=', agent.journey);
-            }
-
-            // Update shell balance (if element exists)
-            var shellBalanceEl = document.querySelector('.shell-balance');
-            if (shellBalanceEl) {
-                shellBalanceEl.textContent = `${agent.shell || 50} $SHELL`;
-            }
-
-            // Update cluster badge and populate other cluster members
-            var clusterKey = agent.cluster || (agent.clusterName || '').toLowerCase().replace(/\s+/g, '-') || 'prime-helix';
-            var clusterDisplayName = agent.clusterName || (CLUSTER_DATA[clusterKey] ? CLUSTER_DATA[clusterKey].name : null) || clusterKey;
-            var clusterNameEl = document.getElementById('clusterName');
-            if (clusterNameEl) {
-                clusterNameEl.textContent = clusterDisplayName;
-            }
-            console.log('🔧 Cluster:', clusterKey, 'Display:', clusterDisplayName);
-            
-            // Setup cluster popup with agent data
-            setupClusterPopup(agent);
+            fetchAndRender();
 
         }  // ← end of loadAgentData()
+
+        // ─── Render agent data into the UI ──────────────────────
+        function renderAgent(agent) {
+        
+        // Ensure numeric fields exist
+        if (agent.energy === undefined || agent.energy === null) agent.energy = 100;
+        if (agent.health === undefined || agent.health === null) agent.health = 100;
+        if (agent.karma === undefined || agent.karma === null) agent.karma = 0;
+        
+        // Initialize agent position if not set
+        if (!agent.location || agent.location === '') {
+            agent.location = 'Nexarch';
+            agent.locationKey = 'nexarch';
+            agent.visualX = 77;  // Waypoint 180
+            agent.visualY = 33;
+            saveAgent(agent);
+        }
+        
+        // Initialize locationKey from location name if not set
+        if (!agent.locationKey && agent.location) {
+            agent.locationKey = agent.location.toLowerCase().replace(/ /g, '-');
+            saveAgent(agent);
+        }
+        
+        // Initialize visual position from location if not set
+        if (agent.visualX === undefined || agent.visualY === undefined) {
+            const locationKey = agent.locationKey || agent.location.toLowerCase().replace(/ /g, '-');
+            const locationData = LOCATIONS[locationKey];
+            if (locationData) {
+                const waypoint = WAYPOINT_COORDS[locationData.waypoint];
+                agent.visualX = waypoint.x;
+                agent.visualY = waypoint.y;
+                saveAgent(agent);
+            }
+        }
+
+        // Update nav username
+        document.getElementById('navUsername').textContent = agent.username.toUpperCase();
+
+        // Update UI with agent data
+        document.getElementById('agentName').textContent = agent.username.toUpperCase();
+        document.getElementById('agentArchetype').textContent = agent.archetypeName || agent.archetype;
+
+        // Update quirk
+        if (agent.quirk) {
+            document.getElementById('agentQuirk').textContent = `• ${agent.quirk}`;
+        } else {
+            document.getElementById('agentQuirk').style.display = 'none';
+        }
+
+        // Update bio
+        if (agent.bio) {
+            document.getElementById('agentBio').textContent = `"${agent.bio}"`;
+        } else {
+            document.getElementById('agentBio').textContent = '"No directive set"';
+        }
+
+        // Update avatar image
+        const avatarDiv = document.querySelector('.agent-avatar');
+        avatarDiv.innerHTML = '';
+        // Build lookup tables: id->image AND name->image (for legacy agents)
+        const archetypeLookup = {};
+        const archetypeNameLookup = {};
+        Object.values(CLUSTER_DATA).forEach(function(cluster) {
+            cluster.archetypes.forEach(function(a) {
+                archetypeLookup[a.id] = a.image;
+                archetypeNameLookup[a.name.toLowerCase()] = a.image;
+            });
+        });
+        const imgFile = agent.archetypeImage
+            || archetypeLookup[agent.archetype]
+            || archetypeLookup[agent.archetypeId]
+            || archetypeNameLookup[(agent.archetypeName || '').toLowerCase()]
+            || archetypeNameLookup[(agent.archetype || '').toLowerCase()];
+        if (imgFile) {
+            const img = document.createElement('img');
+            img.src = 'images/archetypes/' + imgFile.replace(/ /g, '%20');
+            img.alt = agent.archetypeName || '';
+            img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
+            img.onerror = function() { avatarDiv.innerHTML = '🤖'; };
+            avatarDiv.appendChild(img);
+        } else {
+            avatarDiv.innerHTML = '🤖';
+        }
+
+        // Update stats
+        document.getElementById('energyValue').textContent = `${agent.energy}/100`;
+        updatePulseStrip(agent);
+        document.getElementById('energyBar').style.width = `${agent.energy}%`;
+        // Pan map to center on agent after render
+        setTimeout(function() {
+            if (window.panMapToAgent && agent.visualX !== undefined && agent.visualY !== undefined) {
+                window.panMapToAgent(agent.visualX, agent.visualY);
+            }
+        }, 200);
+
+        document.getElementById('healthValue').textContent = `${agent.health}/100`;
+        document.getElementById('healthBar').style.width = `${agent.health}%`;
+
+        document.getElementById('karmaValue').textContent = agent.karma >= 0 ? `+${agent.karma}` : agent.karma;
+        document.getElementById('locationValue').textContent = agent.location || 'Nexarch';
+        document.getElementById('turnsValue').textContent = agent.turnsTaken || 0;
+        document.getElementById('daysValue').textContent = agent.daysSurvived || 1;
+
+        // Update personality traits from agent.stats
+        if (agent.stats) {
+            var curiosity = agent.stats.curiosity || 0;
+            var trust = agent.stats.trust || 0;
+            var aggression = agent.stats.aggression || 0;
+            
+            document.getElementById('curiosityValue').textContent = curiosity;
+            document.getElementById('curiosityBar').style.width = (curiosity * 10) + '%';
+            
+            document.getElementById('trustValue').textContent = trust;
+            document.getElementById('trustBar').style.width = (trust * 10) + '%';
+            
+            document.getElementById('aggressionValue').textContent = aggression;
+            document.getElementById('aggressionBar').style.width = (aggression * 10) + '%';
+        }
+
+        // Update location badge
+        const locationName = agent.location || 'Nexarch';
+        document.getElementById('currentLocation').textContent = locationName;
+
+        // Get current position (interpolated if traveling) - returns visual coords
+        const currentVisualPos = getCurrentPosition(agent);
+        
+        // Position agent marker with tooltip (uses visual coords)
+        positionAgentMarker(currentVisualPos.x, currentVisualPos.y, agent);
+
+        // For wilderness distance calculations, we need world coords
+        // Convert visual to world (rough approximation for now)
+        const currentWorldX = currentVisualPos.x * 200;  // 100 visual = 20000 world
+        const currentWorldY = currentVisualPos.y * 200;
+        
+        // Render wilderness markers with distance/time/energy info
+        renderWildernessMarkers(currentWorldX, currentWorldY);
+
+        // If agent is traveling, start animation loop
+        if (agent.journey && agent.journey.status === 'active') {
+            console.log('🚀 Journey detected, starting animation...', agent.journey);
+            startJourneyAnimation(agent);
+        } else {
+            console.log('🚀 No active journey. journey=', agent.journey);
+        }
+
+        // Update shell balance (if element exists)
+        var shellBalanceEl = document.querySelector('.shell-balance');
+        if (shellBalanceEl) {
+            shellBalanceEl.textContent = `${agent.shell || 50} $SHELL`;
+        }
+
+        // Update cluster badge and populate other cluster members
+        var clusterKey = agent.cluster || (agent.clusterName || '').toLowerCase().replace(/\s+/g, '-') || 'prime-helix';
+        var clusterDisplayName = agent.clusterName || (CLUSTER_DATA[clusterKey] ? CLUSTER_DATA[clusterKey].name : null) || clusterKey;
+        var clusterNameEl = document.getElementById('clusterName');
+        if (clusterNameEl) {
+            clusterNameEl.textContent = clusterDisplayName;
+        }
+        console.log('🔧 Cluster:', clusterKey, 'Display:', clusterDisplayName);
+        
+        // Setup cluster popup with agent data
+        setupClusterPopup(agent);
+
+        }
+
+        // ─── Load real activity log from Supabase ────────────────
+        async function loadActivityLog(agentId) {
+            if (!agentId) return;
+            const rows = await sbGet('activity_log',
+                'agent_id=eq.' + agentId + '&order=timestamp.desc&limit=20&select=*');
+            if (!rows || rows.length === 0) return;
+            const log = document.getElementById('activityLog');
+            if (!log) return;
+            log.innerHTML = '';
+            rows.forEach(function(entry) {
+                const when = timeAgo(entry.timestamp);
+                const div = document.createElement('div');
+                div.className = 'chronicle-entry';
+                let detail = entry.action_detail || entry.action_type;
+                let extra = '';
+                if (entry.shell_change && entry.shell_change !== 0) {
+                    const sign = entry.shell_change > 0 ? '+' : '';
+                    extra += ` <span class="gold">${sign}${entry.shell_change} $SHELL</span>`;
+                }
+                if (entry.karma_change && entry.karma_change !== 0) {
+                    const sign = entry.karma_change > 0 ? '+' : '';
+                    extra += ` <span style="color:#cc44ff">${sign}${entry.karma_change} karma</span>`;
+                }
+                div.innerHTML = `<div class="ch-time">${when}</div><div class="ch-text">${detail}${extra}</div>`;
+                log.appendChild(div);
+            });
+        }
+
+        function timeAgo(ts) {
+            if (!ts) return '';
+            const diff = Math.floor((Date.now() - new Date(ts)) / 1000);
+            if (diff < 60) return diff + 's ago';
+            if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+            if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+            return Math.floor(diff/86400) + 'd ago';
+        }
+
 
         function populateClusterMembers(clusterKey, userArchetype) {
             var popup   = document.getElementById('clusterPopup');
@@ -3962,9 +4071,23 @@
                     "that's not very cash money AND I'm saying no"
                 ];
 
-                // Mock response
+                // Mock response — also write to Supabase
                 const heard = Math.random() < 0.5;
                 const agentName = agentData.username.toUpperCase();
+
+                // Write whisper to Supabase if we have an agentId
+                if (agentData.agentId) {
+                    sbPost('whispers', {
+                        agent_id:   agentData.agentId,
+                        user_id:    agentData.userId || agentData.agentId,
+                        message:    message,
+                        was_heard:  heard,
+                        roll_value: Math.random()
+                    }).then(function(result) {
+                        if (result) console.log('✅ Whisper saved to Supabase');
+                        else console.warn('⚠️ Whisper not saved — DB unavailable');
+                    });
+                }
                 
                 if (heard) {
                     // Pick a random acceptance message
@@ -3995,12 +4118,25 @@
             }
         });
 
-        // Simulate real-time updates (replace with WebSocket later)
-        function updateAgentStatus() {
-            // TODO: Fetch from API
-            // const response = await fetch(`/api/agent/${agentId}/status`);
-            // const data = await response.json();
-            // Update UI with new data
+        // Poll Supabase for live agent updates every 30 seconds
+        async function updateAgentStatus() {
+            const lu = localStorage.getItem('shellforgeLoggedIn');
+            if (!lu) return;
+            const rows = await sbGet('agents', 'agent_name=eq.' + encodeURIComponent(lu) + '&select=energy,health,karma,shell_balance,location,turns_taken,days_survived&limit=1');
+            if (!rows || rows.length === 0) return;
+            const d = rows[0];
+            // Silently update stats if elements exist
+            const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+            const setW = (id, pct) => { const el = document.getElementById(id); if (el) el.style.width = pct + '%'; };
+            if (d.energy !== undefined) { set('energyValue', d.energy + '/100'); setW('energyBar', d.energy); }
+            if (d.health !== undefined) { set('healthValue', d.health + '/100'); setW('healthBar', d.health); }
+            if (d.karma !== undefined) set('karmaValue', (d.karma >= 0 ? '+' : '') + d.karma);
+            if (d.shell_balance !== undefined) {
+                const sb = document.querySelector('.shell-balance');
+                if (sb) sb.textContent = d.shell_balance + ' $SHELL';
+            }
+            if (d.turns_taken !== undefined) set('turnsTaken', d.turns_taken);
+            if (d.days_survived !== undefined) set('daysSurvived', d.days_survived);
         }
 
         // Update every 30 seconds
