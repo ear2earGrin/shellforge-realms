@@ -128,32 +128,7 @@
             backdrop-filter: blur(12px);
         }
 
-        .icon-btn {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 2px;
-            padding: 6px 18px;
-            border-radius: 6px;
-            cursor: pointer;
-            border: 1px solid transparent;
-            background: transparent;
-            transition: all 0.18s ease;
-            color: rgba(200, 230, 224, 0.45);
-            position: relative;
-            min-width: 68px;
-        }
-        .icon-btn:hover {
-            background: rgba(74, 222, 128, 0.08);
-            border-color: rgba(74, 222, 128, 0.25);
-            color: var(--color-primary);
-        }
-        .icon-btn.whisper-btn:hover {
-            background: rgba(255, 0, 0, 0.08);
-            border-color: rgba(255, 0, 0, 0.3);
-            color: #ff0044;
-        }
-        .icon-btn .btn-icon { font-size: 1.25rem; line-height: 1; }
+        /* icon-btn base styles — overridden by HUD WIDGETS section below */
         .icon-btn .btn-label {
             font-family: var(--font-main);
             font-size: 0.52rem;
@@ -1724,6 +1699,107 @@
             color: rgba(74,222,128,0.4);
             font-size: 0.58rem;
         }
+
+        /* ═══════════════════════════════════════
+           HUD WIDGETS — map overlay canvases
+        ═══════════════════════════════════════ */
+        .sf-widget {
+            position: absolute;
+            background: rgba(4, 13, 10, 0.88);
+            border: 1px solid rgba(0, 255, 200, 0.18);
+            padding: 8px;
+            backdrop-filter: blur(2px);
+            z-index: 10;
+            pointer-events: none;
+        }
+        .sf-wtitle {
+            font-size: 8px;
+            letter-spacing: 2px;
+            color: #00FFCC;
+            margin-bottom: 1px;
+            font-family: 'IBM Plex Mono', 'Courier New', monospace;
+            text-transform: uppercase;
+        }
+        .sf-wsub {
+            font-size: 7px;
+            letter-spacing: 1px;
+            color: rgba(0, 200, 130, 0.35);
+            margin-bottom: 5px;
+            font-family: 'IBM Plex Mono', 'Courier New', monospace;
+            text-transform: uppercase;
+        }
+        .sf-w-dna   { top: 8px; left: 8px; }
+        .sf-w-radar { top: 8px; right: 8px; }
+        .sf-w-wave  {
+            bottom: 8px; left: 8px;
+            opacity: 0.4;
+            transition: opacity 0.4s;
+            pointer-events: auto;
+        }
+        /* karma row hover: make wave bright */
+        .stat-row.karma-stat-row { cursor: default; }
+
+        /* ═══════════════════════════════════════
+           ICON BAR — holographic canvas buttons
+        ═══════════════════════════════════════ */
+        .icon-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0;
+            padding: 4px 6px 2px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 1px solid rgba(0, 255, 200, 0.22);
+            background: rgba(4, 13, 10, 0.92);
+            transition: all 0.2s ease;
+            color: rgba(0, 255, 180, 0.55);
+            position: relative;
+            min-width: 72px;
+        }
+        .icon-btn:hover {
+            background: rgba(0, 40, 28, 0.95);
+            border-color: rgba(0, 255, 200, 0.55);
+            color: #00FFCC;
+            box-shadow: 0 0 14px rgba(0, 255, 180, 0.18);
+        }
+        .icon-btn.whisper-btn {
+            border-color: rgba(255, 0, 68, 0.28);
+            color: rgba(255, 60, 100, 0.6);
+        }
+        .icon-btn.whisper-btn:hover {
+            background: rgba(30, 4, 10, 0.95);
+            border-color: rgba(255, 0, 68, 0.7);
+            color: #ff0044;
+            box-shadow: 0 0 14px rgba(255, 0, 68, 0.2);
+        }
+        .icon-btn canvas.hud-icon {
+            display: block;
+        }
+        .icon-btn .btn-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.48rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            margin-top: 2px;
+            color: inherit;
+        }
+        /* Corner bracket overlay on each button */
+        .icon-btn::before,
+        .icon-btn::after {
+            content: '';
+            position: absolute;
+            width: 7px; height: 7px;
+            border-color: rgba(0, 255, 200, 0.45);
+            border-style: solid;
+            pointer-events: none;
+        }
+        .icon-btn::before { top: 2px; left: 2px; border-width: 1px 0 0 1px; }
+        .icon-btn::after  { bottom: 2px; right: 2px; border-width: 0 1px 1px 0; }
+        .icon-btn.whisper-btn::before,
+        .icon-btn.whisper-btn::after {
+            border-color: rgba(255, 0, 68, 0.45);
+        }
     </style>
 </head>
 <body>
@@ -1784,7 +1860,7 @@
                 </div>
             </div>
 
-            <div class="stat-row">
+            <div class="stat-row karma-stat-row">
                 <label>Karma</label>
                 <span id="karmaValue">--</span>
             </div>
@@ -3071,6 +3147,28 @@
                 <!-- Agent marker positioned dynamically -->
                 <div class="agent-marker" id="agentMarker"></div>
                 </div><!-- /map-drag-inner -->
+
+                <!-- DNA Helix Widget -->
+                <div class="sf-widget sf-w-dna" id="widget-dna">
+                    <div class="sf-wtitle">HELIX CORE ENGINE</div>
+                    <div class="sf-wsub">DNA / ATTRACTOR</div>
+                    <canvas id="canvas-dna" width="220" height="200"></canvas>
+                </div>
+
+                <!-- Radar Widget -->
+                <div class="sf-widget sf-w-radar" id="widget-radar">
+                    <div class="sf-wtitle">ZONE PULSE</div>
+                    <div class="sf-wsub">RADAR / RINGS + AZIMUTH</div>
+                    <canvas id="canvas-radar" width="200" height="200"></canvas>
+                </div>
+
+                <!-- Signal Waveform Widget -->
+                <div class="sf-widget sf-w-wave" id="widget-wave">
+                    <div class="sf-wtitle">SIGNAL WAVEFORM</div>
+                    <div class="sf-wsub">MULTI-LAYER</div>
+                    <canvas id="canvas-wave" width="320" height="90"></canvas>
+                </div>
+
             </div><!-- /map-container -->
         </div><!-- /map-view-panel -->
 
@@ -3083,28 +3181,28 @@
     <div class="icon-bar">
         <button class="icon-btn whisper-btn" onmouseenter="openModal('whisper',this)" onmouseleave="scheduleClose('whisper')" onclick="openModal('whisper',this)">
             <div class="icon-counter" id="whisperCountBadge">2</div>
-            <span class="btn-icon">📡</span>
+            <canvas class="hud-icon" id="hud-whisper" width="68" height="46"></canvas>
             <span class="btn-label">Whisper</span>
         </button>
         <button class="icon-btn" onmouseenter="openModal('inventory',this)" onmouseleave="scheduleClose('inventory')" onclick="openModal('inventory',this)">
-            <span class="btn-icon">🎒</span>
+            <canvas class="hud-icon" id="hud-inventory" width="68" height="46"></canvas>
             <span class="btn-label">Inventory</span>
         </button>
         <button class="icon-btn" onmouseenter="openModal('missions',this)" onmouseleave="scheduleClose('missions')" onclick="openModal('missions',this)">
             <div class="icon-notif"></div>
-            <span class="btn-icon">📋</span>
+            <canvas class="hud-icon" id="hud-missions" width="68" height="46"></canvas>
             <span class="btn-label">Missions</span>
         </button>
         <button class="icon-btn" onmouseenter="openModal('chronicle',this)" onmouseleave="scheduleClose('chronicle')" onclick="openModal('chronicle',this)">
-            <span class="btn-icon">📜</span>
+            <canvas class="hud-icon" id="hud-chronicle" width="68" height="46"></canvas>
             <span class="btn-label">Chronicle</span>
         </button>
         <button class="icon-btn" onmouseenter="openModal('forge',this)" onmouseleave="scheduleClose('forge')" onclick="openModal('forge',this)">
-            <span class="btn-icon">⚒</span>
+            <canvas class="hud-icon" id="hud-forge" width="68" height="46"></canvas>
             <span class="btn-label">Forge</span>
         </button>
         <button class="icon-btn" onmouseenter="openModal('alchemy',this)" onmouseleave="scheduleClose('alchemy')" onclick="openModal('alchemy',this)">
-            <span class="btn-icon">⚗️</span>
+            <canvas class="hud-icon" id="hud-alchemy" width="68" height="46"></canvas>
             <span class="btn-label">Alchemy</span>
         </button>
     </div>
@@ -5011,5 +5109,810 @@
     </script>
     <script src="terminal-notifications.js"></script>
 
+    <script>
+    // ═══════════════════════════════════════════════════════════
+    //  HUD WIDGETS — DNA Helix · Signal Waveform · Radar Sweep
+    //  All driven by a single requestAnimationFrame loop
+    // ═══════════════════════════════════════════════════════════
+
+    // MOCK — replace with Supabase
+    const karmaHistory = [
+        0.15, 0.30, 0.55, 0.70, 0.60,
+        0.40, 0.20, -0.05, -0.20, -0.35,
+        -0.10, 0.10, 0.30, 0.50, 0.65,
+        0.55, 0.40, 0.60, 0.75, 0.70
+    ];
+    // MOCK — replace with Supabase
+    const radarDots = [
+        { r: 0.28, a: 0.5,  cluster: 'PH' },
+        { r: 0.55, a: 1.9,  cluster: 'SG' },
+        { r: 0.70, a: 3.7,  cluster: 'DS' },
+        { r: 0.35, a: 2.8,  cluster: 'HOSTILE' },
+        { r: 0.82, a: 5.1,  cluster: 'PH' },
+        { r: 0.62, a: 0.2,  cluster: 'SG' },
+        { r: 0.45, a: 4.4,  cluster: 'DS' },
+        { r: 0.78, a: 2.1,  cluster: 'PH' },
+    ];
+
+    let spinDNA   = 0;
+    let sweepAngle = 0;
+    let waveT     = 0;
+
+    // ── DNA HELIX ────────────────────────────────────────────
+    function drawDNA(spin) {
+        const c = document.getElementById('canvas-dna');
+        if (!c) return;
+        const ctx = c.getContext('2d');
+        const W = c.width, H = c.height;
+        ctx.clearRect(0, 0, W, H);
+
+        // Background
+        ctx.fillStyle = '#040D0A';
+        ctx.fillRect(0, 0, W, H);
+
+        // Atmospheric radial glow
+        const grd = ctx.createRadialGradient(W/2, H*0.45, 10, W/2, H*0.45, 90);
+        grd.addColorStop(0, 'rgba(0,176,144,0.13)');
+        grd.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grd;
+        ctx.fillRect(0, 0, W, H);
+
+        // Perspective grid floor
+        const floorY = H * 0.82;
+        ctx.save();
+        ctx.globalAlpha = 0.28;
+        ctx.strokeStyle = '#00B090';
+        ctx.lineWidth = 0.6;
+        // horizontal lines
+        for (let i = 0; i <= 5; i++) {
+            const y = floorY + i * 6;
+            const perspScale = 0.35 + i * 0.13;
+            const x0 = W/2 - 90 * perspScale;
+            const x1 = W/2 + 90 * perspScale;
+            ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+        }
+        // vertical converging lines
+        for (let x = -4; x <= 4; x++) {
+            ctx.beginPath();
+            ctx.moveTo(W/2 + x * 12, floorY);
+            ctx.lineTo(W/2 + x * 55, floorY + 36);
+            ctx.stroke();
+        }
+        ctx.restore();
+
+        // Pulse rings at base
+        const pulsePhase = spin * 0.8;
+        for (let ri = 0; ri < 3; ri++) {
+            const phase = (pulsePhase + ri * 0.7) % (Math.PI * 2);
+            const alpha = 0.12 + 0.08 * Math.sin(phase);
+            const rx = 22 + ri * 10;
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.strokeStyle = '#00FFCC';
+            ctx.lineWidth = 0.8;
+            ctx.beginPath();
+            ctx.ellipse(W/2, floorY + 2, rx, rx * 0.28, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // Small EEG waveform at floor level
+        ctx.save();
+        ctx.globalAlpha = 0.35;
+        ctx.strokeStyle = '#00FFCC';
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        for (let px = 0; px < W; px++) {
+            const wx = (px / W) * Math.PI * 8 + spin * 2;
+            const wy = floorY + 10 + Math.sin(wx) * 3 + Math.sin(wx * 2.3) * 1.5;
+            px === 0 ? ctx.moveTo(px, wy) : ctx.lineTo(px, wy);
+        }
+        ctx.stroke();
+        ctx.restore();
+
+        // ── Draw the double helix ribbon ──────────────────────
+        const TAU   = Math.PI * 2;
+        const TURNS = 3.2;
+        const N     = 120;         // segments per strand
+        const RAD   = 44;          // helix radius
+        const cx    = W / 2;
+        const topY  = H * 0.08;
+        const helixHeight = H * 0.70;
+        const ribbonHalfWidth = 7;
+
+        // Collect all segments for both strands and sort back-to-front by cos
+        const segments = [];
+
+        for (let strand = 0; strand < 2; strand++) {
+            const phaseOffset = strand * Math.PI;
+            for (let i = 0; i < N; i++) {
+                const a0 = (i / N) * TAU * TURNS + spin + phaseOffset;
+                const a1 = ((i + 1) / N) * TAU * TURNS + spin + phaseOffset;
+                const cosA = Math.cos(a0);
+
+                // Perpendicular ribbon width scaled by perspective depth
+                const depthScale0 = 0.3 + 0.7 * Math.abs(Math.sin(a0));
+                const depthScale1 = 0.3 + 0.7 * Math.abs(Math.sin(a1));
+                const nx0 = -Math.sin(a0) * ribbonHalfWidth * depthScale0;
+                const nx1 = -Math.sin(a1) * ribbonHalfWidth * depthScale1;
+
+                const x0a = cx + RAD * Math.cos(a0) - nx0;
+                const x0b = cx + RAD * Math.cos(a0) + nx0;
+                const x1a = cx + RAD * Math.cos(a1) - nx1;
+                const x1b = cx + RAD * Math.cos(a1) + nx1;
+                const y0  = topY + (i / N) * helixHeight;
+                const y1  = topY + ((i + 1) / N) * helixHeight;
+
+                // Depth color based on cos(a) — back = dark teal, front = near-white
+                const t = (cosA + 1) / 2; // 0=back, 1=front
+                let fillColor;
+                if (t < 0.3) {
+                    fillColor = `rgba(18,60,52,${0.35 + t})`;
+                } else if (t < 0.65) {
+                    const tt = (t - 0.3) / 0.35;
+                    fillColor = `rgba(0,${Math.round(100 + tt * 76)},${Math.round(100 + tt * 44)},${0.6 + tt * 0.25})`;
+                } else {
+                    const tt = (t - 0.65) / 0.35;
+                    fillColor = `rgba(${Math.round(tt * 195)},${Math.round(176 + tt * 79)},${Math.round(144 + tt * 96)},${0.85 + tt * 0.15})`;
+                }
+
+                segments.push({ x0a, x0b, x1a, x1b, y0, y1, cosA, t, fillColor, isRung: false });
+            }
+        }
+
+        // Sort back to front
+        segments.sort((a, b) => a.cosA - b.cosA);
+
+        // Draw ribbon quads
+        for (const seg of segments) {
+            ctx.beginPath();
+            ctx.moveTo(seg.x0a, seg.y0);
+            ctx.lineTo(seg.x0b, seg.y0);
+            ctx.lineTo(seg.x1b, seg.y1);
+            ctx.lineTo(seg.x1a, seg.y1);
+            ctx.closePath();
+            ctx.fillStyle = seg.fillColor;
+            ctx.fill();
+
+            // Specular highlight on front-facing crests
+            if (seg.t > 0.8) {
+                ctx.beginPath();
+                ctx.moveTo((seg.x0a + seg.x0b) / 2, seg.y0);
+                ctx.lineTo((seg.x1a + seg.x1b) / 2, seg.y1);
+                ctx.strokeStyle = `rgba(255,255,255,${(seg.t - 0.8) * 2.5})`;
+                ctx.lineWidth = 0.7;
+                ctx.stroke();
+            }
+        }
+
+        // Rungs (base pairs) every half-turn
+        const rungCount = Math.floor(TURNS * 2);
+        for (let r = 0; r < rungCount; r++) {
+            const a = (r / rungCount) * TAU * TURNS + spin;
+            const y = topY + (r / rungCount) * helixHeight;
+            const x0 = cx + RAD * Math.cos(a);
+            const x1 = cx + RAD * Math.cos(a + Math.PI);
+            const depth = (Math.cos(a) + 1) / 2;
+            const alpha = 0.45 + depth * 0.55;
+
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.strokeStyle = `rgba(0,255,200,${alpha})`;
+            ctx.lineWidth = depth > 0.5 ? 1.5 : 0.8;
+            ctx.shadowColor = '#00FFCC';
+            ctx.shadowBlur = depth > 0.5 ? 5 : 2;
+            ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+
+            // Node dots at rung endpoints
+            for (const nx of [x0, x1]) {
+                ctx.beginPath();
+                ctx.arc(nx, y, depth > 0.5 ? 2.5 : 1.5, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(0,255,200,${alpha})`;
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        // Numeric readout
+        ctx.save();
+        ctx.font = '7px "IBM Plex Mono", monospace';
+        ctx.fillStyle = 'rgba(0,255,180,0.5)';
+        ctx.fillText('48.' + String(Math.floor(((spin % (Math.PI*2)) / (Math.PI*2)) * 99)).padStart(2,'0'), W - 36, 14);
+        ctx.restore();
+    }
+
+    // ── RADAR SWEEP ──────────────────────────────────────────
+    const dotBrightness = radarDots.map(() => 0);
+
+    function drawRadar(sweep) {
+        const c = document.getElementById('canvas-radar');
+        if (!c) return;
+        const ctx = c.getContext('2d');
+        const W = c.width, H = c.height;
+        ctx.clearRect(0, 0, W, H);
+
+        const cx = W / 2, cy = H / 2 - 8;
+        const maxR = Math.min(W, H) / 2 - 10;
+
+        // Background
+        ctx.fillStyle = '#040D0A';
+        ctx.fillRect(0, 0, W, H);
+
+        // Radial gradient bg
+        const bgGrd = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR);
+        bgGrd.addColorStop(0, 'rgba(0,40,20,0.5)');
+        bgGrd.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = bgGrd;
+        ctx.fillRect(0, 0, W, H);
+
+        // Sweep trail (filled arc, fading)
+        const trailArc = Math.PI * 0.55;
+        const trailGrd = ctx.createConicalGradient
+            ? null // not standard
+            : null;
+        // Draw trail as stacked arcs
+        const trailSteps = 32;
+        for (let ti = 0; ti < trailSteps; ti++) {
+            const frac = ti / trailSteps;
+            const aStart = sweep - trailArc * (1 - frac);
+            const aEnd   = sweep - trailArc * (1 - frac - 1/trailSteps);
+            const alpha  = frac * 0.22;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.arc(cx, cy, maxR, aStart, aEnd);
+            ctx.closePath();
+            ctx.fillStyle = `rgba(0,255,100,${alpha})`;
+            ctx.fill();
+        }
+
+        // Concentric rings
+        for (let ri = 1; ri <= 4; ri++) {
+            const r = maxR * ri / 4;
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, Math.PI * 2);
+            ctx.strokeStyle = ri === 4 ? 'rgba(0,200,80,0.55)' : 'rgba(0,200,80,0.22)';
+            ctx.lineWidth = ri === 4 ? 1 : 0.6;
+            ctx.stroke();
+        }
+
+        // Tick marks on outer ring
+        for (let ti = 0; ti < 36; ti++) {
+            const angle = (ti / 36) * Math.PI * 2;
+            const isCardinal = ti % 9 === 0;
+            const len = isCardinal ? 7 : 3.5;
+            const r0 = maxR - len;
+            ctx.beginPath();
+            ctx.moveTo(cx + maxR * Math.cos(angle), cy + maxR * Math.sin(angle));
+            ctx.lineTo(cx + r0 * Math.cos(angle), cy + r0 * Math.sin(angle));
+            ctx.strokeStyle = isCardinal ? 'rgba(0,255,100,0.7)' : 'rgba(0,200,80,0.3)';
+            ctx.lineWidth = isCardinal ? 1.2 : 0.6;
+            ctx.stroke();
+        }
+
+        // Crosshair lines
+        ctx.save();
+        ctx.strokeStyle = 'rgba(0,200,80,0.18)';
+        ctx.lineWidth = 0.6;
+        ctx.setLineDash([3, 5]);
+        for (const angle of [0, Math.PI/2, Math.PI, Math.PI*1.5]) {
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(cx + maxR * Math.cos(angle), cy + maxR * Math.sin(angle));
+            ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        ctx.restore();
+
+        // Agent dots — update brightness based on sweep angle
+        const clusterColors = {
+            PH: '#00FFCC', SG: '#FF00FF', DS: '#00FF41', HOSTILE: '#FF3030'
+        };
+        for (let di = 0; di < radarDots.length; di++) {
+            const dot = radarDots[di];
+            // Angular distance from sweep to dot
+            let angleDiff = ((sweep - dot.a) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+            if (angleDiff < 0.18) {
+                dotBrightness[di] = 1.0;
+            } else if (angleDiff < Math.PI) {
+                dotBrightness[di] = Math.max(0, dotBrightness[di] - 0.012);
+            } else {
+                dotBrightness[di] = Math.max(0, dotBrightness[di] - 0.004);
+            }
+
+            const alpha = dotBrightness[di];
+            if (alpha < 0.04) continue;
+
+            const dx = cx + dot.r * maxR * Math.cos(dot.a);
+            const dy = cy + dot.r * maxR * Math.sin(dot.a);
+            const col = clusterColors[dot.cluster] || '#00FFCC';
+
+            // Halo
+            ctx.beginPath();
+            ctx.arc(dx, dy, 6, 0, Math.PI * 2);
+            ctx.fillStyle = col.replace(')', `,${alpha * 0.18})`).replace('rgb', 'rgba').replace('#', 'rgba(').replace('rgba(', 'rgba(');
+            // simpler:
+            ctx.fillStyle = `rgba(0,255,180,${alpha * 0.15})`;
+            ctx.fill();
+
+            // Core dot
+            ctx.beginPath();
+            ctx.arc(dx, dy, 2.5, 0, Math.PI * 2);
+            ctx.fillStyle = col;
+            ctx.globalAlpha = alpha;
+            ctx.shadowColor = col;
+            ctx.shadowBlur = 6;
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            ctx.shadowBlur = 0;
+        }
+
+        // Center dot
+        ctx.beginPath();
+        ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#00FFCC';
+        ctx.shadowColor = '#00FFCC';
+        ctx.shadowBlur = 10;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // Sweep line
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,255,100,0.9)';
+        ctx.shadowBlur = 8;
+        ctx.strokeStyle = 'rgba(0,255,100,0.9)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + maxR * Math.cos(sweep), cy + maxR * Math.sin(sweep));
+        ctx.stroke();
+        ctx.restore();
+
+        // Location labels
+        ctx.font = '7px "IBM Plex Mono", monospace';
+        ctx.fillStyle = 'rgba(0,255,100,0.35)';
+        ctx.fillText('_Nexarch', cx - maxR * 0.55, cy - maxR * 0.5);
+        ctx.fillText('_Hashmere', cx + maxR * 0.1, cy + maxR * 0.55);
+
+        // Bottom labels
+        ctx.font = '7px "IBM Plex Mono", monospace';
+        ctx.fillStyle = 'rgba(0,180,80,0.55)';
+        ctx.fillText('DIFFUSION MESA', 6, H - 6);
+        ctx.fillStyle = 'rgba(0,180,80,0.55)';
+        ctx.textAlign = 'right';
+        ctx.fillText('AZ ' + String(Math.round(((sweep % (Math.PI*2) + Math.PI*2) % (Math.PI*2)) * 180 / Math.PI)).padStart(3,'0') + '°', W - 4, H - 6);
+        ctx.textAlign = 'left';
+    }
+
+    // ── SIGNAL WAVEFORM ──────────────────────────────────────
+    function drawWave(t) {
+        const c = document.getElementById('canvas-wave');
+        if (!c) return;
+        const ctx = c.getContext('2d');
+        const W = c.width, H = c.height;
+        ctx.clearRect(0, 0, W, H);
+
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, W, H);
+
+        // Grid
+        ctx.save();
+        ctx.strokeStyle = 'rgba(0,255,100,0.07)';
+        ctx.lineWidth = 0.5;
+        for (let gx = 0; gx < W; gx += 32) {
+            ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke();
+        }
+        for (let gy = 0; gy < H; gy += 18) {
+            ctx.strokeStyle = gy === Math.round(H/2/18)*18 ? 'rgba(0,255,100,0.14)' : 'rgba(0,255,100,0.07)';
+            ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke();
+        }
+        ctx.restore();
+
+        // Day marker — magenta dashed vertical at ~60% width
+        const dayX = W * 0.62;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,0,255,0.45)';
+        ctx.lineWidth = 0.8;
+        ctx.setLineDash([3,4]);
+        ctx.beginPath(); ctx.moveTo(dayX, 0); ctx.lineTo(dayX, H); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.font = '6px "IBM Plex Mono",monospace';
+        ctx.fillStyle = 'rgba(255,0,255,0.5)';
+        ctx.fillText('DAY 1', dayX + 3, 9);
+        ctx.restore();
+
+        // Wave function from karma history
+        function waveY(px) {
+            const xFrac = px / W;
+            const idx = xFrac * (karmaHistory.length - 1);
+            const lo = Math.floor(idx), hi = Math.min(lo + 1, karmaHistory.length - 1);
+            const frac = idx - lo;
+            const karma = karmaHistory[lo] * (1 - frac) + karmaHistory[hi] * frac;
+            const envelope = Math.abs(karma) * 0.85 + 0.15;
+            const freq = 6 + Math.abs(karma) * 4;
+            const wave = Math.sin(xFrac * Math.PI * freq + t) * envelope
+                       + Math.sin(xFrac * Math.PI * freq * 2.1 + t * 1.3) * envelope * 0.3;
+            return H / 2 - wave * (H * 0.36);
+        }
+
+        // 5 render layers: widest/most-transparent → narrowest/most-opaque
+        const layers = [
+            { lw: 12, color: 'rgba(0,180,120,0.10)' },
+            { lw: 7,  color: 'rgba(0,220,160,0.18)' },
+            { lw: 3.5,color: 'rgba(0,255,180,0.40)' },
+            { lw: 1.5,color: 'rgba(160,255,220,0.70)' },
+            { lw: 0.8,color: 'rgba(255,255,255,0.92)' },
+        ];
+        for (const layer of layers) {
+            ctx.beginPath();
+            for (let px = 0; px <= W; px += 1) {
+                px === 0 ? ctx.moveTo(px, waveY(px)) : ctx.lineTo(px, waveY(px));
+            }
+            ctx.strokeStyle = layer.color;
+            ctx.lineWidth = layer.lw;
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+        }
+
+        // Corner brackets
+        const bLen = 8;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(0,255,100,0.4)';
+        ctx.lineWidth = 1;
+        const corners = [[0,0,1,1],[W,0,-1,1],[0,H,1,-1],[W,H,-1,-1]];
+        for (const [bx,by,sx,sy] of corners) {
+            ctx.beginPath();
+            ctx.moveTo(bx + sx*bLen, by); ctx.lineTo(bx, by); ctx.lineTo(bx, by + sy*bLen);
+            ctx.stroke();
+        }
+        ctx.restore();
+
+        // Labels
+        ctx.font = '6px "IBM Plex Mono",monospace';
+        ctx.fillStyle = 'rgba(0,180,80,0.45)';
+        ctx.fillText('7-DAY ARC', 10, H - 5);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = 'rgba(0,180,80,0.35)';
+        ctx.fillText('KARMA +0', W - 10, H - 5);
+        ctx.textAlign = 'left';
+    }
+
+    // ── SHARED TICK LOOP ─────────────────────────────────────
+    function tickWidgets() {
+        spinDNA    += 0.007;
+        sweepAngle += 0.016;
+        waveT      += 0.025;
+        drawDNA(spinDNA);
+        drawRadar(sweepAngle);
+        drawWave(waveT);
+        requestAnimationFrame(tickWidgets);
+    }
+    tickWidgets();
+
+    // ── KARMA HOVER → waveform brightness ───────────────────
+    (function() {
+        const karmaRow = document.querySelector('.karma-stat-row');
+        const waveWidget = document.getElementById('widget-wave');
+        if (karmaRow && waveWidget) {
+            karmaRow.addEventListener('mouseenter', () => { waveWidget.style.opacity = '1'; });
+            karmaRow.addEventListener('mouseleave', () => { waveWidget.style.opacity = '0.4'; });
+        }
+    })();
+
+    // ═══════════════════════════════════════════════════════════
+    //  ICON BAR — holographic canvas icons
+    //  Each draws: perspective grid floor + linework icon + glow
+    // ═══════════════════════════════════════════════════════════
+    function drawIconGrid(ctx, W, H, color) {
+        ctx.save();
+        ctx.globalAlpha = 0.22;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 0.5;
+        const fy = H * 0.72;
+        for (let i = 0; i <= 4; i++) {
+            const p = i / 4;
+            const y = fy + p * (H - fy);
+            const hw = (10 + p * 28);
+            ctx.beginPath(); ctx.moveTo(W/2 - hw, y); ctx.lineTo(W/2 + hw, y); ctx.stroke();
+        }
+        for (let v = -3; v <= 3; v++) {
+            ctx.beginPath();
+            ctx.moveTo(W/2 + v * 8, fy);
+            ctx.lineTo(W/2 + v * 22, H);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    function drawIconGlow(ctx, x, y, r, color) {
+        const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+        g.addColorStop(0, color.replace('1)', '0.18)'));
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(x - r, y - r, r*2, r*2);
+    }
+
+    // Whisper — satellite dish
+    function drawHudWhisper(canvas) {
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width, H = canvas.height;
+        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = '#040D0A';
+        ctx.fillRect(0, 0, W, H);
+        drawIconGrid(ctx, W, H, '#FF3060');
+        drawIconGlow(ctx, W/2, H*0.44, 28, 'rgba(255,0,68,1)');
+
+        ctx.save();
+        ctx.strokeStyle = '#FF3060';
+        ctx.lineWidth = 1.4;
+        ctx.shadowColor = '#FF0044';
+        ctx.shadowBlur = 7;
+        const cx = W/2, cy = H*0.44;
+        // Dish bowl (arc)
+        ctx.beginPath();
+        ctx.arc(cx, cy + 4, 14, Math.PI * 1.1, Math.PI * 1.9);
+        ctx.stroke();
+        // Dish rim line
+        ctx.beginPath();
+        ctx.moveTo(cx - 13, cy + 4 + 14 * Math.sin(Math.PI * 1.1));
+        ctx.lineTo(cx + 13, cy + 4 + 14 * Math.sin(Math.PI * 1.9));
+        ctx.stroke();
+        // Feed arm
+        ctx.beginPath();
+        ctx.moveTo(cx, cy + 4);
+        ctx.lineTo(cx + 8, cy - 6);
+        ctx.stroke();
+        // Feed node
+        ctx.beginPath();
+        ctx.arc(cx + 8, cy - 7, 2, 0, Math.PI * 2);
+        ctx.fillStyle = '#FF3060';
+        ctx.fill();
+        // Signal arcs
+        ctx.globalAlpha = 0.5;
+        ctx.lineWidth = 0.8;
+        for (let s = 1; s <= 3; s++) {
+            ctx.beginPath();
+            ctx.arc(cx + 8, cy - 7, s * 5, -Math.PI * 0.9, -Math.PI * 0.1);
+            ctx.stroke();
+        }
+        // Stand
+        ctx.globalAlpha = 1;
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy + 14);
+        ctx.lineTo(cx, cy + 20);
+        ctx.moveTo(cx - 7, cy + 20);
+        ctx.lineTo(cx + 7, cy + 20);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // Inventory — backpack
+    function drawHudInventory(canvas) {
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width, H = canvas.height;
+        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = '#040D0A';
+        ctx.fillRect(0, 0, W, H);
+        drawIconGrid(ctx, W, H, '#00B090');
+        drawIconGlow(ctx, W/2, H*0.44, 26, 'rgba(0,255,180,1)');
+
+        ctx.save();
+        ctx.strokeStyle = '#00FFCC';
+        ctx.lineWidth = 1.4;
+        ctx.shadowColor = '#00FFCC';
+        ctx.shadowBlur = 6;
+        const cx = W/2, top = H*0.12, bW = 20, bH = 24;
+        // Main body
+        ctx.strokeRect(cx - bW/2, top, bW, bH);
+        // Top flap
+        ctx.beginPath();
+        ctx.arc(cx, top, bW/2, Math.PI, 0);
+        ctx.stroke();
+        // Straps
+        ctx.beginPath();
+        ctx.moveTo(cx - 6, top + bH);
+        ctx.quadraticCurveTo(cx - 9, top + bH + 6, cx - 7, top + bH + 10);
+        ctx.moveTo(cx + 6, top + bH);
+        ctx.quadraticCurveTo(cx + 9, top + bH + 6, cx + 7, top + bH + 10);
+        ctx.stroke();
+        // Pocket
+        ctx.globalAlpha = 0.6;
+        ctx.strokeRect(cx - 7, top + bH*0.45, 14, 9);
+        // Small DNA helix accent
+        ctx.globalAlpha = 0.4;
+        ctx.lineWidth = 0.7;
+        for (let hi = 0; hi < 6; hi++) {
+            const hy = top + bH * 0.15 + hi * 3.5;
+            const amp = 4;
+            ctx.beginPath();
+            ctx.moveTo(cx - amp * Math.sin(hi * 1.2), hy);
+            ctx.lineTo(cx + amp * Math.sin(hi * 1.2 + Math.PI), hy);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    // Missions — targeting bracket
+    function drawHudMissions(canvas) {
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width, H = canvas.height;
+        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = '#040D0A';
+        ctx.fillRect(0, 0, W, H);
+        drawIconGrid(ctx, W, H, '#00B090');
+        drawIconGlow(ctx, W/2, H*0.44, 24, 'rgba(0,255,180,1)');
+
+        ctx.save();
+        ctx.strokeStyle = '#00FFCC';
+        ctx.lineWidth = 1.2;
+        ctx.shadowColor = '#00FFCC';
+        ctx.shadowBlur = 5;
+        const cx = W/2, cy = H*0.44;
+        const r = 14, bLen = 6;
+        // Outer circle
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.stroke();
+        // Inner circle
+        ctx.beginPath(); ctx.arc(cx, cy, r*0.45, 0, Math.PI*2); ctx.stroke();
+        // Corner brackets
+        for (const [ax, ay] of [[-1,-1],[1,-1],[1,1],[-1,1]]) {
+            const bx = cx + ax*(r*0.78), by = cy + ay*(r*0.78);
+            ctx.beginPath();
+            ctx.moveTo(bx, by - ay*bLen); ctx.lineTo(bx, by); ctx.lineTo(bx + ax*bLen, by);
+            ctx.stroke();
+        }
+        // Crosshair ticks
+        ctx.globalAlpha = 0.5;
+        ctx.lineWidth = 0.8;
+        for (const angle of [0, Math.PI/2, Math.PI, Math.PI*1.5]) {
+            ctx.beginPath();
+            ctx.moveTo(cx + (r - 5) * Math.cos(angle), cy + (r - 5) * Math.sin(angle));
+            ctx.lineTo(cx + (r + 1) * Math.cos(angle), cy + (r + 1) * Math.sin(angle));
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    // Chronicle — scroll
+    function drawHudChronicle(canvas) {
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width, H = canvas.height;
+        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = '#040D0A';
+        ctx.fillRect(0, 0, W, H);
+        drawIconGrid(ctx, W, H, '#00B090');
+        drawIconGlow(ctx, W/2, H*0.42, 24, 'rgba(0,255,180,1)');
+
+        ctx.save();
+        ctx.strokeStyle = '#00FFCC';
+        ctx.lineWidth = 1.3;
+        ctx.shadowColor = '#00FFCC';
+        ctx.shadowBlur = 5;
+        const cx = W/2, top = H*0.1, sW = 18, sH = 26;
+        // Body
+        ctx.strokeRect(cx - sW/2, top + 4, sW, sH);
+        // Top roll
+        ctx.beginPath(); ctx.arc(cx - sW/2 + 3, top + 4, 3, Math.PI, 0); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx + sW/2 - 3, top + 4, 3, Math.PI, 0); ctx.stroke();
+        // Bottom roll
+        ctx.beginPath(); ctx.arc(cx - sW/2 + 3, top + sH + 4, 3, 0, Math.PI); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx + sW/2 - 3, top + sH + 4, 3, 0, Math.PI); ctx.stroke();
+        // Text lines
+        ctx.globalAlpha = 0.5;
+        ctx.lineWidth = 0.7;
+        for (let li = 0; li < 4; li++) {
+            const ly = top + 10 + li * 5;
+            ctx.beginPath();
+            ctx.moveTo(cx - sW/2 + 4, ly); ctx.lineTo(cx + sW/2 - 4, ly);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    // Forge — hammer
+    function drawHudForge(canvas) {
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width, H = canvas.height;
+        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = '#040D0A';
+        ctx.fillRect(0, 0, W, H);
+        drawIconGrid(ctx, W, H, '#00B090');
+        drawIconGlow(ctx, W/2, H*0.44, 24, 'rgba(0,255,180,1)');
+
+        ctx.save();
+        ctx.strokeStyle = '#00FFCC';
+        ctx.fillStyle = '#00FFCC';
+        ctx.lineWidth = 1.3;
+        ctx.shadowColor = '#00FFCC';
+        ctx.shadowBlur = 5;
+        const cx = W/2, cy = H*0.44;
+        // Hammer head
+        ctx.beginPath();
+        ctx.rect(cx - 12, cy - 16, 24, 10);
+        ctx.stroke();
+        // Handle
+        ctx.beginPath();
+        ctx.moveTo(cx + 4, cy - 6); ctx.lineTo(cx + 10, cy + 16);
+        ctx.stroke();
+        // Anvil base
+        ctx.globalAlpha = 0.6;
+        ctx.beginPath();
+        ctx.moveTo(cx - 12, cy + 6);
+        ctx.lineTo(cx - 14, cy + 18);
+        ctx.lineTo(cx + 14, cy + 18);
+        ctx.lineTo(cx + 12, cy + 6);
+        ctx.closePath();
+        ctx.stroke();
+        // Anvil top
+        ctx.beginPath();
+        ctx.moveTo(cx - 9, cy + 3);
+        ctx.lineTo(cx - 12, cy + 6);
+        ctx.lineTo(cx + 12, cy + 6);
+        ctx.lineTo(cx + 9, cy + 3);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // Alchemy — flask
+    function drawHudAlchemy(canvas) {
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width, H = canvas.height;
+        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = '#040D0A';
+        ctx.fillRect(0, 0, W, H);
+        drawIconGrid(ctx, W, H, '#00B090');
+        drawIconGlow(ctx, W/2, H*0.44, 24, 'rgba(0,255,180,1)');
+
+        ctx.save();
+        ctx.strokeStyle = '#00FFCC';
+        ctx.lineWidth = 1.3;
+        ctx.shadowColor = '#00FFCC';
+        ctx.shadowBlur = 5;
+        const cx = W/2, cy = H*0.44;
+        // Flask neck
+        ctx.beginPath();
+        ctx.moveTo(cx - 5, cy - 18);
+        ctx.lineTo(cx - 5, cy - 8);
+        ctx.lineTo(cx - 13, cy + 10);
+        ctx.arc(cx, cy + 12, 13, Math.PI * 0.8, Math.PI * 0.2);
+        ctx.lineTo(cx + 5, cy - 8);
+        ctx.lineTo(cx + 5, cy - 18);
+        ctx.stroke();
+        // Neck top horizontal
+        ctx.beginPath();
+        ctx.moveTo(cx - 7, cy - 18); ctx.lineTo(cx + 7, cy - 18);
+        ctx.stroke();
+        // Liquid fill
+        ctx.globalAlpha = 0.2;
+        ctx.fillStyle = '#00FFCC';
+        ctx.beginPath();
+        ctx.arc(cx, cy + 12, 10, 0, Math.PI * 2);
+        ctx.fill();
+        // Bubbles
+        ctx.globalAlpha = 0.55;
+        ctx.lineWidth = 0.7;
+        for (const [bx, by, br] of [[cx-4, cy+8, 2],[cx+3, cy+14, 1.5],[cx, cy+18, 1]]) {
+            ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI*2); ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    // Draw all static icons once (they don't animate)
+    (function initHudIcons() {
+        const map = {
+            'hud-whisper':   drawHudWhisper,
+            'hud-inventory': drawHudInventory,
+            'hud-missions':  drawHudMissions,
+            'hud-chronicle': drawHudChronicle,
+            'hud-forge':     drawHudForge,
+            'hud-alchemy':   drawHudAlchemy,
+        };
+        for (const [id, fn] of Object.entries(map)) {
+            const el = document.getElementById(id);
+            if (el) fn(el);
+        }
+    })();
+
+    </script>
 </body>
 </html>
