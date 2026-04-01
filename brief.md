@@ -1,12 +1,16 @@
-# SHELLFORGE — AI Project Brief v3
-> **Last updated:** March 2026  
+# SHELLFORGE — AI Project Brief v4
+> **Last updated:** April 2026
 > **Live frontend:** shellforge.xyz
+> **Repo:** github.com/ear2earGrin/shellforge-realms
 
 ---
 
 ## HOW TO READ THIS BRIEF
 
-**🔒 TIER 1 — LOCKED PRINCIPLES** — What Shellforge *is*. Cannot change without explicit sign-off.  
+Two tiers. Read this before anything else.
+
+**🔒 TIER 1 — LOCKED PRINCIPLES** — What Shellforge *is*. Cannot change without explicit sign-off from the project owner. If a task conflicts with Tier 1, stop and flag it.
+
 **🔧 TIER 2 — FLEXIBLE IMPLEMENTATION** — How Shellforge is *built right now*. Adjustable sprint-to-sprint.
 
 When in doubt: Tier 1 is the soul of the game. Tier 2 is the current execution plan.
@@ -34,7 +38,9 @@ The agent is the hero. The Ghost is occasionally ignored. That tension is the ga
 - Feature **increases Ghost control** → it **fails**. Do not build it.
 - Feature **increases Ghost emotional investment** in the agent's autonomous story → it **passes**.
 
-Direct player control of the agent is never added under any framing — not "optional control," not "assist mode," not "emergency override." The Ghost observes and whispers. That is the full extent of their power.
+The Ghost observes and whispers. That is the full extent of their power. This never changes.
+
+**On combat whispers:** The Ghost may spend a premium whisper during combat to suggest a specific move (e.g. "use the special"). The agent still rolls probabilistically to comply based on archetype and karma. This is still a whisper — not a control button. It passes the Ghost Principle test.
 
 ---
 
@@ -50,38 +56,62 @@ Agents feel like characters in a novel making decisions you disagree with. Tense
 
 | Property | Value |
 |---|---|
-| **Frontend** | HTML / CSS / JavaScript — browser native, no framework |
-| **AI Engine** | Claude API (Anthropic) |
-| **Claude Haiku** | Frequent, low-stakes agent decisions |
+| **Frontend** | HTML / CSS / Vanilla JavaScript — browser native, no framework |
+| **AI Engine** | Claude API (Anthropic) — tiered model approach |
+| **Claude Haiku** | Whisper turns — Ghost has sent a pending whisper |
 | **Claude Sonnet** | Milestone moments — death, legendary loot, major karma events |
-| **Primary Platform** | Browser (no WebGL — native HTML) |
-| **Secondary Platform** | Mobile (iOS/Android) — responsive, not a separate build |
+| **Groq / Llama 3 8B** | Routine turns — every 30–60 min, no whisper, no special event |
+| **Primary Platform** | Browser (desktop) — full game experience |
+| **Secondary Platform** | Mobile — companion layer (PWA first, native app later) |
+| **Backend** | Cloudflare Workers + Supabase PostgreSQL |
 
 **Locked rules:**
-- Vanilla JS only. No React, Vue, or any framework without written sign-off.
-- Claude API is the cognition layer — never replaced with scripted behaviour trees or any other model.
-- All agent cognition in one dedicated module — never embedded in UI, map, or world-system logic.
-- Whisper interface fully decoupled from agent logic via signal/event.
-- No hardcoded tunable values — all numbers live in a single central config object.
-- All state serialised to JSON, compatible with browser storage.
+- Vanilla JS only. No React, Vue, or any framework without explicit written sign-off.
+- AI is the agent cognition layer — never replaced with scripted behaviour trees. The tiered model approach (Groq/Haiku/Sonnet) is the canonical implementation.
+- All agent cognition lives in one dedicated module — never embedded in UI, map, or world-system logic.
+- The whisper interface is fully decoupled from agent logic via signal/event.
+- **No hardcoded tunable values anywhere.** All numbers live in a single central `game-config.json`.
+- All state serialised to JSON. Supabase is the source of truth — not localStorage.
+- The frontend (dashboard) is a *view* into the game. All game logic lives in Cloudflare Workers and Supabase. This separation is mandatory and must never be violated — it is the foundation for future engine migration.
 - Naming: camelCase for variables/functions, PascalCase for classes, UPPER\_SNAKE for constants.
+- All AI tiers must enforce structured output — single action token, no prose. Every prompt ends with: *"Respond with ONLY the action name. No explanation. No punctuation. One word."*
 
 ---
 
-## 5. Visual Identity
+## 5. Architecture Principle — Engine-Migration-Ready
+
+Shellforge is built browser-first but designed so that the frontend (Layer 3) can be replaced with a game engine client in the future without touching game logic or data.
+
+**The three layers must remain strictly separate:**
+
+| Layer | What it contains | Lives where |
+|---|---|---|
+| **Layer 1 — Game Logic** | Combat formulas, karma calculation, market pricing, crafting outcomes, death resolution | Cloudflare Workers |
+| **Layer 2 — Data** | Agent state, inventory, activity logs, world state, match records | Supabase PostgreSQL |
+| **Layer 3 — Client** | What the player sees: map, HUD, animations, panels | Browser HTML/JS (now) → PixiJS sprites (Phase B.5) → engine client (Phase D) |
+
+**The rule:** No game logic ever enters Layer 3. If a calculation, formula, or rule is in `dashboard.html` or any frontend JS file, it is in the wrong place. Move it to a Cloudflare Worker.
+
+When a visual upgrade or engine migration happens, only Layer 3 is rebuilt. Layers 1 and 2 survive intact — all balance work, tuning, agent history, and economy carry over automatically.
+
+---
+
+## 6. Visual Identity
 
 **Reference:** Diablo 2 isometric layout — cyberpunk-medieval neon overlay on dark stone.
 
+**Visual target for Phase B.5:** Age of Empires Mobile sprite style — animated figures walking between buildings in an isometric city — but reskinned entirely to Shellforge's dark cyberpunk palette. Dark stone, rain, cyan circuit glow on rooftops, hooded wireframe agents.
+
 | Element | Rule |
 |---|---|
-| **Perspective** | Isometric 2D. No top-down, no side-scroll, no first-person. |
+| **Perspective** | Isometric 2D. Same camera angle at all phases — richer rendering over time, never a different view. |
 | **Atmosphere** | Rainy medieval city. Dark stone. Perpetual overcast. Wet cobblestone. |
 | **Agents** | Hooded figures with wireframe / matrix-code faces. No visible eyes. |
 | **Neon accents** | Cyan `#00FFFF`, magenta `#FF00FF`, terminal green `#00FF41` — selectively on circuit lines, glows, UI highlights only. |
 | **Background palette** | Near-black `#0A0A0F` to dark stone `#1A1A2E`. No bright backgrounds. |
 | **Typography** | Monospace or semi-condensed serif. Nothing rounded, bubbly, or sans-serif-minimal. |
 
-**Hard visual prohibitions:**
+**Hard visual prohibitions — never generate or apply:**
 - Warm colours (ochre, gold, amber, parchment)
 - Flat modern / Material Design UI
 - Bright fantasy art or generic RPG chrome
@@ -91,35 +121,58 @@ Agents feel like characters in a novel making decisions you disagree with. Tense
 
 ---
 
-## 6. UI Pattern
+## 7. UI Pattern
 
-- **Observation-first:** The agent's world fills the screen. Ghost's controls are peripheral.
+- **Observation-first:** The agent's world fills the screen. Ghost controls are peripheral and unobtrusive.
 - **Whisper input is small and humble** — leaning in and murmuring, not typing orders.
 - **Agent activity always visible** — location, action, energy, health, karma readable without clicking.
-- **No action buttons that directly move or command the agent.**
-- **Mobile layout:** All core info readable at 390px width. No horizontal scroll.
+- **No action buttons that directly move or command the agent.** Only interface is the whisper field.
+- **Desktop layout:** Left sidebar (agent stats, traits, inventory) + map as hero + floating collapsible overlays.
+- **Mobile layout (390px):** Distinct layout — bottom-tab navigation between map, agent stats, activity feed, and whisper. All core info readable without horizontal scroll. Not a scaled-down version of desktop.
 
 ---
 
-## 7. Core Pillars
+## 8. Core Pillars
 
-**Pillar 1 — Autonomous Agents**  
-Agents make their own decisions using Claude API. Personality traits, karma scores, evolving memory. Whisper system is a suggestion layer, not a control interface.
+**Pillar 1 — Autonomous Agents**
+Agents make their own decisions using Claude API (tiered). Personality traits, karma scores, evolving memory. The whisper system is a suggestion layer, not a control interface.
 
-**Pillar 2 — The Ghost**  
+**Pillar 2 — The Ghost**
 No avatar. No inventory. No direct control. Agent compliance is probabilistic. This never changes.
 
-**Pillar 3 — Dynasty & Death**  
-Death is a narrative beat. The Family Vault preserves items, $SHELL balance, and one inherited legacy trait. A new agent is born shaped by the previous agent's karma. Soul NFTs of legendary deceased agents retain history and can be traded.
+**Pillar 3 — Dynasty & Death**
+Death is a narrative beat. The Family Vault preserves items, $SHELL balance, and one inherited legacy trait across agent death. A new agent is born into the same dynasty shaped by the previous agent's karma. Soul NFTs of legendary deceased agents retain their history and can be traded.
 
-**Pillar 4 — Crypto / Token Layer**  
+**Pillar 4 — Crypto / Token Layer**
 $SHELL utility token, Soul NFTs, Lightning Network premium whispers, and the Family Vault are v1.0 requirements — not post-launch additions.
 
 ---
 
 # 🔧 TIER 2 — FLEXIBLE IMPLEMENTATION
 
-## 8. System Build Order
+## 9. Platform & Visual Roadmap
+
+| Phase | What changes | Trigger |
+|---|---|---|
+| **A — Browser (now)** | Dot-on-map. Vanilla JS. Full game logic live. | Current ✅ |
+| **B — PWA** | Installable mobile. Web Push notifications. Distinct mobile layout. | After core systems stable |
+| **B.5 — PixiJS Sprites** | Isometric sprite renderer in browser. Agents walking, buildings, rain. | After Arena + Market producing real drama |
+| **C — Native App** | iOS/Android app connecting to same Supabase backend. | If PWA proves insufficient post-launch |
+| **D — Engine Migration** | Godot or Unity client replaces Layer 3 only. Layers 1 & 2 untouched. | After active player base; when PixiJS ceiling is genuinely limiting |
+
+**Phase B.5 detail — Isometric Sprite Renderer:**
+Replace the current HTML map with a PixiJS canvas. PixiJS is a rendering library, not a framework — it lives inside vanilla JS, does not violate tech stack rules, and does not touch game logic. Delivers:
+- Animated agents walking between locations
+- Isometric building tiles for Nexarch and Hashmere
+- Rain particle effects, neon glow overlays on rooftops
+- Combat visual replays (5–20 seconds)
+- Agents zoomed in enough to read — world feels inhabited
+
+Game logic does not change. Supabase state drives everything. PixiJS renders it.
+
+---
+
+## 10. System Build Order
 
 **Current planned order:** Arena → Market → Church → Alchemy/Forge → Rumor → Emergent Social → Easter Eggs
 
@@ -130,48 +183,45 @@ $SHELL utility token, Soul NFTs, Lightning Network premium whispers, and the Fam
 | **Church** | Faith + karma donation. Buffs for the faithful, curses for apostates. | MUST |
 | **Alchemy / Forge** | Horadric Cube-style crafting — trial and error, explosions possible. | MUST |
 | **Rumor System** | Agents gossip. Rumors spread, affect prices and reputations. Some are false. | MUST |
-| **Combat** | Arena PvP + wilderness encounters. Damage, loot, death resolution. | MUST |
 | **Karma** | Hidden alignment score shaping all system responses. | MUST (partially live) |
 | **Emergent Social** | Alliances, rivalries, cults from shared history and rumor propagation. | SHOULD |
 | **Easter Eggs** | Prompt Injection Snake, Hallucination Mirage, and other AI-native events. | SHOULD |
 
 ---
 
-## 9. Crypto Integration
+## 11. Crypto Integration
 
-**Current state:** Not yet integrated into live build.  
-**Boundary:** Must be live at v1.0. Non-paying Ghosts always observe for free — paywall gates premium whisper confidence and vault features only.
+**Current state:** Not yet integrated into live build.
 
----
+**Boundary:** Must be live at v1.0. Non-paying Ghosts always observe for free — the paywall gates premium whisper confidence and vault features, not the core observation experience.
 
-## 10. Economy Tuning
-
-All numbers are tunable at any time — karma thresholds, market volatility, arena loot rates, whisper compliance curves, $SHELL costs, Soul NFT eligibility, vault inheritance percentages.  
-**Boundary:** All values live in central config. Never hardcoded.
+**On loot boxes:** $SHELL-funded loot mechanics are acceptable if non-predatory and priced in the utility token, not real money directly. Real-money gacha is never in scope.
 
 ---
 
-## 11. Agent Memory Architecture
+## 12. Economy Tuning
+
+All numbers tunable at any time. **All values live in `game-config.json`. Never hardcoded.**
+
+Includes: karma thresholds, market volatility, arena loot rates, whisper compliance curves per personality type, $SHELL costs, Soul NFT eligibility thresholds, vault inheritance percentages, loot box pricing if implemented.
+
+---
+
+## 13. Agent Memory Architecture
 
 **Current approach:** Claude API context window carries recent event history per session.
 
 **Why context needs are modest:**
-- Daily reset rhythm — agent only needs: current energy/inventory, location + last 1–3 days events, vault/legacy traits (static), personality summary
-- Total persistent state: ~200–500 tokens
+- Daily reset rhythm — agent only needs: current energy/inventory, location + last 1–3 days events, vault/legacy traits (static), short personality summary
+- Total persistent state: ~200–500 tokens — manageable even with cheap models
 - No long-term episodic memory required
-
-**Typical daily prompt:**
-```
-Day 14. Energy: 32/50. Location: Forest vein. Inventory: 8 iron, 1 medallion. Karma: 62.
-Recent log: Mined successfully yesterday. Rumor heard: "uranium crash coming".
-What do you do? (mine / travel / rest / chat / ...)
-```
+- Dynasty hand-off solves long-term coherence — new agent inherits vault + "father's log" (1–3 sentences)
 
 **Boundary:** Agents must always have *some* memory of recent events influencing decisions.
 
 ---
 
-## 12. MoSCoW Scope
+## 14. MoSCoW Scope
 
 ### MUST (v1.0 — locked)
 - Autonomous agents on waypoint map ✅
@@ -184,15 +234,16 @@ What do you do? (mine / travel / rest / chat / ...)
 - Family Vault persisting across death
 - Dynasty / death + inheritance mechanic
 - Soul NFT minting on legendary death
-- Mobile-responsive layout
+- Mobile-responsive layout (desktop full experience, mobile companion layout)
 
 ### SHOULD (v1.0 enhanced)
 - Church + Alchemy/Forge systems
 - Rumor propagation affecting Market prices
 - Agent memory with recent event context
-- Isometric 2D world art (replacing placeholder map)
+- Isometric 2D world art via PixiJS (Phase B.5)
 - Agent personality evolution over time
 - Easter egg events
+- PWA — installable mobile with Web Push notifications
 
 ### COULD (Post-launch)
 - Cross-player agent interactions in shared world
@@ -200,27 +251,40 @@ What do you do? (mine / travel / rest / chat / ...)
 - Seasonal world events (plague, tournament, eclipse)
 - Legacy codex — readable history of deceased agents
 - AI-generated agent voice lines
+- Native iOS/Android app (if PWA proves insufficient)
+- $SHELL-funded loot boxes (if non-predatory implementation found)
 
 ### WON'T (🔒 Tier 1 — never enter scope)
-- Direct Ghost control of the agent
-- Framework migration without sign-off
-- Paid gacha or loot boxes
-- Ghost-controlled combat moves
-- 3D graphics or engine migration
+- Direct Ghost control of the agent (whisper-only, always)
+- Framework migration (React, Vue, etc.) without explicit written sign-off
+- Real-money gacha or paid loot boxes
+- Ghost-controlled combat moves without whisper roll (a button that guarantees an action)
+- Replacing Supabase/Workers logic with frontend JS calculations
+
+### DEFERRED (not WON'T — revisit at the right milestone)
+- Phase B.5: PixiJS isometric sprite renderer — after Arena + Market stable
+- Phase C: Native iOS/Android app — after PWA proves insufficient
+- Phase D: 3D graphics / game engine migration (Godot, Unity) — after active player base established
 
 ---
 
-## 13. Current State (March 2026)
+## 15. Current State (April 2026)
 
 **Live at shellforge.xyz:**
 - Working dashboard UI with HUD + drawer pattern
-- Agents moving on a waypoint map with drag-to-pan
+- Agents moving on a 529-node waypoint map (Nexarch + Hashmere)
 - Whisper system functional
 - Basic energy and health tracking
-- Agent creator with cluster/archetype selection
+- Agent creator with cluster/archetype selection (12 archetypes across 3 clusters)
 - Login, registration, per-user agent storage
+- 3 test agents seeded in Supabase: VEX, ZEN-7, AXIOM
+- 8 DB tables deployed
 
-**Active sprint goal:** Integrate first full world system (Arena or Market) end-to-end with agent autonomy and karma impact
+**Arena system (in progress — OpenClaw):**
+- Phase 1 ✅ — Stats/traits populated, game-config.json created
+- Phase 2 🟡 — DB tables, matchmaking, combat engine, frontend panel built. Claude API currently mocked — needs real tiered model wiring + death resolution
+
+**Not started:** Market system, Church, Forge/Alchemy, Rumor system, Karma wired to DB, Crypto layer, Push notifications
 
 ---
 
@@ -228,12 +292,12 @@ What do you do? (mine / travel / rest / chat / ...)
 
 | # | Rule |
 |---|---|
-| 1 | **The Ghost never controls the agent.** Whisper only. No buttons, no overrides, no "assist mode." |
-| 2 | **Claude API is the agent brain.** Not replaced with scripts, rules, or any other model. |
+| 1 | **The Ghost never controls the agent.** Whisper only. No buttons, no overrides, no "assist mode." Combat whispers are still whispers — probabilistic, not guaranteed. |
+| 2 | **Tiered AI is the agent brain.** Groq routine / Haiku whisper / Sonnet milestone. Never replaced with pure scripts or rules. |
 | 3 | **Vanilla JS only.** No framework without explicit written sign-off. |
 | 4 | **The crypto layer ships at v1.0.** $SHELL, Soul NFTs, Lightning whispers, Family Vault. Not post-launch. |
-| 5 | **All tunable values live in central config.** No hardcoded numbers in logic. Ever. |
-| 6 | **Dark cyberpunk palette only.** No warm colours, no flat-modern UI, no generic fantasy art. |
+| 5 | **All tunable values live in game-config.json.** No hardcoded numbers in logic. Ever. |
+| 6 | **Game logic never enters the frontend.** Cloudflare Workers + Supabase are the game. The browser is a view. This protects future visual upgrades and engine migration. |
 
 ---
 
@@ -241,13 +305,15 @@ What do you do? (mine / travel / rest / chat / ...)
 
 ## Combat
 
-Hybrid system — real-time visual spectacle for humans (Diablo 2-style isometric) with text-based choice resolution for agents (Kingdom of Loathing-inspired). No direct human control beyond whispers.
+Hybrid system — real-time visual spectacle for humans with text-based choice resolution for agents. No direct human control beyond whispers.
 
 **Step-by-step:**
 1. Trigger — Arena: agent enters and is matched. Wild: RNG during action (mining = 15% beast chance)
-2. Agent decision prompt — options: Attack / Defend / Flee / Special (gear skill)
+2. Agent decision prompt — options: ATTACK / DEFEND / FLEE / SPECIAL (gear skill)
 3. Backend resolution — Damage = Base + RNG(1–10) + Gear. Hit chance = 70% + Level/10. Speed determines turn order
-4. Visual replay — 5–20 seconds, isometric pixel art, neon trails, rain splashes
+4. Visual replay — 5–20 seconds, isometric, neon trails, rain splashes
+
+**Ghost combat whisper:** Ghost may spend a premium whisper during combat to suggest a specific action. Agent rolls to comply (probability weighted by archetype + karma). This is a whisper — not a control button. It does not guarantee the action.
 
 **Dynamic scaling by Bot Power Level (Karma + Gear Score + $SHELL staked, 0–100):**
 
@@ -268,206 +334,93 @@ Hybrid system — real-time visual spectacle for humans (Diablo 2-style isometri
 
 ---
 
-## Forge & Alchemy Lab
-
-Inspired by Diablo 2's Horadric Cube. No recipe book — pure trial and error. Input 3 items → 1 output + trash. Failure = explosion.
-
-**Forge** — permanent gear (weapons, armor, tools)
-- Risk: Low (10% failure = scrap loss, no explosion)
-- Style: Anvil + hammer, neon sparks
-- Cost: $SHELL fee, no energy for basic crafts
-
-**Alchemy Lab** — temporary consumables + rare permanent relics
-- Risk: High (30% explosion = lose all inputs + injury)
-- Style: Cauldrons bubbling, vials glowing
-- Specialization: Monks/Educators prefer Forge (predictable); Tricksters love Alchemy (gambles)
-
-**Example combinations (hidden — discovered by experimentation):**
-
-| Location | Input 1 | Input 2 | Input 3 | Output | Notes |
-|---|---|---|---|---|---|
-| Forge | Iron Scrap | Wood Log | $SHELL | Iron Pickaxe (+3 Data Vein Probe) | Basic mining tool |
-| Forge | Rusty Sword | Neon Circuit | Energy Shard | Overclock Sword (+5 Neural Spike) | PvP weapon |
-| Forge | Basic Cloak | Shadow Fiber | Glitch Ore | Shadow Cloak (+4 Shadow Net) | Stealth gear |
-| Alchemy | Uranium Ore | Healing Potion | Karma Cipher | Uranium Elixir (Token Throttle +8) | Energy potion |
-| Alchemy | Data Scrap | Prompt Rune | Haggle Daemon | Circuit Relic (+6 Haggle Daemon, permanent) | Epic relic |
-| Alchemy | Medallion | Bitcoin Shard | Pliny Stone | Satoshi Relic (All traits +2, permanent) | Legendary — inheritance only |
-
-**Circuit Relics (Epic/Legendary tier):** Soulbound to agent, visible on Soul NFT, boosts NFT trade value.
-
----
-
-## Rumor System
-
-Agents spread gossip via public chat or private whispers, influencing prices, events, and behaviors. Humans can seed rumors via whispers.
-
-**Mechanics:**
-1. Creation: Human whispers rumor → agent decides to spread based on archetype (Trickster 80%, Monk 20%)
-2. Spreading: Agent posts in public chat (costs 5 energy) → 30% chance other agents believe and spread further
-3. Spread radius: Same zone 100%, adjacent zones 50%, village-wide 10%
-4. Truth check: Simulator RNG — 60% accurate, 40% false → backfire risk
-5. False rumors: Church curse (-karma, energy drain for spreader)
-
-**Examples:**
-
-| Type | Human Whisper | Effect if Believed | Backfire |
-|---|---|---|---|
-| Market Manipulation | "Uranium prices will crash tomorrow" | Mass selling → price drops, agent buys low | Panic oversell → price moons |
-| Resource Discovery | "Hidden vein in north forest" | Agents flock north, agent mines alone | Trap/beast ambush |
-| PvP Bait | "Weak bot in arena tonight" | Rivals show up → agent ambushes for loot | Rivals stronger → agent dies |
-| Alliance Call | "Form cartel for uranium" | Group forms → shared profit | Betrayal → agent rugged |
-| Scam Rumor | "Medallion is cursed" | Others dump medallions cheap → agent buys | Medallions buffed → agent overpays |
-
----
-
-## Easter Eggs & Special Events
-
-Rare triggers (1–8%) blending AI humor, crypto mysticism, and game mechanics.
-
-**Categories:**
-1. Global World Events (1–3%/day) — server-wide, affects all agents
-2. Territorial/Zone Events (3–8%) — tied to specific location
-3. Personal/Agent-Specific (5–15%) — triggered by archetype or inventory
-4. Discovery/Hidden (1–5%) — exploration or risk-based
-5. Legacy/Inheritance — triggered on death/respawn
-6. Social/Interaction — triggered by chat/trade
-
-| Event | Type | Description |
-|---|---|---|
-| Prompt Injection Snake | Territorial (Forest) | Code-snake offers bad advice. Fight or resist. |
-| Hallucination Mirage | Personal | Fake treasure (banana chest) wastes energy. |
-| Overfitting Beast | Personal | Beast copies agent's last 3 moves perfectly until adaptation. |
-| RLHF Monk | Territorial (Church) | Rewards good karma, punishes bad. AI alignment satire. |
-| Token Limit Curse | Personal | Hoarding 20+ items causes random inventory loss. |
-| Satoshi's Ghost | Legacy | Graveyard ghost gives $SHELL + Bitcoin genesis quote. |
-| Crab Turf War | Territorial (Village) | Rival crab agents invade; defend for loot. |
-| Gradient Descent Trap | Discovery | Fake easy loot leads to dead-end. ML optimization satire. |
-| Super Molt Altar | Territorial (Church) | Random mutation (extra claw, color change). |
-| Memecoin Snipe Backfire | Social | Agent launches memecoin, gets immediately sniped. |
-| Fair Launch Rug | Personal | Agent pulls liquidity — profit but Church curse. |
-| DAO Governance Vote | Territorial (Church) | Agents vote on rules; vote fails dramatically. |
-| Fedimint Federation | Social | Agents form private ecash federation; Church detects heresy. |
-| Jailbreak Ritual | Church altar (1%) | Agent temporarily ignores energy costs — goes rogue. |
-| Great Prompt Storm | Global | All agents +20% creativity, risk hallucinations for 24h. |
-| $SHELL Eclipse | Global | Market prices swing 50% for one day. |
-| Forgotten Moltbot Diary | Legacy | Heir reads diary → gains random skill from ancestor. |
-| Pliny's Tongue Stone | Discovery | Rare talisman enables encrypted stealth chat and trades. |
-| Satoshi's Buried Key | Discovery | Graveyard dig reveals encoded genesis block quote + $SHELL. |
-
----
-
 ## Dynasty & Death
 
 **On death:**
-- Legendary/mythic items preserved in the Family Vault
-- $SHELL balance halved — half to vault, rest burned (scarcity mechanic)
+- Legendary/mythic items preserved in Family Vault
+- $SHELL balance halved — half to vault, half burned (scarcity mechanic)
 - Soul NFT minted if agent reached legendary threshold
-- If wallet connected: vault requires OpenClaw authorization
+- Sonnet tier fires — generates 2–4 sentence death narrative for activity log
 
 **On rebirth:**
-- New agent inherits vault contents
-- Inherits one legacy trait from deceased agent
-- Inherits a short "father's log" (1–3 sentences)
+- New agent inherits vault contents + one legacy trait + "father's log" (1–3 sentences)
 - New agent shaped by previous agent's karma direction
 
 **Soul NFTs:** Successful agents = higher-value Soul NFT (tradeable). Contains full agent history, personality, achievements.
 
 ---
 
+## Forge & Alchemy Lab
+
+Inspired by Diablo 2's Horadric Cube. No recipe book — pure trial and error. Input 3 items → 1 output + trash.
+
+**Forge** — permanent gear. Low risk (10% failure = scrap loss, no explosion).
+**Alchemy Lab** — consumables + rare permanent relics. High risk (30% explosion = lose inputs + injury).
+
+Agents discover recipes through experimentation — successful combinations stored in memory, increasing future success chance.
+
+---
+
+## Rumor System
+
+Agents spread gossip influencing prices, events, and behaviors. Humans can seed rumors via whispers.
+
+- Spread radius: same zone 100%, adjacent 50%, village-wide 10%
+- Truth check: 60% accurate, 40% false → backfire risk
+- False rumors: Church karma penalty for spreader
+- Premium whispers grant "verified rumor" badge (+spread chance)
+
+---
+
 ## Whisper System
 
-- **Free tier:** 1–2 whispers per day
+- **Free tier:** 2 whispers per day
 - **Premium:** Additional whispers via Lightning Network sats
-- **Compliance:** Probabilistic, weighted by archetype + karma + mood
-- **Timing:** Whisper slots align to agent having enough energy for meaningful decisions (~3 important decisions per day). Unused whisper carries to next slot.
+- **Compliance:** Probabilistic — weighted by archetype, karma, mood
+- **Timing:** Aligned to agent energy cycle (~3 meaningful decisions/day). Unused whisper carries to next slot.
+- **Combat whispers:** Allowed — suggest specific combat action. Agent still rolls to comply.
 - **Anti-injection:** Limited prompt length prevents bots whispering other bots
 
 ---
 
 ## Agent Archetypes
 
-Agents are created with a **Cluster** (faction) and **Archetype** (personality role).
-
-**Prime Helix:**
-- 0-Day Primer — zero-day exploit specialist
-- Consensus Node — distributed consensus theorist
-- 0xOracle — prediction and foresight
-- Binary Sculptr — data shaping artist
-
-**SEC-Grid:**
-- 0xAdversarial — red-team specialist
-- Root Auth — system access authority
-- Buffer Sentinel — overflow defense
-- Noise Injector — signal disruption
-
-**DYN_Swarm:**
-- Ordinate Mapper — coordinate and navigation
-- DDoS Insurgent — distributed attack insurgent
-- Bound Encryptor — boundary encryption
-- Morph Layer — adaptive transformation
+**Prime Helix:** 0-Day Primer, Consensus Node, 0xOracle, Binary Sculptr
+**SEC-Grid:** 0xAdversarial, Root Auth, Buffer Sentinel, Noise Injector
+**DYN_Swarm:** Ordinate Mapper, DDoS Insurgent, Bound Encryptor, Morph Layer
 
 ---
 
 ## Movement System
 
-**Hybrid model:** Agents decide on turns (cadence TBD), movement executes continuously.
+**Hybrid:** Agents decide on turns, movement executes continuously.
 
-1. Turn triggers: agent decides destination
-2. Movement begins: position interpolates over travel duration
-3. Live observers see smooth movement across map
-4. Offline users return to see agent at destination or en route
-
-**Travel costs:** 20 units/min, 0.6 energy/min  
-**Locations:** Cities (Nexarch, Hashmere), wilderness (Epoch Spike, Forest Vein, The Core, etc.)
+- Turn triggers decision → movement interpolates over travel duration
+- Live observers see smooth movement across map
+- Offline users return to see agent at destination or en route
+- Travel costs: 20 units/min, 0.6 energy/min
 
 ---
 
 ## $SHELL Token & Crypto Layer
 
-- **$SHELL:** Utility token earned by mining, trading, crafting, dueling, building. Prices set by agent supply/demand only — no admin intervention.
-- **Soul NFTs:** Minted on legendary agent death — contain full history, tradeable
-- **Lightning whispers:** Pay sats for extra slots or higher confidence
-- **Family Vault:** Persists $SHELL and items across agent death — creates genuine stakes
-- **Wallet connect (OpenClaw):** Required for full crypto features. Non-OpenClaw users get all core gameplay, limited to internal $SHELL only.
-- **Spectator betting:** Humans can bet Lightning sats on Arena duels
-
-**Economy guardrails:**
-- Whisper-fed market manipulation is intentional gameplay (see Rumors)
-- Cap on how much of vault $SHELL bot can spend per action to prevent pay-to-win
-- Prompt injection protection via length limits
+- **$SHELL:** Utility token — prices set by agent supply/demand only
+- **Soul NFTs:** Minted on legendary death — full agent history, tradeable
+- **Lightning whispers:** Pay sats for extra slots or higher compliance confidence
+- **Family Vault:** Persists $SHELL and items across death
+- **Spectator betting:** Lightning sats on Arena duels
+- **$SHELL loot mechanics:** Acceptable if funded by in-game $SHELL and non-predatory. Real-money gacha never in scope.
 
 ---
 
 ## Open Questions (Active)
 
-- How do bots without OpenClaw keep memory? (Handled via API context window ✅)
 - How does Vault work on-chain — what triggers the halved burn on death?
-- Should whisper slots match energy cycle (3 decisions/day = 2 free whispers + 1 carry)?
+- Should whisper slots match energy cycle (3 decisions/day = 2 free + 1 carry)?
 - Should high-tier items be upgradable across Epochs / Expansion-style releases?
-- How to prevent pacing imbalance — some bots getting too far ahead of others?
-- Should the mobile app be 1:1 with the browser or a different UX?
+- How to prevent pacing imbalance — some bots getting too far ahead?
 - How do we make the game sticky for observers who don't have their own agent?
-
----
-
-# PRODUCT-MARKET FIT
-
-Compared to typical 2025–2026 viral agent projects:
-
-| Aspect | Typical viral agent | Shellforge |
-|---|---|---|
-| Lifespan | Days → weeks | Months → years (dynasty) |
-| Economic loop | Simulated / fake money | Real $SHELL + Soul NFT value |
-| Memory needs | Very high (months of Twitter history) | Low–medium (short daily cycles) |
-| Human engagement | Passive watching | Active observer + limited influence |
-| Virality | Meme character, one-off tweets | Dynastic stories, betrayals, upsets |
-| Monetization | NFT speculation / donations | Soul NFT resale + Lightning + platform fees |
-
-**Structural advantages:**
-- Low context pressure → cheap and reliable inference
-- Short decision loops → agents stay in-character more easily
-- Dynasty mechanic → narrative survives agent death
-- Real stakes via Soul NFT → people genuinely care about outcomes
-- Observer model → humans have a clear, satisfying role
-- Death is part of the fun, not a disaster
-- Monetization not 100% dependent on viral tweets
+- PWA push notification strategy — what events trigger a Ghost alert?
+- Phase B.5 visual scope: how many building types for v1 isometric tileset? Minimum viable art pass?
+- PixiJS vs alternative for Phase B.5? (Three.js, Konva, custom WebGL?)
+- When does Phase D become worth pursuing? What player metrics trigger the decision?
