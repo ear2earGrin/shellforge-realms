@@ -5151,27 +5151,28 @@
         const W = c.width, H = c.height;
         ctx.clearRect(0, 0, W, H);
 
-        // Black bg
-        ctx.fillStyle = '#040D0A';
+        // Very dark background
+        ctx.fillStyle = '#030A08';
         ctx.fillRect(0, 0, W, H);
 
-        // Soft central radial glow
-        const bg = ctx.createRadialGradient(W/2, H*0.42, 5, W/2, H*0.42, 100);
-        bg.addColorStop(0, 'rgba(0,180,130,0.12)');
+        // Wide atmospheric glow behind helix
+        const bg = ctx.createRadialGradient(W/2, H*0.40, 0, W/2, H*0.40, 115);
+        bg.addColorStop(0, 'rgba(0,200,150,0.10)');
+        bg.addColorStop(0.5,'rgba(0,120,90,0.05)');
         bg.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = bg;
         ctx.fillRect(0, 0, W, H);
 
         const TAU    = Math.PI * 2;
         const TURNS  = 3.5;
-        const N      = 160;
-        const RAD    = 52;
+        const N      = 180;     // segments per strand
+        const RAD    = 55;      // helix radius
         const cx     = W / 2;
-        const topY   = H * 0.05;
-        const helixH = H * 0.65;
-        const RHW    = 9; // ribbon half-width
+        const topY   = H * 0.04;
+        const helixH = H * 0.63;
+        const RHW    = 13;      // ribbon half-width — thick ribbon
 
-        // Collect segments for both strands, sort back→front
+        // Build segments for both strands
         const segs = [];
         for (let strand = 0; strand < 2; strand++) {
             const phase = strand * Math.PI;
@@ -5180,157 +5181,178 @@
                 const a1 = ((i+1) / N) * TAU * TURNS + spin + phase;
                 const c0 = Math.cos(a0), s0 = Math.sin(a0);
                 const c1 = Math.cos(a1), s1 = Math.sin(a1);
+                const depth = (c0 + 1) / 2; // 0=back, 1=front
 
-                // Ribbon edge offset perpendicular to helix axis, scaled by depth
-                const d0 = 0.25 + 0.75 * Math.abs(s0);
-                const d1 = 0.25 + 0.75 * Math.abs(s1);
-                const nx0 = -s0 * RHW * d0;
-                const nx1 = -s1 * RHW * d1;
+                // Ribbon width: perspective — narrower at edges, full at front/back
+                const w0 = RHW * (0.22 + 0.78 * Math.abs(s0));
+                const w1 = RHW * (0.22 + 0.78 * Math.abs(s1));
+                const nx0 = s0 * w0, nx1 = s1 * w1;
 
                 const x0a = cx + RAD * c0 - nx0, x0b = cx + RAD * c0 + nx0;
                 const x1a = cx + RAD * c1 - nx1, x1b = cx + RAD * c1 + nx1;
-                const y0 = topY + (i / N) * helixH;
-                const y1 = topY + ((i+1) / N) * helixH;
+                const y0  = topY + (i / N) * helixH;
+                const y1  = topY + ((i+1) / N) * helixH;
 
-                // Depth: cos=-1 is back, cos=+1 is front
-                const depth = (c0 + 1) / 2; // 0..1
-
-                // Color: back=dark grey-teal, mid=teal, front=near-white
-                let r, g, b, a;
-                if (depth < 0.35) {
-                    // back face — dark grey-teal
-                    const t = depth / 0.35;
-                    r = Math.round(18 + t * 10); g = Math.round(60 + t * 30); b = Math.round(52 + t * 28);
-                    a = 0.35 + t * 0.2;
-                } else if (depth < 0.65) {
-                    // mid — teal
-                    const t = (depth - 0.35) / 0.30;
-                    r = Math.round(28 + t * 40); g = Math.round(90 + t * 86); b = Math.round(80 + t * 64);
-                    a = 0.55 + t * 0.2;
-                } else {
-                    // front — bright teal to near-white
-                    const t = (depth - 0.65) / 0.35;
-                    r = Math.round(68 + t * 127); g = Math.round(176 + t * 79); b = Math.round(144 + t * 96);
-                    a = 0.75 + t * 0.25;
-                }
-                const fill = `rgba(${r},${g},${b},${a})`;
-                segs.push({ x0a, x0b, x1a, x1b, y0, y1, depth, fill });
+                segs.push({ x0a, x0b, x1a, x1b, y0, y1, depth, a0, s0 });
             }
         }
+        // Sort back to front (painter's algorithm)
         segs.sort((a, b) => a.depth - b.depth);
 
+        // ── PASS 1: Outer bloom glow (large blur, dim) ──
         for (const s of segs) {
-            // Shadow glow for front-facing segments
-            if (s.depth > 0.6) {
-                ctx.shadowColor = `rgba(0,255,200,${(s.depth-0.6)*0.6})`;
-                ctx.shadowBlur  = 6 * s.depth;
+            if (s.depth < 0.45) continue; // only front half gets bloom
+            const t = (s.depth - 0.45) / 0.55;
+            ctx.save();
+            ctx.shadowColor = `rgba(0,255,200,${t * 0.55})`;
+            ctx.shadowBlur  = 28 * t;
+            ctx.beginPath();
+            ctx.moveTo(s.x0a, s.y0); ctx.lineTo(s.x0b, s.y0);
+            ctx.lineTo(s.x1b, s.y1); ctx.lineTo(s.x1a, s.y1);
+            ctx.closePath();
+            ctx.fillStyle = `rgba(0,230,180,${t * 0.25})`;
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // ── PASS 2: Ribbon body (no blur, depth-colored) ──
+        for (const s of segs) {
+            const d = s.depth;
+            let fillColor;
+            if (d < 0.3) {
+                // Back — near-invisible dark teal
+                fillColor = `rgba(12,45,38,${0.25 + d * 0.5})`;
+            } else if (d < 0.58) {
+                const t = (d - 0.3) / 0.28;
+                const g = Math.round(80 + t * 130);
+                const b2 = Math.round(70 + t * 100);
+                fillColor = `rgba(0,${g},${b2},${0.55 + t * 0.25})`;
+            } else if (d < 0.82) {
+                const t = (d - 0.58) / 0.24;
+                const r2 = Math.round(t * 120);
+                const g  = Math.round(210 + t * 45);
+                const b2 = Math.round(170 + t * 70);
+                fillColor = `rgba(${r2},${g},${b2},${0.80 + t * 0.15})`;
             } else {
-                ctx.shadowBlur = 0;
+                // Very front — near-white with teal tint
+                const t = (d - 0.82) / 0.18;
+                const r2 = Math.round(120 + t * 135);
+                fillColor = `rgba(${r2},255,240,1.0)`;
             }
             ctx.beginPath();
-            ctx.moveTo(s.x0a, s.y0);
-            ctx.lineTo(s.x0b, s.y0);
-            ctx.lineTo(s.x1b, s.y1);
-            ctx.lineTo(s.x1a, s.y1);
+            ctx.moveTo(s.x0a, s.y0); ctx.lineTo(s.x0b, s.y0);
+            ctx.lineTo(s.x1b, s.y1); ctx.lineTo(s.x1a, s.y1);
             ctx.closePath();
-            ctx.fillStyle = s.fill;
+            ctx.fillStyle = fillColor;
             ctx.fill();
+        }
 
-            // Specular highlight stripe on the very bright crest
-            if (s.depth > 0.82) {
-                ctx.shadowBlur = 0;
-                const mx0 = (s.x0a + s.x0b) / 2, mx1 = (s.x1a + s.x1b) / 2;
-                ctx.beginPath();
-                ctx.moveTo(mx0, s.y0); ctx.lineTo(mx1, s.y1);
-                ctx.strokeStyle = `rgba(255,255,255,${(s.depth - 0.82) * 3.5})`;
-                ctx.lineWidth = 1.2;
-                ctx.stroke();
-            }
+        // ── PASS 3: Specular highlight on front crest ──
+        for (const s of segs) {
+            if (s.depth < 0.78) continue;
+            const t = (s.depth - 0.78) / 0.22;
+            const mx0 = (s.x0a + s.x0b) / 2;
+            const mx1 = (s.x1a + s.x1b) / 2;
+            ctx.save();
+            ctx.shadowColor = 'rgba(255,255,255,0.8)';
+            ctx.shadowBlur  = 8 * t;
+            ctx.strokeStyle = `rgba(255,255,255,${t * 0.95})`;
+            ctx.lineWidth   = 1.5 + t * 1.5;
+            ctx.beginPath();
+            ctx.moveTo(mx0, s.y0); ctx.lineTo(mx1, s.y1);
+            ctx.stroke();
+            ctx.restore();
         }
         ctx.shadowBlur = 0;
 
-        // Rungs every half-turn
+        // ── Rungs (base pairs) every half-turn ──
         const rungCount = Math.floor(TURNS * 2);
         for (let r = 0; r <= rungCount; r++) {
-            const a = (r / rungCount) * TAU * TURNS + spin;
-            const y = topY + (r / rungCount) * helixH;
-            const px0 = cx + RAD * Math.cos(a);
-            const px1 = cx + RAD * Math.cos(a + Math.PI);
+            const a  = (r / rungCount) * TAU * TURNS + spin;
+            const y  = topY + (r / rungCount) * helixH;
             const depth = (Math.cos(a) + 1) / 2;
-            const alp = 0.3 + depth * 0.7;
+            const x0 = cx + RAD * Math.cos(a);
+            const x1 = cx + RAD * Math.cos(a + Math.PI);
+            const alp = 0.25 + depth * 0.75;
             ctx.save();
             ctx.globalAlpha = alp;
             ctx.strokeStyle = '#00FFCC';
-            ctx.lineWidth   = depth > 0.5 ? 1.8 : 0.9;
+            ctx.lineWidth   = 1.2 + depth * 1.6;
             ctx.shadowColor = '#00FFCC';
-            ctx.shadowBlur  = depth > 0.5 ? 8 : 3;
-            ctx.beginPath(); ctx.moveTo(px0, y); ctx.lineTo(px1, y); ctx.stroke();
-            // Node dots
-            for (const nx of [px0, px1]) {
-                ctx.beginPath();
-                ctx.arc(nx, y, depth > 0.5 ? 3 : 1.8, 0, Math.PI*2);
-                ctx.fillStyle = '#00FFCC';
+            ctx.shadowBlur  = depth > 0.5 ? 14 : 4;
+            ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+            // Node dots at rung ends
+            for (const nx of [x0, x1]) {
+                ctx.beginPath(); ctx.arc(nx, y, 1.8 + depth * 2.5, 0, Math.PI * 2);
+                ctx.fillStyle = depth > 0.5 ? '#ffffff' : '#00FFCC';
                 ctx.fill();
             }
             ctx.restore();
         }
 
-        // Perspective grid floor
-        const floorY = topY + helixH + 8;
+        // ── Perspective grid floor ──
+        const floorY = topY + helixH + 6;
         ctx.save();
-        ctx.globalAlpha = 0.22;
         ctx.strokeStyle = '#00B090';
         ctx.lineWidth = 0.6;
-        for (let i = 0; i <= 6; i++) {
-            const y = floorY + i * 5.5;
-            const p = i / 6;
-            const hw = 30 + p * 65;
+        for (let i = 0; i <= 7; i++) {
+            const p = i / 7;
+            ctx.globalAlpha = 0.12 + p * 0.14;
+            const hw = 20 + p * 80;
+            const y = floorY + p * 38;
             ctx.beginPath(); ctx.moveTo(W/2 - hw, y); ctx.lineTo(W/2 + hw, y); ctx.stroke();
         }
-        for (let v = -5; v <= 5; v++) {
+        ctx.globalAlpha = 0.18;
+        for (let v = -6; v <= 6; v++) {
             ctx.beginPath();
-            ctx.moveTo(W/2 + v * 10, floorY);
-            ctx.lineTo(W/2 + v * 45, floorY + 36);
+            ctx.moveTo(W/2 + v * 9, floorY);
+            ctx.lineTo(W/2 + v * 48, floorY + 42);
             ctx.stroke();
         }
         ctx.restore();
 
-        // Pulse rings at helix base
+        // ── Pulse rings at base ──
+        const floorCY = floorY + 4;
         for (let ri = 0; ri < 3; ri++) {
-            const phase = (spin * 0.7 + ri * 0.8) % (Math.PI * 2);
-            const alpha = 0.10 + 0.07 * Math.sin(phase);
+            const phase = (spin * 0.65 + ri * 0.9) % (Math.PI * 2);
+            const alp   = 0.08 + 0.06 * Math.sin(phase);
             ctx.save();
-            ctx.globalAlpha = alpha;
-            ctx.strokeStyle = '#00FFCC';
-            ctx.lineWidth = 0.9;
+            ctx.globalAlpha  = alp;
+            ctx.strokeStyle  = '#00FFCC';
+            ctx.shadowColor  = '#00FFCC';
+            ctx.shadowBlur   = 6;
+            ctx.lineWidth    = 1;
             ctx.beginPath();
-            ctx.ellipse(W/2, floorY + 3, 24 + ri * 12, (24 + ri * 12) * 0.26, 0, 0, Math.PI * 2);
+            ctx.ellipse(W/2, floorCY, 22 + ri*13, (22 + ri*13)*0.24, 0, 0, Math.PI*2);
             ctx.stroke();
             ctx.restore();
         }
 
-        // EEG waveform at floor
+        // ── EEG waveform at floor level ──
         ctx.save();
-        ctx.globalAlpha = 0.3;
+        ctx.globalAlpha = 0.28;
         ctx.strokeStyle = '#00FFCC';
-        ctx.lineWidth = 0.8;
+        ctx.shadowColor = '#00FFCC';
+        ctx.shadowBlur  = 3;
+        ctx.lineWidth   = 0.9;
         ctx.beginPath();
         for (let px = 0; px < W; px++) {
-            const t = (px / W) * Math.PI * 10 + spin * 2.5;
-            const wy = floorY + 14 + Math.sin(t) * 4 + Math.sin(t * 2.1) * 2;
+            const t2 = (px / W) * Math.PI * 12 + spin * 3;
+            const wy = floorY + 18 + Math.sin(t2) * 4 + Math.sin(t2*2.3)*2;
             px === 0 ? ctx.moveTo(px, wy) : ctx.lineTo(px, wy);
         }
         ctx.stroke();
         ctx.restore();
 
-        // Numeric readout
+        // ── Numeric readout ──
         ctx.font = '7px "IBM Plex Mono", monospace';
-        ctx.fillStyle = 'rgba(0,255,180,0.45)';
+        ctx.fillStyle = 'rgba(0,255,180,0.4)';
         ctx.textAlign = 'right';
         const nv = 48.3 - ((spin % (Math.PI*2)) / (Math.PI*2)) * 0.8;
         ctx.fillText(nv.toFixed(1), W - 6, 13);
         ctx.textAlign = 'left';
     }
+
 
     // ══════════════════════════════════════════
     //  RADAR SWEEP — teal palette, transparent bg
