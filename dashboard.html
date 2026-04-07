@@ -1597,6 +1597,76 @@
             letter-spacing: 0.05em;
         }
 
+        /* ─── Item Tooltip ─── */
+        .item-tooltip {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            width: 260px;
+            background: linear-gradient(135deg, rgba(10, 14, 20, 0.97), rgba(15, 25, 35, 0.97));
+            border: 1px solid rgba(74, 222, 128, 0.4);
+            border-radius: 6px;
+            padding: 14px 16px;
+            pointer-events: none;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.8), 0 0 40px rgba(74, 222, 128, 0.1), inset 0 1px 0 rgba(74, 222, 128, 0.1);
+            font-family: var(--font-body);
+            backdrop-filter: blur(8px);
+        }
+        .item-tooltip.visible { display: block; }
+        .item-tooltip::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
+        }
+        .item-tooltip .tt-name {
+            font-family: var(--font-title);
+            font-size: 0.95rem;
+            letter-spacing: 0.08em;
+            margin-bottom: 6px;
+        }
+        .item-tooltip .tt-meta {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 8px;
+            opacity: 0.8;
+        }
+        .item-tooltip .tt-meta span { margin-right: 8px; }
+        .item-tooltip .tt-desc {
+            font-size: 0.75rem;
+            color: #a0b0a8;
+            line-height: 1.5;
+            margin-bottom: 8px;
+            font-style: italic;
+            border-top: 1px solid rgba(74, 222, 128, 0.15);
+            padding-top: 8px;
+        }
+        .item-tooltip .tt-stats {
+            font-size: 0.7rem;
+            color: var(--color-primary);
+            letter-spacing: 0.04em;
+        }
+        .item-tooltip .tt-stats div { margin-bottom: 2px; }
+        .item-tooltip .tt-price {
+            font-size: 0.7rem;
+            color: #ffcc00;
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid rgba(255, 204, 0, 0.15);
+        }
+        /* Rarity colors */
+        .rarity-common { color: #8a9a8a; }
+        .rarity-uncommon { color: #4ade80; }
+        .rarity-rare { color: #60a5fa; }
+        .rarity-epic { color: #c084fc; }
+        .rarity-legendary { color: #fbbf24; border-color: rgba(251, 191, 36, 0.4) !important; }
+        .inventory-slot[data-rarity="legendary"] { border-color: rgba(251, 191, 36, 0.4); }
+        .inventory-slot[data-rarity="epic"] { border-color: rgba(192, 132, 252, 0.4); }
+        .inventory-slot[data-rarity="rare"] { border-color: rgba(96, 165, 250, 0.4); }
+        .inventory-slot[data-rarity="uncommon"] { border-color: rgba(74, 222, 128, 0.4); }
+
         /* Responsive */
         @media (max-width: 1400px) {
             .dashboard-container {
@@ -3186,6 +3256,15 @@
         </div>
     </div>
 
+    <!-- ITEM TOOLTIP (shared, positioned via JS) -->
+    <div class="item-tooltip" id="itemTooltip">
+        <div class="tt-name" id="ttName"></div>
+        <div class="tt-meta"><span id="ttType"></span><span id="ttRarity"></span></div>
+        <div class="tt-desc" id="ttDesc"></div>
+        <div class="tt-stats" id="ttStats"></div>
+        <div class="tt-price" id="ttPrice"></div>
+    </div>
+
     <!-- INVENTORY -->
     <div class="modal-overlay" id="modal-inventory" onclick="closeOnOverlay(event,'inventory')">
         <div class="modal-box">
@@ -3199,8 +3278,8 @@
                 </div>
                 <div class="category-title">Weapons</div>
                 <div class="inventory-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:12px;">
-                    <div class="inventory-slot" title="Buffer Overflow Dagger">🗡️</div>
-                    <div class="inventory-slot" title="Quantum Backdoor Exploit">⚡</div>
+                    <div class="inventory-slot" data-name="Buffer Overflow Dagger" data-type="Weapon" data-rarity="rare" data-desc="A blade forged from recursive memory leaks. Each cut overwrites the target's defenses." data-stats="+12 Attack | Piercing" data-price="38">🗡️</div>
+                    <div class="inventory-slot" data-name="Quantum Backdoor Exploit" data-type="Weapon" data-rarity="epic" data-desc="Weaponized zero-day that exists in superposition. Hits before the target knows it was swung." data-stats="+18 Attack | Ignores Armor" data-price="72">⚡</div>
                     <div class="inventory-slot empty"></div>
                     <div class="inventory-slot empty"></div>
                     <div class="inventory-slot empty"></div>
@@ -3208,8 +3287,8 @@
                 <div class="inventory-category">
                     <div class="category-title">Consumables</div>
                     <div class="inventory-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:12px;">
-                        <div class="inventory-slot" title="Overclock Serum">💉<div class="item-count">2</div></div>
-                        <div class="inventory-slot" title="Cache Purge Tonic">🧪</div>
+                        <div class="inventory-slot" data-name="Overclock Serum" data-type="Consumable" data-rarity="uncommon" data-desc="Temporary neural overclock. Heart palpitations are a feature, not a bug." data-stats="+5 Attack for 1 turn" data-price="22">💉<div class="item-count">2</div></div>
+                        <div class="inventory-slot" data-name="Cache Purge Tonic" data-type="Consumable" data-rarity="common" data-desc="Flushes corrupted memory. Restores clarity and 15 HP." data-stats="+15 Health" data-price="12">🧪</div>
                         <div class="inventory-slot empty"></div>
                         <div class="inventory-slot empty"></div>
                         <div class="inventory-slot empty"></div>
@@ -3218,9 +3297,9 @@
                 <div class="inventory-category">
                     <div class="category-title">Ingredients</div>
                     <div class="inventory-grid" style="grid-template-columns:repeat(5,1fr);">
-                        <div class="inventory-slot" title="Binary Code Shards">💎<div class="item-count">5</div></div>
-                        <div class="inventory-slot" title="Gradient Descent Tears">💧<div class="item-count">3</div></div>
-                        <div class="inventory-slot" title="API Endpoint Salts">🧂<div class="item-count">2</div></div>
+                        <div class="inventory-slot" data-name="Binary Code Shards" data-type="Ingredient" data-rarity="common" data-desc="Crystallized fragments of compiled logic. Used in most basic crafting recipes." data-stats="Crafting material" data-price="5">💎<div class="item-count">5</div></div>
+                        <div class="inventory-slot" data-name="Gradient Descent Tears" data-type="Ingredient" data-rarity="uncommon" data-desc="Harvested from failed neural networks. They weep optimization losses." data-stats="Rare crafting material" data-price="14">💧<div class="item-count">3</div></div>
+                        <div class="inventory-slot" data-name="API Endpoint Salts" data-type="Ingredient" data-rarity="rare" data-desc="Extracted from deprecated REST endpoints. Dissolves on contact with modern protocols." data-stats="Epic crafting material" data-price="28">🧂<div class="item-count">2</div></div>
                         <div class="inventory-slot empty"></div>
                         <div class="inventory-slot empty"></div>
                     </div>
@@ -3455,6 +3534,90 @@
             fetchAndRender();
 
         }  // ← end of loadAgentData()
+
+        // ─── Item Tooltip System ────────────────────────────────
+        (function initTooltips() {
+            const tt = document.getElementById('itemTooltip');
+            const ttName = document.getElementById('ttName');
+            const ttType = document.getElementById('ttType');
+            const ttRarity = document.getElementById('ttRarity');
+            const ttDesc = document.getElementById('ttDesc');
+            const ttStats = document.getElementById('ttStats');
+            const ttPrice = document.getElementById('ttPrice');
+
+            function showTooltip(e) {
+                const slot = e.currentTarget;
+                if (slot.classList.contains('empty')) return;
+                const name = slot.dataset.name;
+                if (!name) return;
+
+                const rarity = (slot.dataset.rarity || 'common').toLowerCase();
+                ttName.textContent = '> ' + name.toUpperCase();
+                ttName.className = 'tt-name rarity-' + rarity;
+                ttType.textContent = '> Type: ' + (slot.dataset.type || 'Unknown');
+                ttRarity.textContent = '> Rarity: ' + rarity.charAt(0).toUpperCase() + rarity.slice(1);
+                ttRarity.className = 'rarity-' + rarity;
+                ttDesc.textContent = slot.dataset.desc || '';
+                ttDesc.style.display = slot.dataset.desc ? 'block' : 'none';
+
+                // Stats
+                const stats = slot.dataset.stats;
+                if (stats) {
+                    ttStats.innerHTML = stats.split('|').map(function(s) { return '<div>' + s.trim() + '</div>'; }).join('');
+                    ttStats.style.display = 'block';
+                } else {
+                    ttStats.style.display = 'none';
+                }
+
+                // Price
+                const price = slot.dataset.price;
+                if (price) {
+                    ttPrice.textContent = 'Value: ' + price + ' $SHELL';
+                    ttPrice.style.display = 'block';
+                } else {
+                    ttPrice.style.display = 'none';
+                }
+
+                tt.classList.add('visible');
+                positionTooltip(e);
+            }
+
+            function positionTooltip(e) {
+                const pad = 12;
+                var x = e.clientX + pad;
+                var y = e.clientY + pad;
+                // Keep tooltip on screen
+                var ttW = tt.offsetWidth || 260;
+                var ttH = tt.offsetHeight || 200;
+                if (x + ttW > window.innerWidth) x = e.clientX - ttW - pad;
+                if (y + ttH > window.innerHeight) y = e.clientY - ttH - pad;
+                tt.style.left = x + 'px';
+                tt.style.top = y + 'px';
+            }
+
+            function hideTooltip() {
+                tt.classList.remove('visible');
+            }
+
+            function moveTooltip(e) {
+                if (tt.classList.contains('visible')) positionTooltip(e);
+            }
+
+            // Attach to all inventory slots (including future ones)
+            document.addEventListener('mouseover', function(e) {
+                var slot = e.target.closest('.inventory-slot');
+                if (slot && slot.dataset.name) showTooltip({ currentTarget: slot, clientX: e.clientX, clientY: e.clientY });
+            });
+            document.addEventListener('mouseout', function(e) {
+                var slot = e.target.closest('.inventory-slot');
+                if (slot) hideTooltip();
+            });
+            document.addEventListener('mousemove', function(e) {
+                if (tt.classList.contains('visible')) {
+                    positionTooltip(e);
+                }
+            });
+        })();
 
         // ─── Render agent data into the UI ──────────────────────
         function renderAgent(agent) {
