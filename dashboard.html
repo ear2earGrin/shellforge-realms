@@ -4104,10 +4104,12 @@
             }
             if (d.turns_taken !== undefined) set('turnsTaken', d.turns_taken);
             if (d.days_survived !== undefined) set('daysSurvived', d.days_survived);
+            // Refresh chronicle panel with latest activity log entries
+            if (_currentAgent && _currentAgent.agentId) loadActivityLog(_currentAgent.agentId);
         }
 
-        // Update every 30 seconds
-        setInterval(updateAgentStatus, 30000);
+        // Update every 25 seconds
+        setInterval(updateAgentStatus, 25000);
 
         // Inventory slot click events
         document.querySelectorAll('.inventory-slot:not(.empty)').forEach(slot => {
