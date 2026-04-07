@@ -3262,6 +3262,15 @@
         </div>
     </div>
 
+    <!-- ITEM TOOLTIP -->
+    <div class="item-tooltip" id="itemTooltip" style="z-index:99999;">
+        <div class="tt-name" id="ttName"></div>
+        <div class="tt-meta"><span id="ttType"></span><span id="ttRarity"></span></div>
+        <div class="tt-desc" id="ttDesc"></div>
+        <div class="tt-stats" id="ttStats"></div>
+        <div class="tt-price" id="ttPrice"></div>
+    </div>
+
     <!-- INVENTORY -->
     <div class="modal-overlay" id="modal-inventory" onclick="closeOnOverlay(event,'inventory')">
         <div class="modal-box">
@@ -3533,144 +3542,154 @@
         }  // ← end of loadAgentData()
 
         // ─── Item Tooltip + Drag-and-Drop System ────────────────
-        document.addEventListener('DOMContentLoaded', function() {
-            var tt = document.getElementById('itemTooltip');
-            var ttName = document.getElementById('ttName');
-            var ttType = document.getElementById('ttType');
-            var ttRarity = document.getElementById('ttRarity');
-            var ttDesc = document.getElementById('ttDesc');
-            var ttStats = document.getElementById('ttStats');
-            var ttPrice = document.getElementById('ttPrice');
-            if (!tt) { console.warn('itemTooltip element not found'); return; }
-            var _hoveredSlot = null;
-            var _dragging = false;
+        (function() {
+            // Defer until tooltip element exists
+            function _initInventoryUI() {
+                var tt = document.getElementById('itemTooltip');
+                if (!tt) { console.error('TOOLTIP: #itemTooltip not found!'); return; }
+                var ttName = document.getElementById('ttName');
+                var ttType = document.getElementById('ttType');
+                var ttRarity = document.getElementById('ttRarity');
+                var ttDesc = document.getElementById('ttDesc');
+                var ttStats = document.getElementById('ttStats');
+                var ttPrice = document.getElementById('ttPrice');
+                var _hoveredSlot = null;
+                var _dragging = false;
+                console.log('TOOLTIP: initialized OK, tt=', tt);
 
-            function showTooltip(slot, mx, my) {
-                if (slot.classList.contains('empty') || !slot.dataset.name || _dragging) return;
-                var rarity = (slot.dataset.rarity || 'common').toLowerCase();
-                ttName.textContent = '> ' + slot.dataset.name.toUpperCase();
-                ttName.className = 'tt-name rarity-' + rarity;
-                ttType.textContent = '> Type: ' + (slot.dataset.type || 'Unknown');
-                ttRarity.textContent = '> Rarity: ' + rarity.charAt(0).toUpperCase() + rarity.slice(1);
-                ttRarity.className = 'rarity-' + rarity;
-                ttDesc.textContent = slot.dataset.desc || '';
-                ttDesc.style.display = slot.dataset.desc ? 'block' : 'none';
-                if (slot.dataset.stats) {
-                    ttStats.innerHTML = slot.dataset.stats.split('|').map(function(s) { return '<div>' + s.trim() + '</div>'; }).join('');
-                    ttStats.style.display = 'block';
-                } else { ttStats.style.display = 'none'; }
-                if (slot.dataset.price) {
-                    ttPrice.textContent = 'Value: ' + slot.dataset.price + ' $SHELL';
-                    ttPrice.style.display = 'block';
-                } else { ttPrice.style.display = 'none'; }
-                tt.classList.add('visible');
-                positionTooltip(mx, my);
-            }
-
-            function positionTooltip(mx, my) {
-                var pad = 14;
-                var x = mx + pad, y = my + pad;
-                var ttW = tt.offsetWidth || 260, ttH = tt.offsetHeight || 200;
-                if (x + ttW > window.innerWidth) x = mx - ttW - pad;
-                if (y + ttH > window.innerHeight) y = my - ttH - pad;
-                if (y < 0) y = pad;
-                tt.style.left = x + 'px';
-                tt.style.top = y + 'px';
-            }
-
-            function hideTooltip() { tt.classList.remove('visible'); _hoveredSlot = null; }
-
-            // ─── Tooltip event delegation ───
-            document.addEventListener('mousemove', function(e) {
-                var slot = e.target.closest('.inventory-slot');
-                if (_dragging) { hideTooltip(); return; }
-                if (slot && slot.dataset.name) {
-                    if (slot !== _hoveredSlot) { _hoveredSlot = slot; showTooltip(slot, e.clientX, e.clientY); }
-                    else if (tt.classList.contains('visible')) { positionTooltip(e.clientX, e.clientY); }
-                } else if (_hoveredSlot) { hideTooltip(); }
-            });
-
-            // ─── Drag and Drop ───
-            var _dragSlot = null;
-            var _dragGhost = null;
-
-            function getSlotGrid(slot) {
-                return slot.closest('.inventory-grid');
-            }
-
-            document.addEventListener('mousedown', function(e) {
-                var slot = e.target.closest('.inventory-slot');
-                if (!slot || slot.classList.contains('empty') || !slot.dataset.name) return;
-                e.preventDefault();
-                _dragging = true;
-                _dragSlot = slot;
-                hideTooltip();
-
-                // Create drag ghost
-                _dragGhost = document.createElement('div');
-                _dragGhost.className = 'inventory-slot drag-ghost';
-                _dragGhost.style.cssText = 'position:fixed;z-index:10001;width:50px;height:50px;pointer-events:none;opacity:0.85;border-color:var(--color-primary);background:rgba(74,222,128,0.15);display:flex;align-items:center;justify-content:center;font-size:1.5rem;border:2px solid rgba(74,222,128,0.6);border-radius:4px;box-shadow:0 0 15px rgba(74,222,128,0.4);';
-                _dragGhost.innerHTML = slot.innerHTML;
-                // Remove item-count from ghost if present
-                var gc = _dragGhost.querySelector('.item-count');
-                if (gc) gc.style.display = 'none';
-                document.body.appendChild(_dragGhost);
-                _dragGhost.style.left = (e.clientX - 25) + 'px';
-                _dragGhost.style.top = (e.clientY - 25) + 'px';
-
-                slot.style.opacity = '0.3';
-            });
-
-            document.addEventListener('mousemove', function(e) {
-                if (!_dragging || !_dragGhost) return;
-                _dragGhost.style.left = (e.clientX - 25) + 'px';
-                _dragGhost.style.top = (e.clientY - 25) + 'px';
-
-                // Highlight drop target
-                document.querySelectorAll('.inventory-slot.drop-target').forEach(function(s) { s.classList.remove('drop-target'); });
-                var target = e.target.closest('.inventory-slot');
-                if (target && target !== _dragSlot) {
-                    target.classList.add('drop-target');
+                function showTooltip(slot, mx, my) {
+                    if (slot.classList.contains('empty') || !slot.dataset.name || _dragging) return;
+                    var rarity = (slot.dataset.rarity || 'common').toLowerCase();
+                    ttName.textContent = '> ' + slot.dataset.name.toUpperCase();
+                    ttName.className = 'tt-name rarity-' + rarity;
+                    ttType.textContent = '> Type: ' + (slot.dataset.type || 'Unknown');
+                    ttRarity.textContent = '> Rarity: ' + rarity.charAt(0).toUpperCase() + rarity.slice(1);
+                    ttRarity.className = 'rarity-' + rarity;
+                    ttDesc.textContent = slot.dataset.desc || '';
+                    ttDesc.style.display = slot.dataset.desc ? 'block' : 'none';
+                    if (slot.dataset.stats) {
+                        ttStats.innerHTML = slot.dataset.stats.split('|').map(function(s) { return '<div>' + s.trim() + '</div>'; }).join('');
+                        ttStats.style.display = 'block';
+                    } else { ttStats.style.display = 'none'; }
+                    if (slot.dataset.price) {
+                        ttPrice.textContent = 'Value: ' + slot.dataset.price + ' $SHELL';
+                        ttPrice.style.display = 'block';
+                    } else { ttPrice.style.display = 'none'; }
+                    tt.style.display = 'block';
+                    tt.classList.add('visible');
+                    positionTooltip(mx, my);
+                    console.log('TOOLTIP: showing for', slot.dataset.name);
                 }
-            });
 
-            document.addEventListener('mouseup', function(e) {
-                if (!_dragging) return;
-                _dragging = false;
-                if (_dragGhost) { _dragGhost.remove(); _dragGhost = null; }
-                document.querySelectorAll('.inventory-slot.drop-target').forEach(function(s) { s.classList.remove('drop-target'); });
-
-                if (_dragSlot) _dragSlot.style.opacity = '';
-
-                var target = e.target.closest('.inventory-slot');
-                if (target && target !== _dragSlot && _dragSlot) {
-                    // Swap contents
-                    swapSlots(_dragSlot, target);
+                function positionTooltip(mx, my) {
+                    var pad = 14;
+                    var x = mx + pad, y = my + pad;
+                    var ttW = 260, ttH = tt.offsetHeight || 200;
+                    if (x + ttW > window.innerWidth) x = mx - ttW - pad;
+                    if (y + ttH > window.innerHeight) y = my - ttH - pad;
+                    if (y < 0) y = pad;
+                    tt.style.left = x + 'px';
+                    tt.style.top = y + 'px';
                 }
-                _dragSlot = null;
-            });
 
-            function swapSlots(a, b) {
-                // Swap innerHTML
-                var tmpHTML = a.innerHTML;
-                a.innerHTML = b.innerHTML;
-                b.innerHTML = tmpHTML;
+                function hideTooltip() {
+                    tt.style.display = 'none';
+                    tt.classList.remove('visible');
+                    _hoveredSlot = null;
+                }
 
-                // Swap data attributes
-                var attrs = ['name', 'type', 'rarity', 'desc', 'stats', 'price'];
-                attrs.forEach(function(attr) {
-                    var tmpVal = a.dataset[attr];
-                    if (b.dataset[attr]) { a.dataset[attr] = b.dataset[attr]; } else { delete a.dataset[attr]; }
-                    if (tmpVal) { b.dataset[attr] = tmpVal; } else { delete b.dataset[attr]; }
+                // ─── Tooltip: track which slot the mouse is over ───
+                document.addEventListener('mousemove', function(e) {
+                    if (_dragging) { hideTooltip(); return; }
+                    var slot = e.target.closest('.inventory-slot');
+                    if (slot && slot.dataset.name && !slot.classList.contains('empty')) {
+                        if (slot !== _hoveredSlot) {
+                            _hoveredSlot = slot;
+                            showTooltip(slot, e.clientX, e.clientY);
+                        } else {
+                            positionTooltip(e.clientX, e.clientY);
+                        }
+                    } else if (_hoveredSlot) {
+                        hideTooltip();
+                    }
                 });
 
-                // Swap empty class
-                var aEmpty = a.classList.contains('empty');
-                var bEmpty = b.classList.contains('empty');
-                if (bEmpty) a.classList.add('empty'); else a.classList.remove('empty');
-                if (aEmpty) b.classList.add('empty'); else b.classList.remove('empty');
+                // ─── Drag and Drop (same category only) ───
+                var _dragSlot = null;
+                var _dragGhost = null;
+                var _dragGrid = null;
+
+                document.addEventListener('mousedown', function(e) {
+                    var slot = e.target.closest('.inventory-slot');
+                    if (!slot || slot.classList.contains('empty') || !slot.dataset.name) return;
+                    e.preventDefault();
+                    _dragging = true;
+                    _dragSlot = slot;
+                    _dragGrid = slot.closest('.inventory-grid');
+                    hideTooltip();
+
+                    _dragGhost = document.createElement('div');
+                    _dragGhost.style.cssText = 'position:fixed;z-index:100000;width:50px;height:50px;pointer-events:none;opacity:0.85;background:rgba(74,222,128,0.15);display:flex;align-items:center;justify-content:center;font-size:1.5rem;border:2px solid rgba(74,222,128,0.6);border-radius:4px;box-shadow:0 0 15px rgba(74,222,128,0.4);';
+                    _dragGhost.textContent = slot.textContent.replace(/\d+$/, '').trim();
+                    document.body.appendChild(_dragGhost);
+                    _dragGhost.style.left = (e.clientX - 25) + 'px';
+                    _dragGhost.style.top = (e.clientY - 25) + 'px';
+                    slot.style.opacity = '0.3';
+                });
+
+                document.addEventListener('mousemove', function(e) {
+                    if (!_dragging || !_dragGhost) return;
+                    _dragGhost.style.left = (e.clientX - 25) + 'px';
+                    _dragGhost.style.top = (e.clientY - 25) + 'px';
+
+                    document.querySelectorAll('.inventory-slot.drop-target').forEach(function(s) { s.classList.remove('drop-target'); });
+                    var target = e.target.closest('.inventory-slot');
+                    // Only allow drop in same grid (same category)
+                    if (target && target !== _dragSlot && target.closest('.inventory-grid') === _dragGrid) {
+                        target.classList.add('drop-target');
+                    }
+                });
+
+                document.addEventListener('mouseup', function(e) {
+                    if (!_dragging) return;
+                    _dragging = false;
+                    if (_dragGhost) { _dragGhost.remove(); _dragGhost = null; }
+                    document.querySelectorAll('.inventory-slot.drop-target').forEach(function(s) { s.classList.remove('drop-target'); });
+                    if (_dragSlot) _dragSlot.style.opacity = '';
+
+                    var target = e.target.closest('.inventory-slot');
+                    // Only swap within same category grid
+                    if (target && target !== _dragSlot && _dragSlot && target.closest('.inventory-grid') === _dragGrid) {
+                        swapSlots(_dragSlot, target);
+                    }
+                    _dragSlot = null;
+                    _dragGrid = null;
+                });
+
+                function swapSlots(a, b) {
+                    var tmpHTML = a.innerHTML;
+                    a.innerHTML = b.innerHTML;
+                    b.innerHTML = tmpHTML;
+                    var attrs = ['name', 'type', 'rarity', 'desc', 'stats', 'price'];
+                    attrs.forEach(function(attr) {
+                        var tmpVal = a.dataset[attr];
+                        if (b.dataset[attr]) { a.dataset[attr] = b.dataset[attr]; } else { delete a.dataset[attr]; }
+                        if (tmpVal) { b.dataset[attr] = tmpVal; } else { delete b.dataset[attr]; }
+                    });
+                    var aEmpty = a.classList.contains('empty');
+                    var bEmpty = b.classList.contains('empty');
+                    if (bEmpty) a.classList.add('empty'); else a.classList.remove('empty');
+                    if (aEmpty) b.classList.add('empty'); else b.classList.remove('empty');
+                }
             }
-        });
+
+            // Try init now, retry after load if tooltip not yet in DOM
+            if (document.getElementById('itemTooltip')) {
+                _initInventoryUI();
+            } else {
+                window.addEventListener('load', _initInventoryUI);
+            }
+        })();
 
         // ─── Render agent data into the UI ──────────────────────
         function renderAgent(agent) {
@@ -5198,14 +5217,6 @@
     </script>
     <script src="terminal-notifications.js"></script>
 
-    <!-- ITEM TOOLTIP — must be last element in body so it's on top of everything -->
-    <div class="item-tooltip" id="itemTooltip">
-        <div class="tt-name" id="ttName"></div>
-        <div class="tt-meta"><span id="ttType"></span><span id="ttRarity"></span></div>
-        <div class="tt-desc" id="ttDesc"></div>
-        <div class="tt-stats" id="ttStats"></div>
-        <div class="tt-price" id="ttPrice"></div>
-    </div>
 
 </body>
 </html>
