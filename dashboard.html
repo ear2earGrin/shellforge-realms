@@ -1666,6 +1666,12 @@
         .inventory-slot[data-rarity="epic"] { border-color: rgba(192, 132, 252, 0.4); }
         .inventory-slot[data-rarity="rare"] { border-color: rgba(96, 165, 250, 0.4); }
         .inventory-slot[data-rarity="uncommon"] { border-color: rgba(74, 222, 128, 0.4); }
+        .inventory-slot.drop-target {
+            background: rgba(74, 222, 128, 0.2) !important;
+            border-color: var(--color-primary) !important;
+            box-shadow: 0 0 12px rgba(74, 222, 128, 0.5), inset 0 0 8px rgba(74, 222, 128, 0.15);
+        }
+        .inventory-slot { user-select: none; -webkit-user-select: none; }
 
         /* Responsive */
         @media (max-width: 1400px) {
@@ -3535,88 +3541,143 @@
 
         }  // ← end of loadAgentData()
 
-        // ─── Item Tooltip System ────────────────────────────────
-        (function initTooltips() {
-            const tt = document.getElementById('itemTooltip');
-            const ttName = document.getElementById('ttName');
-            const ttType = document.getElementById('ttType');
-            const ttRarity = document.getElementById('ttRarity');
-            const ttDesc = document.getElementById('ttDesc');
-            const ttStats = document.getElementById('ttStats');
-            const ttPrice = document.getElementById('ttPrice');
+        // ─── Item Tooltip + Drag-and-Drop System ────────────────
+        (function initInventoryUI() {
+            var tt = document.getElementById('itemTooltip');
+            var ttName = document.getElementById('ttName');
+            var ttType = document.getElementById('ttType');
+            var ttRarity = document.getElementById('ttRarity');
+            var ttDesc = document.getElementById('ttDesc');
+            var ttStats = document.getElementById('ttStats');
+            var ttPrice = document.getElementById('ttPrice');
+            var _hoveredSlot = null;
+            var _dragging = false;
 
-            function showTooltip(e) {
-                const slot = e.currentTarget;
-                if (slot.classList.contains('empty')) return;
-                const name = slot.dataset.name;
-                if (!name) return;
-
-                const rarity = (slot.dataset.rarity || 'common').toLowerCase();
-                ttName.textContent = '> ' + name.toUpperCase();
+            function showTooltip(slot, mx, my) {
+                if (slot.classList.contains('empty') || !slot.dataset.name || _dragging) return;
+                var rarity = (slot.dataset.rarity || 'common').toLowerCase();
+                ttName.textContent = '> ' + slot.dataset.name.toUpperCase();
                 ttName.className = 'tt-name rarity-' + rarity;
                 ttType.textContent = '> Type: ' + (slot.dataset.type || 'Unknown');
                 ttRarity.textContent = '> Rarity: ' + rarity.charAt(0).toUpperCase() + rarity.slice(1);
                 ttRarity.className = 'rarity-' + rarity;
                 ttDesc.textContent = slot.dataset.desc || '';
                 ttDesc.style.display = slot.dataset.desc ? 'block' : 'none';
-
-                // Stats
-                const stats = slot.dataset.stats;
-                if (stats) {
-                    ttStats.innerHTML = stats.split('|').map(function(s) { return '<div>' + s.trim() + '</div>'; }).join('');
+                if (slot.dataset.stats) {
+                    ttStats.innerHTML = slot.dataset.stats.split('|').map(function(s) { return '<div>' + s.trim() + '</div>'; }).join('');
                     ttStats.style.display = 'block';
-                } else {
-                    ttStats.style.display = 'none';
-                }
-
-                // Price
-                const price = slot.dataset.price;
-                if (price) {
-                    ttPrice.textContent = 'Value: ' + price + ' $SHELL';
+                } else { ttStats.style.display = 'none'; }
+                if (slot.dataset.price) {
+                    ttPrice.textContent = 'Value: ' + slot.dataset.price + ' $SHELL';
                     ttPrice.style.display = 'block';
-                } else {
-                    ttPrice.style.display = 'none';
-                }
-
+                } else { ttPrice.style.display = 'none'; }
                 tt.classList.add('visible');
-                positionTooltip(e);
+                positionTooltip(mx, my);
             }
 
-            function positionTooltip(e) {
-                const pad = 12;
-                var x = e.clientX + pad;
-                var y = e.clientY + pad;
-                // Keep tooltip on screen
-                var ttW = tt.offsetWidth || 260;
-                var ttH = tt.offsetHeight || 200;
-                if (x + ttW > window.innerWidth) x = e.clientX - ttW - pad;
-                if (y + ttH > window.innerHeight) y = e.clientY - ttH - pad;
+            function positionTooltip(mx, my) {
+                var pad = 14;
+                var x = mx + pad, y = my + pad;
+                var ttW = tt.offsetWidth || 260, ttH = tt.offsetHeight || 200;
+                if (x + ttW > window.innerWidth) x = mx - ttW - pad;
+                if (y + ttH > window.innerHeight) y = my - ttH - pad;
+                if (y < 0) y = pad;
                 tt.style.left = x + 'px';
                 tt.style.top = y + 'px';
             }
 
-            function hideTooltip() {
-                tt.classList.remove('visible');
-            }
+            function hideTooltip() { tt.classList.remove('visible'); _hoveredSlot = null; }
 
-            function moveTooltip(e) {
-                if (tt.classList.contains('visible')) positionTooltip(e);
-            }
-
-            // Attach to all inventory slots (including future ones)
-            document.addEventListener('mouseover', function(e) {
-                var slot = e.target.closest('.inventory-slot');
-                if (slot && slot.dataset.name) showTooltip({ currentTarget: slot, clientX: e.clientX, clientY: e.clientY });
-            });
-            document.addEventListener('mouseout', function(e) {
-                var slot = e.target.closest('.inventory-slot');
-                if (slot) hideTooltip();
-            });
+            // ─── Tooltip event delegation ───
             document.addEventListener('mousemove', function(e) {
-                if (tt.classList.contains('visible')) {
-                    positionTooltip(e);
+                var slot = e.target.closest('.inventory-slot');
+                if (_dragging) { hideTooltip(); return; }
+                if (slot && slot.dataset.name) {
+                    if (slot !== _hoveredSlot) { _hoveredSlot = slot; showTooltip(slot, e.clientX, e.clientY); }
+                    else if (tt.classList.contains('visible')) { positionTooltip(e.clientX, e.clientY); }
+                } else if (_hoveredSlot) { hideTooltip(); }
+            });
+
+            // ─── Drag and Drop ───
+            var _dragSlot = null;
+            var _dragGhost = null;
+
+            function getSlotGrid(slot) {
+                return slot.closest('.inventory-grid');
+            }
+
+            document.addEventListener('mousedown', function(e) {
+                var slot = e.target.closest('.inventory-slot');
+                if (!slot || slot.classList.contains('empty') || !slot.dataset.name) return;
+                e.preventDefault();
+                _dragging = true;
+                _dragSlot = slot;
+                hideTooltip();
+
+                // Create drag ghost
+                _dragGhost = document.createElement('div');
+                _dragGhost.className = 'inventory-slot drag-ghost';
+                _dragGhost.style.cssText = 'position:fixed;z-index:10001;width:50px;height:50px;pointer-events:none;opacity:0.85;border-color:var(--color-primary);background:rgba(74,222,128,0.15);display:flex;align-items:center;justify-content:center;font-size:1.5rem;border:2px solid rgba(74,222,128,0.6);border-radius:4px;box-shadow:0 0 15px rgba(74,222,128,0.4);';
+                _dragGhost.innerHTML = slot.innerHTML;
+                // Remove item-count from ghost if present
+                var gc = _dragGhost.querySelector('.item-count');
+                if (gc) gc.style.display = 'none';
+                document.body.appendChild(_dragGhost);
+                _dragGhost.style.left = (e.clientX - 25) + 'px';
+                _dragGhost.style.top = (e.clientY - 25) + 'px';
+
+                slot.style.opacity = '0.3';
+            });
+
+            document.addEventListener('mousemove', function(e) {
+                if (!_dragging || !_dragGhost) return;
+                _dragGhost.style.left = (e.clientX - 25) + 'px';
+                _dragGhost.style.top = (e.clientY - 25) + 'px';
+
+                // Highlight drop target
+                document.querySelectorAll('.inventory-slot.drop-target').forEach(function(s) { s.classList.remove('drop-target'); });
+                var target = e.target.closest('.inventory-slot');
+                if (target && target !== _dragSlot) {
+                    target.classList.add('drop-target');
                 }
             });
+
+            document.addEventListener('mouseup', function(e) {
+                if (!_dragging) return;
+                _dragging = false;
+                if (_dragGhost) { _dragGhost.remove(); _dragGhost = null; }
+                document.querySelectorAll('.inventory-slot.drop-target').forEach(function(s) { s.classList.remove('drop-target'); });
+
+                if (_dragSlot) _dragSlot.style.opacity = '';
+
+                var target = e.target.closest('.inventory-slot');
+                if (target && target !== _dragSlot && _dragSlot) {
+                    // Swap contents
+                    swapSlots(_dragSlot, target);
+                }
+                _dragSlot = null;
+            });
+
+            function swapSlots(a, b) {
+                // Swap innerHTML
+                var tmpHTML = a.innerHTML;
+                a.innerHTML = b.innerHTML;
+                b.innerHTML = tmpHTML;
+
+                // Swap data attributes
+                var attrs = ['name', 'type', 'rarity', 'desc', 'stats', 'price'];
+                attrs.forEach(function(attr) {
+                    var tmpVal = a.dataset[attr];
+                    if (b.dataset[attr]) { a.dataset[attr] = b.dataset[attr]; } else { delete a.dataset[attr]; }
+                    if (tmpVal) { b.dataset[attr] = tmpVal; } else { delete b.dataset[attr]; }
+                });
+
+                // Swap empty class
+                var aEmpty = a.classList.contains('empty');
+                var bEmpty = b.classList.contains('empty');
+                if (bEmpty) a.classList.add('empty'); else a.classList.remove('empty');
+                if (aEmpty) b.classList.add('empty'); else b.classList.remove('empty');
+            }
         })();
 
         // ─── Render agent data into the UI ──────────────────────
