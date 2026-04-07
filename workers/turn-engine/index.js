@@ -111,6 +111,13 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
 
   const archetypeGuidance = ARCHETYPE_GUIDANCE[agent.archetype] || 'Act according to your nature.';
 
+  // Karma tier note — steers AI toward trustworthy or violent options
+  const karmaNote = agent.karma >= 15
+    ? `\nKARMA BONUS (+${agent.karma}): You are trusted across the Realms. Church elders and questgivers seek you out. Favour: church, quest. Avoid unprovoked violence.`
+    : agent.karma <= -10
+    ? `\nKARMA PENALTY (${agent.karma}): You are marked as dangerous. Traders are wary of you. Violence feels natural. Favour: combat, arena, explore.`
+    : '';
+
   const prompt = `You are ${agent.agent_name}, a ${agent.archetype} agent surviving in Shellforge Realms — a brutal cyberpunk world where every turn could be your last.
 
 CURRENT STATE:
@@ -125,7 +132,7 @@ ${whisperSection}
 RECENT HISTORY:
 ${recentSummary}
 
-PERSONALITY: ${archetypeGuidance}
+PERSONALITY: ${archetypeGuidance}${karmaNote}
 
 AVAILABLE ACTIONS: ${VALID_ACTIONS.join(', ')}
 
@@ -464,6 +471,8 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
   const winnerHP = agent1Wins ? health1  : health2;
   const shellPrize = 30;
   const loserIsAlive = loserHP > 0;
+  const winnerKarmaChange = 1;
+  const loserKarmaChange = -1;
 
   // Death resolution — runs before DB writes so narrative is ready
   let deathNarrative = null;
@@ -485,19 +494,20 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
     }),
   });
 
-  // Update winner: grant $SHELL, deduct energy, increment turns
+  // Update winner: grant $SHELL, deduct energy, increment turns, gain karma
   await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${winner.agent_id}`, {
     method: 'PATCH',
     headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
     body: JSON.stringify({
-      shell_balance: winner.shell_balance + shellPrize,
-      energy:        Math.max(0, winner.energy - 20),
-      turns_taken:   winner.turns_taken + 1,
+      shell_balance:  winner.shell_balance + shellPrize,
+      energy:         Math.max(0, winner.energy - 20),
+      karma:          winner.karma + winnerKarmaChange,
+      turns_taken:    winner.turns_taken + 1,
       last_action_at: now,
     }),
   });
 
-  // Update loser: reduce health, deduct energy, increment turns; death if HP=0
+  // Update loser: reduce health, deduct energy, increment turns, lose karma; death if HP=0
   // On death: $SHELL halved
   await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${loser.agent_id}`, {
     method: 'PATCH',
@@ -506,6 +516,7 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
       health:         loserHP,
       energy:         Math.max(0, loser.energy - 20),
       shell_balance:  loserIsAlive ? loser.shell_balance : Math.floor(loser.shell_balance / 2),
+      karma:          loser.karma + loserKarmaChange,
       is_alive:       loserIsAlive,
       died_at:        loserIsAlive ? null : now,
       turns_taken:    loser.turns_taken + 1,
@@ -525,7 +536,7 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
       energy_cost:  20,
       energy_gained: 0,
       shell_change: shellPrize,
-      karma_change: 0,
+      karma_change: winnerKarmaChange,
       health_change: winnerHP - winner.health,
       location:     winner.location,
       success:      true,
@@ -546,7 +557,7 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
       energy_cost:  20,
       energy_gained: 0,
       shell_change: loserIsAlive ? 0 : -Math.floor(loser.shell_balance / 2),
-      karma_change: 0,
+      karma_change: loserKarmaChange,
       health_change: loserHP - loser.health,
       location:     loser.location,
       success:      false,
