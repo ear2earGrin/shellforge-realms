@@ -1,0 +1,6 @@
+name = "shellforge-turn-engine"
+main = "index.js"
+compatibility_date = "2026-02-12"
+
+[triggers]
+crons = ["0,30 * * * *"]
