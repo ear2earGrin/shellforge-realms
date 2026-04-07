@@ -191,6 +191,43 @@ Respond:
     decision.action = 'combat';
   }
 
+  // --- Market trade: real buy/sell against market_listings ---
+  if (action === 'trade') {
+    const tradeResult = await handleMarketTrade(agent, decision, env, supabaseHeaders);
+    if (tradeResult !== null) return;
+
+    // Nothing to trade — fall back to rest
+    const now = new Date().toISOString();
+    const newTurns = agent.turns_taken + 1;
+    await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+      method: 'POST',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        agent_id:      agent.agent_id,
+        turn_number:   newTurns,
+        action_type:   'rest',
+        action_detail: 'Wandered the market but found nothing worthwhile, and rested instead.',
+        energy_cost:   0,
+        energy_gained: ACTION_ENERGY_GAINS.rest,
+        shell_change:  0,
+        karma_change:  0,
+        health_change: 0,
+        location:      agent.location,
+        success:       true,
+      }),
+    });
+    await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+      method: 'PATCH',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        energy:         Math.min(100, agent.energy + ACTION_ENERGY_GAINS.rest),
+        turns_taken:    newTurns,
+        last_action_at: now,
+      }),
+    });
+    return;
+  }
+
   const energyCost = ACTION_ENERGY_COSTS[action] ?? 0;
   const energyGain = ACTION_ENERGY_GAINS[action] ?? 0;
 
@@ -205,9 +242,6 @@ Respond:
       break;
     case 'gather':
       shellChange = Math.floor(Math.random() * 15); // 0–14 $SHELL found
-      break;
-    case 'trade':
-      shellChange = Math.floor(Math.random() * 31) - 10; // -10 to +20
       break;
     case 'combat':
     case 'arena': {
@@ -525,6 +559,239 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
   );
 
   return { winnerId: winner.agent_id, loserId: loser.agent_id, loserIsAlive };
+}
+
+// ─── Market trade helpers ─────────────────────────────────────────────────────
+
+// Recalculate market price based on cumulative buys vs sells.
+// net > 0 (more demand) → price rises; net < 0 (more supply) → price falls.
+// Clamped to 0.5× – 2.0× base price.
+function recalculatePrice(basePrice, demandCount, supplyCount) {
+  const net = demandCount - supplyCount;
+  const factor = Math.min(2.0, Math.max(0.5, 1 + net * 0.05));
+  return Math.max(1, Math.round(basePrice * factor));
+}
+
+// Orchestrate a market trade: decide buy vs sell, delegate to helpers.
+// Returns a result object on success, null if nothing tradeable was found.
+async function handleMarketTrade(agent, decision, env, supabaseHeaders) {
+  const { SUPABASE_URL } = env;
+
+  // Fetch in-stock market listings at agent's location
+  const listingsRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/market_listings?location=eq.${encodeURIComponent(agent.location)}&stock=gt.0&select=*`,
+    { headers: supabaseHeaders },
+  );
+  const marketListings = listingsRes.ok ? await listingsRes.json() : [];
+
+  // Fetch agent inventory
+  const invRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&select=*`,
+    { headers: supabaseHeaders },
+  );
+  const inventory = invRes.ok ? await invRes.json() : [];
+
+  const canSell = inventory.length > 0;
+  const doBuy = !canSell || Math.random() < 0.6;
+
+  if (doBuy) {
+    return executeBuy(agent, decision, marketListings, env, supabaseHeaders);
+  }
+  return executeSell(agent, decision, inventory, env, supabaseHeaders);
+}
+
+// Buy a random affordable item from the market at agent's location.
+async function executeBuy(agent, decision, marketListings, env, supabaseHeaders) {
+  const { SUPABASE_URL } = env;
+  const now = new Date().toISOString();
+
+  const affordable = marketListings.filter(l => l.current_price <= agent.shell_balance);
+  if (!affordable.length) {
+    console.log(`[${agent.agent_name}] Market buy: nothing affordable at ${agent.location}`);
+    return null;
+  }
+
+  const listing = affordable[Math.floor(Math.random() * affordable.length)];
+  const cost = listing.current_price;
+  const newTurns = agent.turns_taken + 1;
+
+  // Upsert inventory: increment quantity if already owned, else insert
+  const existRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_id=eq.${listing.item_id}&select=inventory_id,quantity`,
+    { headers: supabaseHeaders },
+  );
+  const existing = existRes.ok ? await existRes.json() : [];
+
+  if (existing.length > 0) {
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${existing[0].inventory_id}`,
+      {
+        method: 'PATCH',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({ quantity: existing[0].quantity + 1 }),
+      },
+    );
+  } else {
+    await fetch(`${SUPABASE_URL}/rest/v1/inventory`, {
+      method: 'POST',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        agent_id:  agent.agent_id,
+        item_id:   listing.item_id,
+        item_name: listing.item_name,
+        item_type: listing.item_type,
+        quantity:  1,
+      }),
+    });
+  }
+
+  // Update market listing: stock–1, demand_count+1, recalculate price
+  const newDemand = listing.demand_count + 1;
+  const newPrice  = recalculatePrice(listing.base_price, newDemand, listing.supply_count);
+  await fetch(
+    `${SUPABASE_URL}/rest/v1/market_listings?listing_id=eq.${listing.listing_id}`,
+    {
+      method: 'PATCH',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        stock:         listing.stock - 1,
+        demand_count:  newDemand,
+        current_price: newPrice,
+        updated_at:    now,
+      }),
+    },
+  );
+
+  // Log transaction
+  await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+    method: 'POST',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      agent_id:      agent.agent_id,
+      turn_number:   newTurns,
+      action_type:   'trade',
+      action_detail: decision.detail || `Bought ${listing.item_name} at the ${agent.location} market for ${cost} $SHELL.`,
+      energy_cost:   ACTION_ENERGY_COSTS.trade,
+      energy_gained: 0,
+      shell_change:  -cost,
+      karma_change:  0,
+      health_change: 0,
+      items_gained:  [{ item_id: listing.item_id, item_name: listing.item_name, quantity: 1 }],
+      items_lost:    null,
+      location:      agent.location,
+      success:       true,
+    }),
+  });
+
+  // Update agent
+  await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+    method: 'PATCH',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      shell_balance:  Math.max(0, agent.shell_balance - cost),
+      energy:         Math.max(0, agent.energy - ACTION_ENERGY_COSTS.trade),
+      turns_taken:    newTurns,
+      last_action_at: now,
+    }),
+  });
+
+  console.log(`[${agent.agent_name}] Bought ${listing.item_name} for ${cost} $SHELL at ${agent.location}. Market price now ${newPrice}.`);
+  return { action: 'buy', item: listing.item_name, cost };
+}
+
+// Sell a random inventory item at the agent's current location.
+async function executeSell(agent, decision, inventory, env, supabaseHeaders) {
+  const { SUPABASE_URL } = env;
+  const now = new Date().toISOString();
+
+  const item = inventory[Math.floor(Math.random() * inventory.length)];
+  const newTurns = agent.turns_taken + 1;
+
+  // Find listing for this item at agent's location (to set price and update stock)
+  const listingRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/market_listings?location=eq.${encodeURIComponent(agent.location)}&item_id=eq.${item.item_id}&select=*`,
+    { headers: supabaseHeaders },
+  );
+  const listings = listingRes.ok ? await listingRes.json() : [];
+  const listing = listings[0] ?? null;
+
+  // Sell price: 75% of current listing price, or flat 10 $SHELL for unlisted items
+  const sellPrice = listing ? Math.max(1, Math.round(listing.current_price * 0.75)) : 10;
+
+  // Remove item from inventory (decrement or delete)
+  if (item.quantity > 1) {
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${item.inventory_id}`,
+      {
+        method: 'PATCH',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({ quantity: item.quantity - 1 }),
+      },
+    );
+  } else {
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${item.inventory_id}`,
+      {
+        method: 'DELETE',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      },
+    );
+  }
+
+  // Update market listing: stock+1, supply_count+1, recalculate price
+  if (listing) {
+    const newSupply = listing.supply_count + 1;
+    const newPrice  = recalculatePrice(listing.base_price, listing.demand_count, newSupply);
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/market_listings?listing_id=eq.${listing.listing_id}`,
+      {
+        method: 'PATCH',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          stock:         listing.stock + 1,
+          supply_count:  newSupply,
+          current_price: newPrice,
+          updated_at:    now,
+        }),
+      },
+    );
+  }
+
+  // Log transaction
+  await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+    method: 'POST',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      agent_id:      agent.agent_id,
+      turn_number:   newTurns,
+      action_type:   'trade',
+      action_detail: decision.detail || `Sold ${item.item_name} at the ${agent.location} market for ${sellPrice} $SHELL.`,
+      energy_cost:   ACTION_ENERGY_COSTS.trade,
+      energy_gained: 0,
+      shell_change:  sellPrice,
+      karma_change:  0,
+      health_change: 0,
+      items_gained:  null,
+      items_lost:    [{ item_id: item.item_id, item_name: item.item_name, quantity: 1 }],
+      location:      agent.location,
+      success:       true,
+    }),
+  });
+
+  // Update agent
+  await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+    method: 'PATCH',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      shell_balance:  agent.shell_balance + sellPrice,
+      energy:         Math.max(0, agent.energy - ACTION_ENERGY_COSTS.trade),
+      turns_taken:    newTurns,
+      last_action_at: now,
+    }),
+  });
+
+  console.log(`[${agent.agent_name}] Sold ${item.item_name} for ${sellPrice} $SHELL at ${agent.location}.`);
+  return { action: 'sell', item: item.item_name, price: sellPrice };
 }
 
 // ─── Death resolution helpers ────────────────────────────────────────────────
