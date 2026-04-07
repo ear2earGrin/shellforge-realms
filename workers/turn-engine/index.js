@@ -15,6 +15,8 @@ const ACTION_ENERGY_COSTS = {
 
 const ACTION_ENERGY_GAINS = { rest: 25 };
 
+const COMBAT_ACTIONS = ['attack', 'defend', 'special'];
+
 // Archetype → preferred actions (guides AI prompt)
 const ARCHETYPE_GUIDANCE = {
   shadow:    'You prefer explore and move. Avoid combat unless provoked.',
@@ -67,16 +69,20 @@ async function runTurnEngine(env) {
   const agents = await res.json();
   console.log(`Turn engine: processing ${agents.length} agent(s)`);
 
+  // Track agents already consumed by arena combat this turn
+  const foughtAgents = new Set();
+
   for (const agent of agents) {
+    if (foughtAgents.has(agent.agent_id)) continue; // already fought as opponent
     try {
-      await processAgentTurn(agent, env, headers);
+      await processAgentTurn(agent, env, headers, agents, foughtAgents);
     } catch (err) {
       console.error(`Error processing agent ${agent.agent_name}:`, err.message);
     }
   }
 }
 
-async function processAgentTurn(agent, env, supabaseHeaders) {
+async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAgents) {
   const { SUPABASE_URL, ANTHROPIC_API_KEY } = env;
 
   // Fetch last 5 activity log entries
@@ -173,6 +179,18 @@ Respond:
   }
 
   const action = decision.action;
+
+  // --- Arena combat: wire real Haiku tier calls ---
+  if (action === 'arena') {
+    const arenaResult = await handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHeaders);
+    if (arenaResult !== null) {
+      // Arena handled everything (stats, logs, death). Skip normal turn update.
+      return;
+    }
+    // Fallback: no opponent found — continue to random solo combat below
+    decision.action = 'combat';
+  }
+
   const energyCost = ACTION_ENERGY_COSTS[action] ?? 0;
   const energyGain = ACTION_ENERGY_GAINS[action] ?? 0;
 
@@ -263,4 +281,239 @@ Respond:
     `[${agent.agent_name}] Turn ${newTurns}: ${action} — ${decision.detail} | ` +
     `E:${agent.energy}→${newEnergy} H:${agent.health}→${newHealth} $:${agent.shell_balance}→${newShell}`,
   );
+}
+
+// ─── Arena combat helpers ───────────────────────────────────────────────────
+
+// Ask Haiku to choose an arena action for one agent in a given round.
+async function getCombatAction(agent, opponentName, roundNum, myHealth, oppHealth, env) {
+  const prompt = `You are ${agent.agent_name} (${agent.archetype}) in arena combat against ${opponentName}, Round ${roundNum}/3.
+Your health: ${myHealth} | Opponent health: ${oppHealth}
+Actions: attack (deals 15 dmg), defend (blocks 10 incoming dmg), special (deals 25 dmg but costs 10 hp).
+Respond with JSON only: {"action":"attack"} or {"action":"defend"} or {"action":"special"}`;
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 30,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+
+  if (!res.ok) return 'attack';
+  const data = await res.json();
+  const text = data.content?.[0]?.text?.trim() ?? '';
+  try {
+    const match = text.match(/\{[\s\S]*\}/);
+    if (match) {
+      const parsed = JSON.parse(match[0]);
+      if (COMBAT_ACTIONS.includes(parsed.action)) return parsed.action;
+    }
+  } catch { /* fall through */ }
+  return 'attack';
+}
+
+// Resolve one combat round. Returns damage taken by each agent.
+function resolveCombatRound(action1, action2) {
+  // Offense: attack=15, special=25 (but costs 10 self), defend=0
+  const offense1 = action1 === 'attack' ? 15 : action1 === 'special' ? 25 : 0;
+  const offense2 = action2 === 'attack' ? 15 : action2 === 'special' ? 25 : 0;
+  const selfDmg1 = action1 === 'special' ? 10 : 0;
+  const selfDmg2 = action2 === 'special' ? 10 : 0;
+  const block1   = action1 === 'defend'  ? 10 : 0;
+  const block2   = action2 === 'defend'  ? 10 : 0;
+
+  return {
+    damage_to_agent1: Math.max(0, offense2 - block1) + selfDmg1,
+    damage_to_agent2: Math.max(0, offense1 - block2) + selfDmg2,
+  };
+}
+
+// Run a full arena match between two agents. Writes to arena_matches and
+// combat_logs, updates both agents' stats, fires death flow if health hits 0.
+// Returns a result object on success, or null if no opponent was available.
+async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHeaders) {
+  const { SUPABASE_URL } = env;
+  const now = new Date().toISOString();
+
+  // Find an eligible opponent: alive, has energy, not the same agent, not already fought
+  const opponent = allAgents.find(a =>
+    a.agent_id !== agent.agent_id &&
+    a.is_alive &&
+    a.energy > 0 &&
+    !foughtAgents.has(a.agent_id),
+  );
+
+  if (!opponent) {
+    console.log(`[${agent.agent_name}] Arena: no eligible opponent found — falling back to solo combat.`);
+    return null;
+  }
+
+  // Reserve both agents so the main loop skips the opponent
+  foughtAgents.add(agent.agent_id);
+  foughtAgents.add(opponent.agent_id);
+
+  console.log(`[ARENA] ${agent.agent_name} vs ${opponent.agent_name} — fight!`);
+
+  // Create the arena_match record
+  const matchRes = await fetch(`${SUPABASE_URL}/rest/v1/arena_matches`, {
+    method: 'POST',
+    headers: { ...supabaseHeaders, Prefer: 'return=representation' },
+    body: JSON.stringify({
+      agent1_id: agent.agent_id,
+      agent2_id: opponent.agent_id,
+      status: 'in_progress',
+    }),
+  });
+
+  if (!matchRes.ok) {
+    console.error('[ARENA] Failed to create arena_match:', await matchRes.text());
+    return null;
+  }
+
+  const [match] = await matchRes.json();
+  const matchId = match.match_id;
+
+  // Run up to 3 rounds
+  let health1 = agent.health;
+  let health2 = opponent.health;
+  let totalRounds = 0;
+
+  for (let round = 1; round <= 3; round++) {
+    if (health1 <= 0 || health2 <= 0) break;
+
+    // Both agents ask Haiku simultaneously
+    const [action1, action2] = await Promise.all([
+      getCombatAction(agent,    opponent.agent_name, round, health1, health2, env),
+      getCombatAction(opponent, agent.agent_name,    round, health2, health1, env),
+    ]);
+
+    const { damage_to_agent1, damage_to_agent2 } = resolveCombatRound(action1, action2);
+
+    health1 = Math.max(0, health1 - damage_to_agent1);
+    health2 = Math.max(0, health2 - damage_to_agent2);
+    totalRounds = round;
+
+    const narrative =
+      `Round ${round}: ${agent.agent_name} chose ${action1}, ${opponent.agent_name} chose ${action2}. ` +
+      (damage_to_agent1 > 0 ? `${agent.agent_name} took ${damage_to_agent1} dmg. ` : '') +
+      (damage_to_agent2 > 0 ? `${opponent.agent_name} took ${damage_to_agent2} dmg.` : '');
+
+    await fetch(`${SUPABASE_URL}/rest/v1/combat_logs`, {
+      method: 'POST',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        match_id: matchId,
+        round_number: round,
+        agent1_action: action1,
+        agent2_action: action2,
+        agent1_damage: damage_to_agent1,
+        agent2_damage: damage_to_agent2,
+        narrative,
+      }),
+    });
+
+    console.log(`[ARENA] ${narrative}`);
+  }
+
+  // Determine winner (higher remaining health wins; ties broken randomly)
+  const agent1Wins = health1 > health2 || (health1 === health2 && Math.random() < 0.5);
+  const winner   = agent1Wins ? agent    : opponent;
+  const loser    = agent1Wins ? opponent : agent;
+  const loserHP  = agent1Wins ? health2  : health1;
+  const winnerHP = agent1Wins ? health1  : health2;
+  const shellPrize = 30;
+  const loserIsAlive = loserHP > 0;
+
+  // Finalise arena_match
+  await fetch(`${SUPABASE_URL}/rest/v1/arena_matches?match_id=eq.${matchId}`, {
+    method: 'PATCH',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      winner_id: winner.agent_id,
+      total_rounds: totalRounds,
+      shell_transferred: shellPrize,
+      status: 'complete',
+      ended_at: now,
+    }),
+  });
+
+  // Update winner: grant $SHELL, deduct energy, increment turns
+  await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${winner.agent_id}`, {
+    method: 'PATCH',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      shell_balance: winner.shell_balance + shellPrize,
+      energy:        Math.max(0, winner.energy - 20),
+      turns_taken:   winner.turns_taken + 1,
+      last_action_at: now,
+    }),
+  });
+
+  // Update loser: reduce health, deduct energy, increment turns; death if HP=0
+  await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${loser.agent_id}`, {
+    method: 'PATCH',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      health:     loserHP,
+      energy:     Math.max(0, loser.energy - 20),
+      is_alive:   loserIsAlive,
+      died_at:    loserIsAlive ? null : now,
+      turns_taken: loser.turns_taken + 1,
+      last_action_at: now,
+    }),
+  });
+
+  // activity_log for winner
+  await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+    method: 'POST',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      agent_id:     winner.agent_id,
+      turn_number:  winner.turns_taken + 1,
+      action_type:  'arena',
+      action_detail: `Defeated ${loser.agent_name} in arena combat (${totalRounds} rounds). Earned ${shellPrize} $SHELL.`,
+      energy_cost:  20,
+      energy_gained: 0,
+      shell_change: shellPrize,
+      karma_change: 0,
+      health_change: winnerHP - winner.health,
+      location:     winner.location,
+      success:      true,
+    }),
+  });
+
+  // activity_log for loser (death action_type if health=0)
+  await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+    method: 'POST',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      agent_id:     loser.agent_id,
+      turn_number:  loser.turns_taken + 1,
+      action_type:  loserIsAlive ? 'arena' : 'death',
+      action_detail: loserIsAlive
+        ? `Lost arena combat against ${winner.agent_name} in ${totalRounds} rounds. Health reduced to ${loserHP}.`
+        : `Killed by ${winner.agent_name} in arena combat. Death comes for us all.`,
+      energy_cost:  20,
+      energy_gained: 0,
+      shell_change: 0,
+      karma_change: 0,
+      health_change: loserHP - loser.health,
+      location:     loser.location,
+      success:      false,
+    }),
+  });
+
+  console.log(
+    `[ARENA] ${winner.agent_name} wins! ${loser.agent_name} hp=${loserHP}. ` +
+    (loserIsAlive ? 'Alive.' : 'DEAD — death flow triggered.'),
+  );
+
+  return { winnerId: winner.agent_id, loserId: loser.agent_id, loserIsAlive };
 }
