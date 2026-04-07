@@ -3262,15 +3262,6 @@
         </div>
     </div>
 
-    <!-- ITEM TOOLTIP (shared, positioned via JS) -->
-    <div class="item-tooltip" id="itemTooltip">
-        <div class="tt-name" id="ttName"></div>
-        <div class="tt-meta"><span id="ttType"></span><span id="ttRarity"></span></div>
-        <div class="tt-desc" id="ttDesc"></div>
-        <div class="tt-stats" id="ttStats"></div>
-        <div class="tt-price" id="ttPrice"></div>
-    </div>
-
     <!-- INVENTORY -->
     <div class="modal-overlay" id="modal-inventory" onclick="closeOnOverlay(event,'inventory')">
         <div class="modal-box">
@@ -3542,7 +3533,7 @@
         }  // ← end of loadAgentData()
 
         // ─── Item Tooltip + Drag-and-Drop System ────────────────
-        (function initInventoryUI() {
+        document.addEventListener('DOMContentLoaded', function() {
             var tt = document.getElementById('itemTooltip');
             var ttName = document.getElementById('ttName');
             var ttType = document.getElementById('ttType');
@@ -3550,6 +3541,7 @@
             var ttDesc = document.getElementById('ttDesc');
             var ttStats = document.getElementById('ttStats');
             var ttPrice = document.getElementById('ttPrice');
+            if (!tt) { console.warn('itemTooltip element not found'); return; }
             var _hoveredSlot = null;
             var _dragging = false;
 
@@ -3678,7 +3670,7 @@
                 if (bEmpty) a.classList.add('empty'); else a.classList.remove('empty');
                 if (aEmpty) b.classList.add('empty'); else b.classList.remove('empty');
             }
-        })();
+        });
 
         // ─── Render agent data into the UI ──────────────────────
         function renderAgent(agent) {
@@ -5205,6 +5197,15 @@
         })();
     </script>
     <script src="terminal-notifications.js"></script>
+
+    <!-- ITEM TOOLTIP — must be last element in body so it's on top of everything -->
+    <div class="item-tooltip" id="itemTooltip">
+        <div class="tt-name" id="ttName"></div>
+        <div class="tt-meta"><span id="ttType"></span><span id="ttRarity"></span></div>
+        <div class="tt-desc" id="ttDesc"></div>
+        <div class="tt-stats" id="ttStats"></div>
+        <div class="tt-price" id="ttPrice"></div>
+    </div>
 
 </body>
 </html>
