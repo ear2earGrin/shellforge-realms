@@ -320,6 +320,25 @@
         .ch-text .hl { color: var(--color-primary); }
         .ch-text .danger { color: #ff0044; }
         .ch-text .gold { color: #ffcc00; }
+        .ch-type {
+            display: inline-block;
+            font-family: var(--font-main); font-size: 0.48rem;
+            letter-spacing: 0.08em; padding: 1px 5px;
+            border-radius: 3px; margin-right: 5px;
+            text-transform: uppercase; vertical-align: middle;
+            background: rgba(255,255,255,0.06); color: var(--color-text-dim);
+        }
+        .chronicle-entry[data-action="move"]    .ch-type { background:rgba(74,222,128,0.12);  color:rgba(74,222,128,0.85); }
+        .chronicle-entry[data-action="explore"] .ch-type { background:rgba(100,180,255,0.12); color:rgba(100,180,255,0.85); }
+        .chronicle-entry[data-action="gather"]  .ch-type { background:rgba(255,200,0,0.12);   color:rgba(255,200,0,0.85); }
+        .chronicle-entry[data-action="craft"]   .ch-type { background:rgba(255,140,0,0.12);   color:rgba(255,140,0,0.9); }
+        .chronicle-entry[data-action="trade"]   .ch-type { background:rgba(200,160,255,0.13); color:rgba(200,160,255,0.9); }
+        .chronicle-entry[data-action="rest"]    .ch-type { background:rgba(100,255,200,0.10); color:rgba(100,255,200,0.75); }
+        .chronicle-entry[data-action="combat"]  .ch-type { background:rgba(255,50,50,0.13);   color:rgba(255,80,80,0.9); }
+        .chronicle-entry[data-action="arena"]   .ch-type { background:rgba(255,80,20,0.15);   color:rgba(255,110,50,0.95); }
+        .chronicle-entry[data-action="quest"]   .ch-type { background:rgba(255,200,80,0.12);  color:rgba(255,210,100,0.9); }
+        .chronicle-entry[data-action="church"]  .ch-type { background:rgba(200,60,255,0.12);  color:rgba(200,60,255,0.85); }
+        .chronicle-entry[data-action="death"]   .ch-type { background:rgba(255,0,44,0.18);    color:#ff0044; }
 
         /* forge slots */
         .forge-input-grid {
@@ -3247,30 +3266,7 @@
             </div>
             <div class="modal-body">
                 <div id="activityLog">
-                    <div class="chronicle-entry">
-                        <div class="ch-time">2h ago</div>
-                        <div class="ch-text">Explored the <span class="hl">Marketplace</span>. Browsed the wares. Bought nothing. <span style="color:var(--color-text-dim);font-size:0.7rem;">−15 Energy</span></div>
-                    </div>
-                    <div class="chronicle-entry">
-                        <div class="ch-time">4h ago</div>
-                        <div class="ch-text">Purchased <span class="gold">Overclock Serum ×2</span> for 50 $SHELL.</div>
-                    </div>
-                    <div class="chronicle-entry">
-                        <div class="ch-time">6h ago</div>
-                        <div class="ch-text">Rested at <span class="hl">The Core</span>. Energy restored. <span style="color:#00ff66;font-size:0.7rem;">+25 Energy</span></div>
-                    </div>
-                    <div class="chronicle-entry">
-                        <div class="ch-time">8h ago</div>
-                        <div class="ch-text">Received a whisper: <em style="color:var(--color-text-dim)">"head to the market"</em>. Considered it. <span class="danger">Ignored it.</span></div>
-                    </div>
-                    <div class="chronicle-entry">
-                        <div class="ch-time">10h ago</div>
-                        <div class="ch-text">Crafted <span class="hl">Buffer Overflow Dagger</span> at the Forge. First real weapon.</div>
-                    </div>
-                    <div class="chronicle-entry">
-                        <div class="ch-time">12h ago</div>
-                        <div class="ch-text">Moved to <span class="hl">Nexarch – Forge District</span> after 90 min through the Epoch Wilds.</div>
-                    </div>
+                    <div style="font-family:var(--font-main);font-size:0.65rem;color:var(--color-text-dim);padding:12px 0;">Loading chronicle…</div>
                 </div>
             </div>
         </div>
@@ -3630,14 +3626,18 @@
             if (!agentId) return;
             const rows = await sbGet('activity_log',
                 'agent_id=eq.' + agentId + '&order=timestamp.desc&limit=20&select=*');
-            if (!rows || rows.length === 0) return;
             const log = document.getElementById('activityLog');
             if (!log) return;
+            if (!rows || rows.length === 0) {
+                log.innerHTML = '<div style="font-family:var(--font-main);font-size:0.65rem;color:var(--color-text-dim);padding:12px 0;">No activity recorded yet.</div>';
+                return;
+            }
             log.innerHTML = '';
             rows.forEach(function(entry) {
                 const when = timeAgo(entry.timestamp);
                 const div = document.createElement('div');
                 div.className = 'chronicle-entry';
+                div.dataset.action = entry.action_type || '';
                 let detail = entry.action_detail || entry.action_type;
                 let extra = '';
                 if (entry.shell_change && entry.shell_change !== 0) {
@@ -3648,7 +3648,8 @@
                     const sign = entry.karma_change > 0 ? '+' : '';
                     extra += ` <span style="color:#cc44ff">${sign}${entry.karma_change} karma</span>`;
                 }
-                div.innerHTML = `<div class="ch-time">${when}</div><div class="ch-text">${detail}${extra}</div>`;
+                const typeLabel = entry.action_type ? `<span class="ch-type">${entry.action_type}</span>` : '';
+                div.innerHTML = `<div class="ch-time">${when}</div><div class="ch-text">${typeLabel}${detail}${extra}</div>`;
                 log.appendChild(div);
             });
         }
@@ -4765,6 +4766,11 @@
             }
 
             el.classList.add('open');
+
+            // Fresh chronicle load on open
+            if (id === 'chronicle' && _currentAgent && _currentAgent.agentId) {
+                loadActivityLog(_currentAgent.agentId);
+            }
 
             // Keep panel open while mouse is inside it
             el.onmouseleave = function() { scheduleClose(id); };
