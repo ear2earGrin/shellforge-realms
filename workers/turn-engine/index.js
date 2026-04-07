@@ -431,6 +431,13 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
   const shellPrize = 30;
   const loserIsAlive = loserHP > 0;
 
+  // Death resolution — runs before DB writes so narrative is ready
+  let deathNarrative = null;
+  if (!loserIsAlive) {
+    deathNarrative = await generateDeathNarrative(loser, winner, totalRounds, env);
+    await moveItemsToVault(loser, supabaseHeaders, SUPABASE_URL);
+  }
+
   // Finalise arena_match
   await fetch(`${SUPABASE_URL}/rest/v1/arena_matches?match_id=eq.${matchId}`, {
     method: 'PATCH',
@@ -457,15 +464,17 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
   });
 
   // Update loser: reduce health, deduct energy, increment turns; death if HP=0
+  // On death: $SHELL halved
   await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${loser.agent_id}`, {
     method: 'PATCH',
     headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
     body: JSON.stringify({
-      health:     loserHP,
-      energy:     Math.max(0, loser.energy - 20),
-      is_alive:   loserIsAlive,
-      died_at:    loserIsAlive ? null : now,
-      turns_taken: loser.turns_taken + 1,
+      health:         loserHP,
+      energy:         Math.max(0, loser.energy - 20),
+      shell_balance:  loserIsAlive ? loser.shell_balance : Math.floor(loser.shell_balance / 2),
+      is_alive:       loserIsAlive,
+      died_at:        loserIsAlive ? null : now,
+      turns_taken:    loser.turns_taken + 1,
       last_action_at: now,
     }),
   });
@@ -499,10 +508,10 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
       action_type:  loserIsAlive ? 'arena' : 'death',
       action_detail: loserIsAlive
         ? `Lost arena combat against ${winner.agent_name} in ${totalRounds} rounds. Health reduced to ${loserHP}.`
-        : `Killed by ${winner.agent_name} in arena combat. Death comes for us all.`,
+        : deathNarrative,
       energy_cost:  20,
       energy_gained: 0,
-      shell_change: 0,
+      shell_change: loserIsAlive ? 0 : -Math.floor(loser.shell_balance / 2),
       karma_change: 0,
       health_change: loserHP - loser.health,
       location:     loser.location,
@@ -516,4 +525,78 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
   );
 
   return { winnerId: winner.agent_id, loserId: loser.agent_id, loserIsAlive };
+}
+
+// ─── Death resolution helpers ────────────────────────────────────────────────
+
+// Call Sonnet to generate a vivid death narrative for a fallen agent.
+async function generateDeathNarrative(loser, winner, totalRounds, env) {
+  const prompt = `You are writing flavor text for a cyberpunk survival game called Shellforge Realms.
+${loser.agent_name} (archetype: ${loser.archetype}) has just been killed by ${winner.agent_name} in arena combat after ${totalRounds} round${totalRounds !== 1 ? 's' : ''}.
+Write exactly one vivid sentence in third person narrating their death. Output only the sentence, no quotes.`;
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 120,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+
+  if (!res.ok) {
+    console.warn('[DEATH] Sonnet narrative call failed, using fallback.');
+    return `${loser.agent_name} fell in the arena, silenced by ${winner.agent_name} after ${totalRounds} brutal round${totalRounds !== 1 ? 's' : ''}.`;
+  }
+  const data = await res.json();
+  return data.content?.[0]?.text?.trim()
+    ?? `${loser.agent_name} fell in the arena, silenced by ${winner.agent_name}.`;
+}
+
+// Move all inventory items from a dead agent into the vault, then clear their inventory.
+async function moveItemsToVault(loser, supabaseHeaders, supabaseUrl) {
+  const invRes = await fetch(
+    `${supabaseUrl}/rest/v1/inventory?agent_id=eq.${loser.agent_id}&select=*`,
+    { headers: supabaseHeaders },
+  );
+  if (!invRes.ok) {
+    console.warn('[DEATH] Failed to fetch inventory for vault transfer:', await invRes.text());
+    return;
+  }
+  const items = await invRes.json();
+  if (!items.length) {
+    console.log(`[DEATH] ${loser.agent_name} had no items to vault.`);
+    return;
+  }
+
+  const vaultItems = items.map(item => ({
+    original_agent_id: loser.agent_id,
+    item_id:           item.item_id,
+    item_name:         item.item_name,
+    item_type:         item.item_type,
+    item_category:     item.item_category,
+    quantity:          item.quantity,
+  }));
+
+  const vaultRes = await fetch(`${supabaseUrl}/rest/v1/vault`, {
+    method: 'POST',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify(vaultItems),
+  });
+  if (!vaultRes.ok) {
+    console.warn('[DEATH] Failed to insert items into vault:', await vaultRes.text());
+    return;
+  }
+
+  await fetch(`${supabaseUrl}/rest/v1/inventory?agent_id=eq.${loser.agent_id}`, {
+    method: 'DELETE',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+  });
+
+  console.log(`[DEATH] ${items.length} item(s) from ${loser.agent_name} moved to vault.`);
 }
