@@ -3347,26 +3347,10 @@
             } catch(e) { return null; }
         }
 
-        // ─── Save agent to per-user key only ────────────────────────
-        function saveAgent(agent) {
-            var lu = localStorage.getItem('shellforgeLoggedIn');
-            if (lu) {
-                localStorage.setItem('shellforgeAgent_' + lu, JSON.stringify(agent));
-            }
-        }
-
-        // Helper to get agent data using the correct per-user key
-        function getAgent() {
-            var lu = localStorage.getItem('shellforgeLoggedIn');
-            if (!lu) return null;
-            var data = localStorage.getItem('shellforgeAgent_' + lu);
-            if (!data) return null;
-            try {
-                return JSON.parse(data);
-            } catch(e) {
-                return null;
-            }
-        }
+        // ─── Agent in-memory state (source of truth: Supabase) ─────
+        let _currentAgent = null;
+        function saveAgent(agent) { _currentAgent = agent; }
+        function getAgent() { return _currentAgent; }
 
                 // Cluster definitions with all archetypes
         const CLUSTER_DATA = {
@@ -3419,7 +3403,7 @@
             return true;
         }
 
-        // Load agent data from localStorage (replace with API call later)
+        // Load agent data from Supabase on page init
         function loadAgentData() {
             console.log('🔧 loadAgentData called');
             if (!checkLoginStatus()) return;
@@ -3427,7 +3411,6 @@
             const _lu = localStorage.getItem('shellforgeLoggedIn');
             console.log('🔧 Loading agent for user:', _lu);
 
-            // Try Supabase first, fall back to localStorage
             async function fetchAndRender() {
                 // 1. Try Supabase — look up agent by username
                 const rows = await sbGet('agents', 'agent_name=eq.' + encodeURIComponent(_lu) + '&select=*&limit=1');
@@ -3460,33 +3443,17 @@
                         journey:        dbAgent.journey || null,
                         _source:        'supabase'
                     };
-                    // Also save to localStorage as cache
                     saveAgent(agent);
                     renderAgent(agent);
                     loadActivityLog(dbAgent.agent_id);
                     return;
                 }
 
-                // 2. Fall back to localStorage
-                console.log('⚠️ Supabase miss — trying localStorage');
-                let agentData = _lu ? localStorage.getItem('shellforgeAgent_' + _lu) : null;
-                if (!agentData) {
-                    const shared = localStorage.getItem('shellforgeAgent');
-                    if (shared) {
-                        try {
-                            const parsed = JSON.parse(shared);
-                            if (!_lu || parsed.username === _lu) agentData = shared;
-                        } catch(e) {}
-                    }
-                }
-                if (!agentData) {
-                    terminalNotify.warning('No agent found. Please deploy an agent first.', () => {
-                        window.location.href = 'deploy.html';
-                    });
-                    return;
-                }
-                console.log('✅ Agent loaded from localStorage');
-                renderAgent(JSON.parse(agentData));
+                // No agent in Supabase — redirect to deploy
+                console.log('⚠️ No agent found in Supabase for user:', _lu);
+                terminalNotify.warning('No agent found. Please deploy an agent first.', () => {
+                    window.location.href = 'deploy.html';
+                });
             }
 
             fetchAndRender();
@@ -4454,15 +4421,12 @@
             }
 
             function animate() {
-                // Re-fetch agent data to check for completion
-                const lu = localStorage.getItem('shellforgeLoggedIn');
-                const agentData = lu ? localStorage.getItem('shellforgeAgent_' + lu) : null;
-                if (!agentData) {
+                if (!_currentAgent) {
                     console.log('🎬 Animation stopped: no agent data');
                     return;
                 }
-                
-                const currentAgent = JSON.parse(agentData);
+
+                const currentAgent = _currentAgent;
                 
                 // Get current interpolated position
                 const currentPos = getCurrentPosition(currentAgent);
@@ -4551,7 +4515,6 @@
             agent.state = 'traveling';
             agent.activity = `traveling to ${destinationName}`;
             
-            // Save to localStorage
             saveAgent(agent);
             
             console.log(`🚀 Journey started: ${destinationName} (${Math.round(durationMinutes * 60)}s with ${SPEED_MULTIPLIER}x speed, ${energyCost} energy)`);
