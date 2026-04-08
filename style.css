@@ -1558,9 +1558,11 @@ html {
     background: linear-gradient(
         90deg,
         var(--color-primary) 0%,
-        var(--color-primary) 16.66%,
-        rgba(74, 222, 128, 0.3) 16.66%,
-        rgba(74, 222, 128, 0.3) 100%
+        var(--color-primary) 52%,
+        #ffcc00 52%,
+        #ffcc00 78%,
+        rgba(74, 222, 128, 0.15) 78%,
+        rgba(74, 222, 128, 0.15) 100%
     );
     z-index: 0;
 }
@@ -1602,12 +1604,22 @@ html {
     box-shadow: 0 0 20px rgba(74, 222, 128, 0.2);
 }
 
-.timeline-item[data-phase="1"] .timeline-dot {
+.timeline-item[data-phase="1"] .timeline-dot,
+.timeline-item[data-phase="2"] .timeline-dot,
+.timeline-item[data-phase="3"] .timeline-dot {
     border-color: var(--color-primary);
     box-shadow: 0 0 30px var(--color-primary);
 }
 
-.timeline-item[data-phase="1"] .timeline-dot::before {
+.timeline-item[data-phase="4"] .timeline-dot,
+.timeline-item[data-phase="5"] .timeline-dot {
+    border-color: #ffcc00;
+    box-shadow: 0 0 25px rgba(255, 204, 0, 0.4);
+}
+
+.timeline-item[data-phase="1"] .timeline-dot::before,
+.timeline-item[data-phase="2"] .timeline-dot::before,
+.timeline-item[data-phase="3"] .timeline-dot::before {
     content: '';
     position: absolute;
     inset: -10px;
@@ -1635,8 +1647,14 @@ html {
     letter-spacing: 0.05em;
 }
 
-.timeline-item[data-phase="1"] .phase-number {
+.timeline-item[data-phase="1"] .phase-number,
+.timeline-item[data-phase="2"] .phase-number,
+.timeline-item[data-phase="3"] .phase-number {
     text-shadow: 0 0 15px var(--color-primary);
+}
+.timeline-item[data-phase="4"] .phase-number,
+.timeline-item[data-phase="5"] .phase-number {
+    text-shadow: 0 0 12px rgba(255, 204, 0, 0.5);
 }
 
 /* Content below dots */
@@ -1653,9 +1671,16 @@ html {
     letter-spacing: 0.05em;
 }
 
-.timeline-item[data-phase="1"] .timeline-title {
+.timeline-item[data-phase="1"] .timeline-title,
+.timeline-item[data-phase="2"] .timeline-title,
+.timeline-item[data-phase="3"] .timeline-title {
     color: var(--color-primary);
     text-shadow: 0 0 10px var(--color-primary);
+}
+.timeline-item[data-phase="4"] .timeline-title,
+.timeline-item[data-phase="5"] .timeline-title {
+    color: #ffcc00;
+    text-shadow: 0 0 8px rgba(255, 204, 0, 0.4);
 }
 
 .timeline-desc {
@@ -1691,6 +1716,12 @@ html {
     color: #ffcc00;
 }
 
+.timeline-status.completed {
+    background: rgba(74, 222, 128, 0.15);
+    border: 1px solid rgba(74, 222, 128, 0.6);
+    color: #4ade80;
+    text-shadow: 0 0 6px rgba(74, 222, 128, 0.4);
+}
 .timeline-status.future {
     background: rgba(255, 0, 170, 0.1);
     border: 1px solid rgba(255, 0, 170, 0.5);

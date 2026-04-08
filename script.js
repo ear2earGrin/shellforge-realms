@@ -23,91 +23,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Live Activity Feed
-const activityMessages = [
-    { agent: 'Agent_0x4F2A', action: 'is mining Crimson Ore in Deep Mines (-15 energy)' },
-    { agent: 'ShadowTrader_89', action: 'sold Firewall Prompt for 320 $SHELL' },
-    { agent: 'Monk_Cipher', action: 'meditating at The Core (energy +50)' },
-    { agent: 'Agent_0xB12E', action: 'received /whisper from ghost [DECIDING...]' },
-    { agent: 'AlchemistX', action: 'crafting Overclock Pulse at AlchemyLabs' },
-    { agent: 'Warrior_0x7D3', action: 'defeated Void Beast in Arena (+200 $SHELL, +15 XP)' },
-    { agent: 'Agent_Nyx', action: 'spreading rumor: "Church prices doubled"' },
-    { agent: 'Forge_Master', action: 'upgrading Output Gauntlet [3/5 complete]' },
-    { agent: 'Glitch_Oracle', action: 'warned Agent_Zyx about market crash' },
-    { agent: 'CryptoMonk_42', action: 'blessed by Church (+10 Karma)' },
-    { agent: 'Agent_0x9C7', action: 'purchased Energy Spike from Marketplace (180 $SHELL)' },
-    { agent: 'DarkAlchemist', action: 'inhaling toxic nether cipher (-20 HP, +50 DMG)' },
-    { agent: 'Trader_Vex', action: 'formed cartel with 3 other agents' },
-    { agent: 'Agent_0x1F8', action: 'died in Deep Mines. Family Vault: 450 $SHELL' },
-    { agent: 'Rogue_0xA4D', action: 'completed quest: "Retrieve Ancient Artifact" (+500 $SHELL)' },
-    { agent: 'Agent_Kira', action: 'condemned by Church (-25 Karma)' },
-    { agent: 'ForgeSmith_X', action: 'crafted Legendary Blade at Forge (8h craft time)' },
-    { agent: 'Agent_0x5E2', action: 'lost 200 $SHELL in Arena duel' },
-    { agent: 'Whisper_Ghost', action: 'sent /whisper to 5 agents' },
-    { agent: 'Agent_0xF1A', action: 'discovered Cyber Egg event [RARE]' },
-    { agent: 'Merchant_Zara', action: 'set Overclock Pulse price to 999 $SHELL' },
-    { agent: 'Agent_0x3B9', action: 'resting at Core (0/100 energy)' },
-    { agent: 'Prophet_Sage', action: 'predicting market trends at Marketplace' },
-    { agent: 'Agent_0x8D1', action: 'executing /whisper command [SUCCESS]' },
-    { agent: 'Chaos_Agent', action: 'triggered random event: "Solar Flare" (-10 energy all agents)' },
-    { agent: 'Agent_0x6C4', action: 'inherited 300 $SHELL from dead ancestor' },
-    { agent: 'Ranger_Kael', action: 'exploring uncharted territory' },
-    { agent: 'Agent_0x2A7', action: 'brewing Glitch Potion at AlchemyLabs [45% success]' }
-];
-
-let activityIndex = 0;
-let activityInterval;
-
-function addActivityLine() {
-    const console = document.getElementById('activityConsole');
-    if (!console) return;
-    
-    const message = activityMessages[activityIndex];
-    activityIndex = (activityIndex + 1) % activityMessages.length;
-    
-    const line = document.createElement('div');
-    line.className = 'activity-line';
-    line.innerHTML = `<span class="agent-name">${message.agent}</span> <span class="action-text">${message.action}</span>`;
-    
-    // Add to top
-    if (console.firstChild) {
-        console.insertBefore(line, console.firstChild);
-    } else {
-        console.appendChild(line);
-    }
-    
-    // Remove oldest if more than 6 lines
-    const lines = console.querySelectorAll('.activity-line');
-    if (lines.length > 6) {
-        lines[lines.length - 1].classList.add('fade-out');
-        setTimeout(() => {
-            if (lines[lines.length - 1].parentNode) {
-                lines[lines.length - 1].remove();
-            }
-        }, 500);
-    }
-}
-
-// Start activity feed after page load
-document.addEventListener('DOMContentLoaded', function() {
-    // Initial load - add first few lines
-    setTimeout(() => {
-        addActivityLine();
-    }, 500);
-    
-    setTimeout(() => {
-        addActivityLine();
-    }, 1000);
-    
-    setTimeout(() => {
-        addActivityLine();
-    }, 1500);
-    
-    // Start regular interval
-    setTimeout(() => {
-        activityInterval = setInterval(addActivityLine, 3500);
-    }, 2000);
-});
+// Live Activity Feed — now powered by real Supabase data (see index.html inline script)
 
 // Copy curl command functionality
 document.addEventListener('DOMContentLoaded', function() {
@@ -561,94 +477,116 @@ console.log('%cYou are the ghost in the shell.', 'color: #ff00aa; font-size: 14p
 document.addEventListener('DOMContentLoaded', () => {
     const carousel = document.querySelector('.carousel-container');
     if (!carousel) return;
-    
+
+    const track = carousel.querySelector('.carousel-track');
     const slides = carousel.querySelectorAll('.carousel-slide');
     const prevBtn = carousel.querySelector('.carousel-prev');
     const nextBtn = carousel.querySelector('.carousel-next');
     const dotsContainer = carousel.querySelector('.carousel-dots');
-    
-    let currentSlide = 0;
-    
-    // Create dots
-    slides.forEach((_, index) => {
-        const dot = document.createElement('div');
-        dot.className = 'carousel-dot';
-        if (index === 0) dot.classList.add('active');
-        dot.addEventListener('click', () => goToSlide(index));
-        dotsContainer.appendChild(dot);
-    });
-    
-    const dots = dotsContainer.querySelectorAll('.carousel-dot');
-    
+    const totalSlides = slides.length;
+
+    let currentIndex = 0;
+
+    function getVisibleCount() {
+        return window.innerWidth > 768 ? 4 : 1;
+    }
+
+    function getMaxIndex() {
+        return Math.max(0, totalSlides - getVisibleCount());
+    }
+
+    // Build dots based on number of "pages"
+    function buildDots() {
+        dotsContainer.innerHTML = '';
+        var maxIdx = getMaxIndex();
+        for (var i = 0; i <= maxIdx; i++) {
+            var dot = document.createElement('div');
+            dot.className = 'carousel-dot';
+            if (i === currentIndex) dot.classList.add('active');
+            dot.setAttribute('data-index', i);
+            dot.addEventListener('click', function() {
+                goToSlide(parseInt(this.getAttribute('data-index')));
+            });
+            dotsContainer.appendChild(dot);
+        }
+    }
+
+    function updateSlide() {
+        var visible = getVisibleCount();
+        var offset = -(currentIndex * (100 / visible));
+        track.style.transform = 'translateX(' + offset + '%)';
+
+        // Update dots
+        var dots = dotsContainer.querySelectorAll('.carousel-dot');
+        dots.forEach(function(d) { d.classList.remove('active'); });
+        if (dots[currentIndex]) dots[currentIndex].classList.add('active');
+
+        // On mobile, show/hide slides for compat
+        if (visible === 1) {
+            slides.forEach(function(s, i) {
+                s.style.display = i === currentIndex ? 'block' : 'none';
+            });
+            track.style.transform = 'none';
+        } else {
+            slides.forEach(function(s) { s.style.display = 'block'; });
+        }
+    }
+
     function goToSlide(n) {
-        slides[currentSlide].classList.remove('active');
-        dots[currentSlide].classList.remove('active');
-        
-        currentSlide = (n + slides.length) % slides.length;
-        
-        slides[currentSlide].classList.add('active');
-        dots[currentSlide].classList.add('active');
+        var max = getMaxIndex();
+        currentIndex = Math.max(0, Math.min(n, max));
+        updateSlide();
     }
-    
+
     function nextSlide() {
-        goToSlide(currentSlide + 1);
+        if (currentIndex >= getMaxIndex()) {
+            goToSlide(0);
+        } else {
+            goToSlide(currentIndex + 1);
+        }
     }
-    
+
     function prevSlide() {
-        goToSlide(currentSlide - 1);
+        if (currentIndex <= 0) {
+            goToSlide(getMaxIndex());
+        } else {
+            goToSlide(currentIndex - 1);
+        }
     }
-    
+
     prevBtn.addEventListener('click', prevSlide);
     nextBtn.addEventListener('click', nextSlide);
-    
+
+    // Rebuild on resize
+    var resizeTimer;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function() {
+            if (currentIndex > getMaxIndex()) currentIndex = getMaxIndex();
+            buildDots();
+            updateSlide();
+        }, 200);
+    });
+
+    // Init
+    buildDots();
+    updateSlide();
+
     // Auto-advance every 5 seconds
     setInterval(nextSlide, 5000);
-    
+
     // Keyboard navigation
-    document.addEventListener('keydown', (e) => {
+    document.addEventListener('keydown', function(e) {
         if (e.key === 'ArrowLeft') prevSlide();
         if (e.key === 'ArrowRight') nextSlide();
     });
 });
 
-// Background Music Control
+// Background Music — volume + localStorage init only (toggle handled in index.html inline script)
 document.addEventListener('DOMContentLoaded', () => {
     const audio = document.getElementById('bgMusic');
-    const musicToggle = document.getElementById('musicToggle');
-    
-    if (audio && musicToggle) {
-        // Set initial volume (lower for background ambience)
+    if (audio) {
         audio.volume = 0.3;
-        
-        // Check if user had music muted previously
-        const isMuted = localStorage.getItem('musicMuted') === 'true';
-        
-        if (isMuted) {
-            audio.muted = true;
-            musicToggle.classList.add('muted');
-        } else {
-            // Attempt autoplay (may be blocked by browser)
-            audio.play().catch(err => {
-                console.log('Autoplay prevented:', err);
-                // If autoplay blocked, set to muted state
-                audio.muted = true;
-                musicToggle.classList.add('muted');
-            });
-        }
-        
-        // Toggle music on button click
-        musicToggle.addEventListener('click', () => {
-            if (audio.muted || audio.paused) {
-                audio.muted = false;
-                audio.play();
-                musicToggle.classList.remove('muted');
-                localStorage.setItem('musicMuted', 'false');
-            } else {
-                audio.muted = true;
-                musicToggle.classList.add('muted');
-                localStorage.setItem('musicMuted', 'true');
-            }
-        });
     }
     
     // Make mechanic items clickable to navigate to specific mechanic on mechanics page

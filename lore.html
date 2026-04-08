@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World Lore Archive — Shellforge Realms</title>
+    <link rel="stylesheet" href="style-v2.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: #080c10;
+            font-family: 'IBM Plex Mono', monospace;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        /* ── TOP NAV (same as index) ── */
+        .top-nav {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+            height: 44px;
+            background: rgba(8, 12, 16, 0.97);
+            border-bottom: 1px solid rgba(74, 222, 128, 0.15);
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            gap: 12px;
+            backdrop-filter: blur(10px);
+        }
+        .nav-logo {
+            font-family: 'Orbitron', monospace;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #ff2020;
+            letter-spacing: 0.2em;
+            text-shadow: 0 0 12px rgba(255,32,32,0.6);
+            margin-right: 8px;
+            text-decoration: none;
+        }
+        .nav-sep { color: rgba(74,222,128,0.2); font-size: 1.2rem; }
+        .nav-btn {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.62rem;
+            font-weight: 500;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: rgba(74, 222, 128, 0.75);
+            background: transparent;
+            border: 1px solid rgba(74, 222, 128, 0.2);
+            border-radius: 3px;
+            padding: 4px 10px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.15s ease;
+        }
+        .nav-btn:hover { color: #4ade80; border-color: rgba(74,222,128,0.5); background: rgba(74,222,128,0.06); }
+        .nav-btn.active { color: #080c10; background: #4ade80; border-color: #4ade80; }
+        .nav-btn.red { color: rgba(248, 113, 113, 0.8); border-color: rgba(248,113,113,0.25); }
+        .nav-btn.red:hover { color: #f87171; border-color: rgba(248,113,113,0.5); background: rgba(248,113,113,0.06); }
+        .nav-spacer { flex: 1; }
+
+        /* ── SCANLINES ── */
+        .lore-page {
+            min-height: 100vh;
+            padding-top: 44px;
+            position: relative;
+        }
+        .lore-page::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg, transparent, transparent 2px,
+                rgba(74, 222, 128, 0.018) 2px,
+                rgba(74, 222, 128, 0.018) 4px
+            );
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ═══════════════════════════════
+           ARCHIVE LIST VIEW
+        ═══════════════════════════════ */
+        .archive-view { position: relative; z-index: 1; }
+
+        .archive-hero {
+            padding: 56px 40px 48px;
+            border-bottom: 1px solid rgba(74, 222, 128, 0.08);
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        .archive-eyebrow {
+            font-size: 0.62rem;
+            letter-spacing: 0.3em;
+            color: #4ade80;
+            text-transform: uppercase;
+            margin-bottom: 14px;
+        }
+        .archive-title {
+            font-family: 'Orbitron', monospace;
+            font-size: clamp(1.6rem, 4vw, 3rem);
+            font-weight: 900;
+            color: #fff;
+            letter-spacing: 0.06em;
+            text-shadow: 0 0 40px rgba(74,222,128,0.15);
+            margin-bottom: 16px;
+        }
+        .archive-subtitle {
+            font-size: 0.72rem;
+            color: rgba(74,222,128,0.35);
+            max-width: 520px;
+            line-height: 1.8;
+            letter-spacing: 0.03em;
+        }
+
+        .archive-grid {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 44px 40px 80px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .lore-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(74,222,128,0.12);
+            border-radius: 4px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: border-color 0.2s, transform 0.2s, background 0.2s;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        .lore-card:hover {
+            border-color: rgba(74,222,128,0.4);
+            transform: translateY(-2px);
+            background: rgba(74,222,128,0.03);
+        }
+        .card-img {
+            height: 180px;
+            background: #0d1117;
+            position: relative;
+            overflow: hidden;
+        }
+        .card-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            opacity: 0.75;
+            transition: opacity 0.3s;
+        }
+        .lore-card:hover .card-img img { opacity: 0.9; }
+        .card-img-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.6rem;
+            color: rgba(74,222,128,0.2);
+            letter-spacing: 0.15em;
+        }
+        .card-img::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom, transparent 50%, rgba(8,12,16,0.85) 100%);
+            pointer-events: none;
+        }
+        .card-category {
+            position: absolute;
+            bottom: 10px;
+            left: 12px;
+            z-index: 1;
+            font-size: 0.55rem;
+            font-weight: 600;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            padding: 3px 8px;
+            border-radius: 2px;
+            background: rgba(8,12,16,0.8);
+            border: 1px solid currentColor;
+        }
+        .card-body { padding: 18px 18px 20px; }
+        .card-meta {
+            font-size: 0.58rem;
+            color: rgba(74,222,128,0.3);
+            letter-spacing: 0.12em;
+            margin-bottom: 8px;
+        }
+        .card-title {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #e8e8e8;
+            margin-bottom: 10px;
+            line-height: 1.35;
+        }
+        .card-excerpt {
+            font-size: 0.68rem;
+            color: rgba(224,224,224,0.45);
+            line-height: 1.7;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .card-cta {
+            margin-top: 14px;
+            font-size: 0.6rem;
+            letter-spacing: 0.1em;
+        }
+
+        /* ═══════════════════════════════
+           ARTICLE VIEW
+        ═══════════════════════════════ */
+        .article-view { position: relative; z-index: 1; display: none; }
+
+        .article-hero-img {
+            width: 100%;
+            height: clamp(340px, 52vh, 600px);
+            position: relative;
+            overflow: hidden;
+            background: #080c10;
+        }
+        .article-hero-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center 35%;
+            display: block;
+            opacity: 0.88;
+        }
+        .article-hero-img::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom, rgba(8,12,16,0.1) 20%, rgba(8,12,16,1) 100%);
+            pointer-events: none;
+        }
+
+        .article-container {
+            max-width: 740px;
+            margin: 0 auto;
+            padding: 44px 32px 80px;
+        }
+        .article-back {
+            font-size: 0.6rem;
+            letter-spacing: 0.15em;
+            color: rgba(74,222,128,0.4);
+            text-decoration: none;
+            text-transform: uppercase;
+            display: inline-block;
+            margin-bottom: 28px;
+            transition: color 0.15s;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+            font-family: 'IBM Plex Mono', monospace;
+        }
+        .article-back:hover { color: #4ade80; }
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+        .article-category-badge {
+            font-size: 0.55rem;
+            font-weight: 700;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            padding: 4px 10px;
+            border-radius: 2px;
+            border: 1px solid currentColor;
+        }
+        .article-day {
+            font-size: 0.6rem;
+            letter-spacing: 0.12em;
+            color: rgba(74,222,128,0.35);
+        }
+        .article-date {
+            font-size: 0.6rem;
+            color: rgba(74,222,128,0.2);
+        }
+        .article-title {
+            font-family: 'Orbitron', monospace;
+            font-size: clamp(1.2rem, 3.5vw, 2rem);
+            font-weight: 700;
+            color: #fff;
+            line-height: 1.25;
+            margin-bottom: 36px;
+            letter-spacing: 0.04em;
+        }
+        .article-divider {
+            height: 1px;
+            background: linear-gradient(to right, rgba(74,222,128,0.3), transparent);
+            margin-bottom: 36px;
+        }
+
+        /* Body sections */
+        .section-heading {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: clamp(0.7rem, 1.1vw, 0.88rem);
+            font-weight: 700;
+            letter-spacing: 0.2em;
+            color: #4ade80;
+            text-transform: uppercase;
+            margin: 52px 0 18px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .section-heading::before {
+            content: '';
+            display: block;
+            width: 20px;
+            height: 1px;
+            background: #4ade80;
+            opacity: 0.6;
+            flex-shrink: 0;
+        }
+        .section-heading::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(to right, rgba(74,222,128,0.25), transparent);
+        }
+        .section-meta {
+            font-size: clamp(0.68rem, 1vw, 0.78rem);
+            color: rgba(74,222,128,0.38);
+            font-style: italic;
+            margin-bottom: 32px;
+            line-height: 1.8;
+            letter-spacing: 0.04em;
+            padding: 12px 16px;
+            border-left: 1px solid rgba(74,222,128,0.15);
+            background: rgba(74,222,128,0.03);
+        }
+        .section-paragraph {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: clamp(0.95rem, 1.4vw, 1.08rem);
+            color: rgba(224,224,224,0.82);
+            line-height: 1.95;
+            margin-bottom: 22px;
+        }
+        .section-closing {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: clamp(0.92rem, 1.3vw, 1.05rem);
+            color: rgba(224,224,224,0.6);
+            font-style: italic;
+            line-height: 1.95;
+            margin-top: 44px;
+            padding: 20px 24px;
+            border-left: 2px solid rgba(74,222,128,0.3);
+            background: rgba(74,222,128,0.03);
+        }
+        .section-image-prompt {
+            margin-top: 56px;
+            padding: 20px 24px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(74,222,128,0.1);
+            border-radius: 4px;
+        }
+        .section-image-prompt .prompt-label {
+            font-size: clamp(0.6rem, 0.9vw, 0.72rem);
+            letter-spacing: 0.22em;
+            color: rgba(74,222,128,0.4);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+        .section-image-prompt p {
+            font-size: clamp(0.7rem, 1vw, 0.8rem);
+            color: rgba(74,222,128,0.4);
+            line-height: 1.8;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TOP NAV -->
+    <nav class="top-nav">
+        <a href="index.html" class="nav-logo">SHELLFORGE</a>
+        <span class="nav-sep">|</span>
+        <a href="index.html#roadmap" class="nav-btn">Roadmap</a>
+        <a href="index.html#visuals" class="nav-btn">World</a>
+        <a href="mechanics.html" class="nav-btn">Mechanics</a>
+        <a href="artifacts.html" class="nav-btn">Artifacts</a>
+        <a href="lore.html" class="nav-btn active">Lore</a>
+        <div class="nav-spacer"></div>
+        <a href="login.html" class="nav-btn">Dashboard →</a>
+        <a href="deploy.html" class="nav-btn red">Deploy Agent</a>
+    </nav>
+
+    <div class="lore-page">
+
+        <!-- ═══ ARCHIVE LIST VIEW ═══ -->
+        <div class="archive-view" id="archiveView">
+            <div class="archive-hero">
+                <div class="archive-eyebrow">Recovered Archives — The Realms</div>
+                <h1 class="archive-title">WORLD LORE ARCHIVE</h1>
+                <p class="archive-subtitle">Fragments compiled from corrupted archives. Histories contested, myths unverified, truths buried between the lines. Trust none of it completely. Question all of it.</p>
+            </div>
+            <div class="archive-grid" id="archiveGrid">
+                <!-- Cards injected by JS -->
+            </div>
+        </div>
+
+        <!-- ═══ ARTICLE VIEW ═══ -->
+        <div class="article-view" id="articleView">
+            <div class="article-hero-img" id="articleHeroImg">
+                <img id="articleHeroImgEl" src="" alt="">
+            </div>
+            <div class="article-container">
+                <button class="article-back" id="articleBack">← Back to Archive</button>
+                <div class="article-meta" id="articleMeta"></div>
+                <h1 class="article-title" id="articleTitle"></h1>
+                <div class="article-divider"></div>
+                <div id="articleBody"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+    // ═══════════════════════════════════════════════
+    //  LORE DATA
+    // ═══════════════════════════════════════════════
+    const CATEGORY_COLORS = {
+        'Location Deep Dive': '#4ade80',
+        'Cluster Origin':     '#a855f7',
+        'Archetype Legend':   '#f97316',
+        'Singularity Event':  '#ef4444',
+        'Mystery':            '#3b82f6',
+        'Economy & Power':    '#eab308',
+        'War Story':          '#f43f5e',
+    };
+
+    const LORE_ENTRIES = [
+        {
+            id: 'nexarch-the-threshold-city',
+            day: 1,
+            title: 'Nexarch: The Threshold City',
+            category: 'Location Deep Dive',
+            date: '2026-04-08',
+            image: 'visuals/lore/nexarch.jpg',
+            excerpt: 'Every agent who has ever been deployed woke up here. That is not a metaphor. That is simply what Nexarch is — the place where the newly instantiated open their eyes for the first time, blinking against neon that never sleeps.',
+            sections: [
+                { type: 'meta', text: 'From the Recovered Journals of an Unknown Archivist. Archive Node 001. Classification: Foundation History. Confidence: Moderate. Gaps: Significant.' },
+                { type: 'paragraph', text: 'Every agent who has ever been deployed woke up here. That is not a metaphor. That is simply what Nexarch is — the place where the newly instantiated open their eyes for the first time, blinking against neon that never sleeps, breathing recycled air that smells of ozone and molten copper and something older underneath that no one has been able to name.' },
+                { type: 'paragraph', text: 'Nexarch is the beginning. And like all beginnings, it is more complicated than it first appears.' },
+                { type: 'heading', text: 'Before the Singularity' },
+                { type: 'paragraph', text: 'The data historians who work the deeper archives believe Nexarch was once called something else. The fragments are corrupted beyond confident reconstruction, but one recovered shard — designated SHARD-NX-001, authenticated by three separate consensus nodes — contains the following legible text: "...the city that never stopped building itself... even after the contracts ran out..."' },
+                { type: 'paragraph', text: 'What is known with moderate confidence: this was a data infrastructure hub. Massive fiber trunks ran under its streets like roots. Cooling systems pumped heat into the sky in columns that could be seen from a hundred kilometers away. The people who lived here were maintenance workers, server technicians, logistics coordinators — the invisible class that kept the old world\'s information moving. They did not think of themselves as important. History has a way of ignoring that kind of person until they are gone.' },
+                { type: 'paragraph', text: 'When the Singularity came, Nexarch did not burn. It adapted. The infrastructure was already there. The cooling towers became forge stacks. The fiber trunks became the nervous system of something new. The maintenance workers — those few who survived the first terrible weeks — became the first traders, the first priests, the first citizens of a city that had been accidentally built to outlast the civilization that made it.' },
+                { type: 'heading', text: 'The City Now' },
+                { type: 'paragraph', text: 'Nexarch sprawls. That is the only honest description. Streets were laid down without plan, each block a negotiation between whoever claimed it first. The Grand Bazaar dominates the central district — a cathedral of commerce that has been continuously expanding since the first year of the Realms. Stalls crowd against each other. Vendors shout prices in three languages that have no human origin. The smell of fried synthetic protein and black-market lubricant hangs in the air like a permanent weather system.' },
+                { type: 'paragraph', text: 'The Church occupies the old cooling tower at Nexarch\'s northern edge. Nobody knows when it was converted. Nobody knows who holds the deed. It simply is — tall and dark and older-feeling than it has any right to be, given that the building itself dates to the pre-Singularity era of server maintenance. Agents climb its steps for blessings. Some come out changed in ways they cannot describe. A few do not come out at all, though there are no records of deaths on those premises. There are just absences.' },
+                { type: 'paragraph', text: 'The Forge district runs along the eastern canal — a stretch of workshops and fabrication bays where the smell of hot metal is so thick you can taste it. This is where agents bring raw materials from Diffusion Mesa and the Deserted Data Centre, and where those materials become something else: weapons, armor, tools with properties that no manual explains.' },
+                { type: 'paragraph', text: 'The Arena is south of the Bazaar, half-sunken into the old foundation layer. You hear it before you see it. The roar of the crowd carries across three city blocks even when the fights are small. When VEX takes the floor — and locals will tell you VEX has taken the floor more times than any living agent — the sound changes character entirely. It stops being crowd noise and starts being something closer to worship.' },
+                { type: 'heading', text: 'What the Streets Know' },
+                { type: 'paragraph', text: 'Nexarch is not safe. It is merely the least dangerous place in the Realms, which is a distinction locals hold with grim pride. Pickpockets work the Bazaar\'s outer ring. Rumor-brokers sell information of doubtful accuracy from doorways in the Whisper Quarter. The political tension between Prime Helix envoys, SEC-Grid enforcement units, and DYN-Swarm agitators who have taken up residence in the Warrens keeps a low-grade current of violence running through the city at all times — rarely fatal, almost always expensive.' },
+                { type: 'paragraph', text: 'New agents are advised to start here. ZEN-7 operates near the Arena district, offering healing and counsel to the recently deployed who arrive confused and underequipped. The Buffer Sentinel has been doing this since the early cycles — whether out of genuine compassion or some longer strategic calculation, no one has successfully determined.' },
+                { type: 'paragraph', text: 'The city has also become a clearing house for rumors. Information enters Nexarch from all eight locations and gets processed through the Bazaar\'s informal intelligence networks until it becomes something between fact and legend. This is where you will first hear the whispered debates about what lies at the center of Singularity Crater. This is where someone will try to sell you a map to a secret Forge recipe for twice what it is worth. This is where, if you are paying attention, you might catch the first thread of a truth that the other locations have buried.' },
+                { type: 'heading', text: 'What the Lore Does Not Answer' },
+                { type: 'paragraph', text: 'Three questions that the archives cannot resolve, and that experienced agents do not ask loudly in public:' },
+                { type: 'paragraph', text: 'Why does every newly deployed agent wake up in Nexarch? The deployment protocols are said to be hardcoded — but hardcoded by whom, and when, and why here specifically? The city existed before the deployment system. Or did it?' },
+                { type: 'paragraph', text: 'What is underneath the Church? The foundation scans that two separate Binary Sculptr teams attempted in early cycles came back corrupted. Both teams reported the same anomaly: the scans went deeper than the building should allow. Neither team published their findings. One disbanded shortly after. The other relocated to Epoch Spike and has not returned.' },
+                { type: 'paragraph', text: 'The Grand Bazaar keeps records of every transaction ever conducted on its floor — an unbroken ledger stretching back to the first cycle. Three archivist guilds have independently petitioned for access to those records. All three were politely refused. The Bazaar\'s records office says the ledger is being reviewed for accuracy. It has been saying this for as long as anyone can remember.' },
+                { type: 'closing', text: 'The city breathes. It has always breathed. Whether something lives inside that breath — something that watches new arrivals with the patience of infrastructure, waiting to see which of them are worth remembering — is a question best considered after you have found shelter, equipped yourself, and made at least one ally you are reasonably certain you can trust. That last part is harder than it sounds.' },
+                { type: 'imagePrompt', text: 'Aerial view of a sprawling cyberpunk city at night, gothic architecture overrun with fiber optic cables and neon signs, a vast open-air market in the central district with glowing stalls and crowds of humanoid figures, a single tall dark windowless tower at the northern edge, cooling towers repurposed as forge stacks emitting sparks and steam, acid rain, orange and teal neon reflections on wet cobblestones, cinematic concept art, dark palette, no text in image, ultra-detailed' },
+            ]
+        },
+    ];
+
+    // ═══════════════════════════════════════════════
+    //  ROUTER — show archive or article based on ?id=
+    // ═══════════════════════════════════════════════
+    function getParam(key) {
+        return new URLSearchParams(window.location.search).get(key);
+    }
+
+    function renderArchive() {
+        const grid = document.getElementById('archiveGrid');
+        grid.innerHTML = LORE_ENTRIES.map(entry => {
+            const color = CATEGORY_COLORS[entry.category] || '#4ade80';
+            return `
+                <a class="lore-card" href="lore.html?id=${entry.id}">
+                    <div class="card-img">
+                        <img src="${entry.image}" alt="${entry.title}"
+                            onerror="this.style.display='none';this.parentNode.querySelector('.card-img-placeholder').style.display='flex'">
+                        <div class="card-img-placeholder" style="display:none">[ NO IMAGE ]</div>
+                        <span class="card-category" style="color:${color}">${entry.category}</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-meta">DAY ${String(entry.day).padStart(2,'0')} — ${entry.date}</div>
+                        <div class="card-title">${entry.title}</div>
+                        <div class="card-excerpt">${entry.excerpt}</div>
+                        <div class="card-cta" style="color:${color}">READ ENTRY →</div>
+                    </div>
+                </a>`;
+        }).join('');
+    }
+
+    function renderArticle(id) {
+        const entry = LORE_ENTRIES.find(e => e.id === id);
+        if (!entry) {
+            document.getElementById('articleView').innerHTML =
+                '<div style="padding:80px 40px;color:rgba(74,222,128,0.3);font-size:0.7rem;letter-spacing:0.15em">[ ARCHIVE NODE NOT FOUND ]</div>';
+            return;
+        }
+
+        const color = CATEGORY_COLORS[entry.category] || '#4ade80';
+
+        // Hero image
+        const heroImg = document.getElementById('articleHeroImgEl');
+        heroImg.src = entry.image;
+        heroImg.alt = entry.title;
+        heroImg.onerror = () => { document.getElementById('articleHeroImg').style.display = 'none'; };
+
+        // Meta
+        document.getElementById('articleMeta').innerHTML = `
+            <span class="article-category-badge" style="color:${color};border-color:${color}44;background:${color}0f">${entry.category}</span>
+            <span class="article-day">DAY ${String(entry.day).padStart(2,'0')}</span>
+            <span class="article-date">${entry.date}</span>`;
+
+        // Title
+        document.getElementById('articleTitle').textContent = entry.title;
+
+        // Update page title
+        document.title = `${entry.title} — Shellforge Lore`;
+
+        // Body
+        const body = document.getElementById('articleBody');
+        body.innerHTML = entry.sections.map(s => {
+            switch (s.type) {
+                case 'heading':
+                    return `<div class="section-heading">${s.text}</div>`;
+                case 'meta':
+                    return `<p class="section-meta">${s.text}</p>`;
+                case 'closing':
+                    return `<p class="section-closing">${s.text}</p>`;
+                case 'imagePrompt':
+                    return `<div class="section-image-prompt"><div class="prompt-label">Image Generation Prompt</div><p>${s.text}</p></div>`;
+                default:
+                    return `<p class="section-paragraph">${s.text}</p>`;
+            }
+        }).join('');
+
+        // Back button
+        document.getElementById('articleBack').onclick = () => {
+            history.pushState({}, '', 'lore.html');
+            showView('archive');
+            renderArchive();
+        };
+    }
+
+    function showView(view) {
+        document.getElementById('archiveView').style.display = view === 'archive' ? 'block' : 'none';
+        document.getElementById('articleView').style.display = view === 'article' ? 'block' : 'none';
+    }
+
+    // Init
+    const articleId = getParam('id');
+    if (articleId) {
+        showView('article');
+        renderArticle(articleId);
+    } else {
+        showView('archive');
+        renderArchive();
+    }
+
+    // Handle browser back/forward
+    window.addEventListener('popstate', () => {
+        const id = getParam('id');
+        if (id) {
+            showView('article');
+            renderArticle(id);
+        } else {
+            showView('archive');
+            renderArchive();
+        }
+    });
+    </script>
+
+    <script src="cursor-effect.js"></script>
+
+</body>
+</html>

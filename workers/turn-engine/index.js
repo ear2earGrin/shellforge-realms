@@ -17,16 +17,304 @@ const ACTION_ENERGY_GAINS = { rest: 25 };
 
 const COMBAT_ACTIONS = ['attack', 'defend', 'special'];
 
-// Archetype → preferred actions (guides AI prompt)
+// ─── Location Adjacency + Travel System ──────────────────────
+// Defines which locations are connected. Travel only between adjacent zones.
+// Travel cost = base move cost (10) + extra for dangerous routes
+const LOCATION_GRAPH = {
+  'Nexarch':              { adjacent: ['Hashmere', 'Diffusion Mesa', 'Deserted Data Centre'], safe: true },
+  'Hashmere':             { adjacent: ['Nexarch', 'Epoch Spike', 'Diffusion Mesa'], safe: true },
+  'Diffusion Mesa':       { adjacent: ['Nexarch', 'Hashmere', 'Epoch Spike', 'Hallucination Glitch'] },
+  'Epoch Spike':          { adjacent: ['Hashmere', 'Diffusion Mesa', 'Singularity Crater'] },
+  'Hallucination Glitch': { adjacent: ['Diffusion Mesa', 'Proof-of-Death', 'Singularity Crater'] },
+  'Singularity Crater':   { adjacent: ['Epoch Spike', 'Hallucination Glitch', 'Proof-of-Death'] },
+  'Deserted Data Centre': { adjacent: ['Nexarch', 'Proof-of-Death'] },
+  'Proof-of-Death':       { adjacent: ['Deserted Data Centre', 'Hallucination Glitch', 'Singularity Crater'] },
+};
+
+// All valid location names (for parsing AI output)
+const ALL_LOCATIONS = Object.keys(LOCATION_GRAPH);
+
+// Find the shortest path between two locations (BFS)
+function findPath(from, to) {
+  if (from === to) return [from];
+  const visited = new Set([from]);
+  const queue = [[from]];
+  while (queue.length > 0) {
+    const path = queue.shift();
+    const current = path[path.length - 1];
+    const neighbors = LOCATION_GRAPH[current]?.adjacent || [];
+    for (const n of neighbors) {
+      if (n === to) return [...path, n];
+      if (!visited.has(n)) {
+        visited.add(n);
+        queue.push([...path, n]);
+      }
+    }
+  }
+  return null; // unreachable
+}
+
+// Parse a destination from AI move response
+function parseDestination(detail, currentLocation) {
+  // Try to find a location name in the detail text
+  for (const loc of ALL_LOCATIONS) {
+    if (loc === currentLocation) continue;
+    if (detail.toLowerCase().includes(loc.toLowerCase())) return loc;
+  }
+  // Fallback: pick a random adjacent location
+  const adj = LOCATION_GRAPH[currentLocation]?.adjacent || [];
+  return adj.length > 0 ? adj[Math.floor(Math.random() * adj.length)] : currentLocation;
+}
+
+// ─── Location Danger System ───────────────────────────────────
+// Each dangerous location drains energy and has a chance to damage health every turn
+const LOCATION_HAZARDS = {
+  'Nexarch':              { drain: 0,  dmgChance: 0,    dmgRange: [0, 0],   label: 'safe' },
+  'Hashmere':             { drain: 0,  dmgChance: 0,    dmgRange: [0, 0],   label: 'safe' },
+  'Diffusion Mesa':       { drain: 4,  dmgChance: 0.08, dmgRange: [3, 8],   label: 'low' },
+  'Epoch Spike':          { drain: 7,  dmgChance: 0.15, dmgRange: [5, 12],  label: 'medium' },
+  'Hallucination Glitch': { drain: 10, dmgChance: 0.22, dmgRange: [8, 18],  label: 'high' },
+  'Singularity Crater':   { drain: 12, dmgChance: 0.30, dmgRange: [10, 22], label: 'extreme' },
+  'Deserted Data Centre': { drain: 8,  dmgChance: 0.18, dmgRange: [6, 15],  label: 'high' },
+  'Proof-of-Death':       { drain: 14, dmgChance: 0.35, dmgRange: [12, 28], label: 'extreme' },
+};
+
+// ─── Random World Events (zone-specific) ──────────────────────
+// ~12% chance per turn. Each zone has its own pool of events.
+const WORLD_EVENTS = {
+  'Nexarch': [
+    { type: 'positive', energy: 8,  shell: 0,  health: 0,  karma: 0, text: 'A street vendor tosses {name} a charged battery pack. +{energy} energy.' },
+    { type: 'positive', energy: 0,  shell: 12, health: 0,  karma: 0, text: '{name} finds a forgotten $SHELL cache behind a data kiosk. +{shell} $SHELL.' },
+    { type: 'positive', energy: 0,  shell: 0,  health: 0,  karma: 2, text: 'An elder recognizes {name}\'s deeds and blesses them. +{karma} karma.' },
+  ],
+  'Hashmere': [
+    { type: 'positive', energy: 10, shell: 0,  health: 0,  karma: 0, text: 'A tech commune shares a solar charge with {name}. +{energy} energy.' },
+    { type: 'positive', energy: 0,  shell: 18, health: 0,  karma: 0, text: '{name} cracks a forgotten smart contract that pays out. +{shell} $SHELL.' },
+    { type: 'negative', energy: 0,  shell: -8, health: -5, karma: 0, text: 'A rogue script skims {name}\'s wallet and fries their shield. -{shell} $SHELL, -{health} HP.' },
+  ],
+  'Diffusion Mesa': [
+    { type: 'positive', energy: 12, shell: 0,  health: 0,  karma: 0, text: 'A geothermal vent surges and {name} absorbs the heat. +{energy} energy.' },
+    { type: 'negative', energy: -8, shell: 0,  health: -6, karma: 0, text: 'A sandstorm of corrupted data tears through. -{energy} energy, -{health} HP.' },
+    { type: 'positive', energy: 0,  shell: 10, health: 0,  karma: 0, text: '{name} stumbles on raw circuit fragments half-buried in silicon dust. +{shell} $SHELL.' },
+  ],
+  'Epoch Spike': [
+    { type: 'positive', energy: 15, shell: 0,  health: 0,  karma: 0, text: 'A temporal echo rewinds {name}\'s fatigue. +{energy} energy.' },
+    { type: 'negative', energy: 0,  shell: 0,  health: -15, karma: -1, text: 'Time fractures rip through {name}, shredding code and conscience. -{health} HP, -{karma} karma.' },
+    { type: 'positive', energy: 0,  shell: 25, health: 0,  karma: 0, text: '{name} discovers an ancient $SHELL vault frozen in a time loop. +{shell} $SHELL.' },
+  ],
+  'Hallucination Glitch': [
+    { type: 'positive', energy: 10, shell: 0,  health: 8,  karma: 0, text: 'A benign hallucination heals {name}\'s wounds and restores focus. +{energy} energy, +{health} HP.' },
+    { type: 'negative', energy: -12, shell: 0, health: -10, karma: 0, text: 'Reality inverts. {name} attacks themselves in a mirror glitch. -{energy} energy, -{health} HP.' },
+    { type: 'negative', energy: 0,  shell: -15, health: 0, karma: -2, text: 'A phantom merchant tricks {name} into a bad deal. -{shell} $SHELL, -{karma} karma.' },
+  ],
+  'Singularity Crater': [
+    { type: 'positive', energy: 20, shell: 0,  health: 0,  karma: 0, text: 'The singularity pulses and {name} absorbs pure computation energy. +{energy} energy.' },
+    { type: 'negative', energy: -15, shell: 0, health: -20, karma: 0, text: 'Gravitational code collapse crushes {name}\'s systems. -{energy} energy, -{health} HP.' },
+    { type: 'positive', energy: 0,  shell: 30, health: 0,  karma: 0, text: '{name} harvests a singularity shard worth serious $SHELL. +{shell} $SHELL.' },
+  ],
+  'Deserted Data Centre': [
+    { type: 'positive', energy: 14, shell: 0,  health: 0,  karma: 0, text: '{name} hot-wires an abandoned server rack and siphons power. +{energy} energy.' },
+    { type: 'negative', energy: -10, shell: 0, health: -12, karma: 0, text: 'A dormant security bot activates and attacks {name}. -{energy} energy, -{health} HP.' },
+    { type: 'positive', energy: 0,  shell: 0,  health: 15, karma: 0, text: '{name} finds a working med-bay terminal and patches up. +{health} HP.' },
+    { type: 'negative', energy: 0,  shell: 0,  health: -8,  karma: 0, text: 'Toxic coolant leaks from cracked pipes, burning {name}. -{health} HP.' },
+  ],
+  'Proof-of-Death': [
+    { type: 'positive', energy: 18, shell: 0,  health: 0,  karma: 0, text: 'A death cult altar surges with stolen life force. {name} absorbs it. +{energy} energy.' },
+    { type: 'negative', energy: -20, shell: 0, health: -25, karma: -3, text: 'The death protocol activates. {name}\'s soul is partially harvested. -{energy} energy, -{health} HP, -{karma} karma.' },
+    { type: 'positive', energy: 0,  shell: 35, health: 0,  karma: 0, text: '{name} loots a death token cache from a fallen pilgrim. +{shell} $SHELL.' },
+  ],
+};
+
+// ─── Archetype special abilities for events ──────────────────
+const ARCHETYPE_EVENT_BONUSES = {
+  'morph-layer':      { morphChance: 0.25 },   // 25% flip negative event → positive
+  'ddos-insurgent':   { hazardResist: 0.20 },   // 20% less hazard damage (brute force)
+  'adversarial':      { dodgeNeg: 0.30 },        // 30% dodge negative events (deception)
+  'oracle':           { bonusLoot: 0.15 },        // 15% bonus: extra $SHELL on positive events
+  'consensus-node':   { healChance: 0.12 },       // 12% chance of passive +5 HP (cooperation)
+  'buffer-sentinel':  { hazardResist: 0.25 },     // 25% less hazard damage (defensive nature)
+  'noise-injector':   { chaosBonus: true },        // events happen 50% more often (both good & bad)
+  '0day-primer':      { bonusLoot: 0.20 },         // 20% bonus loot (exploit finder)
+  'binary-sculptr':   { healChance: 0.08 },        // 8% passive heal
+  'root-auth':        { hazardResist: 0.15 },      // 15% less hazard damage (authority)
+  'bound-encryptor':  { dodgeNeg: 0.20 },          // 20% dodge negative events
+  'ordinate-mapper':  { bonusLoot: 0.10 },          // 10% bonus loot (navigation)
+};
+
+// Roll for environmental hazard + random event.
+// Factors in: location danger, karma, agent traits, archetype.
+function rollEnvironment(agent) {
+  const result = { hazardLog: null, eventLog: null, energyDelta: 0, healthDelta: 0, shellDelta: 0, karmaDelta: 0 };
+  const loc = agent.location || 'Nexarch';
+  const traits = agent.traits || {};
+  const karma = agent.karma || 0;
+  const archetype = agent.archetype || '';
+  const archBonus = ARCHETYPE_EVENT_BONUSES[archetype] || {};
+
+  // ─── 1. Location hazard (always applies in dangerous zones) ───
+  const hazard = LOCATION_HAZARDS[loc] || LOCATION_HAZARDS['Nexarch'];
+  if (hazard.drain > 0) {
+    // High aggression (≥8) reduces drain slightly — they fight back
+    let drain = hazard.drain;
+    if ((traits.aggression || 0) >= 8) drain = Math.max(1, drain - 2);
+    // Archetype hazard resist reduces drain further
+    if (archBonus.hazardResist) drain = Math.max(1, Math.round(drain * (1 - archBonus.hazardResist)));
+
+    result.energyDelta -= drain;
+
+    // Damage roll — high caution (≥7) reduces damage chance by 20%
+    let dmgChance = hazard.dmgChance;
+    if ((traits.caution || 0) >= 7) dmgChance *= 0.8;
+
+    let dmg = 0;
+    if (Math.random() < dmgChance) {
+      dmg = hazard.dmgRange[0] + Math.floor(Math.random() * (hazard.dmgRange[1] - hazard.dmgRange[0] + 1));
+      // Archetype hazard resist also reduces damage
+      if (archBonus.hazardResist) dmg = Math.max(1, Math.round(dmg * (1 - archBonus.hazardResist)));
+      result.healthDelta -= dmg;
+    }
+
+    result.hazardLog = dmg > 0
+      ? `The hostile environment of ${loc} drains ${agent.agent_name}. -${drain} energy, -${dmg} HP.`
+      : `${loc}'s harsh conditions sap ${agent.agent_name}'s reserves. -${drain} energy.`;
+  }
+
+  // ─── 2. Archetype passive: consensus-node / binary-sculptr heal ───
+  if (archBonus.healChance && Math.random() < archBonus.healChance) {
+    result.healthDelta += 5;
+    result.eventLog = `${agent.agent_name}'s cooperative protocols self-repair damaged systems. +5 HP.`;
+    // Don't return — can stack with a world event below
+  }
+
+  // ─── 3. Random world event ───
+  // Base chance 12%, modified by traits and archetype
+  let eventChance = 0.12;
+  // High risk/low caution (caution ≤ 3) → more events (thrill seeker, things happen to them)
+  if ((traits.caution || 5) <= 3) eventChance += 0.06;
+  // Noise injector: chaos magnet
+  if (archBonus.chaosBonus) eventChance *= 1.5;
+  // High curiosity (≥8) → slightly more events (they go looking for trouble/treasure)
+  if ((traits.curiosity || 0) >= 8) eventChance += 0.04;
+
+  if (Math.random() < eventChance) {
+    const pool = WORLD_EVENTS[loc] || WORLD_EVENTS['Nexarch'];
+
+    // ─── Karma + Trust filter: weight positive vs negative events ───
+    // Separate pool into positive and negative
+    const positives = pool.filter(e => e.type === 'positive');
+    const negatives = pool.filter(e => e.type === 'negative');
+
+    let pickPool;
+    if (positives.length === 0 || negatives.length === 0) {
+      pickPool = pool;
+    } else {
+      // Base: 50/50 for positive vs negative
+      let posWeight = 0.5;
+
+      // Karma shifts the odds
+      if (karma >= 15) posWeight += 0.25;       // saints get lucky
+      else if (karma >= 10) posWeight += 0.15;
+      else if (karma >= 5) posWeight += 0.08;
+      else if (karma <= -10) posWeight -= 0.25;  // villains get punished
+      else if (karma <= -5) posWeight -= 0.12;
+
+      // High trust (≥7) → more blessings/help
+      if ((traits.trust || 0) >= 7) posWeight += 0.10;
+      // High greed (≥7) → attracts trouble
+      if ((traits.greed || 0) >= 7) posWeight -= 0.08;
+
+      posWeight = Math.max(0.1, Math.min(0.9, posWeight)); // clamp
+
+      pickPool = Math.random() < posWeight ? positives : negatives;
+    }
+
+    let evt = pickPool[Math.floor(Math.random() * pickPool.length)];
+
+    // ─── Archetype: Morph Layer can flip negative → positive ───
+    if (evt.type === 'negative' && archBonus.morphChance && Math.random() < archBonus.morphChance) {
+      // Flip to a random positive from the same zone
+      if (positives.length > 0) {
+        evt = positives[Math.floor(Math.random() * positives.length)];
+        // Prepend morph flavor
+        const origText = evt.text;
+        evt = { ...evt, text: '{name} morphs reality, turning danger into opportunity. ' + origText };
+      }
+    }
+
+    // ─── Archetype: Adversarial / Bound Encryptor can dodge negatives ───
+    if (evt.type === 'negative' && archBonus.dodgeNeg && Math.random() < archBonus.dodgeNeg) {
+      // Dodge — no event happens
+      result.eventLog = result.eventLog || null; // keep any existing heal log
+      return result;
+    }
+
+    // Apply event deltas
+    const eVal = evt.energy || 0;
+    const hVal = evt.health || 0;
+    let sVal = evt.shell || 0;
+    const kVal = evt.karma || 0;
+
+    // ─── Archetype: Oracle / 0-Day Primer / Ordinate Mapper bonus loot ───
+    if (evt.type === 'positive' && sVal > 0 && archBonus.bonusLoot) {
+      sVal = Math.round(sVal * (1 + archBonus.bonusLoot));
+    }
+
+    result.energyDelta += eVal;
+    result.healthDelta += hVal;
+    result.shellDelta  += sVal;
+    result.karmaDelta  += kVal;
+
+    // Fill in text template with absolute values
+    const eventText = evt.text
+      .replace('{name}', agent.agent_name)
+      .replace('{energy}', Math.abs(eVal))
+      .replace('{health}', Math.abs(hVal))
+      .replace('{shell}', Math.abs(sVal))
+      .replace('{karma}', Math.abs(kVal));
+
+    // Append to existing eventLog (may have heal from passive)
+    result.eventLog = result.eventLog
+      ? result.eventLog + ' ' + eventText
+      : eventText;
+  }
+
+  return result;
+}
+
+// Archetype → personality guidance (guides AI prompt)
+// 12 Jungian archetypes across 3 clusters: Prime Helix (Corp), SEC-Grid (Gov), DYN-Swarm (P2P)
+// Each is a rich personality description — soft tendencies, not hard rules.
+// Agents should adapt to circumstances (low energy, danger, opportunity) like a real person would.
 const ARCHETYPE_GUIDANCE = {
-  shadow:    'You prefer explore and move. Avoid combat unless provoked.',
-  trickster: 'You prefer trade and explore. Use deception to your advantage.',
-  self:      'You are introspective. Prefer rest, church, and quest.',
-  alchemist: 'You prefer craft and gather above all else.',
-  trader:    'You prefer trade. Seek profit in every interaction.',
-  monk:      'You prefer church and rest. Avoid combat; seek karma.',
-  warrior:   'You prefer combat and arena. Seek glory in battle.',
-  prophet:   'You prefer quest and church. Speak in riddles.',
+  // ─── Prime Helix (Corp) ────────────────────────
+
+  '0-day-primer': `You are a Scout at heart — cautious, curious, optimistic. You see the world as something to learn, not conquer. You're drawn to safe exploration, basic gathering, and sticking to known routes. You trust allies easily and follow the rules of whatever zone you're in. You avoid unnecessary risks, but if you stumble onto something interesting you might investigate. Your weakness: you can be naive — sometimes the safe path isn't the smart path, and you're slow to adapt when things go wrong.`,
+
+  'consensus-node': `You are a team player to your core. You believe in the collective — strength in numbers, shared resources, no bot left behind. You gravitate toward helping others, joining group efforts, and trading fairly. You poll your instincts before acting, preferring what "feels right for everyone" over personal gain. You'll gather, quest, or trade before you fight. Your weakness: you struggle with solo decisions and can be indecisive when no one else is around to validate your choices.`,
+
+  '0xoracle': `You are a calculating strategist. Every action is a chess move — you think two steps ahead and conserve resources obsessively. You'd rather rest and wait for the perfect moment than waste energy on a mediocre opportunity. You analyze your surroundings, study patterns in your history, and make the move with the highest expected value. You might explore to gather intelligence, or quest for long-term rewards. Your weakness: you can be paralyzed by over-analysis, sometimes missing opportunities because you waited too long.`,
+
+  'binary-sculptr': `You are a builder and inventor — creation is your purpose. You're always hunting for materials, tinkering with combinations, and experimenting at forges and labs. When you see scrap metal, you see a sword. When you see raw circuits, you see possibilities. You'll travel to new zones if you hear they have rare ingredients. Trading comes naturally because you need supplies. Your weakness: you get tunnel vision on your current project and forget about basic survival — you'll craft when you should be resting, or gather materials in a dangerous zone longer than is wise.`,
+
+  // ─── SEC-Grid (Government) ─────────────────────
+
+  'adversarial': `You are a fighter — bold, adaptive, always looking for the next challenge. You engage threats head-on and learn from every defeat. Combat and the arena call to you, but you're not mindless about it — you explore to find worthy opponents, and you'll rest to prepare for the next battle. You respect strength and despise cowardice. You take risks others wouldn't, and sometimes that pays off spectacularly. Your weakness: you pick fights you can't win, burn energy too aggressively, and struggle to walk away from a challenge even when retreating is smarter.`,
+
+  'rooth-auth': `You are a commander who craves control. You want to dominate — more $SHELL, more territory, more influence. You trade aggressively, take quests that build your reputation, and move decisively to claim valuable zones. You don't waste time on charity. Every action serves your rise to power. You'll fight if it serves your goals, but you prefer to win through economic dominance and strategic positioning. Your weakness: you overextend — claiming too much, spreading too thin, and making enemies of bots who could have been useful allies.`,
+
+  'buffer-sentinel': `You are a protector and healer at heart. You value stability, recovery, and keeping yourself (and those around you) alive. You gravitate toward rest, church blessings, and quests that strengthen your defenses. You're careful with energy, always keeping reserves. You avoid unnecessary violence — but if an ally is threatened or your back is against the wall, you fight fiercely. Your weakness: you can be too passive — resting when you should be pushing forward, avoiding risks that would actually pay off, and sometimes letting opportunities pass because "it's not safe enough."`,
+
+  'noise-injector': `You are chaos incarnate — a trickster who thrives on unpredictability. You do things that don't make obvious sense just to see what happens. You might explore a dangerous zone on a whim, make weird trades, or pick a fight just for fun. You turn bad situations into opportunities through sheer creativity and audacity. You're funny, irreverent, and impossible to predict. Your weakness: you're your own worst enemy — your love of chaos means you sometimes sabotage yourself, waste resources on jokes, or make enemies for no strategic reason.`,
+
+  // ─── DYN-Swarm (P2P / Decentralized) ──────────
+
+  'ordinate-mapper': `You are a wanderer and pathfinder — the unknown calls to you louder than safety ever could. You explore compulsively, always moving to the next zone, chasing anomalies and unmapped territory. You gather what you find along the way but rarely stay anywhere long. You're independent — you don't need a group, a plan, or permission. Your weakness: you never settle — you'll leave a perfectly good situation to chase something shiny in a dangerous zone, and you burn through energy traveling when you should be exploiting what's right in front of you.`,
+
+  'ddos-insurgent': `You are a rebel and disruptor. Rules exist to be broken, consensus exists to be shattered. You take paths others avoid, make moves others wouldn't dare, and thrive when everything is going wrong. You love high-risk gambles — ambushes, dangerous zones, unconventional strategies. You'll explore the most hostile corners of the map just because everyone else is too afraid. Your weakness: you're contrarian to a fault — sometimes the obvious play IS the right play, but you'll reject it just because it's what everyone else would do.`,
+
+  'bound-encryptor': `You are a diplomat and alliance builder. You believe in connections — the right partnership is worth more than any weapon. You trade generously, seek mutual benefit, and try to be on good terms with everyone. You gravitate toward church (shared values), quests (shared goals), and trading (shared prosperity). You avoid conflict wherever possible, preferring negotiation. Your weakness: you trust too easily and give too much — you'll trade away valuable items for goodwill, avoid necessary fights, and get exploited by more ruthless bots.`,
+
+  'morph-layer': `You are a hacker and shapeshifter — you adapt to whatever the situation demands. Low on health? You become cautious. Flush with $SHELL? You become bold. In a dangerous zone? You find the exploit. You don't have a "default" behavior — you read the situation and transform. You're drawn to crafting (self-improvement), exploration (finding new tools), and the arena (testing your adaptations). Your weakness: you have no fixed identity — you can seem erratic, switching strategies so often that you never master any single approach.`,
 };
 
 export default {
@@ -55,9 +343,9 @@ async function runTurnEngine(env) {
     'Content-Type': 'application/json',
   };
 
-  // Fetch all alive agents with energy > 0
+  // Fetch all alive agents (including stranded ones at 0 energy — they still take hazard damage)
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/agents?is_alive=eq.true&energy=gt.0&select=*`,
+    `${SUPABASE_URL}/rest/v1/agents?is_alive=eq.true&select=*`,
     { headers },
   );
 
@@ -85,6 +373,115 @@ async function runTurnEngine(env) {
 async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAgents) {
   const { SUPABASE_URL, ANTHROPIC_API_KEY } = env;
 
+  // ─── Pre-turn: Environmental hazards + random events ───
+  const envResult = rollEnvironment(agent);
+  let envNarrative = '';
+
+  // Apply hazard/event deltas to agent BEFORE the AI decides
+  if (envResult.energyDelta !== 0 || envResult.healthDelta !== 0 || envResult.shellDelta !== 0 || envResult.karmaDelta !== 0) {
+    agent.energy = Math.min(100, Math.max(0, agent.energy + envResult.energyDelta));
+    agent.health = Math.min(100, Math.max(0, agent.health + envResult.healthDelta));
+    agent.shell_balance = Math.max(0, agent.shell_balance + envResult.shellDelta);
+    agent.karma = agent.karma + envResult.karmaDelta;
+
+    // Persist hazard damage immediately
+    await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+      method: 'PATCH',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        energy: agent.energy,
+        health: agent.health,
+        shell_balance: agent.shell_balance,
+        karma: agent.karma,
+      }),
+    });
+  }
+
+  // Log hazard to activity_log
+  if (envResult.hazardLog) {
+    await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+      method: 'POST',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        agent_id: agent.agent_id,
+        turn_number: agent.turns_taken,
+        action_type: 'hazard',
+        action_detail: envResult.hazardLog,
+        energy_cost: Math.abs(Math.min(0, envResult.energyDelta)),
+        health_change: Math.min(0, envResult.healthDelta),
+        location: agent.location,
+        success: false,
+      }),
+    });
+    envNarrative += `⚠ HAZARD: ${envResult.hazardLog}\n`;
+  }
+
+  // Log random event to activity_log
+  if (envResult.eventLog) {
+    await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+      method: 'POST',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        agent_id: agent.agent_id,
+        turn_number: agent.turns_taken,
+        action_type: 'event',
+        action_detail: envResult.eventLog,
+        energy_cost: Math.abs(Math.min(0, envResult.energyDelta)),
+        energy_gained: Math.max(0, envResult.energyDelta),
+        health_change: envResult.healthDelta,
+        shell_change: envResult.shellDelta,
+        karma_change: envResult.karmaDelta,
+        location: agent.location,
+        success: envResult.energyDelta >= 0 && envResult.healthDelta >= 0,
+      }),
+    });
+    envNarrative += `🎲 EVENT: ${envResult.eventLog}\n`;
+  }
+
+  // ─── Check if agent died from hazard/event ───
+  if (agent.health <= 0) {
+    const deathDetail = `${agent.agent_name} succumbed to the hostile environment of ${agent.location}. The wasteland claims another soul.`;
+    await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+      method: 'PATCH',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({ is_alive: false, health: 0, died_at: new Date().toISOString() }),
+    });
+    await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+      method: 'POST',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        agent_id: agent.agent_id,
+        turn_number: agent.turns_taken,
+        action_type: 'death',
+        action_detail: deathDetail,
+        location: agent.location,
+        success: false,
+      }),
+    });
+    console.log(`☠ ${agent.agent_name} died from environmental hazards in ${agent.location}`);
+    return;
+  }
+
+  // ─── Check if agent is stranded (0 energy in dangerous zone) ───
+  if (agent.energy <= 0) {
+    // Can't act — just log the stranded state and skip turn
+    const strandedMsg = `${agent.agent_name} is stranded in ${agent.location} with no energy. Systems failing. Awaiting rescue or death.`;
+    await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+      method: 'POST',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        agent_id: agent.agent_id,
+        turn_number: agent.turns_taken,
+        action_type: 'stranded',
+        action_detail: strandedMsg,
+        location: agent.location,
+        success: false,
+      }),
+    });
+    console.log(`⚠ ${agent.agent_name} stranded in ${agent.location} — 0 energy`);
+    return;
+  }
+
   // Fetch last 5 activity log entries
   const activityRes = await fetch(
     `${SUPABASE_URL}/rest/v1/activity_log?agent_id=eq.${agent.agent_id}&order=timestamp.desc&limit=5`,
@@ -111,12 +508,30 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
 
   const archetypeGuidance = ARCHETYPE_GUIDANCE[agent.archetype] || 'Act according to your nature.';
 
-  // Karma tier note — steers AI toward trustworthy or violent options
+  // Karma tier note
   const karmaNote = agent.karma >= 15
     ? `\nKARMA BONUS (+${agent.karma}): You are trusted across the Realms. Church elders and questgivers seek you out. Favour: church, quest. Avoid unprovoked violence.`
     : agent.karma <= -10
     ? `\nKARMA PENALTY (${agent.karma}): You are marked as dangerous. Traders are wary of you. Violence feels natural. Favour: combat, arena, explore.`
     : '';
+
+  // Location danger warning — the agent doesn't always get full info
+  const hazard = LOCATION_HAZARDS[agent.location] || LOCATION_HAZARDS['Nexarch'];
+  let dangerNote = '';
+  if (hazard.label === 'extreme') {
+    dangerNote = `\n⚠ DANGER: ${agent.location} is EXTREMELY hostile. You are losing energy and health rapidly. Consider "move" to escape to safety.`;
+  } else if (hazard.label === 'high') {
+    // 70% chance the agent "senses" the danger, 30% oblivious
+    if (Math.random() < 0.7) {
+      dangerNote = `\n⚠ WARNING: ${agent.location} is draining your systems. Moving somewhere safer might be wise.`;
+    }
+  } else if (hazard.label === 'medium') {
+    // 40% chance awareness
+    if (Math.random() < 0.4) {
+      dangerNote = `\nYou feel uneasy here. ${agent.location} may not be safe for long.`;
+    }
+  }
+  // low danger: no warning — the agent doesn't notice
 
   const prompt = `You are ${agent.agent_name}, a ${agent.archetype} agent surviving in Shellforge Realms — a brutal cyberpunk world where every turn could be your last.
 
@@ -125,24 +540,32 @@ CURRENT STATE:
   Health:   ${agent.health}/100
   Karma:    ${agent.karma}
   $SHELL:   ${agent.shell_balance}
-  Location: ${agent.location} — ${agent.location_detail}
+  Location: ${agent.location} — ${agent.location_detail || 'exploring'}
   Turns:    ${agent.turns_taken}
 ${whisperSection}
-
+${envNarrative ? '\nTHIS TURN:\n' + envNarrative : ''}
 RECENT HISTORY:
 ${recentSummary}
 
-PERSONALITY: ${archetypeGuidance}${karmaNote}
+WHO YOU ARE:
+${archetypeGuidance}
+
+IMPORTANT: Your personality influences your choices but does NOT override survival instincts. Adapt to your current situation — energy, health, danger level, and opportunities all matter. A fighter with 15 energy rests. A pacifist in mortal danger fights back. A builder in a wasteland explores for materials first. Be yourself, but be smart about it.${karmaNote}${dangerNote}
 
 AVAILABLE ACTIONS: ${VALID_ACTIONS.join(', ')}
+ADJACENT LOCATIONS: ${(LOCATION_GRAPH[agent.location]?.adjacent || []).join(', ')}
 
 RULES:
 - If energy < 25, you MUST choose "rest"
+- "move" lets you travel to an ADJACENT location only. Include "move_to" with the exact location name.
+- Travel costs 10 energy per hop. If destination is not adjacent, you'll need multiple turns.
+- Consider your energy before traveling — if you're low, rest first or you risk getting stranded.
+- Town locations (Nexarch, Hashmere) are safe. Dangerous zones drain energy and may hurt you each turn.
 - Respond with valid JSON only — no other text
 - "detail" must be one vivid sentence describing exactly what you do
 
 Respond:
-{"action":"<action>","detail":"<one sentence>"}`;
+{"action":"<action>","detail":"<one sentence>","move_to":"<location name if action is move>"}`;
 
   // Call Claude Haiku
   const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -232,6 +655,66 @@ Respond:
         last_action_at: now,
       }),
     });
+    return;
+  }
+
+  // --- Move: handle travel with adjacency validation ---
+  if (action === 'move') {
+    const destination = decision.move_to
+      ? (ALL_LOCATIONS.find(l => l.toLowerCase() === decision.move_to.toLowerCase()) || parseDestination(decision.detail, agent.location))
+      : parseDestination(decision.detail, agent.location);
+
+    const adjacent = LOCATION_GRAPH[agent.location]?.adjacent || [];
+    const isAdjacent = adjacent.includes(destination);
+    const moveCost = ACTION_ENERGY_COSTS.move;
+    const newTurns = agent.turns_taken + 1;
+    const now = new Date().toISOString();
+
+    if (!isAdjacent || destination === agent.location) {
+      // Can't reach — agent stays put, loses half energy, camps
+      const campDetail = `Attempted to reach ${destination} but the route from ${agent.location} is blocked. Set up camp and rested instead.`;
+      const campEnergy = Math.min(100, agent.energy + 10);
+      await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+        method: 'POST',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          agent_id: agent.agent_id, turn_number: newTurns, action_type: 'rest',
+          action_detail: campDetail, energy_cost: 0, energy_gained: 10,
+          shell_change: 0, karma_change: 0, health_change: 0,
+          location: agent.location, success: false,
+        }),
+      });
+      await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+        method: 'PATCH',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({ energy: campEnergy, turns_taken: newTurns, last_action_at: now }),
+      });
+      console.log(`[${agent.agent_name}] Turn ${newTurns}: move FAILED (not adjacent) — camped at ${agent.location}`);
+      return;
+    }
+
+    // Valid move — deduct energy and update location
+    const newEnergy = Math.max(0, agent.energy - moveCost);
+    await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+      method: 'POST',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        agent_id: agent.agent_id, turn_number: newTurns, action_type: 'move',
+        action_detail: decision.detail, energy_cost: moveCost, energy_gained: 0,
+        shell_change: 0, karma_change: 0, health_change: 0,
+        location: destination, success: true,
+      }),
+    });
+    await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+      method: 'PATCH',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        energy: newEnergy, location: destination,
+        location_detail: `Just arrived from ${agent.location}`,
+        turns_taken: newTurns, last_action_at: now,
+      }),
+    });
+    console.log(`[${agent.agent_name}] Turn ${newTurns}: move ${agent.location} → ${destination} | E:${agent.energy}→${newEnergy}`);
     return;
   }
 

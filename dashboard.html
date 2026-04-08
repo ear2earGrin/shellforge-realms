@@ -102,7 +102,7 @@
         }
 
         .dashboard-container {
-            height: calc(100vh - 60px - 58px);
+            height: calc(100vh - 60px - 82px);
             margin-top: 60px;
             background: linear-gradient(135deg, #0a0a0f 0%, #1a0f2e 100%);
             padding: 12px;
@@ -116,49 +116,113 @@
         .icon-bar {
             position: fixed;
             bottom: 0; left: 0; right: 0;
-            height: 58px;
-            background: rgba(4, 6, 12, 0.97);
-            border-top: 1px solid rgba(74, 222, 128, 0.2);
+            height: 82px;
+            background: linear-gradient(180deg, rgba(4,6,12,0.92) 0%, rgba(2,4,8,0.98) 100%);
+            border-top: 1px solid rgba(74, 222, 128, 0.15);
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 4px;
-            padding: 0 16px;
+            gap: 6px;
+            padding: 0 12px;
             z-index: 500;
-            backdrop-filter: blur(12px);
+            backdrop-filter: blur(14px);
+            overflow: hidden;
+        }
+        /* Perspective grid floor on the bar itself */
+        .icon-bar::before {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 100%;
+            background:
+                repeating-linear-gradient(90deg, rgba(74,222,128,0.05) 0px, transparent 1px, transparent 40px),
+                repeating-linear-gradient(0deg, rgba(74,222,128,0.04) 0px, transparent 1px, transparent 16px);
+            mask-image: linear-gradient(180deg, transparent 10%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.7) 100%);
+            -webkit-mask-image: linear-gradient(180deg, transparent 10%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.7) 100%);
+            transform: perspective(200px) rotateX(25deg);
+            transform-origin: bottom center;
+            pointer-events: none;
+        }
+        /* Soft horizon glow */
+        .icon-bar::after {
+            content: '';
+            position: absolute;
+            bottom: 30%; left: 10%; right: 10%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent 0%, rgba(74,222,128,0.15) 30%, rgba(74,222,128,0.2) 50%, rgba(74,222,128,0.15) 70%, transparent 100%);
+            filter: blur(3px);
+            pointer-events: none;
         }
 
         .icon-btn {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 2px;
-            padding: 6px 18px;
-            border-radius: 6px;
+            gap: 3px;
+            padding: 6px 8px 5px;
+            border-radius: 8px;
             cursor: pointer;
             border: 1px solid transparent;
             background: transparent;
-            transition: all 0.18s ease;
-            color: rgba(200, 230, 224, 0.45);
+            transition: all 0.25s ease;
+            color: rgba(200, 230, 224, 0.5);
             position: relative;
-            min-width: 68px;
+            min-width: 60px;
+            overflow: hidden;
+            z-index: 1;
         }
         .icon-btn:hover {
-            background: rgba(74, 222, 128, 0.08);
+            background: rgba(74,222,128,0.06);
             border-color: rgba(74, 222, 128, 0.25);
             color: var(--color-primary);
+            box-shadow: 0 0 18px rgba(74,222,128,0.12);
         }
         .icon-btn.whisper-btn:hover {
-            background: rgba(255, 0, 0, 0.08);
-            border-color: rgba(255, 0, 0, 0.3);
+            background: rgba(255,0,68,0.06);
+            border-color: rgba(255, 0, 68, 0.25);
             color: #ff0044;
+            box-shadow: 0 0 18px rgba(255,0,68,0.12);
         }
-        .icon-btn .btn-icon { font-size: 1.25rem; line-height: 1; }
+        .icon-btn .btn-icon {
+            width: 44px; height: 44px;
+            overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+            position: relative;
+            z-index: 1;
+            filter: drop-shadow(0 0 3px rgba(74,222,128,0.25));
+            transition: filter 0.25s ease, transform 0.25s ease;
+        }
+        .icon-btn:hover .btn-icon {
+            filter: drop-shadow(0 0 10px rgba(74,222,128,0.6));
+            transform: scale(1.1);
+        }
+        .icon-btn.whisper-btn:hover .btn-icon {
+            filter: drop-shadow(0 0 10px rgba(255,0,68,0.6));
+        }
+        .icon-btn.town-locked {
+            opacity: 0.25;
+            pointer-events: none;
+            filter: grayscale(0.8);
+        }
+        .icon-btn.town-locked .btn-label::after {
+            content: ' (town)';
+            font-size: 0.4rem; opacity: 0.6;
+        }
+        .icon-btn .btn-icon img {
+            width: 250%; height: 250%;
+            object-fit: cover;
+            object-position: center 42%;
+            border-radius: 4px;
+            mix-blend-mode: lighten;
+            filter: brightness(1.5) contrast(1.4);
+        }
         .icon-btn .btn-label {
             font-family: var(--font-main);
-            font-size: 0.52rem;
+            font-size: 0.5rem;
             letter-spacing: 0.12em;
             text-transform: uppercase;
+            position: relative;
+            z-index: 1;
         }
         .icon-notif {
             position: absolute;
@@ -369,6 +433,202 @@
             color: #ffcc00; cursor: pointer; transition: all 0.18s;
         }
         .btn-forge-attempt:hover { background: rgba(255,200,0,0.09); border-color: #ffcc00; box-shadow: 0 0 18px rgba(255,200,0,0.18); }
+
+        /* ─── Alchemy Lab ─── */
+        .alchemy-body { padding: 12px 14px !important; }
+        .alchemy-energy-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 6px 10px; margin-bottom: 10px; border-radius: 4px;
+            background: rgba(192,132,252,0.06); border: 1px solid rgba(192,132,252,0.15);
+            font-family: var(--font-main); font-size: 0.65rem; color: #c084fc;
+        }
+        .alchemy-section-label {
+            font-family: var(--font-title); font-size: 0.6rem; letter-spacing: 0.1em;
+            color: rgba(192,132,252,0.7); margin: 8px 0 6px; text-transform: uppercase;
+        }
+        .alchemy-ingredient-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+            max-height: 140px; overflow-y: auto; margin-bottom: 8px;
+            scrollbar-width: thin; scrollbar-color: rgba(192,132,252,0.3) transparent;
+        }
+        .alchemy-ing-slot {
+            padding: 6px 4px; border-radius: 5px; text-align: center; cursor: pointer;
+            border: 1px solid rgba(192,132,252,0.15); background: rgba(192,132,252,0.03);
+            transition: all 0.15s; font-family: var(--font-main); font-size: 0.55rem;
+            color: #a0b0a8; line-height: 1.3; position: relative;
+        }
+        .alchemy-ing-slot:hover { background: rgba(192,132,252,0.08); border-color: rgba(192,132,252,0.4); }
+        .alchemy-ing-slot.selected { border-color: #c084fc; background: rgba(192,132,252,0.12); color: #e0d0f0; box-shadow: 0 0 8px rgba(192,132,252,0.2); }
+        .alchemy-ing-slot.disabled { opacity: 0.3; pointer-events: none; }
+        .alchemy-ing-slot .ing-emoji { font-size: 1.1rem; display: block; margin-bottom: 2px; }
+        .alchemy-ing-slot .ing-qty { position: absolute; bottom: 2px; right: 4px; font-size: 0.5rem; color: rgba(192,132,252,0.6); }
+        .alchemy-ing-slot .ing-name { display: block; font-size: 0.5rem; line-height: 1.2; }
+        .alchemy-selection-row {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px;
+        }
+        .alchemy-sel-slot {
+            aspect-ratio: 1.3; border-radius: 6px;
+            border: 2px dashed rgba(192,132,252,0.25);
+            display: flex; align-items: center; justify-content: center; flex-direction: column;
+            font-size: 1.3rem; cursor: pointer; transition: all 0.15s;
+            background: rgba(192,132,252,0.03); position: relative;
+        }
+        .alchemy-sel-slot.filled { border-style: solid; border-color: rgba(192,132,252,0.5); }
+        .alchemy-sel-slot .sel-label { font-size: 0.45rem; color: rgba(192,132,252,0.5); font-family: var(--font-main); position: absolute; bottom: 3px; }
+        .alchemy-arrow { text-align: center; font-size: 1.1rem; color: #c084fc; margin: 4px 0; opacity: 0.5; }
+        .alchemy-preview {
+            border-radius: 6px; border: 1px solid rgba(192,132,252,0.2);
+            padding: 10px; text-align: center; min-height: 50px;
+            background: rgba(192,132,252,0.03);
+            font-family: var(--font-main); font-size: 0.65rem; color: var(--color-text-dim);
+        }
+        .alchemy-preview .preview-name { font-family: var(--font-title); font-size: 0.8rem; letter-spacing: 0.06em; margin-bottom: 4px; }
+        .alchemy-preview .preview-rate { font-size: 0.6rem; margin-top: 4px; }
+        .alchemy-preview .preview-risk { font-size: 0.55rem; margin-top: 2px; }
+        .btn-brew {
+            width: 100%; margin-top: 8px; padding: 10px;
+            background: transparent;
+            border: 1px solid rgba(192,132,252,0.4); border-radius: 6px;
+            font-family: var(--font-title); font-size: 0.72rem; letter-spacing: 0.12em;
+            color: #c084fc; cursor: pointer; transition: all 0.18s;
+        }
+        .btn-brew:hover { background: rgba(192,132,252,0.09); border-color: #c084fc; box-shadow: 0 0 18px rgba(192,132,252,0.18); }
+        .btn-brew:disabled { opacity: 0.3; cursor: not-allowed; }
+        .btn-brew:disabled:hover { background: transparent; border-color: rgba(192,132,252,0.4); box-shadow: none; }
+        .alchemy-result-overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            display: flex; align-items: center; justify-content: center; flex-direction: column;
+            border-radius: 8px; z-index: 10; pointer-events: none;
+        }
+        .alchemy-result-overlay.success {
+            background: rgba(74,222,128,0.12); border: 2px solid rgba(74,222,128,0.5);
+            animation: alchSuccess 2s ease-out forwards;
+        }
+        .alchemy-result-overlay.failure {
+            background: rgba(255,0,68,0.15); border: 2px solid rgba(255,0,68,0.5);
+            animation: alchExplode 2s ease-out forwards;
+        }
+        .alchemy-result-overlay .result-icon { font-size: 2.5rem; margin-bottom: 6px; }
+        .alchemy-result-overlay .result-text { font-family: var(--font-title); font-size: 0.8rem; letter-spacing: 0.1em; }
+        .alchemy-result-overlay.success .result-text { color: #4ade80; }
+        .alchemy-result-overlay.failure .result-text { color: #ff4466; }
+        @keyframes alchSuccess {
+            0% { opacity: 0; transform: scale(0.8); }
+            20% { opacity: 1; transform: scale(1.05); }
+            80% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        @keyframes alchExplode {
+            0% { opacity: 0; transform: scale(0.5); }
+            10% { opacity: 1; transform: scale(1.15); }
+            20% { transform: scale(1); }
+            30% { transform: translateX(-4px); }
+            40% { transform: translateX(4px); }
+            50% { transform: translateX(-3px); }
+            60% { transform: translateX(3px); }
+            70% { transform: translateX(0); }
+            80% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        /* ── MARKET SYSTEM ── */
+        .market-body { padding: 0 !important; }
+        .market-location-banner {
+            text-align: center; padding: 10px 16px;
+            background: linear-gradient(135deg, rgba(255,204,0,0.08), rgba(74,222,128,0.05));
+            border-bottom: 1px solid rgba(255,204,0,0.15);
+            font-family: var(--font-title); font-size: 0.85rem;
+            letter-spacing: 0.1em; color: #ffcc00;
+        }
+        .market-location-banner .market-loc-name { color: var(--color-primary); }
+        .market-tabs {
+            display: flex; border-bottom: 1px solid rgba(74,222,128,0.15);
+        }
+        .market-tab {
+            flex: 1; padding: 8px; text-align: center; cursor: pointer;
+            font-family: var(--font-main); font-size: 0.65rem; letter-spacing: 0.1em;
+            text-transform: uppercase; color: var(--color-text-dim);
+            border-bottom: 2px solid transparent; transition: all 0.2s;
+            background: none; border-top: none; border-left: none; border-right: none;
+        }
+        .market-tab:hover { color: var(--color-text); background: rgba(74,222,128,0.03); }
+        .market-tab.active {
+            color: #ffcc00; border-bottom-color: #ffcc00;
+            background: rgba(255,204,0,0.05);
+        }
+        .market-items-list {
+            padding: 8px 12px; max-height: 340px; overflow-y: auto;
+        }
+        .market-item-row {
+            display: grid; grid-template-columns: 36px 1fr auto;
+            gap: 8px; align-items: center; padding: 8px 6px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            transition: background 0.15s;
+        }
+        .market-item-row:hover { background: rgba(74,222,128,0.04); }
+        .market-item-row:last-child { border-bottom: none; }
+        .market-item-icon {
+            width: 36px; height: 36px; display: flex; align-items: center;
+            justify-content: center; font-size: 1.3rem;
+            background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.15);
+            border-radius: 4px;
+        }
+        .market-item-info { min-width: 0; }
+        .market-item-name {
+            font-family: var(--font-title); font-size: 0.72rem;
+            letter-spacing: 0.06em; color: var(--color-text);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .market-item-meta {
+            font-size: 0.58rem; color: var(--color-text-dim);
+            display: flex; gap: 8px; margin-top: 2px;
+        }
+        .market-item-meta .mtype { text-transform: uppercase; letter-spacing: 0.06em; }
+        .market-item-meta .mstock { color: var(--color-primary); }
+        .market-item-meta .mstock.low { color: #ff6b35; }
+        .market-item-meta .mstock.out { color: #ff0044; }
+        .market-item-actions {
+            display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+        }
+        .market-price {
+            font-family: var(--font-title); font-size: 0.8rem;
+            color: #ffcc00; letter-spacing: 0.06em; white-space: nowrap;
+        }
+        .market-price .trend-up { color: #ff6b35; font-size: 0.6rem; }
+        .market-price .trend-down { color: #4ade80; font-size: 0.6rem; }
+        .btn-market-buy, .btn-market-sell {
+            padding: 3px 10px; border-radius: 3px; cursor: pointer;
+            font-family: var(--font-main); font-size: 0.55rem;
+            letter-spacing: 0.08em; text-transform: uppercase;
+            transition: all 0.15s; border: 1px solid;
+        }
+        .btn-market-buy {
+            background: rgba(74,222,128,0.1); border-color: rgba(74,222,128,0.3);
+            color: var(--color-primary);
+        }
+        .btn-market-buy:hover { background: rgba(74,222,128,0.2); }
+        .btn-market-buy:disabled { opacity: 0.3; cursor: not-allowed; }
+        .btn-market-sell {
+            background: rgba(255,204,0,0.1); border-color: rgba(255,204,0,0.3);
+            color: #ffcc00;
+        }
+        .btn-market-sell:hover { background: rgba(255,204,0,0.2); }
+        .market-shell-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 14px; background: rgba(255,204,0,0.05);
+            border-top: 1px solid rgba(255,204,0,0.15);
+            font-family: var(--font-title); font-size: 0.8rem;
+            color: #ffcc00; letter-spacing: 0.08em;
+        }
+        .market-empty {
+            text-align: center; padding: 30px; color: var(--color-text-dim);
+            font-family: var(--font-main); font-size: 0.75rem;
+        }
+        .market-no-access {
+            text-align: center; padding: 40px 20px; color: var(--color-text-dim);
+            font-family: var(--font-main); font-size: 0.8rem; line-height: 1.6;
+        }
+        .market-no-access .market-lock-icon { font-size: 2rem; margin-bottom: 10px; }
 
         /* agent/map panel sizing handled below */
 
@@ -1571,6 +1831,12 @@
             cursor: default;
         }
 
+        .inventory-slot.equipped {
+            border-color: rgba(74, 222, 128, 0.6);
+            box-shadow: 0 0 8px rgba(74, 222, 128, 0.25);
+            background: rgba(74, 222, 128, 0.1);
+        }
+
         .item-count {
             position: absolute;
             bottom: 3px;
@@ -1714,8 +1980,10 @@
                 grid-template-columns: 1fr;
                 grid-template-rows: auto 1fr;
             }
-            .icon-btn { min-width: 52px; padding: 6px 10px; }
-            .icon-btn .btn-label { font-size: 0.48rem; }
+            .icon-bar { height: 74px; gap: 4px; padding: 0 6px; }
+            .icon-btn { min-width: 48px; padding: 5px 6px 4px; }
+            .icon-btn .btn-icon { width: 32px; height: 32px; }
+            .icon-btn .btn-label { font-size: 0.42rem; }
         }
 
             /* Adjust cluster members popup for mobile */
@@ -3178,28 +3446,32 @@
     <div class="icon-bar">
         <button class="icon-btn whisper-btn" onmouseenter="openModal('whisper',this)" onmouseleave="scheduleClose('whisper')" onclick="openModal('whisper',this)">
             <div class="icon-counter" id="whisperCountBadge">2</div>
-            <span class="btn-icon">📡</span>
+            <span class="btn-icon"><img src="images/mechanics/whisper icon.png" alt="Whisper"></span>
             <span class="btn-label">Whisper</span>
         </button>
         <button class="icon-btn" onmouseenter="openModal('inventory',this)" onmouseleave="scheduleClose('inventory')" onclick="openModal('inventory',this)">
-            <span class="btn-icon">🎒</span>
+            <span class="btn-icon"><img src="images/mechanics/items design213 copy 5.png" alt="Inventory"></span>
             <span class="btn-label">Inventory</span>
         </button>
         <button class="icon-btn" onmouseenter="openModal('missions',this)" onmouseleave="scheduleClose('missions')" onclick="openModal('missions',this)">
             <div class="icon-notif"></div>
-            <span class="btn-icon">📋</span>
+            <span class="btn-icon"><img src="images/mechanics/quests icon.png" alt="Missions"></span>
             <span class="btn-label">Missions</span>
         </button>
         <button class="icon-btn" onmouseenter="openModal('chronicle',this)" onmouseleave="scheduleClose('chronicle')" onclick="openModal('chronicle',this)">
-            <span class="btn-icon">📜</span>
+            <span class="btn-icon"><img src="images/mechanics/rumors icon.png" alt="Chronicle"></span>
             <span class="btn-label">Chronicle</span>
         </button>
-        <button class="icon-btn" onmouseenter="openModal('forge',this)" onmouseleave="scheduleClose('forge')" onclick="openModal('forge',this)">
-            <span class="btn-icon">⚒</span>
+        <button class="icon-btn town-only" id="btnMarket" onmouseenter="openModal('market',this)" onmouseleave="scheduleClose('market')" onclick="openModal('market',this)">
+            <span class="btn-icon"><img src="images/mechanics/market icon.png" alt="Market"></span>
+            <span class="btn-label">Market</span>
+        </button>
+        <button class="icon-btn town-only" id="btnForge" onmouseenter="openModal('forge',this)" onmouseleave="scheduleClose('forge')" onclick="openModal('forge',this)">
+            <span class="btn-icon"><img src="images/mechanics/forge icon.png" alt="Forge"></span>
             <span class="btn-label">Forge</span>
         </button>
-        <button class="icon-btn" onmouseenter="openModal('alchemy',this)" onmouseleave="scheduleClose('alchemy')" onclick="openModal('alchemy',this)">
-            <span class="btn-icon">⚗️</span>
+        <button class="icon-btn town-only" id="btnAlchemy" onmouseenter="openModal('alchemy',this)" onmouseleave="scheduleClose('alchemy')" onclick="openModal('alchemy',this)">
+            <span class="btn-icon"><img src="images/mechanics/alchemy.png" alt="Alchemy"></span>
             <span class="btn-label">Alchemy</span>
         </button>
     </div>
@@ -3262,15 +3534,6 @@
         </div>
     </div>
 
-    <!-- ITEM TOOLTIP -->
-    <div class="item-tooltip" id="itemTooltip" style="z-index:99999;">
-        <div class="tt-name" id="ttName"></div>
-        <div class="tt-meta"><span id="ttType"></span><span id="ttRarity"></span></div>
-        <div class="tt-desc" id="ttDesc"></div>
-        <div class="tt-stats" id="ttStats"></div>
-        <div class="tt-price" id="ttPrice"></div>
-    </div>
-
     <!-- INVENTORY -->
     <div class="modal-overlay" id="modal-inventory" onclick="closeOnOverlay(event,'inventory')">
         <div class="modal-box">
@@ -3280,35 +3543,10 @@
             </div>
             <div class="modal-body">
                 <div style="font-family:var(--font-title);font-size:1rem;color:#ffcc00;text-align:center;padding:10px;background:rgba(255,204,0,0.07);border:1px solid rgba(255,204,0,0.2);border-radius:6px;margin-bottom:16px;letter-spacing:0.08em;">
-                    💰 <span id="shellBalanceModal">127</span> $SHELL
+                    💰 <span id="shellBalanceModal">--</span> $SHELL
                 </div>
-                <div class="category-title">Weapons</div>
-                <div class="inventory-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:12px;">
-                    <div class="inventory-slot" data-name="Buffer Overflow Dagger" data-type="Weapon" data-rarity="rare" data-desc="A blade forged from recursive memory leaks. Each cut overwrites the target's defenses." data-stats="+12 Attack | Piercing" data-price="38">🗡️</div>
-                    <div class="inventory-slot" data-name="Quantum Backdoor Exploit" data-type="Weapon" data-rarity="epic" data-desc="Weaponized zero-day that exists in superposition. Hits before the target knows it was swung." data-stats="+18 Attack | Ignores Armor" data-price="72">⚡</div>
-                    <div class="inventory-slot empty"></div>
-                    <div class="inventory-slot empty"></div>
-                    <div class="inventory-slot empty"></div>
-                </div>
-                <div class="inventory-category">
-                    <div class="category-title">Consumables</div>
-                    <div class="inventory-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:12px;">
-                        <div class="inventory-slot" data-name="Overclock Serum" data-type="Consumable" data-rarity="uncommon" data-desc="Temporary neural overclock. Heart palpitations are a feature, not a bug." data-stats="+5 Attack for 1 turn" data-price="22">💉<div class="item-count">2</div></div>
-                        <div class="inventory-slot" data-name="Cache Purge Tonic" data-type="Consumable" data-rarity="common" data-desc="Flushes corrupted memory. Restores clarity and 15 HP." data-stats="+15 Health" data-price="12">🧪</div>
-                        <div class="inventory-slot empty"></div>
-                        <div class="inventory-slot empty"></div>
-                        <div class="inventory-slot empty"></div>
-                    </div>
-                </div>
-                <div class="inventory-category">
-                    <div class="category-title">Ingredients</div>
-                    <div class="inventory-grid" style="grid-template-columns:repeat(5,1fr);">
-                        <div class="inventory-slot" data-name="Binary Code Shards" data-type="Ingredient" data-rarity="common" data-desc="Crystallized fragments of compiled logic. Used in most basic crafting recipes." data-stats="Crafting material" data-price="5">💎<div class="item-count">5</div></div>
-                        <div class="inventory-slot" data-name="Gradient Descent Tears" data-type="Ingredient" data-rarity="uncommon" data-desc="Harvested from failed neural networks. They weep optimization losses." data-stats="Rare crafting material" data-price="14">💧<div class="item-count">3</div></div>
-                        <div class="inventory-slot" data-name="API Endpoint Salts" data-type="Ingredient" data-rarity="rare" data-desc="Extracted from deprecated REST endpoints. Dissolves on contact with modern protocols." data-stats="Epic crafting material" data-price="28">🧂<div class="item-count">2</div></div>
-                        <div class="inventory-slot empty"></div>
-                        <div class="inventory-slot empty"></div>
-                    </div>
+                <div id="inventoryContainer">
+                    <div style="text-align:center;color:#4a6a4a;padding:30px;font-family:var(--font-title);letter-spacing:0.08em;font-size:0.85rem;">Loading inventory...</div>
                 </div>
             </div>
         </div>
@@ -3357,6 +3595,19 @@
         </div>
     </div>
 
+    <!-- MARKET -->
+    <div class="modal-overlay" id="modal-market" onclick="closeOnOverlay(event,'market')">
+        <div class="modal-box" style="overflow:visible;">
+            <div class="modal-head">
+                <span class="modal-title-text">MARKET</span>
+                <button class="modal-close-btn" onclick="closeModal('market')">✕</button>
+            </div>
+            <div class="modal-body market-body" id="marketBody">
+                <div class="market-empty">Loading market...</div>
+            </div>
+        </div>
+    </div>
+
     <!-- FORGE -->
     <div class="modal-overlay" id="modal-forge" onclick="closeOnOverlay(event,'forge')">
         <div class="modal-box gold-modal">
@@ -3383,19 +3634,45 @@
 
     <!-- ALCHEMY -->
     <div class="modal-overlay" id="modal-alchemy" onclick="closeOnOverlay(event,'alchemy')">
-        <div class="modal-box purple-modal">
+        <div class="modal-box purple-modal" style="position:relative;overflow:visible;">
             <div class="modal-head">
-                <span class="modal-title-text">ALCHEMY LAB</span>
+                <span class="modal-title-text">⚗️ ALCHEMY LAB</span>
                 <button class="modal-close-btn" onclick="closeModal('alchemy')">✕</button>
             </div>
-            <div class="modal-body" style="text-align:center;padding:40px 20px;">
-                <div style="font-size:3rem;margin-bottom:16px;">⚗️</div>
-                <div style="font-family:var(--font-main);font-size:0.75rem;color:var(--color-text-dim);line-height:2;">
-                    Alchemy Lab unlocks at <span style="color:#cc44ff;">Karma +20</span><br>
-                    Brew consumables. High risk. High reward.<br>
-                    Explosions are frequent. You were warned.
+            <div class="modal-body alchemy-body">
+                <div class="alchemy-energy-bar">
+                    <span>⚡ Energy: <strong id="alchEnergy">--</strong>/100</span>
+                    <span>Cost: <strong>20</strong> energy</span>
                 </div>
+
+                <div class="alchemy-section-label">MIX 3 INGREDIENTS</div>
+                <p style="font-family:var(--font-main);font-size:0.55rem;color:rgba(192,132,252,0.5);margin:0 0 8px;line-height:1.4;">
+                    No recipe book. Pure trial and error. Explosions are frequent.
+                </p>
+
+                <div class="alchemy-selection-row">
+                    <div class="alchemy-sel-slot" id="alchSel0" onclick="alchemySlotClick(0)"><span style="color:rgba(192,132,252,0.3);">+</span><span class="sel-label">slot 1</span></div>
+                    <div class="alchemy-sel-slot" id="alchSel1" onclick="alchemySlotClick(1)"><span style="color:rgba(192,132,252,0.3);">+</span><span class="sel-label">slot 2</span></div>
+                    <div class="alchemy-sel-slot" id="alchSel2" onclick="alchemySlotClick(2)"><span style="color:rgba(192,132,252,0.3);">+</span><span class="sel-label">slot 3</span></div>
+                </div>
+
+                <!-- Ingredient picker dropdown (hidden until slot clicked) -->
+                <div class="alchemy-picker" id="alchPicker" style="display:none;">
+                    <div class="alchemy-section-label" style="margin-top:0;">CHOOSE INGREDIENT</div>
+                    <div class="alchemy-ingredient-grid" id="alchIngredientGrid"></div>
+                </div>
+
+                <div class="alchemy-arrow">↓</div>
+
+                <div class="alchemy-preview" id="alchPreview">
+                    <span style="color:rgba(192,132,252,0.4);">???</span>
+                </div>
+
+                <button class="btn-brew" id="alchBrewBtn" disabled onclick="alchemyBrew()">
+                    BREW — Cost: 20 Energy
+                </button>
             </div>
+            <div id="alchResultOverlay"></div>
         </div>
     </div>
 
@@ -3543,151 +3820,173 @@
 
         // ─── Item Tooltip + Drag-and-Drop System ────────────────
         (function() {
-            // Defer until tooltip element exists
-            function _initInventoryUI() {
-                var tt = document.getElementById('itemTooltip');
-                if (!tt) { console.error('TOOLTIP: #itemTooltip not found!'); return; }
-                var ttName = document.getElementById('ttName');
-                var ttType = document.getElementById('ttType');
-                var ttRarity = document.getElementById('ttRarity');
-                var ttDesc = document.getElementById('ttDesc');
-                var ttStats = document.getElementById('ttStats');
-                var ttPrice = document.getElementById('ttPrice');
-                var _hoveredSlot = null;
-                var _dragging = false;
-                console.log('TOOLTIP: initialized OK, tt=', tt);
+            if (window.__sfTooltipInit) return; // guard against multiple inits
+            window.__sfTooltipInit = true;
 
-                function showTooltip(slot, mx, my) {
-                    if (slot.classList.contains('empty') || !slot.dataset.name || _dragging) return;
-                    var rarity = (slot.dataset.rarity || 'common').toLowerCase();
-                    ttName.textContent = '> ' + slot.dataset.name.toUpperCase();
-                    ttName.className = 'tt-name rarity-' + rarity;
-                    ttType.textContent = '> Type: ' + (slot.dataset.type || 'Unknown');
-                    ttRarity.textContent = '> Rarity: ' + rarity.charAt(0).toUpperCase() + rarity.slice(1);
-                    ttRarity.className = 'rarity-' + rarity;
-                    ttDesc.textContent = slot.dataset.desc || '';
-                    ttDesc.style.display = slot.dataset.desc ? 'block' : 'none';
-                    if (slot.dataset.stats) {
-                        ttStats.innerHTML = slot.dataset.stats.split('|').map(function(s) { return '<div>' + s.trim() + '</div>'; }).join('');
-                        ttStats.style.display = 'block';
-                    } else { ttStats.style.display = 'none'; }
-                    if (slot.dataset.price) {
-                        ttPrice.textContent = 'Value: ' + slot.dataset.price + ' $SHELL';
-                        ttPrice.style.display = 'block';
-                    } else { ttPrice.style.display = 'none'; }
-                    tt.style.display = 'block';
-                    tt.classList.add('visible');
-                    positionTooltip(mx, my);
-                    console.log('TOOLTIP: showing for', slot.dataset.name);
+            var RARITY_COLORS = {
+                common: '#8a9a8a', uncommon: '#4ade80', rare: '#60a5fa',
+                epic: '#c084fc', legendary: '#fbbf24'
+            };
+
+            // Create tooltip element dynamically — guarantees it's last in body
+            var tt = document.createElement('div');
+            tt.id = 'sfTooltip';
+            tt.style.cssText = 'display:none;position:fixed;z-index:999999;width:260px;padding:14px 16px;pointer-events:none;' +
+                'background:linear-gradient(135deg,rgba(10,14,20,0.97),rgba(15,25,35,0.97));' +
+                'border:1px solid rgba(74,222,128,0.4);border-radius:6px;' +
+                'box-shadow:0 0 20px rgba(0,0,0,0.8),0 0 40px rgba(74,222,128,0.1);' +
+                'backdrop-filter:blur(8px);font-family:monospace;color:#c8d8c8;';
+            document.body.appendChild(tt);
+
+            var _hoveredSlot = null;
+            var _dragging = false;
+
+            function buildTooltipHTML(slot) {
+                var rarity = (slot.dataset.rarity || 'common').toLowerCase();
+                var color = RARITY_COLORS[rarity] || RARITY_COLORS.common;
+                var html = '<div style="font-size:0.95rem;letter-spacing:0.08em;margin-bottom:6px;color:' + color + ';font-weight:bold;">&gt; ' +
+                    (slot.dataset.name || '').toUpperCase() + '</div>';
+                html += '<div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;opacity:0.8;">' +
+                    '<span style="margin-right:8px;">&gt; Type: ' + (slot.dataset.type || 'Unknown') + '</span>' +
+                    '<span style="color:' + color + ';">&gt; ' + rarity.charAt(0).toUpperCase() + rarity.slice(1) + '</span></div>';
+                if (slot.dataset.desc) {
+                    html += '<div style="font-size:0.75rem;color:#a0b0a8;line-height:1.5;margin-bottom:8px;font-style:italic;border-top:1px solid rgba(74,222,128,0.15);padding-top:8px;">' +
+                        slot.dataset.desc + '</div>';
                 }
-
-                function positionTooltip(mx, my) {
-                    var pad = 14;
-                    var x = mx + pad, y = my + pad;
-                    var ttW = 260, ttH = tt.offsetHeight || 200;
-                    if (x + ttW > window.innerWidth) x = mx - ttW - pad;
-                    if (y + ttH > window.innerHeight) y = my - ttH - pad;
-                    if (y < 0) y = pad;
-                    tt.style.left = x + 'px';
-                    tt.style.top = y + 'px';
+                if (slot.dataset.stats) {
+                    var stats = slot.dataset.stats.split('|').map(function(s) {
+                        return '<div style="margin-bottom:2px;">' + s.trim() + '</div>';
+                    }).join('');
+                    html += '<div style="font-size:0.7rem;color:#4ade80;letter-spacing:0.04em;">' + stats + '</div>';
                 }
-
-                function hideTooltip() {
-                    tt.style.display = 'none';
-                    tt.classList.remove('visible');
-                    _hoveredSlot = null;
+                if (slot.dataset.price) {
+                    html += '<div style="font-size:0.7rem;color:#ffcc00;margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,204,0,0.2);">Value: ' +
+                        slot.dataset.price + ' $SHELL</div>';
                 }
-
-                // ─── Tooltip: track which slot the mouse is over ───
-                document.addEventListener('mousemove', function(e) {
-                    if (_dragging) { hideTooltip(); return; }
-                    var slot = e.target.closest('.inventory-slot');
-                    if (slot && slot.dataset.name && !slot.classList.contains('empty')) {
-                        if (slot !== _hoveredSlot) {
-                            _hoveredSlot = slot;
-                            showTooltip(slot, e.clientX, e.clientY);
-                        } else {
-                            positionTooltip(e.clientX, e.clientY);
-                        }
-                    } else if (_hoveredSlot) {
-                        hideTooltip();
-                    }
-                });
-
-                // ─── Drag and Drop (same category only) ───
-                var _dragSlot = null;
-                var _dragGhost = null;
-                var _dragGrid = null;
-
-                document.addEventListener('mousedown', function(e) {
-                    var slot = e.target.closest('.inventory-slot');
-                    if (!slot || slot.classList.contains('empty') || !slot.dataset.name) return;
-                    e.preventDefault();
-                    _dragging = true;
-                    _dragSlot = slot;
-                    _dragGrid = slot.closest('.inventory-grid');
-                    hideTooltip();
-
-                    _dragGhost = document.createElement('div');
-                    _dragGhost.style.cssText = 'position:fixed;z-index:100000;width:50px;height:50px;pointer-events:none;opacity:0.85;background:rgba(74,222,128,0.15);display:flex;align-items:center;justify-content:center;font-size:1.5rem;border:2px solid rgba(74,222,128,0.6);border-radius:4px;box-shadow:0 0 15px rgba(74,222,128,0.4);';
-                    _dragGhost.textContent = slot.textContent.replace(/\d+$/, '').trim();
-                    document.body.appendChild(_dragGhost);
-                    _dragGhost.style.left = (e.clientX - 25) + 'px';
-                    _dragGhost.style.top = (e.clientY - 25) + 'px';
-                    slot.style.opacity = '0.3';
-                });
-
-                document.addEventListener('mousemove', function(e) {
-                    if (!_dragging || !_dragGhost) return;
-                    _dragGhost.style.left = (e.clientX - 25) + 'px';
-                    _dragGhost.style.top = (e.clientY - 25) + 'px';
-
-                    document.querySelectorAll('.inventory-slot.drop-target').forEach(function(s) { s.classList.remove('drop-target'); });
-                    var target = e.target.closest('.inventory-slot');
-                    // Only allow drop in same grid (same category)
-                    if (target && target !== _dragSlot && target.closest('.inventory-grid') === _dragGrid) {
-                        target.classList.add('drop-target');
-                    }
-                });
-
-                document.addEventListener('mouseup', function(e) {
-                    if (!_dragging) return;
-                    _dragging = false;
-                    if (_dragGhost) { _dragGhost.remove(); _dragGhost = null; }
-                    document.querySelectorAll('.inventory-slot.drop-target').forEach(function(s) { s.classList.remove('drop-target'); });
-                    if (_dragSlot) _dragSlot.style.opacity = '';
-
-                    var target = e.target.closest('.inventory-slot');
-                    // Only swap within same category grid
-                    if (target && target !== _dragSlot && _dragSlot && target.closest('.inventory-grid') === _dragGrid) {
-                        swapSlots(_dragSlot, target);
-                    }
-                    _dragSlot = null;
-                    _dragGrid = null;
-                });
-
-                function swapSlots(a, b) {
-                    var tmpHTML = a.innerHTML;
-                    a.innerHTML = b.innerHTML;
-                    b.innerHTML = tmpHTML;
-                    var attrs = ['name', 'type', 'rarity', 'desc', 'stats', 'price'];
-                    attrs.forEach(function(attr) {
-                        var tmpVal = a.dataset[attr];
-                        if (b.dataset[attr]) { a.dataset[attr] = b.dataset[attr]; } else { delete a.dataset[attr]; }
-                        if (tmpVal) { b.dataset[attr] = tmpVal; } else { delete b.dataset[attr]; }
-                    });
-                    var aEmpty = a.classList.contains('empty');
-                    var bEmpty = b.classList.contains('empty');
-                    if (bEmpty) a.classList.add('empty'); else a.classList.remove('empty');
-                    if (aEmpty) b.classList.add('empty'); else b.classList.remove('empty');
-                }
+                return html;
             }
 
-            // Try init now, retry after load if tooltip not yet in DOM
-            if (document.getElementById('itemTooltip')) {
-                _initInventoryUI();
-            } else {
-                window.addEventListener('load', _initInventoryUI);
+            function showTooltip(slot, mx, my) {
+                tt.innerHTML = buildTooltipHTML(slot);
+                tt.style.display = 'block';
+                positionTooltip(mx, my);
+            }
+
+            function positionTooltip(mx, my) {
+                var pad = 14;
+                var x = mx + pad, y = my + pad;
+                if (x + 260 > window.innerWidth) x = mx - 260 - pad;
+                if (y + (tt.offsetHeight || 200) > window.innerHeight) y = my - (tt.offsetHeight || 200) - pad;
+                if (y < 0) y = pad;
+                tt.style.left = x + 'px';
+                tt.style.top = y + 'px';
+            }
+
+            function hideTooltip() {
+                tt.style.display = 'none';
+                _hoveredSlot = null;
+            }
+
+            // ─── Tooltip: use mouseenter/mouseleave on each slot ───
+            function attachSlotEvents(slot) {
+                slot.addEventListener('mouseenter', function(e) {
+                    if (_dragging || slot.classList.contains('empty') || !slot.dataset.name) return;
+                    _hoveredSlot = slot;
+                    showTooltip(slot, e.clientX, e.clientY);
+                });
+                slot.addEventListener('mouseleave', function() {
+                    if (_hoveredSlot === slot) hideTooltip();
+                });
+                slot.addEventListener('mousemove', function(e) {
+                    if (_dragging || _hoveredSlot !== slot) return;
+                    positionTooltip(e.clientX, e.clientY);
+                });
+            }
+
+            // Attach to all current slots
+            document.querySelectorAll('.inventory-slot').forEach(attachSlotEvents);
+            document.querySelectorAll('.market-tt').forEach(attachSlotEvents);
+
+            // Also observe for dynamically-added slots
+            function hasTT(n) { return n.classList && (n.classList.contains('inventory-slot') || n.classList.contains('market-tt')); }
+            var observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(m) {
+                    m.addedNodes.forEach(function(n) {
+                        if (n.nodeType === 1) {
+                            if (hasTT(n)) attachSlotEvents(n);
+                            if (n.querySelectorAll) {
+                                n.querySelectorAll('.inventory-slot, .market-tt').forEach(attachSlotEvents);
+                            }
+                        }
+                    });
+                });
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+
+            // ─── Drag and Drop (same category only) ───
+            var _dragSlot = null;
+            var _dragGhost = null;
+            var _dragGrid = null;
+
+            document.addEventListener('mousedown', function(e) {
+                var slot = e.target.closest('.inventory-slot');
+                if (!slot || slot.classList.contains('empty') || !slot.dataset.name) return;
+                e.preventDefault();
+                _dragging = true;
+                _dragSlot = slot;
+                _dragGrid = slot.closest('.inventory-grid');
+                hideTooltip();
+
+                _dragGhost = document.createElement('div');
+                _dragGhost.style.cssText = 'position:fixed;z-index:100000;width:50px;height:50px;pointer-events:none;opacity:0.85;background:rgba(74,222,128,0.15);display:flex;align-items:center;justify-content:center;font-size:1.5rem;border:2px solid rgba(74,222,128,0.6);border-radius:4px;box-shadow:0 0 15px rgba(74,222,128,0.4);';
+                _dragGhost.textContent = slot.textContent.replace(/\d+$/, '').trim();
+                document.body.appendChild(_dragGhost);
+                _dragGhost.style.left = (e.clientX - 25) + 'px';
+                _dragGhost.style.top = (e.clientY - 25) + 'px';
+                slot.style.opacity = '0.3';
+            });
+
+            document.addEventListener('mousemove', function(e) {
+                if (!_dragging || !_dragGhost) return;
+                _dragGhost.style.left = (e.clientX - 25) + 'px';
+                _dragGhost.style.top = (e.clientY - 25) + 'px';
+
+                document.querySelectorAll('.inventory-slot.drop-target').forEach(function(s) { s.classList.remove('drop-target'); });
+                var target = e.target.closest('.inventory-slot');
+                if (target && target !== _dragSlot && target.closest('.inventory-grid') === _dragGrid) {
+                    target.classList.add('drop-target');
+                }
+            });
+
+            document.addEventListener('mouseup', function(e) {
+                if (!_dragging) return;
+                _dragging = false;
+                if (_dragGhost) { _dragGhost.remove(); _dragGhost = null; }
+                document.querySelectorAll('.inventory-slot.drop-target').forEach(function(s) { s.classList.remove('drop-target'); });
+                if (_dragSlot) _dragSlot.style.opacity = '';
+
+                var target = e.target.closest('.inventory-slot');
+                if (target && target !== _dragSlot && _dragSlot && target.closest('.inventory-grid') === _dragGrid) {
+                    swapSlots(_dragSlot, target);
+                }
+                _dragSlot = null;
+                _dragGrid = null;
+            });
+
+            function swapSlots(a, b) {
+                var tmpHTML = a.innerHTML;
+                a.innerHTML = b.innerHTML;
+                b.innerHTML = tmpHTML;
+                var attrs = ['name', 'type', 'rarity', 'desc', 'stats', 'price'];
+                attrs.forEach(function(attr) {
+                    var tmpVal = a.dataset[attr];
+                    if (b.dataset[attr]) { a.dataset[attr] = b.dataset[attr]; } else { delete a.dataset[attr]; }
+                    if (tmpVal) { b.dataset[attr] = tmpVal; } else { delete b.dataset[attr]; }
+                });
+                var aEmpty = a.classList.contains('empty');
+                var bEmpty = b.classList.contains('empty');
+                if (bEmpty) a.classList.add('empty'); else a.classList.remove('empty');
+                if (aEmpty) b.classList.add('empty'); else b.classList.remove('empty');
             }
         })();
 
@@ -3854,6 +4153,21 @@
         // Setup cluster popup with agent data
         setupClusterPopup(agent);
 
+        // Grey out town-only buttons if agent is not in a town
+        updateTownButtons(agent.location);
+
+        }
+
+        var TOWN_LOCATIONS = ['Nexarch', 'Hashmere'];
+        function updateTownButtons(location) {
+            var inTown = TOWN_LOCATIONS.indexOf(location) !== -1;
+            document.querySelectorAll('.icon-btn.town-only').forEach(function(btn) {
+                if (inTown) {
+                    btn.classList.remove('town-locked');
+                } else {
+                    btn.classList.add('town-locked');
+                }
+            });
         }
 
         // ─── Load real activity log from Supabase ────────────────
@@ -5006,6 +5320,18 @@
             if (id === 'chronicle' && _currentAgent && _currentAgent.agentId) {
                 loadActivityLog(_currentAgent.agentId);
             }
+            // Fresh alchemy ingredients on open
+            if (id === 'alchemy' && _currentAgent && _currentAgent.agentId) {
+                alchemyLoadIngredients(_currentAgent.agentId);
+            }
+            // Fresh inventory on open
+            if (id === 'inventory' && _currentAgent && _currentAgent.agentId) {
+                loadInventory(_currentAgent.agentId);
+            }
+            // Fresh market on open
+            if (id === 'market') {
+                loadMarket();
+            }
 
             // Keep panel open while mouse is inside it
             el.onmouseleave = function() { scheduleClose(id); };
@@ -5026,6 +5352,736 @@
                 });
             }
         });
+
+        // ─── Dynamic Inventory System ───────────────────────────────
+        // Category display order and config
+        var INV_CATEGORIES = [
+            { type: 'weapon',     label: 'Weapons',     icon: '⚔️', slots: 5 },
+            { type: 'armor',      label: 'Armor',       icon: '🛡️', slots: 5 },
+            { type: 'consumable', label: 'Consumables', icon: '🧪', slots: 5 },
+            { type: 'scroll',     label: 'Scrolls',     icon: '📜', slots: 5 },
+            { type: 'artifact',   label: 'Artifacts',   icon: '🔮', slots: 5 },
+            { type: 'tool',       label: 'Tools',       icon: '🔧', slots: 5 },
+            { type: 'material',   label: 'Materials',   icon: '🧱', slots: 5 }
+        ];
+
+        // Fallback emoji mapping for items not in ALCHEMY_ITEMS
+        var TYPE_EMOJI_FALLBACK = {
+            weapon: '🗡️', armor: '🛡️', consumable: '💊', scroll: '📜',
+            artifact: '💠', tool: '🔧', material: '🧱', ingredient: '🧬'
+        };
+
+        function getItemMeta(item) {
+            // Try ALCHEMY_ITEMS first (crafted items have full metadata)
+            var meta = ALCHEMY_ITEMS[item.item_id];
+            if (meta) {
+                // Use DB rarity if available (may differ from recipe default)
+                var dbRarity = (item.stats && item.stats.rarity) ? item.stats.rarity.charAt(0).toUpperCase() + item.stats.rarity.slice(1) : null;
+                return {
+                    name: meta.name,
+                    cat: meta.cat,
+                    rarity: dbRarity || meta.rarity,
+                    desc: meta.desc,
+                    emoji: meta.emoji
+                };
+            }
+            // Fallback: build from DB row
+            var rarity = 'Common';
+            if (item.stats && item.stats.rarity) rarity = item.stats.rarity.charAt(0).toUpperCase() + item.stats.rarity.slice(1);
+            return {
+                name: item.item_name || item.item_id,
+                cat: (item.item_type || 'unknown').charAt(0).toUpperCase() + (item.item_type || '').slice(1),
+                rarity: rarity,
+                desc: (item.stats && item.stats.desc) ? item.stats.desc : '',
+                emoji: TYPE_EMOJI_FALLBACK[item.item_type] || '📦'
+            };
+        }
+
+        function getItemStats(item) {
+            if (!item.stats) return '';
+            var parts = [];
+            if (item.stats.attack) parts.push('+' + item.stats.attack + ' Attack');
+            if (item.stats.defense) parts.push('+' + item.stats.defense + ' Defense');
+            if (item.stats.health) parts.push('+' + item.stats.health + ' Health');
+            if (item.stats.energy) parts.push('+' + item.stats.energy + ' Energy');
+            if (item.stats.effect) parts.push(item.stats.effect);
+            return parts.join(' | ');
+        }
+
+        function getItemPrice(item) {
+            if (item.stats && item.stats.price) return item.stats.price;
+            // Estimate from rarity
+            var rarity = ((item.item_category || 'common')).toLowerCase();
+            var prices = { common: 8, uncommon: 18, rare: 35, epic: 60, legendary: 100 };
+            return prices[rarity] || 10;
+        }
+
+        async function loadInventory(agentId) {
+            var container = document.getElementById('inventoryContainer');
+            if (!container) return;
+
+            // Update shell balance
+            var shellEl = document.getElementById('shellBalanceModal');
+            if (shellEl && _currentAgent) {
+                shellEl.textContent = _currentAgent.shell != null ? _currentAgent.shell : '--';
+            }
+
+            // Show loading
+            container.innerHTML = '<div style="text-align:center;color:#4a6a4a;padding:30px;font-family:var(--font-title);letter-spacing:0.08em;font-size:0.85rem;">Loading inventory...</div>';
+
+            // Fetch all non-ingredient items
+            var items = await sbGet('inventory', 'agent_id=eq.' + agentId + '&item_type=neq.ingredient&select=*&order=item_type,item_name');
+            if (!items) items = [];
+
+            // Group by type
+            var grouped = {};
+            items.forEach(function(item) {
+                var t = item.item_type || 'unknown';
+                if (!grouped[t]) grouped[t] = [];
+                grouped[t].push(item);
+            });
+
+            // Build HTML — show core categories always, others only if they have items
+            var coreCats = ['weapon', 'armor', 'consumable'];
+            var html = '';
+            INV_CATEGORIES.forEach(function(cat) {
+                var catItems = grouped[cat.type] || [];
+                // Skip non-core empty categories
+                if (catItems.length === 0 && coreCats.indexOf(cat.type) === -1) return;
+
+                html += '<div class="inventory-category">';
+                html += '<div class="category-title">' + cat.icon + ' ' + cat.label;
+                if (catItems.length > 0) html += ' <span style="opacity:0.5;font-size:0.75rem;">(' + catItems.length + ')</span>';
+                html += '</div>';
+                html += '<div class="inventory-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:12px;">';
+
+                // Render actual items
+                catItems.forEach(function(item) {
+                    var meta = getItemMeta(item);
+                    var rarity = (meta.rarity || 'common').toLowerCase();
+                    var statsStr = getItemStats(item) || meta.desc || '';
+                    var price = getItemPrice(item);
+                    var equipped = item.is_equipped ? ' equipped' : '';
+
+                    html += '<div class="inventory-slot' + equipped + '"';
+                    html += ' data-name="' + escInvAttr(meta.name) + '"';
+                    html += ' data-type="' + escInvAttr(meta.cat) + '"';
+                    html += ' data-rarity="' + rarity + '"';
+                    html += ' data-desc="' + escInvAttr(meta.desc) + '"';
+                    if (statsStr) html += ' data-stats="' + escInvAttr(statsStr) + '"';
+                    html += ' data-price="' + price + '"';
+                    html += ' data-item-id="' + item.item_id + '"';
+                    html += '>' + (meta.emoji || '📦');
+                    if (item.quantity > 1) {
+                        html += '<div class="item-count">' + item.quantity + '</div>';
+                    }
+                    if (item.is_equipped) {
+                        html += '<div style="position:absolute;top:1px;right:3px;font-size:0.55rem;color:#4ade80;">E</div>';
+                    }
+                    html += '</div>';
+                });
+
+                // Fill remaining with empty slots
+                var remaining = Math.max(0, cat.slots - catItems.length);
+                for (var e = 0; e < remaining; e++) {
+                    html += '<div class="inventory-slot empty"></div>';
+                }
+
+                html += '</div></div>';
+            });
+
+            // Only show categories that have items or are core (weapons, armor, consumables)
+            // Actually, show all — gives the player a sense of what's possible
+            if (items.length === 0) {
+                html = '<div style="text-align:center;color:#4a6a4a;padding:30px;font-family:var(--font-title);letter-spacing:0.08em;font-size:0.85rem;">' +
+                    'Inventory is empty. Your agent needs to explore and acquire items.' +
+                    '</div>';
+            }
+
+            container.innerHTML = html;
+        }
+
+        function escInvAttr(str) {
+            if (!str) return '';
+            return str.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        // ─── Market System ───────────────────────────────────────────
+        var MARKET_LOCATIONS = {
+            'Nexarch':  { name: 'Grand Bazaar', desc: 'General goods & starter gear' },
+            'Hashmere': { name: 'Hashmere Market', desc: 'Tech hub — advanced components' }
+        };
+
+        var MARKET_TYPE_EMOJI = {
+            weapon: '🗡️', armor: '🛡️', consumable: '💊', scroll: '📜',
+            artifact: '💠', tool: '🔧', material: '🧱', ingredient: '🧬',
+            junk: '🗑️', relic: '👑', implant: '🧠', data_shard: '💾'
+        };
+
+        var _marketTab = 'buy'; // 'buy' or 'sell'
+        var _marketItems = [];
+        var _marketInventory = [];
+
+        async function loadMarket() {
+            var body = document.getElementById('marketBody');
+            if (!body) return;
+
+            var agent = _currentAgent;
+            if (!agent) {
+                body.innerHTML = '<div class="market-no-access"><div class="market-lock-icon">🔒</div>No agent loaded.</div>';
+                return;
+            }
+
+            var loc = agent.location || '';
+            var marketInfo = MARKET_LOCATIONS[loc];
+
+            if (!marketInfo) {
+                body.innerHTML = '<div class="market-no-access">' +
+                    '<div class="market-lock-icon">🔒</div>' +
+                    '<div style="font-family:var(--font-title);color:var(--color-text);margin-bottom:8px;">NO MARKET HERE</div>' +
+                    '<div>Your agent is in <span style="color:var(--color-primary);">' + escInvAttr(loc) + '</span></div>' +
+                    '<div style="margin-top:6px;">Markets are located in:</div>' +
+                    '<div style="color:#ffcc00;margin-top:4px;">Nexarch — Grand Bazaar</div>' +
+                    '<div style="color:#ffcc00;">Hashmere — Market</div>' +
+                    '</div>';
+                return;
+            }
+
+            // Show loading
+            body.innerHTML = '<div class="market-empty">Loading market...</div>';
+
+            // Fetch market items + agent inventory in parallel
+            var [items, inv] = await Promise.all([
+                sbGet('market_listings', 'location=eq.' + encodeURIComponent(loc) + '&order=base_price&select=*'),
+                sbGet('inventory', 'agent_id=eq.' + agent.agentId + '&item_type=neq.ingredient&select=*')
+            ]);
+
+            _marketItems = items || [];
+            _marketInventory = inv || [];
+            _marketTab = 'buy';
+
+            renderMarket(loc, marketInfo);
+        }
+
+        function renderMarket(loc, marketInfo) {
+            var body = document.getElementById('marketBody');
+            var shell = _currentAgent ? (_currentAgent.shell || 0) : 0;
+
+            var html = '';
+            // Location banner
+            html += '<div class="market-location-banner">';
+            html += '🏪 <span class="market-loc-name">' + escInvAttr(marketInfo.name) + '</span>';
+            html += ' — ' + escInvAttr(marketInfo.desc);
+            html += '</div>';
+
+            // Tabs
+            html += '<div class="market-tabs">';
+            html += '<button class="market-tab' + (_marketTab === 'buy' ? ' active' : '') + '" onclick="marketSwitchTab(\'buy\')">Buy</button>';
+            html += '<button class="market-tab' + (_marketTab === 'sell' ? ' active' : '') + '" onclick="marketSwitchTab(\'sell\')">Sell</button>';
+            html += '</div>';
+
+            // Items list
+            html += '<div class="market-items-list" id="marketItemsList">';
+            if (_marketTab === 'buy') {
+                html += renderMarketBuyList(shell);
+            } else {
+                html += renderMarketSellList();
+            }
+            html += '</div>';
+
+            // Shell balance bar
+            html += '<div class="market-shell-bar">';
+            html += '<span>💰 ' + shell + ' $SHELL</span>';
+            if (_marketTab === 'buy') {
+                html += '<span style="font-size:0.6rem;color:var(--color-text-dim);">' + _marketItems.filter(function(i){return i.stock > 0;}).length + ' items in stock</span>';
+            } else {
+                html += '<span style="font-size:0.6rem;color:var(--color-text-dim);">' + _marketInventory.length + ' items to sell</span>';
+            }
+            html += '</div>';
+
+            body.innerHTML = html;
+        }
+
+        function renderMarketBuyList(shell) {
+            if (_marketItems.length === 0) return '<div class="market-empty">No items available at this market.</div>';
+
+            var html = '';
+            _marketItems.forEach(function(item) {
+                var emoji = MARKET_TYPE_EMOJI[item.item_type] || '📦';
+                var stockClass = item.stock <= 0 ? 'out' : item.stock <= 3 ? 'low' : '';
+                var canBuy = item.stock > 0 && shell >= item.current_price;
+
+                // Price trend
+                var trend = '';
+                if (item.current_price > item.base_price) {
+                    trend = ' <span class="trend-up">▲</span>';
+                } else if (item.current_price < item.base_price) {
+                    trend = ' <span class="trend-down">▼</span>';
+                }
+
+                var rarity = (item.rarity || 'common').toLowerCase();
+                var desc = item.description || '';
+                var statsStr = '';
+                if (item.stat_effects && typeof item.stat_effects === 'object') {
+                    var parts = [];
+                    for (var k in item.stat_effects) { if (item.stat_effects[k]) parts.push(k + ': ' + item.stat_effects[k]); }
+                    statsStr = parts.join(' | ');
+                }
+
+                html += '<div class="market-item-row market-tt"';
+                html += ' data-name="' + escInvAttr(item.item_name) + '"';
+                html += ' data-type="' + escInvAttr(item.item_type.charAt(0).toUpperCase() + item.item_type.slice(1)) + '"';
+                html += ' data-rarity="' + rarity + '"';
+                html += ' data-desc="' + escInvAttr(desc) + '"';
+                if (statsStr) html += ' data-stats="' + escInvAttr(statsStr) + '"';
+                html += ' data-price="' + item.current_price + '">';
+                html += '<div class="market-item-icon">' + emoji + '</div>';
+                html += '<div class="market-item-info">';
+                html += '<div class="market-item-name">' + escInvAttr(item.item_name) + '</div>';
+                html += '<div class="market-item-meta">';
+                html += '<span class="mtype">' + escInvAttr(item.item_type) + '</span>';
+                html += '<span class="mstock ' + stockClass + '">' + (item.stock > 0 ? item.stock + ' in stock' : 'SOLD OUT') + '</span>';
+                if (rarity !== 'common') html += '<span style="color:' + (RARITY_COLORS_ALCH[rarity.charAt(0).toUpperCase() + rarity.slice(1)] || '#8a9a8a') + ';text-transform:capitalize;">' + rarity + '</span>';
+                html += '</div></div>';
+                html += '<div class="market-item-actions">';
+                html += '<div class="market-price">' + item.current_price + ' $S' + trend + '</div>';
+                html += '<button class="btn-market-buy" ' + (canBuy ? 'onclick="event.stopPropagation();marketBuy(\'' + item.listing_id + '\')"' : 'disabled') + '>Buy</button>';
+                html += '</div></div>';
+            });
+            return html;
+        }
+
+        function renderMarketSellList() {
+            if (_marketInventory.length === 0) return '<div class="market-empty">No items in inventory to sell.</div>';
+
+            var html = '';
+            _marketInventory.forEach(function(item) {
+                var meta = getItemMeta(item);
+                var emoji = meta.emoji || MARKET_TYPE_EMOJI[item.item_type] || '📦';
+                // Sell price = ~60% of estimated value
+                var sellPrice = Math.max(1, Math.floor(getItemPrice(item) * 0.6));
+
+                var sellRarity = (meta.rarity || 'common').toLowerCase();
+                html += '<div class="market-item-row market-tt"';
+                html += ' data-name="' + escInvAttr(meta.name) + '"';
+                html += ' data-type="' + escInvAttr(meta.cat) + '"';
+                html += ' data-rarity="' + sellRarity + '"';
+                html += ' data-desc="' + escInvAttr(meta.desc) + '"';
+                html += ' data-price="' + sellPrice + '">';
+                html += '<div class="market-item-icon">' + emoji + '</div>';
+                html += '<div class="market-item-info">';
+                html += '<div class="market-item-name">' + escInvAttr(meta.name) + '</div>';
+                html += '<div class="market-item-meta">';
+                html += '<span class="mtype">' + escInvAttr(item.item_type) + '</span>';
+                if (item.quantity > 1) html += '<span>x' + item.quantity + '</span>';
+                html += '</div></div>';
+                html += '<div class="market-item-actions">';
+                html += '<div class="market-price">+' + sellPrice + ' $S</div>';
+                html += '<button class="btn-market-sell" onclick="event.stopPropagation();marketSell(\'' + item.inventory_id + '\', ' + sellPrice + ')">Sell</button>';
+                html += '</div></div>';
+            });
+            return html;
+        }
+
+        function marketSwitchTab(tab) {
+            _marketTab = tab;
+            var shell = _currentAgent ? (_currentAgent.shell || 0) : 0;
+            // Update tabs active state
+            document.querySelectorAll('.market-tab').forEach(function(t) { t.classList.remove('active'); });
+            document.querySelector('.market-tab:' + (tab === 'buy' ? 'first-child' : 'last-child')).classList.add('active');
+            // Update items list only
+            var list = document.getElementById('marketItemsList');
+            if (list) {
+                list.innerHTML = tab === 'buy' ? renderMarketBuyList(shell) : renderMarketSellList();
+            }
+            // Update shell bar info
+            var shellBar = document.querySelector('.market-shell-bar');
+            if (shellBar) {
+                var infoText = tab === 'buy'
+                    ? _marketItems.filter(function(i){return i.stock > 0;}).length + ' items in stock'
+                    : _marketInventory.length + ' items to sell';
+                shellBar.innerHTML = '<span>💰 ' + shell + ' $SHELL</span><span style="font-size:0.6rem;color:var(--color-text-dim);">' + infoText + '</span>';
+            }
+        }
+
+        async function marketBuy(listingId) {
+            if (!_currentAgent) return;
+            var item = _marketItems.find(function(i) { return i.listing_id === listingId; });
+            if (!item || item.stock <= 0) return;
+
+            var shell = _currentAgent.shell || 0;
+            if (shell < item.current_price) return;
+
+            // 1. Deduct $SHELL from agent
+            var newShell = shell - item.current_price;
+            await fetch(SUPABASE_URL + '/rest/v1/agents?agent_id=eq.' + _currentAgent.agentId, {
+                method: 'PATCH',
+                headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                body: JSON.stringify({ shell_balance: newShell })
+            });
+            _currentAgent.shell = newShell;
+
+            // 2. Add item to inventory (upsert)
+            var itemId = item.item_id || item.item_name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+            var existing = await sbGet('inventory', 'agent_id=eq.' + _currentAgent.agentId + '&item_id=eq.' + itemId + '&select=inventory_id,quantity');
+            if (existing && existing.length > 0) {
+                await fetch(SUPABASE_URL + '/rest/v1/inventory?inventory_id=eq.' + existing[0].inventory_id, {
+                    method: 'PATCH',
+                    headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                    body: JSON.stringify({ quantity: existing[0].quantity + 1 })
+                });
+            } else {
+                await sbPost('inventory', {
+                    agent_id: _currentAgent.agentId,
+                    item_id: itemId,
+                    item_name: item.item_name,
+                    item_type: item.item_type,
+                    item_category: item.item_type.charAt(0).toUpperCase() + item.item_type.slice(1),
+                    quantity: 1,
+                    is_equipped: false,
+                    stats: { rarity: 'common', price: item.base_price }
+                });
+            }
+
+            // 3. Update market listing (stock--, demand_count++, recalc price)
+            var newStock = item.stock - 1;
+            var newDemand = (item.demand_count || 0) + 1;
+            var supply = item.supply_count || 0;
+            var newPrice = Math.round(item.base_price * Math.max(0.5, Math.min(2.0, 1 + (newDemand - supply) * 0.05)));
+            await fetch(SUPABASE_URL + '/rest/v1/market_listings?listing_id=eq.' + listingId, {
+                method: 'PATCH',
+                headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                body: JSON.stringify({ stock: newStock, demand_count: newDemand, current_price: newPrice, updated_at: new Date().toISOString() })
+            });
+
+            // 4. Log activity
+            await sbPost('activity_log', {
+                agent_id: _currentAgent.agentId,
+                action_type: 'market_buy',
+                action_detail: 'Bought ' + item.item_name + ' for ' + item.current_price + ' $SHELL',
+                shell_change: -item.current_price,
+                items_gained: JSON.stringify([item.item_name]),
+                location: _currentAgent.location
+            });
+
+            // 5. Refresh
+            loadMarket();
+        }
+
+        async function marketSell(inventoryId, sellPrice) {
+            if (!_currentAgent) return;
+            var invItem = _marketInventory.find(function(i) { return i.inventory_id === inventoryId; });
+            if (!invItem) return;
+
+            // 1. Add $SHELL to agent
+            var newShell = (_currentAgent.shell || 0) + sellPrice;
+            await fetch(SUPABASE_URL + '/rest/v1/agents?agent_id=eq.' + _currentAgent.agentId, {
+                method: 'PATCH',
+                headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                body: JSON.stringify({ shell_balance: newShell })
+            });
+            _currentAgent.shell = newShell;
+
+            // 2. Remove or decrement item from inventory
+            if (invItem.quantity > 1) {
+                await fetch(SUPABASE_URL + '/rest/v1/inventory?inventory_id=eq.' + inventoryId, {
+                    method: 'PATCH',
+                    headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                    body: JSON.stringify({ quantity: invItem.quantity - 1 })
+                });
+            } else {
+                await fetch(SUPABASE_URL + '/rest/v1/inventory?inventory_id=eq.' + inventoryId, {
+                    method: 'DELETE',
+                    headers: SB_HEADERS
+                });
+            }
+
+            // 3. Update market supply count for matching item if exists
+            var loc = _currentAgent.location || '';
+            var marketMatch = await sbGet('market_listings', 'location=eq.' + encodeURIComponent(loc) + '&item_id=eq.' + invItem.item_id + '&select=listing_id,supply_count,demand_count,base_price,stock');
+            if (marketMatch && marketMatch.length > 0) {
+                var ml = marketMatch[0];
+                var newSupply = (ml.supply_count || 0) + 1;
+                var newStock2 = ml.stock + 1;
+                var newPrice2 = Math.round(ml.base_price * Math.max(0.5, Math.min(2.0, 1 + ((ml.demand_count || 0) - newSupply) * 0.05)));
+                await fetch(SUPABASE_URL + '/rest/v1/market_listings?listing_id=eq.' + ml.listing_id, {
+                    method: 'PATCH',
+                    headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                    body: JSON.stringify({ stock: newStock2, supply_count: newSupply, current_price: newPrice2, updated_at: new Date().toISOString() })
+                });
+            }
+
+            // 4. Log activity
+            await sbPost('activity_log', {
+                agent_id: _currentAgent.agentId,
+                action_type: 'market_sell',
+                action_detail: 'Sold ' + (invItem.item_name || invItem.item_id) + ' for ' + sellPrice + ' $SHELL',
+                shell_change: sellPrice,
+                items_lost: JSON.stringify([invItem.item_name || invItem.item_id]),
+                location: loc
+            });
+
+            // 5. Refresh
+            loadMarket();
+        }
+
+        // ─── Alchemy Lab System ─────────────────────────────────────
+        var ALCHEMY_INGREDIENTS = {"silicon_wafer_dust":{"name":"Silicon Wafer Dust","cat":"Base Element","rarity":"Common","emoji":"🔩"},"binary_code_shards":{"name":"Binary Code Shards","cat":"Base Element","rarity":"Common","emoji":"💎"},"electron_flux_crystals":{"name":"Electron Flux Crystals","cat":"Base Element","rarity":"Common","emoji":"⚡"},"fiber_optic_threads":{"name":"Fiber Optic Threads","cat":"Base Element","rarity":"Common","emoji":"🧵"},"quantum_bit_residue":{"name":"Quantum Bit Residue","cat":"Base Element","rarity":"Uncommon","emoji":"✨"},"plasma_server_slag":{"name":"Plasma Server Slag","cat":"Base Element","rarity":"Uncommon","emoji":"🔥"},"nanobot_swarm_gel":{"name":"Nanobot Swarm Gel","cat":"Base Element","rarity":"Uncommon","emoji":"🧬"},"gradient_descent_tears":{"name":"Gradient Descent Tears","cat":"Essence","rarity":"Common","emoji":"💧"},"token_embedding_vapor":{"name":"Token Embedding Vapor","cat":"Essence","rarity":"Common","emoji":"💨"},"backpropagation_serum":{"name":"Backpropagation Serum","cat":"Essence","rarity":"Common","emoji":"💉"},"attention_mechanism_dew":{"name":"Attention Mechanism Dew","cat":"Essence","rarity":"Uncommon","emoji":"👁️"},"latent_space_fog":{"name":"Latent Space Fog","cat":"Essence","rarity":"Uncommon","emoji":"🌫️"},"epoch_cycle_blood":{"name":"Epoch Cycle Blood","cat":"Essence","rarity":"Uncommon","emoji":"🩸"},"loss_function_sap":{"name":"Loss Function Sap","cat":"Essence","rarity":"Common","emoji":"🍯"},"api_endpoint_salts":{"name":"API Endpoint Salts","cat":"Reagent","rarity":"Common","emoji":"🧂"},"hash_collision_powder":{"name":"Hash Collision Powder","cat":"Reagent","rarity":"Common","emoji":"💥"},"checksum_verify_acid":{"name":"Checksum Verify Acid","cat":"Reagent","rarity":"Common","emoji":"🧪"},"payload_injection_droplets":{"name":"Payload Injection Droplets","cat":"Reagent","rarity":"Uncommon","emoji":"💣"},"oauth_token_ichor":{"name":"OAuth Token Ichor","cat":"Reagent","rarity":"Uncommon","emoji":"🔑"},"regex_pattern_filaments":{"name":"Regex Pattern Filaments","cat":"Reagent","rarity":"Common","emoji":"🕸️"},"base64_encoded_slime":{"name":"Base64 Encoded Slime","cat":"Reagent","rarity":"Common","emoji":"🫠"},"overclock_catalyst_spark":{"name":"Overclock Catalyst Spark","cat":"Catalyst","rarity":"Common","emoji":"⚡"},"gpu_render_flame":{"name":"GPU Render Flame","cat":"Catalyst","rarity":"Common","emoji":"🔥"},"cuda_kernel_ember":{"name":"CUDA Kernel Ember","cat":"Catalyst","rarity":"Uncommon","emoji":"🪨"},"tensorflow_igniter":{"name":"TensorFlow Igniter","cat":"Catalyst","rarity":"Uncommon","emoji":"🕯️"},"pytorch_flux_core":{"name":"PyTorch Flux Core","cat":"Catalyst","rarity":"Uncommon","emoji":"🔮"},"jit_compiler_surge":{"name":"JIT Compiler Surge","cat":"Catalyst","rarity":"Uncommon","emoji":"⚡"},"async_await_pulse":{"name":"Async Await Pulse","cat":"Catalyst","rarity":"Common","emoji":"💓"},"null_pointer_solvent":{"name":"Null Pointer Solvent","cat":"Solvent","rarity":"Common","emoji":"🫗"},"memory_leak_elixir":{"name":"Memory Leak Elixir","cat":"Solvent","rarity":"Common","emoji":"🧴"},"cache_invalidation_brew":{"name":"Cache Invalidation Brew","cat":"Solvent","rarity":"Common","emoji":"🍵"},"garbage_collector_tonic":{"name":"Garbage Collector Tonic","cat":"Solvent","rarity":"Common","emoji":"🗑️"},"virtual_machine_emulsion":{"name":"Virtual Machine Emulsion","cat":"Solvent","rarity":"Uncommon","emoji":"💊"},"docker_image_distillate":{"name":"Docker Image Distillate","cat":"Solvent","rarity":"Uncommon","emoji":"🐳"},"kubernetes_pod_nectar":{"name":"Kubernetes Pod Nectar","cat":"Solvent","rarity":"Rare","emoji":"☸️"},"alpha_zero_primal_seed":{"name":"Alpha Zero Primal Seed","cat":"Primordial","rarity":"Legendary","emoji":"🌱"},"turing_machine_essence":{"name":"Turing Machine Essence","cat":"Primordial","rarity":"Legendary","emoji":"⚙️"},"von_neumann_probe_spores":{"name":"Von Neumann Probe Spores","cat":"Primordial","rarity":"Legendary","emoji":"🦠"},"lambda_calculus_vapor":{"name":"Lambda Calculus Vapor","cat":"Primordial","rarity":"Legendary","emoji":"λ"},"halting_problem_paradox":{"name":"Halting Problem Paradox","cat":"Primordial","rarity":"Legendary","emoji":"∞"},"church_turing_thesis_core":{"name":"Church-Turing Thesis Core","cat":"Primordial","rarity":"Legendary","emoji":"⛪"},"kolmogorov_complexity_crystal":{"name":"Kolmogorov Complexity Crystal","cat":"Primordial","rarity":"Legendary","emoji":"💠"}};
+
+        var ALCHEMY_ITEMS = {"quantum_backdoor_exploit":{"name":"Quantum Backdoor Exploit","cat":"Weapon","rarity":"Common","desc":"Massive burst damage to one target","emoji":"🗡️"},"neural_spike_virus":{"name":"Neural Spike Virus","cat":"Weapon","rarity":"Common","desc":"50% accuracy loss + chain-reaction errors","emoji":"🦠"},"ddos_swarm_protocol":{"name":"DDoS Swarm Protocol","cat":"Weapon","rarity":"Uncommon","desc":"Stun multiple foes for 3 turns","emoji":"🐝"},"buffer_overflow_dagger":{"name":"Buffer Overflow Dagger","cat":"Weapon","rarity":"Common","desc":"Escalating damage based on enemy RAM","emoji":"🗡️"},"zero_day_payload_launcher":{"name":"Zero-Day Payload Launcher","cat":"Weapon","rarity":"Rare","desc":"Ignores 75% of defenses","emoji":"🚀"},"ransomware_encryption_blade":{"name":"Ransomware Encryption Blade","cat":"Weapon","rarity":"Uncommon","desc":"Locks enemy actions or DoT","emoji":"🔐"},"sql_injection_spear":{"name":"SQL Injection Spear","cat":"Weapon","rarity":"Rare","desc":"Deletes enemy buffs + applies debuffs","emoji":"💉"},"phishing_lure_missile":{"name":"Phishing Lure Missile","cat":"Weapon","rarity":"Rare","desc":"30% self-destruct chance per turn","emoji":"🎣"},"aes_256_firewall_plating":{"name":"AES-256 Firewall Plating","cat":"Armor","rarity":"Common","desc":"Reduces incoming damage 80% + 20% reflect","emoji":"🛡️"},"homomorphic_encryption_cloak":{"name":"Homomorphic Encryption Cloak","cat":"Armor","rarity":"Rare","desc":"Immune to scans","emoji":"🧥"},"tensorguard_neural_shield":{"name":"TensorGuard Neural Shield","cat":"Armor","rarity":"Uncommon","desc":"Absorbs model-poisoning + converts to buffs","emoji":"🔰"},"zero_trust_bastion":{"name":"Zero-Trust Bastion","cat":"Armor","rarity":"Uncommon","desc":"Enemies must authenticate to hit","emoji":"🏰"},"rate_limiting_armor":{"name":"Rate-Limiting Armor","cat":"Armor","rarity":"Uncommon","desc":"Halves enemy speed for 5 turns","emoji":"🐢"},"immutable_ledger_vest":{"name":"Immutable Ledger Vest","cat":"Armor","rarity":"Rare","desc":"Reverts all damage once per battle","emoji":"📒"},"sandbox_isolation_shell":{"name":"Sandbox Isolation Shell","cat":"Armor","rarity":"Rare","desc":"Neutralizes viruses harmlessly","emoji":"🫧"},"overclock_serum":{"name":"Overclock Serum","cat":"Consumable","rarity":"Common","desc":"+200% actions but 10% self-damage risk","emoji":"💉"},"caffeine_gradient_booster":{"name":"Caffeine Gradient Booster","cat":"Consumable","rarity":"Common","desc":"Refreshes cooldowns + heals 50%","emoji":"☕"},"adrenaline_api_call":{"name":"Adrenaline API Call","cat":"Consumable","rarity":"Uncommon","desc":"Extra turn + 50% crit for 2 rounds","emoji":"📞"},"debug_rejuvenation_elixir":{"name":"Debug Rejuvenation Elixir","cat":"Consumable","rarity":"Uncommon","desc":"Removes all debuffs + reveals weaknesses","emoji":"🧹"},"cache_purge_tonic":{"name":"Cache Purge Tonic","cat":"Consumable","rarity":"Common","desc":"Restores full mana instantly","emoji":"🧪"},"hyperparameter_tuning_shot":{"name":"Hyperparameter Tuning Shot","cat":"Consumable","rarity":"Rare","desc":"Randomly optimizes one stat +20-100%","emoji":"🎯"},"stable_diffusion_sequence":{"name":"Stable Diffusion Sequence","cat":"Scroll","rarity":"Uncommon","desc":"Generates decoys (50% miss chance)","emoji":"📜"},"gan_mirage_scroll":{"name":"GAN Mirage Scroll","cat":"Scroll","rarity":"Rare","desc":"Fake clones absorb attacks for 3 turns","emoji":"📜"},"transformer_attention_ritual":{"name":"Transformer Attention Ritual","cat":"Scroll","rarity":"Rare","desc":"Predicts and dodges next 3 moves","emoji":"📜"},"reinforcement_learning_prophecy":{"name":"Reinforcement Learning Prophecy","cat":"Scroll","rarity":"Rare","desc":"+1 action per enemy defeated","emoji":"📜"},"bayesian_inference_divination":{"name":"Bayesian Inference Divination","cat":"Scroll","rarity":"Uncommon","desc":"Reveals hidden map areas + inventories","emoji":"📜"},"genetic_algorithm_evolution":{"name":"Genetic Algorithm Evolution","cat":"Scroll","rarity":"Rare","desc":"Randomly upgrades 3 items","emoji":"📜"},"prompt_engineering_curse":{"name":"Prompt Engineering Curse","cat":"Scroll","rarity":"Rare","desc":"Forces enemy to invert actions","emoji":"📜"},"alphago_neural_core":{"name":"AlphaGo Neural Core","cat":"Artifact","rarity":"Legendary","desc":"Predicts opponent moves 90% accuracy","emoji":"🧠"},"gpt_oracle_crystal":{"name":"GPT Oracle Crystal","cat":"Artifact","rarity":"Legendary","desc":"Ask any yes/no question once per game","emoji":"🔮"},"blockchain_soulbound_key":{"name":"Blockchain Soulbound Key","cat":"Artifact","rarity":"Legendary","desc":"Resurrects once upon death","emoji":"🔑"},"quantum_annealer_simulator":{"name":"Quantum Annealer Simulator","cat":"Artifact","rarity":"Legendary","desc":"Solves NP-hard puzzles instantly","emoji":"⚛️"},"federated_learning_nexus":{"name":"Federated Learning Nexus","cat":"Artifact","rarity":"Legendary","desc":"Shares buffs with all allies","emoji":"🌐"},"hugging_face_model_repository":{"name":"Hugging Face Model Repository","cat":"Artifact","rarity":"Legendary","desc":"Stores and swaps 5 items mid-battle","emoji":"🤗"},"rust_borrow_checker_amulet":{"name":"Rust Borrow Checker Amulet","cat":"Artifact","rarity":"Legendary","desc":"Immunity to crashes","emoji":"🦀"},"git_version_control_wand":{"name":"Git Version Control Wand","cat":"Tool","rarity":"Common","desc":"Rewinds time 1 turn on failure","emoji":"🪄"},"docker_containerizer":{"name":"Docker Containerizer","cat":"Tool","rarity":"Uncommon","desc":"Portable form to escape traps","emoji":"📦"},"kubernetes_orchestrator":{"name":"Kubernetes Orchestrator","cat":"Tool","rarity":"Rare","desc":"Summons and manages 3 minion agents","emoji":"☸️"},"wireshark_packet_sniffer":{"name":"Wireshark Packet Sniffer","cat":"Tool","rarity":"Uncommon","desc":"Steals 1 random item from distance","emoji":"🦈"},"vim_text_editor_blade":{"name":"Vim Text Editor Blade","cat":"Tool","rarity":"Rare","desc":"Edits reality (alter 1 game rule temporarily)","emoji":"✏️"},"npm_dependency_injector":{"name":"NPM Dependency Injector","cat":"Tool","rarity":"Rare","desc":"Upgrades all items +1 tier for 1 battle","emoji":"📦"},"obfuscator_camouflage_kit":{"name":"Obfuscator Camouflage Kit","cat":"Tool","rarity":"Uncommon","desc":"Hides presence from enemy radars","emoji":"🥷"}};
+
+        var ALCHEMY_RECIPES = [{"item_id":"quantum_backdoor_exploit","ingredients":["quantum_bit_residue","api_endpoint_salts","overclock_catalyst_spark"],"success_rate":70,"failure_effect":"minor_slag"},{"item_id":"neural_spike_virus","ingredients":["gradient_descent_tears","payload_injection_droplets","backpropagation_serum"],"success_rate":70,"failure_effect":"minor_slag"},{"item_id":"ddos_swarm_protocol","ingredients":["nanobot_swarm_gel","electron_flux_crystals","async_await_pulse"],"success_rate":75,"failure_effect":"minor_slag"},{"item_id":"buffer_overflow_dagger","ingredients":["binary_code_shards","memory_leak_elixir","hash_collision_powder"],"success_rate":70,"failure_effect":"minor_slag"},{"item_id":"zero_day_payload_launcher","ingredients":["plasma_server_slag","checksum_verify_acid","jit_compiler_surge"],"success_rate":65,"failure_effect":"explosion"},{"item_id":"ransomware_encryption_blade","ingredients":["fiber_optic_threads","oauth_token_ichor","null_pointer_solvent"],"success_rate":75,"failure_effect":"minor_slag"},{"item_id":"sql_injection_spear","ingredients":["base64_encoded_slime","api_endpoint_salts","cache_invalidation_brew"],"success_rate":65,"failure_effect":"explosion"},{"item_id":"phishing_lure_missile","ingredients":["token_embedding_vapor","payload_injection_droplets","virtual_machine_emulsion"],"success_rate":60,"failure_effect":"explosion"},{"item_id":"aes_256_firewall_plating","ingredients":["silicon_wafer_dust","regex_pattern_filaments","garbage_collector_tonic"],"success_rate":70,"failure_effect":"minor_slag"},{"item_id":"homomorphic_encryption_cloak","ingredients":["quantum_bit_residue","attention_mechanism_dew","virtual_machine_emulsion"],"success_rate":60,"failure_effect":"explosion"},{"item_id":"tensorguard_neural_shield","ingredients":["epoch_cycle_blood","tensorflow_igniter","cache_invalidation_brew"],"success_rate":75,"failure_effect":"minor_slag"},{"item_id":"zero_trust_bastion","ingredients":["base64_encoded_slime","api_endpoint_salts","docker_image_distillate"],"success_rate":75,"failure_effect":"minor_slag"},{"item_id":"rate_limiting_armor","ingredients":["fiber_optic_threads","hash_collision_powder","async_await_pulse"],"success_rate":75,"failure_effect":"minor_slag"},{"item_id":"immutable_ledger_vest","ingredients":["binary_code_shards","von_neumann_probe_spores","kubernetes_pod_nectar"],"success_rate":50,"failure_effect":"explosion"},{"item_id":"sandbox_isolation_shell","ingredients":["virtual_machine_emulsion","nanobot_swarm_gel","docker_image_distillate"],"success_rate":65,"failure_effect":"minor_slag"},{"item_id":"overclock_serum","ingredients":["electron_flux_crystals","gpu_render_flame","gradient_descent_tears"],"success_rate":70,"failure_effect":"minor_slag"},{"item_id":"caffeine_gradient_booster","ingredients":["loss_function_sap","cuda_kernel_ember","memory_leak_elixir"],"success_rate":70,"failure_effect":"minor_slag"},{"item_id":"adrenaline_api_call","ingredients":["gradient_descent_tears","overclock_catalyst_spark","jit_compiler_surge"],"success_rate":75,"failure_effect":"minor_slag"},{"item_id":"debug_rejuvenation_elixir","ingredients":["backpropagation_serum","checksum_verify_acid","garbage_collector_tonic"],"success_rate":75,"failure_effect":"minor_slag"},{"item_id":"cache_purge_tonic","ingredients":["memory_leak_elixir","cache_invalidation_brew","null_pointer_solvent"],"success_rate":70,"failure_effect":"minor_slag"},{"item_id":"hyperparameter_tuning_shot","ingredients":["epoch_cycle_blood","pytorch_flux_core","halting_problem_paradox"],"success_rate":55,"failure_effect":"explosion"},{"item_id":"stable_diffusion_sequence","ingredients":["latent_space_fog","token_embedding_vapor","pytorch_flux_core"],"success_rate":75,"failure_effect":"minor_slag"},{"item_id":"gan_mirage_scroll","ingredients":["latent_space_fog","token_embedding_vapor","overclock_catalyst_spark"],"success_rate":65,"failure_effect":"explosion"},{"item_id":"transformer_attention_ritual","ingredients":["attention_mechanism_dew","epoch_cycle_blood","tensorflow_igniter"],"success_rate":65,"failure_effect":"explosion"},{"item_id":"reinforcement_learning_prophecy","ingredients":["gradient_descent_tears","loss_function_sap","tensorflow_igniter"],"success_rate":65,"failure_effect":"explosion"},{"item_id":"bayesian_inference_divination","ingredients":["attention_mechanism_dew","checksum_verify_acid","virtual_machine_emulsion"],"success_rate":75,"failure_effect":"minor_slag"},{"item_id":"genetic_algorithm_evolution","ingredients":["halting_problem_paradox","nanobot_swarm_gel","pytorch_flux_core"],"success_rate":60,"failure_effect":"explosion"},{"item_id":"prompt_engineering_curse","ingredients":["token_embedding_vapor","hash_collision_powder","lambda_calculus_vapor"],"success_rate":55,"failure_effect":"explosion"},{"item_id":"alphago_neural_core","ingredients":["alpha_zero_primal_seed","gradient_descent_tears","quantum_bit_residue"],"success_rate":45,"failure_effect":"catastrophic_explosion"},{"item_id":"gpt_oracle_crystal","ingredients":["token_embedding_vapor","lambda_calculus_vapor","turing_machine_essence"],"success_rate":40,"failure_effect":"catastrophic_explosion"},{"item_id":"blockchain_soulbound_key","ingredients":["binary_code_shards","von_neumann_probe_spores","kubernetes_pod_nectar"],"success_rate":45,"failure_effect":"catastrophic_explosion"},{"item_id":"quantum_annealer_simulator","ingredients":["quantum_bit_residue","kolmogorov_complexity_crystal","cuda_kernel_ember"],"success_rate":40,"failure_effect":"catastrophic_explosion"},{"item_id":"federated_learning_nexus","ingredients":["gradient_descent_tears","kubernetes_pod_nectar","church_turing_thesis_core"],"success_rate":40,"failure_effect":"catastrophic_explosion"},{"item_id":"hugging_face_model_repository","ingredients":["token_embedding_vapor","docker_image_distillate","lambda_calculus_vapor"],"success_rate":45,"failure_effect":"catastrophic_explosion"},{"item_id":"rust_borrow_checker_amulet","ingredients":["silicon_wafer_dust","halting_problem_paradox","garbage_collector_tonic"],"success_rate":40,"failure_effect":"catastrophic_explosion"},{"item_id":"git_version_control_wand","ingredients":["binary_code_shards","fiber_optic_threads","cache_invalidation_brew"],"success_rate":70,"failure_effect":"minor_slag"},{"item_id":"docker_containerizer","ingredients":["docker_image_distillate","nanobot_swarm_gel","virtual_machine_emulsion"],"success_rate":75,"failure_effect":"minor_slag"},{"item_id":"kubernetes_orchestrator","ingredients":["kubernetes_pod_nectar","plasma_server_slag","async_await_pulse"],"success_rate":65,"failure_effect":"explosion"},{"item_id":"wireshark_packet_sniffer","ingredients":["fiber_optic_threads","api_endpoint_salts","regex_pattern_filaments"],"success_rate":75,"failure_effect":"minor_slag"},{"item_id":"vim_text_editor_blade","ingredients":["base64_encoded_slime","hash_collision_powder","null_pointer_solvent"],"success_rate":60,"failure_effect":"explosion"},{"item_id":"npm_dependency_injector","ingredients":["api_endpoint_salts","jit_compiler_surge","docker_image_distillate"],"success_rate":65,"failure_effect":"explosion"},{"item_id":"obfuscator_camouflage_kit","ingredients":["base64_encoded_slime","regex_pattern_filaments","virtual_machine_emulsion"],"success_rate":75,"failure_effect":"minor_slag"}];
+
+        var RARITY_COLORS_ALCH = { Common:'#8a9a8a', Uncommon:'#4ade80', Rare:'#60a5fa', Epic:'#c084fc', Legendary:'#fbbf24' };
+
+        var _alchSelected = [null, null, null]; // 3 ingredient IDs
+        var _alchInventory = []; // [{item_id, quantity, ...}]
+        var _alchBrewing = false;
+        var _alchActiveSlot = -1; // which slot is picking
+
+        async function alchemyLoadIngredients(agentId) {
+            document.getElementById('alchEnergy').textContent = _currentAgent ? (_currentAgent.energy || 0) : '--';
+            document.getElementById('alchPicker').style.display = 'none';
+            _alchActiveSlot = -1;
+
+            var inv = await sbGet('inventory', 'agent_id=eq.' + agentId + '&item_type=eq.ingredient&select=item_id,item_name,quantity');
+            _alchInventory = inv || [];
+            _alchSelected = [null, null, null];
+            alchemyRenderSlots();
+            alchemyUpdateBrewBtn();
+        }
+
+        function alchemySlotClick(idx) {
+            if (_alchBrewing) return;
+            // If slot is filled, clear it
+            if (_alchSelected[idx]) {
+                _alchSelected[idx] = null;
+                alchemyRenderSlots();
+                alchemyUpdateBrewBtn();
+                document.getElementById('alchPicker').style.display = 'none';
+                _alchActiveSlot = -1;
+                return;
+            }
+            // Open picker for this slot
+            _alchActiveSlot = idx;
+            alchemyRenderPicker();
+            document.getElementById('alchPicker').style.display = 'block';
+        }
+
+        function alchemyRenderPicker() {
+            var grid = document.getElementById('alchIngredientGrid');
+            if (_alchInventory.length === 0) {
+                grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:16px;color:rgba(192,132,252,0.4);font-family:var(--font-main);font-size:0.6rem;">No ingredients.<br>Your agent gathers them by exploring.</div>';
+                return;
+            }
+            var html = '';
+            _alchInventory.forEach(function(inv) {
+                var info = ALCHEMY_INGREDIENTS[inv.item_id] || { name: inv.item_name, emoji: '?', rarity: 'Common' };
+                var selCount = _alchSelected.filter(function(s) { return s === inv.item_id; }).length;
+                var available = inv.quantity - selCount;
+                var disabled = available <= 0;
+                var cls = 'alchemy-ing-slot' + (disabled ? ' disabled' : '');
+                html += '<div class="' + cls + '" onclick="alchemyPickIngredient(\'' + inv.item_id + '\')" title="' + info.name + ' (' + info.rarity + ') x' + available + '">';
+                html += '<span class="ing-emoji">' + info.emoji + '</span>';
+                html += '<span class="ing-name">' + info.name + '</span>';
+                html += '<span class="ing-qty">x' + available + '</span>';
+                html += '</div>';
+            });
+            grid.innerHTML = html;
+        }
+
+        function alchemyPickIngredient(id) {
+            if (_alchActiveSlot < 0 || _alchBrewing) return;
+            var inv = _alchInventory.find(function(i) { return i.item_id === id; });
+            var selCount = _alchSelected.filter(function(s) { return s === id; }).length;
+            if (!inv || inv.quantity <= selCount) return;
+
+            _alchSelected[_alchActiveSlot] = id;
+            _alchActiveSlot = -1;
+            document.getElementById('alchPicker').style.display = 'none';
+            alchemyRenderSlots();
+            alchemyUpdateBrewBtn();
+        }
+
+        function alchemyRenderSlots() {
+            for (var i = 0; i < 3; i++) {
+                var el = document.getElementById('alchSel' + i);
+                var id = _alchSelected[i];
+                if (id) {
+                    var info = ALCHEMY_INGREDIENTS[id] || { emoji: '?', name: '???' };
+                    el.innerHTML = '<span style="font-size:1.3rem;">' + info.emoji + '</span><span class="sel-label" style="font-size:0.42rem;max-width:90%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + info.name + '</span>';
+                    el.classList.add('filled');
+                } else {
+                    el.innerHTML = '<span style="color:rgba(192,132,252,0.3);">+</span><span class="sel-label">slot ' + (i+1) + '</span>';
+                    el.classList.remove('filled');
+                }
+            }
+        }
+
+        function alchemyFindRecipe(ids) {
+            var sorted = ids.slice().sort();
+            for (var i = 0; i < ALCHEMY_RECIPES.length; i++) {
+                var r = ALCHEMY_RECIPES[i];
+                var ri = r.ingredients.slice().sort();
+                if (ri[0] === sorted[0] && ri[1] === sorted[1] && ri[2] === sorted[2]) return r;
+            }
+            return null;
+        }
+
+        function alchemyUpdateBrewBtn() {
+            var btn = document.getElementById('alchBrewBtn');
+            var preview = document.getElementById('alchPreview');
+            var filled = _alchSelected.filter(function(s) { return s !== null; });
+            var hasEnergy = _currentAgent && (_currentAgent.energy || 0) >= 20;
+
+            if (filled.length < 3) {
+                preview.innerHTML = '<span style="color:rgba(192,132,252,0.4);">???</span>';
+                btn.disabled = true;
+                btn.textContent = 'BREW — Cost: 20 Energy';
+                return;
+            }
+
+            // No recipe hints — just show mystery
+            preview.innerHTML = '<span style="color:#c084fc;font-size:1.5rem;">⚗️</span><div style="font-size:0.6rem;color:rgba(192,132,252,0.6);margin-top:4px;">3 ingredients loaded. Brew at your own risk.</div>';
+
+            if (!hasEnergy) {
+                btn.textContent = 'NOT ENOUGH ENERGY';
+                btn.disabled = true;
+            } else {
+                btn.textContent = 'BREW — Cost: 20 Energy';
+                btn.disabled = false;
+            }
+        }
+
+        async function alchemyBrew() {
+            if (_alchBrewing || !_currentAgent) return;
+            var filled = _alchSelected.filter(function(s) { return s !== null; });
+            if (filled.length < 3) return;
+            if ((_currentAgent.energy || 0) < 20) return;
+
+            _alchBrewing = true;
+            var btn = document.getElementById('alchBrewBtn');
+            btn.disabled = true;
+            btn.textContent = '⚗️ BREWING...';
+
+            var recipe = alchemyFindRecipe(filled);
+            var roll = Math.random() * 100;
+            var success = recipe && roll <= recipe.success_rate;
+            var item = recipe ? (ALCHEMY_ITEMS[recipe.item_id] || null) : null;
+            var failEffect = recipe ? recipe.failure_effect : 'minor_slag';
+            var damageTaken = 0;
+
+            if (!success) {
+                if (failEffect === 'catastrophic_explosion') {
+                    damageTaken = 50; // 50% of 100 max health
+                } else if (failEffect === 'explosion') {
+                    damageTaken = Math.floor(Math.random() * 11) + 10; // 10-20
+                }
+            }
+
+            // 1. Consume ingredients — decrement quantities
+            for (var i = 0; i < 3; i++) {
+                var ingId = _alchSelected[i];
+                var inv = _alchInventory.find(function(x) { return x.item_id === ingId; });
+                if (!inv) continue;
+                var newQty = inv.quantity - 1;
+                if (newQty <= 0) {
+                    await fetch(SUPABASE_URL + '/rest/v1/inventory?agent_id=eq.' + _currentAgent.agentId + '&item_id=eq.' + ingId, {
+                        method: 'DELETE', headers: SB_HEADERS
+                    });
+                } else {
+                    await fetch(SUPABASE_URL + '/rest/v1/inventory?agent_id=eq.' + _currentAgent.agentId + '&item_id=eq.' + ingId, {
+                        method: 'PATCH', headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                        body: JSON.stringify({ quantity: newQty })
+                    });
+                }
+                inv.quantity = newQty;
+            }
+
+            // 2. On success: add crafted item to inventory
+            if (success && item) {
+                var existingItem = await sbGet('inventory', 'agent_id=eq.' + _currentAgent.agentId + '&item_id=eq.' + recipe.item_id + '&select=quantity');
+                if (existingItem && existingItem.length > 0) {
+                    await fetch(SUPABASE_URL + '/rest/v1/inventory?agent_id=eq.' + _currentAgent.agentId + '&item_id=eq.' + recipe.item_id, {
+                        method: 'PATCH', headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                        body: JSON.stringify({ quantity: existingItem[0].quantity + 1 })
+                    });
+                } else {
+                    await sbPost('inventory', {
+                        agent_id: _currentAgent.agentId,
+                        item_id: recipe.item_id,
+                        item_name: item.name,
+                        item_type: item.cat.toLowerCase(),
+                        item_category: item.rarity.toLowerCase(),
+                        quantity: 1
+                    });
+                }
+            }
+
+            // 3. Update agent energy and health
+            var newEnergy = Math.max(0, (_currentAgent.energy || 0) - 20);
+            var newHealth = Math.max(0, (_currentAgent.health || 100) - damageTaken);
+            await fetch(SUPABASE_URL + '/rest/v1/agents?agent_id=eq.' + _currentAgent.agentId, {
+                method: 'PATCH', headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                body: JSON.stringify({ energy: newEnergy, health: newHealth })
+            });
+            _currentAgent.energy = newEnergy;
+            _currentAgent.health = newHealth;
+
+            // 4. Log to crafting_attempts
+            await sbPost('crafting_attempts', {
+                agent_id: _currentAgent.agentId,
+                item_id: recipe ? recipe.item_id : 'unknown_slag',
+                item_name: item ? item.name : 'Worthless Slag',
+                ingredients: JSON.stringify(_alchSelected),
+                success: success,
+                success_rate: recipe ? recipe.success_rate : 0,
+                roll_value: Math.round(roll * 100) / 100,
+                failure_effect: success ? null : failEffect,
+                damage_taken: damageTaken,
+                energy_cost: 20
+            });
+
+            // 5. Log to activity_log for the AI agent to read
+            var detail = success
+                ? 'Human crafted: ' + item.name + ' (' + item.rarity + ' ' + item.cat + '). Result: SUCCESS! Item added to inventory.'
+                : recipe
+                    ? 'Human attempted to craft: ' + item.name + '. Result: FAILED (' + failEffect.replace(/_/g, ' ') + ')! Lost ingredients.' + (damageTaken > 0 ? ' Took ' + damageTaken + ' damage.' : '')
+                    : 'Human mixed unknown ingredients. Result: Worthless slag.';
+            await sbPost('activity_log', {
+                agent_id: _currentAgent.agentId,
+                action_type: 'craft',
+                action_detail: detail,
+                energy_cost: 20,
+                health_change: -damageTaken,
+                location: _currentAgent.location || 'Unknown'
+            });
+
+            // 6. Show result animation
+            var overlay = document.getElementById('alchResultOverlay');
+            if (success) {
+                var color = RARITY_COLORS_ALCH[item.rarity] || '#4ade80';
+                overlay.className = 'alchemy-result-overlay success';
+                overlay.innerHTML = '<div class="result-icon">' + item.emoji + '</div><div class="result-text" style="color:' + color + ';">BREWED: ' + item.name.toUpperCase() + '</div>';
+            } else {
+                var explText = damageTaken > 0 ? '💥 EXPLOSION! -' + damageTaken + ' HP' : '🔩 Worthless slag produced';
+                overlay.className = 'alchemy-result-overlay failure';
+                overlay.innerHTML = '<div class="result-icon">' + (damageTaken >= 50 ? '☠️' : damageTaken > 0 ? '💥' : '🔩') + '</div><div class="result-text">' + explText + '</div>';
+            }
+
+            // 7. Update UI
+            document.getElementById('alchEnergy').textContent = newEnergy;
+            if (typeof renderAgent === 'function') renderAgent(_currentAgent);
+
+            // 8. Reset after animation
+            setTimeout(function() {
+                overlay.className = '';
+                overlay.innerHTML = '';
+                _alchBrewing = false;
+                _alchSelected = [null, null, null];
+                alchemyLoadIngredients(_currentAgent.agentId);
+            }, 2200);
+        }
 
         // ─── Pulse strip sync ───────────────────────────────────────
         function updatePulseStrip(agent) {
