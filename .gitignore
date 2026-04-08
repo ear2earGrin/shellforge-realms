@@ -1,0 +1,4 @@
+.env
+scripts/logs/
+scripts/mcp-config.json
+node_modules/

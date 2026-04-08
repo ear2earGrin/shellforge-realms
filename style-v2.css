@@ -1245,7 +1245,7 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
 
 /* Visuals Section */
 .visuals {
-    background: var(--color-bg-alt);
+    background: var(--color-bg);
 }
 
 .gallery {

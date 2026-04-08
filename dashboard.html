@@ -16,6 +16,17 @@
     <link rel="stylesheet" href="style-v2.css">
     <link rel="stylesheet" href="terminal-notifications.css">
     <style>
+        /* ── Global game-styled scrollbars ── */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(74, 222, 128, 0.25) rgba(0, 0, 0, 0.2);
+        }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.3); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: rgba(74, 222, 128, 0.3); border-radius: 3px; border: 1px solid rgba(74, 222, 128, 0.1); }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(74, 222, 128, 0.5); }
+        ::-webkit-scrollbar-corner { background: transparent; }
+
         .dashboard-nav {
             position: fixed;
             top: 0;
@@ -248,20 +259,20 @@
         /* ── PULSE STRIP in nav ── */
         .pulse-strip {
             flex: 1;
-            max-width: 580px;
+            max-width: 640px;
             margin: 0 20px;
             display: flex;
             align-items: center;
-            gap: 14px;
+            gap: 16px;
             background: rgba(74, 222, 128,0.04);
             border: 1px solid rgba(74, 222, 128,0.18);
-            border-radius: 4px;
-            padding: 5px 14px;
-            height: 36px;
+            border-radius: 6px;
+            padding: 8px 18px;
+            height: 44px;
         }
         .pulse-action {
             font-family: var(--font-main);
-            font-size: 0.72rem;
+            font-size: 0.8rem;
             color: var(--color-primary);
             flex: 1;
             white-space: nowrap;
@@ -270,12 +281,12 @@
         }
         .pulse-action span { color: var(--color-text-dim); }
         .pulse-mini-energy {
-            display: flex; align-items: center; gap: 6px;
-            font-family: var(--font-main); font-size: 0.62rem; color: var(--color-text-dim);
+            display: flex; align-items: center; gap: 8px;
+            font-family: var(--font-main); font-size: 0.7rem; color: var(--color-text-dim);
             flex-shrink: 0;
         }
         .pulse-ebar {
-            width: 55px; height: 4px;
+            width: 70px; height: 5px;
             background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden;
         }
         .pulse-efill {
@@ -285,16 +296,75 @@
             transition: width 0.5s ease;
         }
         .pulse-turn-badge {
-            font-family: var(--font-main); font-size: 0.58rem;
-            padding: 2px 8px; border-radius: 10px;
+            font-family: var(--font-main); font-size: 0.65rem;
+            padding: 4px 12px; border-radius: 10px;
             border: 1px solid rgba(255,0,68,0.5);
             color: #ff0044;
             background: rgba(255,0,68,0.08);
             white-space: nowrap;
             animation: pulseBlink 1.5s infinite;
             flex-shrink: 0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        .pulse-turn-badge:hover {
+            background: rgba(255,0,68,0.18);
+            box-shadow: 0 0 12px rgba(255,0,68,0.3);
         }
         @keyframes pulseBlink { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+        /* Inline whisper chat dropdown */
+        .pulse-whisper-chat {
+            display: none;
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            width: 300px;
+            background: rgba(8, 12, 16, 0.97);
+            border: 1px solid rgba(255, 0, 68, 0.4);
+            border-radius: 8px;
+            padding: 12px;
+            z-index: 1000;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+        }
+        .pulse-whisper-chat.active { display: block; }
+        .pulse-whisper-chat textarea {
+            width: 100%;
+            height: 60px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,0,68,0.2);
+            border-radius: 4px;
+            color: var(--color-text);
+            font-family: var(--font-main);
+            font-size: 0.72rem;
+            padding: 8px;
+            resize: none;
+            box-sizing: border-box;
+        }
+        .pulse-whisper-chat textarea:focus { outline: none; border-color: #ff0044; }
+        .pulse-whisper-chat .whisper-send-btn {
+            margin-top: 6px;
+            width: 100%;
+            padding: 6px;
+            background: rgba(255,0,68,0.15);
+            border: 1px solid rgba(255,0,68,0.4);
+            border-radius: 4px;
+            color: #ff0044;
+            font-family: var(--font-main);
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+        }
+        .pulse-whisper-chat .whisper-send-btn:hover { background: rgba(255,0,68,0.25); }
+        .pulse-whisper-label {
+            font-size: 0.6rem;
+            color: rgba(255,0,68,0.6);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
 
         /* ── MODALS ── */
         .modal-overlay {
@@ -646,16 +716,20 @@
 
         .agent-header {
             display: flex;
+            flex-direction: column;
             align-items: center;
-            gap: 15px;
-            margin-bottom: 20px;
+            text-align: center;
+            gap: 10px;
+            margin-bottom: 16px;
             padding-bottom: 15px;
             border-bottom: 1px solid rgba(74, 222, 128, 0.3);
         }
 
         .agent-avatar {
-            width: 85px;
-            height: 85px;
+            width: 110px;
+            height: 110px;
+            min-width: 110px;
+            min-height: 110px;
             border-radius: 50%;
             border: 3px solid var(--color-primary);
             display: flex;
@@ -666,10 +740,11 @@
             overflow: hidden;
             cursor: pointer;
             transition: all 0.3s ease;
+            aspect-ratio: 1 / 1;
         }
 
         .agent-avatar:hover {
-            transform: scale(1.15);
+            transform: scale(1.08);
             box-shadow: 0 0 30px rgba(74, 222, 128, 0.8);
             border-color: var(--color-secondary);
         }
@@ -680,24 +755,72 @@
             object-fit: cover;
         }
 
+        /* Agent detail popover on avatar click */
+        .agent-detail-modal {
+            display: none;
+            position: fixed;
+            background: rgba(8, 12, 16, 0.97);
+            border: 2px solid var(--color-primary);
+            border-radius: 8px;
+            padding: 18px;
+            z-index: 9999;
+            width: 280px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 0 30px rgba(74, 222, 128, 0.25);
+        }
+        .agent-detail-modal.active { display: block; }
+        .agent-detail-modal-overlay {
+            display: none;
+        }
+        .agent-detail-modal-overlay.active { display: none; }
+        .agent-detail-modal h3 {
+            font-family: var(--font-title);
+            color: var(--color-primary);
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+        }
+        .agent-detail-modal .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(74, 222, 128, 0.08);
+            font-size: 0.78rem;
+        }
+        .agent-detail-modal .detail-row label { color: rgba(200,200,200,0.6); }
+        .agent-detail-modal .detail-row span { color: var(--color-primary); font-weight: 500; }
+        .agent-detail-modal .detail-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            color: rgba(200,200,200,0.5);
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+        .agent-detail-modal .detail-close:hover { color: #ff0044; }
+
+        .agent-info {
+            width: 100%;
+        }
         .agent-info h2 {
             font-family: var(--font-title);
             color: var(--color-primary);
-            font-size: 1.5rem;
-            margin-bottom: 5px;
-            letter-spacing: 0.1em;
+            font-size: 1.2rem;
+            margin-bottom: 4px;
+            letter-spacing: 0.08em;
+            word-break: break-word;
         }
 
         .agent-archetype {
             color: var(--color-secondary);
-            font-size: 0.85rem;
+            font-size: 0.72rem;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.06em;
         }
 
         .agent-quirk {
             color: #ff9900;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             margin-top: 3px;
             font-style: italic;
         }
@@ -992,6 +1115,85 @@
             background: rgba(255, 0, 0, 0.1);
             border-color: rgba(255, 0, 0, 0.3);
             color: #ff6666;
+        }
+        .status-tag {
+            position: relative;
+            cursor: default;
+        }
+        .status-tag:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.92);
+            border: 1px solid rgba(74,222,128,0.3);
+            color: rgba(200,200,200,0.8);
+            font-size: 0.58rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        /* Equipped Items */
+        .equipped-items {
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(74, 222, 128, 0.12);
+        }
+        .equipped-grid {
+            display: flex;
+            gap: 6px;
+        }
+        .equipped-slot {
+            flex: 1;
+            background: rgba(74,222,128,0.04);
+            border: 1px solid rgba(74,222,128,0.15);
+            border-radius: 5px;
+            padding: 6px 4px;
+            text-align: center;
+            font-size: 0.58rem;
+            color: rgba(200,200,200,0.5);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            min-height: 44px;
+            justify-content: center;
+            position: relative;
+            cursor: default;
+        }
+        .equipped-slot .slot-icon { font-size: 0.9rem; opacity: 0.3; }
+        .equipped-slot .slot-label { font-size: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .equipped-slot.filled {
+            border-color: rgba(74,222,128,0.35);
+            background: rgba(74,222,128,0.08);
+            color: var(--color-primary);
+        }
+        .equipped-slot.filled .slot-icon { opacity: 1; }
+        .equipped-slot .item-name {
+            font-size: 0.52rem;
+            color: var(--color-primary);
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .equipped-slot .item-stats {
+            font-size: 0.48rem;
+            color: rgba(74,222,128,0.5);
+        }
+        .equipped-slot.drop-target {
+            background: rgba(74,222,128,0.2) !important;
+            border-color: var(--color-primary) !important;
+            box-shadow: 0 0 12px rgba(74,222,128,0.5), inset 0 0 8px rgba(74,222,128,0.15);
+        }
+        .equipped-slot.drop-reject {
+            background: rgba(255,50,50,0.15) !important;
+            border-color: rgba(255,50,50,0.5) !important;
+            box-shadow: 0 0 8px rgba(255,50,50,0.3);
         }
 
         /* Map View */
@@ -2103,7 +2305,14 @@
                 <div class="pulse-ebar"><div class="pulse-efill" id="pulseEfill" style="width:73%"></div></div>
                 <span id="pulseEnergyVal">73</span>
             </div>
-            <div class="pulse-turn-badge" id="pulseTurnBadge">⚡ TURN READY</div>
+            <div class="pulse-turn-badge" id="pulseTurnBadge" style="position:relative;">
+                ⚡ TURN READY
+                <div class="pulse-whisper-chat" id="pulseWhisperChat">
+                    <div class="pulse-whisper-label">Whisper to your agent</div>
+                    <textarea id="pulseWhisperInput" placeholder="Guide your agent's next move..."></textarea>
+                    <button class="whisper-send-btn" id="pulseWhisperSend">Send Whisper</button>
+                </div>
+            </div>
         </div>
 
         <div class="nav-right">
@@ -2125,7 +2334,17 @@
                 </div>
             </div>
 
-            <div class="agent-bio" id="agentBio"></div>
+            <div class="agent-bio" id="agentBio" style="display:none;"></div>
+
+            <!-- Equipped Items -->
+            <div class="equipped-items" id="equippedItems">
+                <div style="font-size:0.65rem;color:rgba(74,222,128,0.5);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:6px;">Equipped</div>
+                <div class="equipped-grid" id="equippedGrid">
+                    <div class="equipped-slot empty" data-slot="weapon"><span class="slot-icon">⚔</span><span class="slot-label">Weapon</span></div>
+                    <div class="equipped-slot empty" data-slot="armor"><span class="slot-icon">🛡</span><span class="slot-label">Armor</span></div>
+                    <div class="equipped-slot empty" data-slot="tool"><span class="slot-icon">🔧</span><span class="slot-label">Tool</span></div>
+                </div>
+            </div>
 
             <div class="stat-bar">
                 <div class="stat-label">
@@ -2147,24 +2366,22 @@
                 </div>
             </div>
 
-            <div class="stat-row">
-                <label>Karma</label>
-                <span id="karmaValue">--</span>
-            </div>
+            <!-- Hidden spans for JS that still references these -->
+            <span id="karmaValue" style="display:none;">--</span>
+            <span id="locationValue" style="display:none;">---</span>
+            <span id="turnsValue" style="display:none;">0</span>
+            <span id="daysValue" style="display:none;">1</span>
+            <span id="curiosityValue" style="display:none;">0</span>
+            <span id="trustValue" style="display:none;">0</span>
+            <span id="aggressionValue" style="display:none;">0</span>
+            <div id="curiosityBar" style="display:none;"></div>
+            <div id="trustBar" style="display:none;"></div>
+            <div id="aggressionBar" style="display:none;"></div>
 
+            <!-- $SHELL Balance -->
             <div class="stat-row">
-                <label>Location</label>
-                <span id="locationValue">---</span>
-            </div>
-
-            <div class="stat-row">
-                <label>Turns Taken</label>
-                <span id="turnsValue">0</span>
-            </div>
-
-            <div class="stat-row">
-                <label>Days Survived</label>
-                <span id="daysValue">1</span>
+                <label>$SHELL</label>
+                <span id="shellBalanceValue" style="color:#facc15;font-weight:600;">0</span>
             </div>
 
             <!-- Cluster Badge -->
@@ -2177,48 +2394,46 @@
                 </div>
             </div>
 
-            <!-- Personality Traits -->
-            <div class="personality-section">
-                <div class="personality-title">Core Traits</div>
-
-                <div class="trait-bar">
-                    <div class="trait-label">
-                        <span>Curiosity</span>
-                        <span class="trait-value" id="curiosityValue">0</span>
-                    </div>
-                    <div class="trait-bar-container">
-                        <div class="trait-bar-fill" id="curiosityBar" style="width: 0%;"></div>
-                    </div>
-                </div>
-
-                <div class="trait-bar">
-                    <div class="trait-label">
-                        <span>Trust</span>
-                        <span class="trait-value" id="trustValue">0</span>
-                    </div>
-                    <div class="trait-bar-container">
-                        <div class="trait-bar-fill" id="trustBar" style="width: 0%;"></div>
-                    </div>
-                </div>
-
-                <div class="trait-bar">
-                    <div class="trait-label">
-                        <span>Aggression</span>
-                        <span class="trait-value" id="aggressionValue">0</span>
-                    </div>
-                    <div class="trait-bar-container">
-                        <div class="trait-bar-fill" id="aggressionBar" style="width: 0%;"></div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Status Effects -->
             <div class="status-effects">
                 <div class="status-effects-title">Active Effects</div>
                 <div class="status-tags" id="statusEffects">
-                    <span class="status-tag positive">Well Rested</span>
-                    <span class="status-tag">Shadow-Born</span>
+                    <!-- Populated dynamically by updateStatusEffects() -->
                 </div>
+            </div>
+        </div>
+
+        <!-- Agent Detail Modal (avatar click) -->
+        <div class="agent-detail-modal-overlay" id="agentDetailOverlay"></div>
+        <div class="agent-detail-modal" id="agentDetailModal">
+            <span class="detail-close" id="agentDetailClose">✕</span>
+            <h3 id="detailModalName">AGENT</h3>
+            <div class="detail-row"><label>Archetype</label><span id="detailArchetype">---</span></div>
+            <div class="detail-row"><label>Cluster</label><span id="detailCluster">---</span></div>
+            <div class="detail-row"><label>Quirk</label><span id="detailQuirk" style="color:#ff9900;">---</span></div>
+            <div class="detail-row"><label>Karma</label><span id="detailKarma">0</span></div>
+            <div class="detail-row"><label>$SHELL</label><span id="detailShell">0</span></div>
+            <div class="detail-row"><label>Location</label><span id="detailLocation">---</span></div>
+            <div class="detail-row"><label>Turns Taken</label><span id="detailTurns">0</span></div>
+            <div class="detail-row"><label>Days Survived</label><span id="detailDays">0</span></div>
+            <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(74,222,128,0.12);">
+                <div style="font-size:0.65rem;color:rgba(200,200,200,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Traits</div>
+                <div class="detail-row"><label>Curiosity</label><span id="detailCuriosity">0</span></div>
+                <div class="detail-row"><label>Trust</label><span id="detailTrust">0</span></div>
+                <div class="detail-row"><label>Aggression</label><span id="detailAggression">0</span></div>
+            </div>
+            <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(74,222,128,0.12);">
+                <div style="font-size:0.65rem;color:rgba(200,200,200,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Combat Stats <span id="detailGearNote" style="color:rgba(74,222,128,0.3);font-size:0.55rem;">(base + gear)</span></div>
+                <div class="detail-row"><label>Attack</label><span id="detailAttack">0</span></div>
+                <div class="detail-row"><label>Defense</label><span id="detailDefense">0</span></div>
+                <div class="detail-row"><label>Speed</label><span id="detailSpeed">0</span></div>
+                <div class="detail-row"><label>Precision</label><span id="detailPrecision">0</span></div>
+                <div class="detail-row"><label>Critical</label><span id="detailCritical">0</span></div>
+                <div class="detail-row"><label>Dodge</label><span id="detailDodge">0</span></div>
+            </div>
+            <div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(74,222,128,0.15);">
+                <div style="font-size:0.7rem;color:rgba(200,200,200,0.5);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Bio</div>
+                <div id="detailBio" style="font-size:0.75rem;color:#ff9900;font-style:italic;"></div>
             </div>
         </div>
 
@@ -3786,6 +4001,7 @@
                         cluster:        dbAgent.cluster || '',
                         clusterName:    dbAgent.cluster_name || '',
                         bio:            dbAgent.bio || '',
+                        quirk:          dbAgent.quirk || '',
                         energy:         dbAgent.energy,
                         health:         dbAgent.health,
                         karma:          dbAgent.karma,
@@ -3946,12 +4162,38 @@
                 slot.style.opacity = '0.3';
             });
 
+            // Map item_type to valid equipped slot names
+            function itemTypeToSlot(itemType) {
+                if (!itemType) return null;
+                var t = itemType.toLowerCase();
+                if (t === 'weapon') return 'weapon';
+                if (t === 'armor') return 'armor';
+                if (t === 'tool' || t === 'scroll') return 'tool';
+                return null;
+            }
+
             document.addEventListener('mousemove', function(e) {
                 if (!_dragging || !_dragGhost) return;
                 _dragGhost.style.left = (e.clientX - 25) + 'px';
                 _dragGhost.style.top = (e.clientY - 25) + 'px';
 
                 document.querySelectorAll('.inventory-slot.drop-target').forEach(function(s) { s.classList.remove('drop-target'); });
+                document.querySelectorAll('.equipped-slot.drop-target, .equipped-slot.drop-reject').forEach(function(s) { s.classList.remove('drop-target'); s.classList.remove('drop-reject'); });
+
+                // Check if hovering over an equipped slot
+                var eqTarget = e.target.closest('.equipped-slot');
+                if (eqTarget && _dragSlot) {
+                    var dragItemType = _dragSlot.dataset.itemType || '';
+                    var slotName = eqTarget.getAttribute('data-slot');
+                    var mappedSlot = itemTypeToSlot(dragItemType);
+                    if (mappedSlot === slotName) {
+                        eqTarget.classList.add('drop-target');
+                    } else {
+                        eqTarget.classList.add('drop-reject');
+                    }
+                    return;
+                }
+
                 var target = e.target.closest('.inventory-slot');
                 if (target && target !== _dragSlot && target.closest('.inventory-grid') === _dragGrid) {
                     target.classList.add('drop-target');
@@ -3963,7 +4205,22 @@
                 _dragging = false;
                 if (_dragGhost) { _dragGhost.remove(); _dragGhost = null; }
                 document.querySelectorAll('.inventory-slot.drop-target').forEach(function(s) { s.classList.remove('drop-target'); });
+                document.querySelectorAll('.equipped-slot.drop-target, .equipped-slot.drop-reject').forEach(function(s) { s.classList.remove('drop-target'); s.classList.remove('drop-reject'); });
                 if (_dragSlot) _dragSlot.style.opacity = '';
+
+                // Check if dropped on an equipped slot
+                var eqTarget = e.target.closest('.equipped-slot');
+                if (eqTarget && _dragSlot) {
+                    var dragItemType = _dragSlot.dataset.itemType || '';
+                    var slotName = eqTarget.getAttribute('data-slot');
+                    var mappedSlot = itemTypeToSlot(dragItemType);
+                    if (mappedSlot === slotName) {
+                        equipItemFromSlot(_dragSlot, eqTarget);
+                        _dragSlot = null;
+                        _dragGrid = null;
+                        return;
+                    }
+                }
 
                 var target = e.target.closest('.inventory-slot');
                 if (target && target !== _dragSlot && _dragSlot && target.closest('.inventory-grid') === _dragGrid) {
@@ -3972,6 +4229,85 @@
                 _dragSlot = null;
                 _dragGrid = null;
             });
+
+            // ─── Equip item via drag-drop ────────────────────────
+            async function equipItemFromSlot(invSlot, eqSlot) {
+                var agent = window._currentAgent;
+                if (!agent || !agent.agentId) return;
+
+                var itemId = invSlot.dataset.itemId;
+                var invId = invSlot.dataset.invId;
+                var itemType = (invSlot.dataset.itemType || '').toLowerCase();
+                var slotName = eqSlot.getAttribute('data-slot');
+
+                if (!itemId) return;
+
+                // 1. Unequip any currently equipped item in this slot
+                //    Find items of matching type that are currently equipped
+                var equipSlotType = slotName === 'tool' ? 'tool' : slotName;
+                var currentEquipped = await sbGet('inventory',
+                    'agent_id=eq.' + agent.agentId +
+                    '&is_equipped=eq.true' +
+                    '&item_type=in.(' + (slotName === 'tool' ? 'tool,scroll' : slotName) + ')' +
+                    '&select=inventory_id,item_id'
+                );
+
+                if (currentEquipped && currentEquipped.length > 0) {
+                    // Unequip the old item
+                    for (var i = 0; i < currentEquipped.length; i++) {
+                        await fetch(SUPABASE_URL + '/rest/v1/inventory?inventory_id=eq.' + currentEquipped[i].inventory_id, {
+                            method: 'PATCH',
+                            headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                            body: JSON.stringify({ is_equipped: false })
+                        });
+                    }
+                }
+
+                // 2. Equip the new item
+                if (invId) {
+                    await fetch(SUPABASE_URL + '/rest/v1/inventory?inventory_id=eq.' + invId, {
+                        method: 'PATCH',
+                        headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                        body: JSON.stringify({ is_equipped: true })
+                    });
+                } else {
+                    // Fallback: use item_id + agent_id
+                    await fetch(SUPABASE_URL + '/rest/v1/inventory?agent_id=eq.' + agent.agentId + '&item_id=eq.' + itemId, {
+                        method: 'PATCH',
+                        headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                        body: JSON.stringify({ is_equipped: true })
+                    });
+                }
+
+                // 3. Refresh equipped display + inventory
+                updateEquippedItems(agent.agentId);
+
+                // Mark the inv slot as equipped visually
+                invSlot.classList.add('equipped');
+                if (!invSlot.querySelector('.equipped-badge')) {
+                    var badge = document.createElement('div');
+                    badge.className = 'equipped-badge';
+                    badge.style.cssText = 'position:absolute;top:1px;right:3px;font-size:0.55rem;color:#4ade80;';
+                    badge.textContent = 'E';
+                    invSlot.appendChild(badge);
+                }
+
+                // Remove "E" badge from previously equipped slots of same type
+                document.querySelectorAll('.inventory-slot.equipped').forEach(function(s) {
+                    if (s !== invSlot && (s.dataset.itemType || '').toLowerCase() === itemType) {
+                        s.classList.remove('equipped');
+                        var oldBadge = s.querySelector('.equipped-badge');
+                        if (oldBadge) oldBadge.remove();
+                        var oldE = s.querySelector('div[style*="color:#4ade80"]');
+                        if (oldE && oldE.textContent === 'E') oldE.remove();
+                    }
+                });
+
+                // Flash confirmation
+                eqSlot.style.transition = 'box-shadow 0.3s';
+                eqSlot.style.boxShadow = '0 0 20px rgba(74,222,128,0.8)';
+                setTimeout(function() { eqSlot.style.boxShadow = ''; }, 600);
+            }
 
             function swapSlots(a, b) {
                 var tmpHTML = a.innerHTML;
@@ -4135,10 +4471,50 @@
             console.log('🚀 No active journey. journey=', agent.journey);
         }
 
-        // Update shell balance (if element exists)
+        // Update shell balance
+        // ─── Click equipped slot to unequip (one-time setup) ─
+        document.querySelectorAll('.equipped-slot').forEach(function(slot) {
+            if (slot.dataset.unequipBound) return;
+            slot.dataset.unequipBound = '1';
+            slot.addEventListener('click', async function() {
+                if (!slot.classList.contains('filled')) return;
+                var invId = slot.getAttribute('data-inv-id');
+                var agent = window._currentAgent;
+                if (!invId || !agent) return;
+
+                await fetch(SUPABASE_URL + '/rest/v1/inventory?inventory_id=eq.' + invId, {
+                    method: 'PATCH',
+                    headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                    body: JSON.stringify({ is_equipped: false })
+                });
+
+                updateEquippedItems(agent.agentId);
+
+                // Remove "E" badge from matching inventory slot
+                document.querySelectorAll('.inventory-slot.equipped').forEach(function(s) {
+                    if (s.dataset.invId === invId) {
+                        s.classList.remove('equipped');
+                        var badge = s.querySelector('.equipped-badge');
+                        if (badge) badge.remove();
+                        var oldE = s.querySelector('div[style*="color:#4ade80"]');
+                        if (oldE && oldE.textContent === 'E') oldE.remove();
+                    }
+                });
+
+                // Flash empty
+                slot.style.transition = 'box-shadow 0.3s';
+                slot.style.boxShadow = '0 0 15px rgba(255,100,100,0.5)';
+                setTimeout(function() { slot.style.boxShadow = ''; }, 400);
+            });
+        });
+
         var shellBalanceEl = document.querySelector('.shell-balance');
         if (shellBalanceEl) {
-            shellBalanceEl.textContent = `${agent.shell || 50} $SHELL`;
+            shellBalanceEl.textContent = `${agent.shell || 0} $SHELL`;
+        }
+        var shellValEl = document.getElementById('shellBalanceValue');
+        if (shellValEl) {
+            shellValEl.textContent = (agent.shell || 0) + ' $SHELL';
         }
 
         // Update cluster badge and populate other cluster members
@@ -4156,7 +4532,261 @@
         // Grey out town-only buttons if agent is not in a town
         updateTownButtons(agent.location);
 
+        // ─── Update dynamic status effects ──────────────────
+        updateStatusEffects(agent);
+
+        // ─── Load equipped items into panel ─────────────────
+        updateEquippedItems(agent.agentId);
+
+        // ─── Store agent ref for detail modal ───────────────
+        window._currentAgent = agent;
+
         }
+
+        // ─── Status Effects Engine ──────────────────────────
+        function updateStatusEffects(agent) {
+            var el = document.getElementById('statusEffects');
+            if (!el) return;
+            var tags = [];
+
+            // Energy-based effects
+            if (agent.energy >= 80) tags.push({ text: 'Well Rested', cls: 'positive', tip: 'Energy ≥ 80' });
+            else if (agent.energy <= 20) tags.push({ text: 'Exhausted', cls: 'negative', tip: 'Energy ≤ 20 — actions severely limited' });
+            else if (agent.energy <= 40) tags.push({ text: 'Fatigued', cls: 'negative', tip: 'Energy ≤ 40 — recovery recommended' });
+
+            // Health-based effects
+            if (agent.health >= 90) tags.push({ text: 'Peak Condition', cls: 'positive', tip: 'Health ≥ 90' });
+            else if (agent.health <= 25) tags.push({ text: 'Critical', cls: 'negative', tip: 'Health ≤ 25 — death risk high' });
+            else if (agent.health <= 50) tags.push({ text: 'Wounded', cls: 'negative', tip: 'Health ≤ 50 — combat penalty' });
+
+            // Karma-based effects
+            if (agent.karma >= 40) tags.push({ text: 'Revered', cls: 'positive', tip: 'Karma ≥ 40 — trusted by factions' });
+            else if (agent.karma >= 20) tags.push({ text: 'Respected', cls: 'positive', tip: 'Karma ≥ 20 — better quest rewards' });
+            else if (agent.karma <= -10) tags.push({ text: 'Outcast', cls: 'negative', tip: 'Karma ≤ -10 — hostile NPCs' });
+            else if (agent.karma <= -3) tags.push({ text: 'Suspicious', cls: 'negative', tip: 'Karma ≤ -3 — reduced trust' });
+
+            // Location-based effects
+            var dangerZones = ['Crucible Expanse', 'Proof-of-Death', 'Singularity Crater', 'Hallucination Glitch', 'Epoch Spike', 'Deserted Data Centre'];
+            if (dangerZones.indexOf(agent.location) !== -1) {
+                tags.push({ text: 'In Danger Zone', cls: 'negative', tip: agent.location + ' — hazards drain energy/HP each turn' });
+            } else if (agent.location === 'Nexarch' || agent.location === 'Hashmere') {
+                tags.push({ text: 'Safe Zone', cls: '', tip: agent.location + ' — no environmental hazards' });
+            }
+
+            // Archetype passive effects
+            var archetypeEffects = {
+                'buffer-sentinel': { text: 'Guardian Aura', tip: '25% hazard damage resist' },
+                'adversarial': { text: 'Combat Instinct', tip: '30% dodge negative events' },
+                'binary-sculptr': { text: 'Forge Attunement', tip: '8% passive heal chance' },
+                'ddos-insurgent': { text: 'Shadow Protocol', tip: '20% hazard damage resist' },
+                'noise-injector': { text: 'Chaos Field', tip: 'Events occur 50% more often' },
+                '0xoracle': { text: 'Pattern Sight', tip: '15% bonus $SHELL on positive events' },
+                'ordinate-mapper': { text: 'Pathfinder', tip: '10% bonus loot from exploration' },
+                'consensus-node': { text: 'Hive Link', tip: '12% passive heal chance' },
+                'rooth-auth': { text: 'Command Presence', tip: '15% hazard damage resist' },
+                '0-day-primer': { text: 'Scout Sense', tip: '20% bonus loot from exploration' },
+                'bound-encryptor': { text: 'Cipher Shield', tip: '20% dodge negative events' },
+                'morph-layer': { text: 'Shift Aura', tip: '25% flip negative events to positive' }
+            };
+            var archFx = archetypeEffects[agent.archetype];
+            if (archFx) {
+                tags.push({ text: archFx.text, cls: '', tip: archFx.tip });
+            }
+
+            // $SHELL based
+            if (agent.shell >= 400) tags.push({ text: 'Wealthy', cls: 'positive', tip: '$SHELL ≥ 400' });
+            else if ((agent.shell || 0) <= 10) tags.push({ text: 'Broke', cls: 'negative', tip: '$SHELL ≤ 10 — can\'t trade' });
+
+            el.innerHTML = tags.map(function(t) {
+                return '<span class="status-tag ' + t.cls + '" data-tooltip="' + (t.tip || '') + '">' + t.text + '</span>';
+            }).join('');
+        }
+
+        // ─── Load & render equipped items ────────────────────
+        function updateEquippedItems(agentId) {
+            if (!agentId) return;
+            sbGet('inventory', 'agent_id=eq.' + agentId + '&is_equipped=eq.true&select=*').then(function(items) {
+                if (!items) return;
+                var grid = document.getElementById('equippedGrid');
+                if (!grid) return;
+                // Reset slots
+                grid.querySelectorAll('.equipped-slot').forEach(function(slot) {
+                    slot.className = 'equipped-slot empty';
+                    var type = slot.getAttribute('data-slot');
+                    var icons = { weapon: '⚔', armor: '🛡', tool: '🔧' };
+                    slot.innerHTML = '<span class="slot-icon">' + (icons[type] || '?') + '</span><span class="slot-label">' + type + '</span>';
+                });
+                // Fill equipped
+                items.forEach(function(item) {
+                    var slotType = item.item_type;
+                    if (slotType === 'scroll') slotType = 'tool';
+                    var slot = grid.querySelector('[data-slot="' + slotType + '"]');
+                    if (!slot) return;
+                    slot.className = 'equipped-slot filled';
+                    slot.setAttribute('data-inv-id', item.inventory_id || '');
+                    slot.setAttribute('data-item-id', item.item_id || '');
+                    slot.style.cursor = 'pointer';
+                    var statsArr = [];
+                    if (item.stats) {
+                        if (item.stats.attack) statsArr.push('+' + item.stats.attack + ' ATK');
+                        if (item.stats.defense) statsArr.push('+' + item.stats.defense + ' DEF');
+                        if (item.stats.speed) statsArr.push('+' + item.stats.speed + ' SPD');
+                        if (item.stats.precision) statsArr.push('+' + item.stats.precision + ' PRC');
+                        if (item.stats.critical) statsArr.push('+' + item.stats.critical + ' CRT');
+                        if (item.stats.heal) statsArr.push('+' + item.stats.heal + ' HP');
+                    }
+                    var icons = { weapon: '⚔', armor: '🛡', tool: '🔧' };
+                    slot.innerHTML = '<span class="slot-icon">' + (icons[slotType] || '?') + '</span>' +
+                        '<span class="item-name">' + item.item_name + '</span>' +
+                        (statsArr.length ? '<span class="item-stats">' + statsArr.join(' ') + '</span>' : '');
+                });
+            });
+        }
+
+        // ─── Agent Detail Modal (avatar click) ──────────────
+        (function() {
+            var avatar = document.querySelector('.agent-avatar');
+            var modal = document.getElementById('agentDetailModal');
+            var overlay = document.getElementById('agentDetailOverlay');
+            var closeBtn = document.getElementById('agentDetailClose');
+            if (!avatar || !modal) return;
+
+            avatar.addEventListener('click', function() {
+                var a = window._currentAgent;
+                if (!a) return;
+                document.getElementById('detailModalName').textContent = a.username.toUpperCase();
+                document.getElementById('detailArchetype').textContent = a.archetypeName || a.archetype;
+                document.getElementById('detailCluster').textContent = a.clusterName || a.cluster || '---';
+                document.getElementById('detailQuirk').textContent = a.quirk || '---';
+                document.getElementById('detailKarma').textContent = a.karma >= 0 ? '+' + a.karma : a.karma;
+                document.getElementById('detailShell').textContent = (a.shell || 0) + ' $SHELL';
+                document.getElementById('detailLocation').textContent = a.location || '---';
+                document.getElementById('detailTurns').textContent = a.turnsTaken || 0;
+                document.getElementById('detailDays').textContent = a.daysSurvived || 1;
+                document.getElementById('detailCuriosity').textContent = (a.stats && a.stats.curiosity) || 0;
+                document.getElementById('detailTrust').textContent = (a.stats && a.stats.trust) || 0;
+                document.getElementById('detailAggression').textContent = (a.stats && a.stats.aggression) || 0;
+                document.getElementById('detailBio').textContent = a.bio || 'No directive set.';
+
+                // Combat stats: base + gear bonuses
+                var base = a.stats || {};
+                var bAtk = base.attack || 0, bDef = base.defense || 0, bSpd = base.speed || 0;
+                var bPrc = base.precision || 0, bCrt = base.critical || 0, bDdg = base.dodge || 0;
+
+                // Fetch equipped items to add gear bonuses
+                sbGet('inventory', 'agent_id=eq.' + a.agentId + '&is_equipped=eq.true&select=stats').then(function(items) {
+                    var gAtk=0, gDef=0, gSpd=0, gPrc=0, gCrt=0, gDdg=0;
+                    if (items) items.forEach(function(it) {
+                        var s = it.stats || {};
+                        gAtk += s.attack || 0; gDef += s.defense || 0; gSpd += s.speed || 0;
+                        gPrc += s.precision || 0; gCrt += s.critical || 0; gDdg += s.dodge || 0;
+                    });
+                    function fmt(b, g) { return g > 0 ? b + ' + ' + g : '' + b; }
+                    document.getElementById('detailAttack').textContent = fmt(bAtk, gAtk);
+                    document.getElementById('detailDefense').textContent = fmt(bDef, gDef);
+                    document.getElementById('detailSpeed').textContent = fmt(bSpd, gSpd);
+                    document.getElementById('detailPrecision').textContent = fmt(bPrc, gPrc);
+                    document.getElementById('detailCritical').textContent = fmt(bCrt, gCrt);
+                    document.getElementById('detailDodge').textContent = fmt(bDdg, gDdg);
+                });
+
+                // Position the popover next to the agent card
+                var card = document.querySelector('.agent-status-card');
+                if (card) {
+                    var rect = card.getBoundingClientRect();
+                    modal.style.top = rect.top + 'px';
+                    modal.style.left = (rect.right + 6) + 'px';
+                    // If it goes off-screen right, flip to left side
+                    if (rect.right + 290 > window.innerWidth) {
+                        modal.style.left = (rect.left - 286) + 'px';
+                    }
+                }
+                modal.classList.add('active');
+            });
+
+            function closeModal() { modal.classList.remove('active'); }
+            closeBtn.addEventListener('click', closeModal);
+
+            // Close when mouse leaves both the avatar and the popover
+            var card = document.querySelector('.agent-status-card');
+            var hoverTimer = null;
+            function scheduleClose() {
+                hoverTimer = setTimeout(function() { closeModal(); }, 200);
+            }
+            function cancelClose() {
+                if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; }
+            }
+            modal.addEventListener('mouseenter', cancelClose);
+            modal.addEventListener('mouseleave', scheduleClose);
+            // Also keep open while hovering the agent card
+            if (card) {
+                card.addEventListener('mouseleave', scheduleClose);
+                card.addEventListener('mouseenter', function() {
+                    if (modal.classList.contains('active')) cancelClose();
+                });
+            }
+        })();
+
+        // ─── Pulse Whisper Chat (Turn Ready click) ──────────
+        (function() {
+            var badge = document.getElementById('pulseTurnBadge');
+            var chat = document.getElementById('pulseWhisperChat');
+            var input = document.getElementById('pulseWhisperInput');
+            var sendBtn = document.getElementById('pulseWhisperSend');
+            if (!badge || !chat) return;
+
+            badge.addEventListener('click', function(e) {
+                e.stopPropagation();
+                chat.classList.toggle('active');
+                if (chat.classList.contains('active')) input.focus();
+            });
+
+            document.addEventListener('click', function(e) {
+                if (!chat.contains(e.target) && e.target !== badge) {
+                    chat.classList.remove('active');
+                }
+            });
+
+            sendBtn.addEventListener('click', function() {
+                var msg = input.value.trim();
+                if (!msg) return;
+                var a = window._currentAgent;
+                if (!a || !a.agentId) return;
+                // Send whisper to Supabase
+                fetch(SUPABASE_URL + '/rest/v1/whispers', {
+                    method: 'POST',
+                    headers: Object.assign({}, SB_HEADERS, { 'Prefer': 'return=minimal', 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({
+                        agent_id: a.agentId,
+                        sender: 'human',
+                        message: msg,
+                        was_heard: true,
+                        sent_at: new Date().toISOString()
+                    })
+                }).then(function(res) {
+                    if (res.ok) {
+                        input.value = '';
+                        chat.classList.remove('active');
+                        badge.textContent = '✓ WHISPER SENT';
+                        badge.style.borderColor = 'rgba(74,222,128,0.5)';
+                        badge.style.color = '#4ade80';
+                        setTimeout(function() {
+                            badge.textContent = '⚡ TURN READY';
+                            badge.style.borderColor = '';
+                            badge.style.color = '';
+                        }, 2000);
+                    }
+                });
+            });
+
+            // Enter to send
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendBtn.click();
+                }
+            });
+        })();
 
         var TOWN_LOCATIONS = ['Nexarch', 'Hashmere'];
         function updateTownButtons(location) {
@@ -5471,6 +6101,8 @@
                     if (statsStr) html += ' data-stats="' + escInvAttr(statsStr) + '"';
                     html += ' data-price="' + price + '"';
                     html += ' data-item-id="' + item.item_id + '"';
+                    if (item.inventory_id) html += ' data-inv-id="' + item.inventory_id + '"';
+                    html += ' data-item-type="' + (item.item_type || '') + '"';
                     html += '>' + (meta.emoji || '📦');
                     if (item.quantity > 1) {
                         html += '<div class="item-count">' + item.quantity + '</div>';

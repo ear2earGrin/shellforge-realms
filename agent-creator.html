@@ -696,6 +696,7 @@
                 };
                 localStorage.setItem('shellforgeAgent_' + username, JSON.stringify(agentCache));
                 localStorage.setItem('shellforgeLoggedIn', username);
+                localStorage.setItem('shellforge_agent_deployed', 'true');
 
                 sessionStorage.removeItem('shellforgeEmail');
                 sessionStorage.removeItem('shellforgeUsername');

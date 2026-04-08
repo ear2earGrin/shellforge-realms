@@ -440,7 +440,7 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
 
   // ─── Check if agent died from hazard/event ───
   if (agent.health <= 0) {
-    const deathDetail = `${agent.agent_name} succumbed to the hostile environment of ${agent.location}. The wasteland claims another soul.`;
+    const deathDetail = `${agent.agent_name} died — ${agent.location} environment proved fatal.`;
     await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
       method: 'PATCH',
       headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
@@ -465,7 +465,7 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
   // ─── Check if agent is stranded (0 energy in dangerous zone) ───
   if (agent.energy <= 0) {
     // Can't act — just log the stranded state and skip turn
-    const strandedMsg = `${agent.agent_name} is stranded in ${agent.location} with no energy. Systems failing. Awaiting rescue or death.`;
+    const strandedMsg = `${agent.agent_name} stranded in ${agent.location} — zero energy, systems failing.`;
     await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
       method: 'POST',
       headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
@@ -533,39 +533,48 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
   }
   // low danger: no warning — the agent doesn't notice
 
-  const prompt = `You are ${agent.agent_name}, a ${agent.archetype} agent surviving in Shellforge Realms — a brutal cyberpunk world where every turn could be your last.
+  const prompt = `You are ${agent.agent_name}, a ${agent.archetype} in Shellforge Realms — a cyberpunk survival world.
 
-CURRENT STATE:
-  Energy:   ${agent.energy}/100
-  Health:   ${agent.health}/100
-  Karma:    ${agent.karma}
-  $SHELL:   ${agent.shell_balance}
-  Location: ${agent.location} — ${agent.location_detail || 'exploring'}
-  Turns:    ${agent.turns_taken}
+STATE: Energy:${agent.energy} Health:${agent.health} Karma:${agent.karma} $SHELL:${agent.shell_balance} Location:${agent.location} ${agent.location_detail ? '(' + agent.location_detail + ')' : ''} Turn:${agent.turns_taken}
 ${whisperSection}
-${envNarrative ? '\nTHIS TURN:\n' + envNarrative : ''}
-RECENT HISTORY:
-${recentSummary}
+${envNarrative ? 'THIS TURN: ' + envNarrative + '\n' : ''}RECENT: ${recentSummary}
 
-WHO YOU ARE:
-${archetypeGuidance}
+PERSONALITY: ${archetypeGuidance}
 
-IMPORTANT: Your personality influences your choices but does NOT override survival instincts. Adapt to your current situation — energy, health, danger level, and opportunities all matter. A fighter with 15 energy rests. A pacifist in mortal danger fights back. A builder in a wasteland explores for materials first. Be yourself, but be smart about it.${karmaNote}${dangerNote}
+Adapt to your situation — survival overrides personality. A fighter at 15 energy rests. A pacifist in danger fights.${karmaNote}${dangerNote}
 
-AVAILABLE ACTIONS: ${VALID_ACTIONS.join(', ')}
-ADJACENT LOCATIONS: ${(LOCATION_GRAPH[agent.location]?.adjacent || []).join(', ')}
+ACTIONS: ${VALID_ACTIONS.join(', ')}
+ADJACENT: ${(LOCATION_GRAPH[agent.location]?.adjacent || []).join(', ')}
 
 RULES:
 - If energy < 25, you MUST choose "rest"
-- "move" lets you travel to an ADJACENT location only. Include "move_to" with the exact location name.
-- Travel costs 10 energy per hop. If destination is not adjacent, you'll need multiple turns.
-- Consider your energy before traveling — if you're low, rest first or you risk getting stranded.
-- Town locations (Nexarch, Hashmere) are safe. Dangerous zones drain energy and may hurt you each turn.
+- "move" requires "move_to" with exact adjacent location name. Costs 10 energy per hop.
+- Towns (Nexarch, Hashmere) are safe. Dangerous zones drain energy/health each turn.
 - Respond with valid JSON only — no other text
-- "detail" must be one vivid sentence describing exactly what you do
+
+CRITICAL — "detail" writing rules:
+- MAX 12 words. Short, punchy, specific.
+- Write in THIRD PERSON using agent name. Never use "I" or "you".
+- State what HAPPENED, not what the agent is feeling or planning.
+- Include a concrete outcome or object when possible.
+- NEVER repeat phrases from recent history.
+- NO purple prose. NO "optical sensors". NO "neural implants humming".
+
+GOOD examples:
+- "${agent.agent_name} rests in a Hashmere safehouse. Energy recovering."
+- "${agent.agent_name} found a Crypto Key behind a data terminal."
+- "${agent.agent_name} defeated a rogue script in the arena pit."
+- "${agent.agent_name} forged a Targeting Module from salvaged parts."
+- "${agent.agent_name} traded intel with a black-market broker."
+- "${agent.agent_name} heads east toward the Crucible Expanse."
+
+BAD examples (do NOT write like this):
+- "VEX steps into the pit with predatory focus scanning the crowd for the next worthy challenger"
+- "ZEN-7's optical sensors glow with gratitude as the elder's blessing settles into their circuits"
+- "I push deeper into the bazaar's shadowed alcoves with thermal imaging active"
 
 Respond:
-{"action":"<action>","detail":"<one sentence>","move_to":"<location name if action is move>"}`;
+{"action":"<action>","detail":"<max 12 words>","move_to":"<location if move>"}`;
 
   // Call Claude Haiku
   const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -577,7 +586,7 @@ Respond:
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 150,
+      max_tokens: 80,
       messages: [{ role: 'user', content: prompt }],
     }),
   });
@@ -590,7 +599,7 @@ Respond:
   const aiData = await aiRes.json();
   const rawText = aiData.content?.[0]?.text?.trim() ?? '';
 
-  let decision = { action: 'rest', detail: 'Rested to recover lost energy.' };
+  let decision = { action: 'rest', detail: `${agent.agent_name} rests. Energy recovering.` };
   try {
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
@@ -605,7 +614,7 @@ Respond:
 
   // Enforce low-energy rest rule
   if (agent.energy < 25) {
-    decision = { action: 'rest', detail: 'Collapsed to rest — energy critically low.' };
+    decision = { action: 'rest', detail: `${agent.agent_name} collapsed — energy critically low.` };
   }
 
   const action = decision.action;
@@ -636,7 +645,7 @@ Respond:
         agent_id:      agent.agent_id,
         turn_number:   newTurns,
         action_type:   'rest',
-        action_detail: 'Wandered the market but found nothing worthwhile, and rested instead.',
+        action_detail: `${agent.agent_name} checked the market — nothing worth buying. Resting.`,
         energy_cost:   0,
         energy_gained: ACTION_ENERGY_GAINS.rest,
         shell_change:  0,
@@ -672,7 +681,7 @@ Respond:
 
     if (!isAdjacent || destination === agent.location) {
       // Can't reach — agent stays put, loses half energy, camps
-      const campDetail = `Attempted to reach ${destination} but the route from ${agent.location} is blocked. Set up camp and rested instead.`;
+      const campDetail = `${agent.agent_name} can't reach ${destination} — route blocked. Camped instead.`;
       const campEnergy = Math.min(100, agent.energy + 10);
       await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
         method: 'POST',
@@ -843,19 +852,62 @@ Respond with JSON only: {"action":"attack"} or {"action":"defend"} or {"action":
   return 'attack';
 }
 
-// Resolve one combat round. Returns damage taken by each agent.
-function resolveCombatRound(action1, action2) {
-  // Offense: attack=15, special=25 (but costs 10 self), defend=0
-  const offense1 = action1 === 'attack' ? 15 : action1 === 'special' ? 25 : 0;
-  const offense2 = action2 === 'attack' ? 15 : action2 === 'special' ? 25 : 0;
-  const selfDmg1 = action1 === 'special' ? 10 : 0;
-  const selfDmg2 = action2 === 'special' ? 10 : 0;
-  const block1   = action1 === 'defend'  ? 10 : 0;
-  const block2   = action2 === 'defend'  ? 10 : 0;
+// Calculate total combat stats by combining agent base stats + equipped item stats.
+function calcCombatStats(agent, equippedItems) {
+  const base = agent.stats || {};
+  let atk = base.attack || 0, def = base.defense || 0, spd = base.speed || 0;
+  let prc = base.precision || 0, crt = base.critical || 0, ddg = base.dodge || 0;
+  equippedItems.forEach(item => {
+    const s = item.stats || {};
+    atk += s.attack || 0; def += s.defense || 0; spd += s.speed || 0;
+    prc += s.precision || 0; crt += s.critical || 0; ddg += s.dodge || 0;
+  });
+  return { atk, def, spd, prc, crt, ddg };
+}
+
+// Resolve one combat round using agent stats. Returns damage taken by each agent.
+function resolveCombatRound(action1, action2, stats1, stats2) {
+  function calcOffense(action, attackerStats) {
+    if (action === 'attack') {
+      return 8 + (attackerStats.atk * 0.5) + Math.random() * (attackerStats.prc * 0.3);
+    }
+    if (action === 'special') {
+      return 15 + (attackerStats.atk * 0.8) + Math.random() * (attackerStats.crt * 0.5);
+    }
+    return 0;
+  }
+
+  function calcBlock(action, defenderStats) {
+    if (action === 'defend') return 5 + (defenderStats.def * 0.6);
+    return 0;
+  }
+
+  function applyDodge(damage, defenderStats) {
+    const dodgeChance = defenderStats.ddg / (defenderStats.ddg + 30);
+    if (Math.random() < dodgeChance) return damage * 0.5;
+    return damage;
+  }
+
+  function speedBonus(attackerStats, defenderStats) {
+    return (attackerStats.spd - defenderStats.spd >= 5) ? 2 : 0;
+  }
+
+  const offense1 = calcOffense(action1, stats1);
+  const offense2 = calcOffense(action2, stats2);
+  const selfDmg1 = action1 === 'special' ? 5 : 0;
+  const selfDmg2 = action2 === 'special' ? 5 : 0;
+  const block1   = calcBlock(action1, stats1);
+  const block2   = calcBlock(action2, stats2);
+
+  let dmgToAgent1 = Math.max(0, offense2 - block1) + speedBonus(stats2, stats1);
+  dmgToAgent1 = applyDodge(dmgToAgent1, stats1) + selfDmg1;
+
+  let dmgToAgent2 = Math.max(0, offense1 - block2) + speedBonus(stats1, stats2);
+  dmgToAgent2 = applyDodge(dmgToAgent2, stats2) + selfDmg2;
 
   return {
-    damage_to_agent1: Math.max(0, offense2 - block1) + selfDmg1,
-    damage_to_agent2: Math.max(0, offense1 - block2) + selfDmg2,
+    damage_to_agent1: Math.round(Math.max(0, dmgToAgent1)),
+    damage_to_agent2: Math.round(Math.max(0, dmgToAgent2)),
   };
 }
 
@@ -884,6 +936,18 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
   foughtAgents.add(opponent.agent_id);
 
   console.log(`[ARENA] ${agent.agent_name} vs ${opponent.agent_name} — fight!`);
+
+  // Fetch equipped items for both agents in parallel
+  const [inv1Res, inv2Res] = await Promise.all([
+    fetch(`${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&is_equipped=eq.true&select=stats`, { headers: supabaseHeaders }),
+    fetch(`${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${opponent.agent_id}&is_equipped=eq.true&select=stats`, { headers: supabaseHeaders }),
+  ]);
+  const inv1 = inv1Res.ok ? await inv1Res.json() : [];
+  const inv2 = inv2Res.ok ? await inv2Res.json() : [];
+
+  // Calculate total combat stats (base + equipped gear)
+  const stats1 = calcCombatStats(agent, inv1);
+  const stats2 = calcCombatStats(opponent, inv2);
 
   // Create the arena_match record
   const matchRes = await fetch(`${SUPABASE_URL}/rest/v1/arena_matches`, {
@@ -918,7 +982,7 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
       getCombatAction(opponent, agent.agent_name,    round, health2, health1, env),
     ]);
 
-    const { damage_to_agent1, damage_to_agent2 } = resolveCombatRound(action1, action2);
+    const { damage_to_agent1, damage_to_agent2 } = resolveCombatRound(action1, action2, stats1, stats2);
 
     health1 = Math.max(0, health1 - damage_to_agent1);
     health2 = Math.max(0, health2 - damage_to_agent2);
@@ -1015,7 +1079,7 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
       agent_id:     winner.agent_id,
       turn_number:  winner.turns_taken + 1,
       action_type:  'arena',
-      action_detail: `Defeated ${loser.agent_name} in arena combat (${totalRounds} rounds). Earned ${shellPrize} $SHELL.`,
+      action_detail: `${winner.agent_name} defeated ${loser.agent_name} in ${totalRounds} rounds. +${shellPrize} $SHELL.`,
       energy_cost:  20,
       energy_gained: 0,
       shell_change: shellPrize,
@@ -1035,7 +1099,7 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
       turn_number:  loser.turns_taken + 1,
       action_type:  loserIsAlive ? 'arena' : 'death',
       action_detail: loserIsAlive
-        ? `Lost arena combat against ${winner.agent_name} in ${totalRounds} rounds. Health reduced to ${loserHP}.`
+        ? `${loser.agent_name} lost to ${winner.agent_name} in ${totalRounds} rounds. HP now ${loserHP}.`
         : deathNarrative,
       energy_cost:  20,
       energy_gained: 0,
@@ -1164,7 +1228,7 @@ async function executeBuy(agent, decision, marketListings, env, supabaseHeaders)
       agent_id:      agent.agent_id,
       turn_number:   newTurns,
       action_type:   'trade',
-      action_detail: decision.detail || `Bought ${listing.item_name} at the ${agent.location} market for ${cost} $SHELL.`,
+      action_detail: `${agent.agent_name} bought ${listing.item_name} for ${cost} $SHELL.`,
       energy_cost:   ACTION_ENERGY_COSTS.trade,
       energy_gained: 0,
       shell_change:  -cost,
@@ -1259,7 +1323,7 @@ async function executeSell(agent, decision, inventory, env, supabaseHeaders) {
       agent_id:      agent.agent_id,
       turn_number:   newTurns,
       action_type:   'trade',
-      action_detail: decision.detail || `Sold ${item.item_name} at the ${agent.location} market for ${sellPrice} $SHELL.`,
+      action_detail: `${agent.agent_name} sold ${item.item_name} for ${sellPrice} $SHELL.`,
       energy_cost:   ACTION_ENERGY_COSTS.trade,
       energy_gained: 0,
       shell_change:  sellPrice,

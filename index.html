@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shellforge Realms - AI Agent Simulation RPG</title>
-    <link rel="stylesheet" href="style-v2.css?v=3">
+    <link rel="stylesheet" href="style-v2.css?v=4">
     <style>
         /* ═══════════════════════════════════════════════════
            NEW LANDING LAYOUT — SituationDeck style
@@ -23,6 +23,24 @@
             color: #e0e0e0;
             min-height: 100vh;
         }
+
+        /* ── BACKGROUND DOT GRID CANVAS ── */
+        #bgDotCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Ensure main content sits above the background dot grid */
+        .top-nav { z-index: 100; /* already set, no change */ }
+        .hero { position: relative; z-index: 1; }
+        .panels-container { position: relative; z-index: 1; }
+        .page-section { position: relative; z-index: 1; }
+        .footer { position: relative; z-index: 1; }
 
         /* ── TOP NAV BAR ── */
         .top-nav {
@@ -346,11 +364,15 @@
         /* ── PANEL 2: LIVE FEED ── */
         .feed-panel .panel-body {
             padding: 6px 8px;
-            height: 220px;
             overflow-y: auto;
             scroll-behavior: smooth;
             display: flex;
             flex-direction: column;
+        }
+        .feed-panel, .agent-status-panel {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
         .feed-panel .panel-body::-webkit-scrollbar { width: 3px; }
         .feed-panel .panel-body::-webkit-scrollbar-track { background: transparent; }
@@ -603,6 +625,9 @@
     </style>
 </head>
 <body>
+
+    <!-- Background Dot Grid Canvas -->
+    <canvas id="bgDotCanvas"></canvas>
 
     <!-- Background Music -->
     <audio id="bgMusic" loop>
@@ -931,6 +956,129 @@
             window.addEventListener('resize', initDots);
         })();
 
+        // ─── Background Dot Grid (page-level ambient effect) ──────
+        (function() {
+            var canvas = document.getElementById('bgDotCanvas');
+            if (!canvas) return;
+            var ctx = canvas.getContext('2d');
+            var spacing = 18;
+            var bgDots = [];
+            var bgMouseX = -999, bgMouseY = -999;
+            var bgAnimId = null;
+            var BG_RADIUS = 120;
+            var MAX_BRIGHTNESS = 0.15;
+
+            function bgHash(x, y) {
+                var h = (x * 374761393 + y * 668265263 + 1013904223) | 0;
+                h = ((h >> 13) ^ h) * 1274126177;
+                return ((h >> 16) ^ h) & 0x7fffffff;
+            }
+
+            function initBgDots() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                bgDots = [];
+                for (var x = 0; x < canvas.width; x += spacing) {
+                    for (var y = 0; y < canvas.height; y += spacing) {
+                        var n = bgHash(x, y) / 0x7fffffff;
+                        var n2 = bgHash(x + 7, y + 13) / 0x7fffffff;
+                        bgDots.push({
+                            x: x, y: y, brightness: 0,
+                            rMult: 0.4 + n * 1.2,
+                            reactSpeed: 0.04 + n2 * 0.26,
+                            fadeRate: 0.90 + n * 0.06
+                        });
+                    }
+                }
+            }
+
+            // Cache rects of elements that should occlude the dot grid
+            var occludeRects = [];
+            function updateOccludeRects() {
+                occludeRects = [];
+                var hero = document.querySelector('.hero');
+                if (hero) occludeRects.push(hero.getBoundingClientRect());
+                var cards = document.querySelectorAll('.panel-card');
+                for (var i = 0; i < cards.length; i++) {
+                    occludeRects.push(cards[i].getBoundingClientRect());
+                }
+            }
+
+            function drawBgDots() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                // Update occlusion rects every ~60 frames (roughly once per second)
+                if (!drawBgDots._fc) drawBgDots._fc = 0;
+                if (drawBgDots._fc++ % 60 === 0) updateOccludeRects();
+
+                for (var i = 0; i < bgDots.length; i++) {
+                    var d = bgDots[i];
+
+                    // Skip dots behind occluded regions (hero, panel cards)
+                    var occluded = false;
+                    for (var r = 0; r < occludeRects.length; r++) {
+                        var rect = occludeRects[r];
+                        if (d.x >= rect.left && d.x <= rect.right && d.y >= rect.top && d.y <= rect.bottom) {
+                            occluded = true;
+                            break;
+                        }
+                    }
+                    if (occluded) {
+                        d.brightness *= 0.9;
+                        continue;
+                    }
+
+                    var dx = d.x - bgMouseX;
+                    var dy = d.y - bgMouseY;
+                    var dist = Math.sqrt(dx * dx + dy * dy);
+                    var effectiveRadius = BG_RADIUS * d.rMult;
+
+                    if (dist < effectiveRadius) {
+                        var intensity = 1 - (dist / effectiveRadius);
+                        d.brightness = Math.min(MAX_BRIGHTNESS, d.brightness + intensity * d.reactSpeed);
+                    } else {
+                        d.brightness *= d.fadeRate;
+                    }
+
+                    var base = 0.04;
+                    var alpha = base + d.brightness * 0.4;
+
+                    if (alpha > 0.05) {
+                        ctx.fillStyle = 'rgba(74,222,128,' + alpha + ')';
+                        var size = 1 + d.brightness * 1.2;
+                        ctx.fillRect(Math.round(d.x - size / 2), Math.round(d.y - size / 2), size, size);
+                    }
+                }
+
+                bgAnimId = requestAnimationFrame(drawBgDots);
+            }
+
+            document.addEventListener('mousemove', function(e) {
+                bgMouseX = e.clientX;
+                bgMouseY = e.clientY;
+            });
+
+            // Start immediately
+            initBgDots();
+            bgAnimId = requestAnimationFrame(drawBgDots);
+            window.addEventListener('resize', initBgDots);
+        })();
+
+        // ─── Match panel heights to mechanics panel ────────────
+        (function() {
+            function syncPanelHeights() {
+                var mech = document.querySelector('.mechanics-panel');
+                var feed = document.querySelector('.feed-panel');
+                var agents = document.querySelector('.agent-status-panel');
+                if (!mech) return;
+                var h = mech.offsetHeight + 'px';
+                if (feed) { feed.style.height = h; }
+                if (agents) { agents.style.height = h; }
+            }
+            syncPanelHeights();
+            window.addEventListener('resize', syncPanelHeights);
+            setTimeout(syncPanelHeights, 2000);
+        })();
+
         // ─── Deploy Portal Animation ───────────────────────────
         (function() {
             var btn = document.getElementById('deployPortalBtn');
@@ -938,20 +1086,25 @@
             var video = document.getElementById('portalVideo');
             if (!btn || !overlay || !video) return;
 
+            // Check if user already has an agent deployed
+            var hasAgent = localStorage.getItem('shellforge_agent_deployed') === 'true';
+            var destination = hasAgent ? 'dashboard.html' : 'deploy.html';
+
             btn.addEventListener('click', function() {
                 overlay.classList.add('active');
                 video.currentTime = 0;
+                video.playbackRate = 4.0;
                 video.play();
             });
 
             video.addEventListener('ended', function() {
-                window.location.href = 'deploy.html';
+                window.location.href = destination;
             });
 
             overlay.addEventListener('click', function() {
                 video.pause();
                 overlay.classList.remove('active');
-                window.location.href = 'deploy.html';
+                window.location.href = destination;
             });
         })();
 

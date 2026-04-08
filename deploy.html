@@ -270,13 +270,12 @@
         const SUPABASE_URL = 'https://wtzrxscdlqdgdiefsmru.supabase.co';
         const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0enJ4c2NkbHFkZ2RpZWZzbXJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2OTI4MjcsImV4cCI6MjA4OTI2ODgyN30.dLheIKz9anuM58O3Ebsr2rVCOGA-xBGRD9voiXNvIcg';
 
-        // Redirect if already logged in
+        // Redirect if already logged in — skip deploy, go straight to dashboard
         window.addEventListener('DOMContentLoaded', function() {
             const loggedIn = localStorage.getItem('shellforgeLoggedIn');
             if (loggedIn && localStorage.getItem('shellforgeAgent_' + loggedIn)) {
-                if (confirm('You already have an active agent. Go to dashboard?')) {
-                    window.location.href = 'dashboard.html';
-                }
+                window.location.href = 'dashboard.html';
+                return;
             }
         });
 
