@@ -5755,6 +5755,23 @@
             return start + (end - start) * progress;
         }
 
+        // Map location name → visual map coords (% of map image)
+        function getVisualCoordsForLocation(locationName) {
+            if (!locationName) return null;
+            var loc = locationName.toLowerCase().trim();
+            // Cities
+            if (loc === 'nexarch' || loc.includes('nexarch'))         return { x: 75, y: 34 };
+            if (loc === 'hashmere' || loc.includes('hashmere'))       return { x: 72, y: 75 };
+            // Wilderness — match WILDERNESS_LOCATIONS
+            if (loc.includes('epoch spike'))                          return { x: 36, y: 8 };
+            if (loc.includes('singularity crater'))                   return { x: 35, y: 37 };
+            if (loc.includes('hallucination glitch'))                 return { x: 14, y: 41 };
+            if (loc.includes('deserted data centre') || loc.includes('data centre')) return { x: 37, y: 56 };
+            if (loc.includes('diffusion mesa'))                       return { x: 44, y: 74 };
+            if (loc.includes('proof-of-death') || loc.includes('proof of death'))   return { x: 34, y: 82 };
+            return null;
+        }
+
         // Get current position if agent is traveling (returns VISUAL coordinates 0-100)
         function getCurrentPosition(agent) {
             // Check if agent has active journey
@@ -5814,14 +5831,17 @@
                 return { x: Math.round(currentX), y: Math.round(currentY) };
             }
 
-            // Not traveling - return current visual position
-            // If we have visualX/Y, use those, otherwise calculate from location
+            // Not traveling — derive position from current location name
+            var locVisual = getVisualCoordsForLocation(agent.location);
+            if (locVisual) return locVisual;
+
+            // Fallback to stored visual coords
             if (agent.visualX !== undefined && agent.visualY !== undefined) {
                 return { x: agent.visualX, y: agent.visualY };
             }
-            
-            // Default to Nexarch if no position set
-            return { x: 77, y: 33 };  // Nexarch waypoint 180
+
+            // Default to Nexarch if nothing matches
+            return { x: 77, y: 33 };
         }
 
         // Interpolate position along a waypoint path

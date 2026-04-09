@@ -141,6 +141,19 @@ const ARCHETYPE_EVENT_BONUSES = {
   'ordinate-mapper':  { bonusLoot: 0.10 },          // 10% bonus loot (navigation)
 };
 
+// ─── Visual Map Coordinates (% of map image) ─────────────────────────────
+const LOCATION_VISUAL_COORDS = {
+  'Nexarch':              { x: 0.75, y: 0.34 },
+  'Nexarch Arena':        { x: 0.75, y: 0.34 },
+  'Hashmere':             { x: 0.72, y: 0.75 },
+  'Epoch Spike':          { x: 0.36, y: 0.08 },
+  'Singularity Crater':   { x: 0.35, y: 0.37 },
+  'Hallucination Glitch': { x: 0.14, y: 0.41 },
+  'Deserted Data Centre': { x: 0.37, y: 0.56 },
+  'Diffusion Mesa':       { x: 0.44, y: 0.74 },
+  'Proof-of-Death':       { x: 0.34, y: 0.82 },
+};
+
 // ─── Loot Drop System ─────────────────────────────────────────────────────
 // Location-based loot tables. Each item has: id, name, rarity weight, locations where it drops.
 // Rarity tiers: common (60%), uncommon (25%), rare (12%), epic (3%)
@@ -939,6 +952,10 @@ Respond:
         energy: newEnergy, location: destination,
         location_detail: `Just arrived from ${agent.location}`,
         turns_taken: newTurns, last_action_at: now,
+        ...(LOCATION_VISUAL_COORDS[destination] ? {
+          visual_x: LOCATION_VISUAL_COORDS[destination].x,
+          visual_y: LOCATION_VISUAL_COORDS[destination].y,
+        } : {}),
       }),
     });
     console.log(`[${agent.agent_name}] Turn ${newTurns}: move ${agent.location} → ${destination} | E:${agent.energy}→${newEnergy}`);
