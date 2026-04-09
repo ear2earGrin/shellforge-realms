@@ -5249,44 +5249,6 @@
             }
         });
 
-        // Expose journey testing function to console
-        window.testJourney = function(destination) {
-            const agent = getAgent();
-            if (!agent) {
-                console.error('❌ No agent found');
-                return;
-            }
-
-            // Use LOCATIONS data
-            const locationKey = destination.toLowerCase().replace(/ /g, '-');
-            const locationData = LOCATIONS[locationKey];
-            
-            if (!locationData) {
-                console.error('❌ Unknown destination. Try:', Object.keys(LOCATIONS).join(', '));
-                return;
-            }
-
-            const displayName = destination.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-            
-            // Create journey (now passes location key instead of world coords)
-            createMockJourney(agent, displayName, locationKey);
-            
-            // Reload to show journey
-            setTimeout(() => location.reload(), 100);
-        };
-
-        console.log('💡 Test journey system: testJourney("hashmere") or testJourney("epoch-spike")');
-
-        // Test Journey Button
-        document.getElementById('testJourneyBtn').addEventListener('click', function() {
-            const destination = document.getElementById('testDestination').value;
-            if (!destination) {
-                terminalNotify.warning('Please select a destination first.');
-                return;
-            }
-            testJourney(destination);
-        });
-
         // Character counter for whisper
         const whisperMessage = document.getElementById('whisperMessage');
         const charCount = document.getElementById('charCount');
