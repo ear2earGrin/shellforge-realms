@@ -227,6 +227,18 @@
             mix-blend-mode: lighten;
             filter: brightness(1.5) contrast(1.4);
         }
+        /* New icons — dark bg baked in, lighten blend hides dark pixels */
+        .icon-btn .btn-icon img.icon-new {
+            width: 200%; height: 200%;
+            object-fit: cover;
+            object-position: center;
+            border-radius: 0;
+            mix-blend-mode: lighten;
+            filter: brightness(1.4) contrast(1.3);
+        }
+        .icon-btn .btn-icon.icon-new-wrap {
+            overflow: hidden;
+        }
         .icon-btn .btn-label {
             font-family: var(--font-main);
             font-size: 0.5rem;
@@ -2141,6 +2153,178 @@
         }
         .inventory-slot { user-select: none; -webkit-user-select: none; }
 
+        /* ── Death Screen ── */
+        .death-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 10000;
+            background: rgba(0, 0, 0, 0.92);
+            backdrop-filter: blur(8px);
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
+        }
+        .death-overlay.active { display: flex; }
+
+        .death-card {
+            max-width: 520px;
+            width: 100%;
+            background: rgba(10, 5, 5, 0.95);
+            border: 2px solid rgba(255, 0, 44, 0.5);
+            border-radius: 10px;
+            padding: 35px 30px;
+            text-align: center;
+            box-shadow: 0 0 60px rgba(255, 0, 44, 0.15), inset 0 0 30px rgba(255, 0, 44, 0.03);
+            animation: deathFadeIn 1.2s ease;
+        }
+        @keyframes deathFadeIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .death-skull {
+            font-size: 3.5rem;
+            margin-bottom: 10px;
+            filter: drop-shadow(0 0 15px rgba(255, 0, 44, 0.5));
+        }
+        .death-title {
+            font-family: var(--font-title);
+            font-size: 1.6rem;
+            color: #ff0044;
+            letter-spacing: 0.2em;
+            margin-bottom: 6px;
+            text-shadow: 0 0 20px rgba(255, 0, 44, 0.4);
+        }
+        .death-agent-name {
+            font-family: var(--font-title);
+            font-size: 1.1rem;
+            color: rgba(200, 200, 200, 0.7);
+            letter-spacing: 0.15em;
+            margin-bottom: 16px;
+        }
+        .death-narrative {
+            font-family: var(--font-main);
+            font-size: 0.82rem;
+            color: rgba(255, 150, 150, 0.85);
+            font-style: italic;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            padding: 12px 16px;
+            background: rgba(255, 0, 44, 0.05);
+            border-left: 2px solid rgba(255, 0, 44, 0.3);
+            border-radius: 0 4px 4px 0;
+            text-align: left;
+        }
+        .death-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .death-stat {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 5px;
+            padding: 8px 6px;
+        }
+        .death-stat-label {
+            font-size: 0.52rem;
+            color: rgba(200, 200, 200, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 3px;
+        }
+        .death-stat-value {
+            font-family: var(--font-title);
+            font-size: 0.85rem;
+            color: rgba(200, 200, 200, 0.8);
+        }
+
+        .death-vault {
+            margin-bottom: 22px;
+            text-align: left;
+        }
+        .death-vault-title {
+            font-family: var(--font-title);
+            font-size: 0.65rem;
+            color: rgba(200, 200, 200, 0.5);
+            letter-spacing: 0.15em;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+        .death-vault-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .death-vault-item {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 0.62rem;
+            color: rgba(200, 200, 200, 0.6);
+        }
+        .death-vault-empty {
+            font-size: 0.65rem;
+            color: rgba(200, 200, 200, 0.3);
+            font-style: italic;
+        }
+
+        .death-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 8px;
+        }
+        .death-btn {
+            font-family: var(--font-title);
+            font-size: 0.7rem;
+            letter-spacing: 0.12em;
+            padding: 10px 22px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+        }
+        .death-btn-resurrect {
+            background: rgba(251, 191, 36, 0.1);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.4);
+        }
+        .death-btn-resurrect:hover {
+            background: rgba(251, 191, 36, 0.2);
+            border-color: #fbbf24;
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.2);
+        }
+        .death-btn-new {
+            background: rgba(74, 222, 128, 0.05);
+            color: rgba(74, 222, 128, 0.7);
+            border: 1px solid rgba(74, 222, 128, 0.2);
+        }
+        .death-btn-new:hover {
+            background: rgba(74, 222, 128, 0.1);
+            border-color: rgba(74, 222, 128, 0.5);
+        }
+        .death-btn-resurrect .btn-price {
+            display: block;
+            font-family: var(--font-main);
+            font-size: 0.55rem;
+            color: rgba(251, 191, 36, 0.5);
+            margin-top: 3px;
+            letter-spacing: 0.05em;
+        }
+        .death-btn-new .btn-sub {
+            display: block;
+            font-family: var(--font-main);
+            font-size: 0.5rem;
+            color: rgba(74, 222, 128, 0.4);
+            margin-top: 3px;
+            letter-spacing: 0.05em;
+        }
+
         /* Responsive */
         @media (max-width: 1400px) {
             .dashboard-container {
@@ -2321,6 +2505,49 @@
             <button class="nav-button logout" id="logoutBtn">Logout</button>
         </div>
     </nav>
+
+    <!-- Death Screen Overlay -->
+    <div class="death-overlay" id="deathOverlay">
+        <div class="death-card">
+            <div class="death-skull">💀</div>
+            <div class="death-title">SYSTEM TERMINATED</div>
+            <div class="death-agent-name" id="deathAgentName">---</div>
+            <div class="death-narrative" id="deathNarrative">Signal lost.</div>
+
+            <div class="death-stats">
+                <div class="death-stat">
+                    <div class="death-stat-label">Turns Survived</div>
+                    <div class="death-stat-value" id="deathTurns">0</div>
+                </div>
+                <div class="death-stat">
+                    <div class="death-stat-label">$SHELL Remaining</div>
+                    <div class="death-stat-value" id="deathShell">0</div>
+                </div>
+                <div class="death-stat">
+                    <div class="death-stat-label">Deaths</div>
+                    <div class="death-stat-value" id="deathCount">1</div>
+                </div>
+            </div>
+
+            <div class="death-vault" id="deathVaultSection">
+                <div class="death-vault-title">Items Preserved in Vault</div>
+                <div class="death-vault-grid" id="deathVaultGrid">
+                    <div class="death-vault-empty">Loading vault...</div>
+                </div>
+            </div>
+
+            <div class="death-actions">
+                <button class="death-btn death-btn-resurrect" id="deathResurrectBtn">
+                    Resurrect Agent
+                    <span class="btn-price">Premium — coming soon</span>
+                </button>
+                <button class="death-btn death-btn-new" id="deathNewAgentBtn">
+                    New Agent
+                    <span class="btn-sub">Start fresh — free</span>
+                </button>
+            </div>
+        </div>
+    </div>
 
     <div class="dashboard-container">
         <!-- Agent Status Card -->
@@ -3661,20 +3888,20 @@
     <div class="icon-bar">
         <button class="icon-btn whisper-btn" onmouseenter="openModal('whisper',this)" onmouseleave="scheduleClose('whisper')" onclick="openModal('whisper',this)">
             <div class="icon-counter" id="whisperCountBadge">2</div>
-            <span class="btn-icon"><img src="images/mechanics/whisper icon.png" alt="Whisper"></span>
+            <span class="btn-icon icon-new-wrap"><img class="icon-new" src="images/newICONS/whisper.png" alt="Whisper"></span>
             <span class="btn-label">Whisper</span>
         </button>
         <button class="icon-btn" onmouseenter="openModal('inventory',this)" onmouseleave="scheduleClose('inventory')" onclick="openModal('inventory',this)">
-            <span class="btn-icon"><img src="images/mechanics/items design213 copy 5.png" alt="Inventory"></span>
+            <span class="btn-icon icon-new-wrap"><img class="icon-new" src="images/newICONS/inventory.png" alt="Inventory"></span>
             <span class="btn-label">Inventory</span>
         </button>
         <button class="icon-btn" onmouseenter="openModal('missions',this)" onmouseleave="scheduleClose('missions')" onclick="openModal('missions',this)">
             <div class="icon-notif"></div>
-            <span class="btn-icon"><img src="images/mechanics/quests icon.png" alt="Missions"></span>
+            <span class="btn-icon icon-new-wrap"><img class="icon-new" src="images/newICONS/missions.png" alt="Missions"></span>
             <span class="btn-label">Missions</span>
         </button>
         <button class="icon-btn" onmouseenter="openModal('chronicle',this)" onmouseleave="scheduleClose('chronicle')" onclick="openModal('chronicle',this)">
-            <span class="btn-icon"><img src="images/mechanics/rumors icon.png" alt="Chronicle"></span>
+            <span class="btn-icon icon-new-wrap"><img class="icon-new" src="images/newICONS/chronicle.png" alt="Chronicle"></span>
             <span class="btn-label">Chronicle</span>
         </button>
         <button class="icon-btn town-only" id="btnMarket" onmouseenter="openModal('market',this)" onmouseleave="scheduleClose('market')" onclick="openModal('market',this)">
@@ -3990,6 +4217,13 @@
                 if (rows && rows.length > 0) {
                     console.log('✅ Agent loaded from Supabase');
                     const dbAgent = rows[0];
+
+                    // ─── Death check ─────────────────────────────
+                    if (dbAgent.is_alive === false) {
+                        showDeathScreen(dbAgent);
+                        return;
+                    }
+
                     // Map DB columns to the shape the rest of the dashboard expects
                     const agent = {
                         agentId:        dbAgent.agent_id,
@@ -4033,6 +4267,64 @@
             fetchAndRender();
 
         }  // ← end of loadAgentData()
+
+        // ─── Death Screen ───────────────────────────────────────
+        async function showDeathScreen(dbAgent) {
+            var overlay = document.getElementById('deathOverlay');
+            if (!overlay) return;
+
+            // Populate death info
+            document.getElementById('deathAgentName').textContent = (dbAgent.agent_name || '???').toUpperCase();
+            document.getElementById('deathTurns').textContent = dbAgent.turns_taken || 0;
+            document.getElementById('deathShell').textContent = dbAgent.shell_balance || 0;
+            document.getElementById('deathCount').textContent = (dbAgent.death_count || 0) + 1;
+
+            // Fetch death narrative from activity_log
+            var deathLogs = await sbGet('activity_log',
+                'agent_id=eq.' + dbAgent.agent_id + '&action_type=eq.death&order=timestamp.desc&limit=1');
+            if (deathLogs && deathLogs.length > 0) {
+                document.getElementById('deathNarrative').textContent = deathLogs[0].action_detail;
+            } else {
+                document.getElementById('deathNarrative').textContent =
+                    dbAgent.agent_name + ' has fallen. Systems offline. Signal lost.';
+            }
+
+            // Fetch vault items
+            var vaultItems = await sbGet('vault',
+                'original_agent_id=eq.' + dbAgent.agent_id + '&select=item_name,item_type,quantity');
+            var vaultGrid = document.getElementById('deathVaultGrid');
+            if (vaultItems && vaultItems.length > 0) {
+                var TYPE_EMOJI = { weapon: '⚔', armor: '🛡', tool: '🔧', scroll: '📜', consumable: '💊', material: '🔩' };
+                vaultGrid.innerHTML = vaultItems.map(function(item) {
+                    var emoji = TYPE_EMOJI[item.item_type] || '📦';
+                    var qty = item.quantity > 1 ? ' x' + item.quantity : '';
+                    return '<div class="death-vault-item">' + emoji + ' ' + item.item_name + qty + '</div>';
+                }).join('');
+            } else {
+                vaultGrid.innerHTML = '<div class="death-vault-empty">No items were recovered.</div>';
+            }
+
+            // Resurrect button — placeholder for paid flow
+            document.getElementById('deathResurrectBtn').addEventListener('click', function() {
+                // TODO: Wire to payment flow
+                this.innerHTML = 'Resurrect Agent<span class="btn-price">Payment integration coming soon</span>';
+                this.style.opacity = '0.5';
+                this.style.cursor = 'not-allowed';
+            });
+
+            // New Agent button — wipe old agent flag and redirect
+            document.getElementById('deathNewAgentBtn').addEventListener('click', function() {
+                localStorage.removeItem('shellforge_agent_deployed');
+                window.location.href = 'agent-creator.html';
+            });
+
+            // Show the overlay
+            overlay.classList.add('active');
+
+            // Hide the dashboard behind it
+            var dashContainer = document.querySelector('.dashboard-container');
+            if (dashContainer) dashContainer.style.filter = 'blur(6px)';
+        }
 
         // ─── Item Tooltip + Drag-and-Drop System ────────────────
         (function() {

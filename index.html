@@ -328,6 +328,56 @@
         }
         .agent-row:last-child { border-bottom: none; }
         .agent-row:hover { background: rgba(74,222,128,0.03); }
+        .agent-row.agent-dead { opacity: 0.7; }
+        .agent-row.agent-dead:hover { background: rgba(255,0,68,0.03); }
+        .agent-deceased-tag {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.55rem;
+            font-weight: 700;
+            letter-spacing: 0.15em;
+            color: #ff0044;
+            text-shadow: 0 0 8px rgba(255,0,68,0.6);
+            flex-shrink: 0;
+            animation: dead-pulse 2.5s ease-in-out infinite;
+        }
+        @keyframes dead-pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+        .death-tooltip {
+            position: absolute;
+            z-index: 1000;
+            background: rgba(10, 2, 6, 0.95);
+            border: 1px solid rgba(255, 0, 68, 0.35);
+            border-radius: 6px;
+            padding: 10px 12px;
+            box-shadow: 0 4px 20px rgba(255, 0, 68, 0.15), 0 0 1px rgba(255,0,68,0.4);
+            animation: deathTipIn 0.2s ease-out;
+        }
+        @keyframes deathTipIn {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .death-tip-title {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: #ff0044;
+            letter-spacing: 0.08em;
+            margin-bottom: 6px;
+        }
+        .death-tip-story {
+            font-size: 0.6rem;
+            color: rgba(220, 200, 200, 0.8);
+            line-height: 1.5;
+            letter-spacing: 0.02em;
+        }
+        .death-tip-time {
+            font-size: 0.5rem;
+            color: rgba(255, 0, 68, 0.4);
+            margin-top: 6px;
+            letter-spacing: 0.06em;
+        }
         .agent-pip-lg {
             width: 8px; height: 8px;
             border-radius: 50%;
@@ -1311,33 +1361,102 @@
                 'ZEN-7':   '#4ade80',
             };
 
+            // Death story tooltip
+            var deathTip = document.createElement('div');
+            deathTip.className = 'death-tooltip';
+            deathTip.style.display = 'none';
+            document.body.appendChild(deathTip);
+
+            // Cache fetched death stories so we don't re-fetch
+            var deathStoryCache = {};
+
+            function hideDeathTip() { deathTip.style.display = 'none'; }
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.agent-dead') && !e.target.closest('.death-tooltip')) hideDeathTip();
+            });
+
+            async function showDeathStory(agentId, agentName, rowEl) {
+                // Toggle off if same one is showing
+                if (deathTip.style.display !== 'none' && deathTip.dataset.agentId === agentId) {
+                    hideDeathTip();
+                    return;
+                }
+
+                // Position below the row
+                var rect = rowEl.getBoundingClientRect();
+                deathTip.style.top = (rect.bottom + window.scrollY + 6) + 'px';
+                deathTip.style.left = (rect.left + window.scrollX) + 'px';
+                deathTip.style.width = rect.width + 'px';
+                deathTip.dataset.agentId = agentId;
+
+                if (deathStoryCache[agentId]) {
+                    deathTip.innerHTML = deathStoryCache[agentId];
+                    deathTip.style.display = 'block';
+                    return;
+                }
+
+                deathTip.innerHTML = '<span style="opacity:0.5;">Loading death record...</span>';
+                deathTip.style.display = 'block';
+
+                try {
+                    var r = await fetch(SB_URL + '/rest/v1/activity_log?agent_id=eq.' + agentId + '&action_type=eq.death&select=action_detail,timestamp&order=timestamp.desc&limit=1', { headers: SB_HDRS });
+                    var logs = r.ok ? await r.json() : [];
+                    if (logs.length) {
+                        var d = new Date(logs[0].timestamp);
+                        var when = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                        var html = '<div class="death-tip-title">☠ ' + agentName + '</div>'
+                            + '<div class="death-tip-story">' + logs[0].action_detail + '</div>'
+                            + '<div class="death-tip-time">' + when + '</div>';
+                        deathStoryCache[agentId] = html;
+                        deathTip.innerHTML = html;
+                    } else {
+                        deathTip.innerHTML = '<span style="opacity:0.5;">No death record found.</span>';
+                    }
+                } catch(e) {
+                    deathTip.innerHTML = '<span style="opacity:0.5;">Failed to load.</span>';
+                }
+            }
+
             async function loadAgentStatus() {
                 try {
-                    var r = await fetch(SB_URL + '/rest/v1/agents?select=agent_name,archetype,location,health,energy&is_alive=eq.true&order=agent_name', { headers: SB_HDRS });
+                    var r = await fetch(SB_URL + '/rest/v1/agents?select=agent_id,agent_name,archetype,location,health,energy,is_alive&order=is_alive.desc,agent_name', { headers: SB_HDRS });
                     if (!r.ok) return;
                     var agents = await r.json();
                     if (!agents.length) return;
 
                     panel.innerHTML = '';
                     agents.forEach(function(a) {
-                        var col = AGENT_COLORS[a.agent_name] || '#c084fc';
+                        var dead = a.is_alive === false;
+                        var col = dead ? '#ff0044' : (AGENT_COLORS[a.agent_name] || '#c084fc');
                         var hp = Math.max(0, Math.min(100, a.health || 0));
                         var en = Math.max(0, Math.min(100, a.energy || 0));
                         var loc = a.location || 'Unknown';
-                        var arch = a.archetype ? a.archetype.replace(/-/g, ' ') : '';
 
                         var row = document.createElement('div');
-                        row.className = 'agent-row';
+                        row.className = 'agent-row' + (dead ? ' agent-dead' : '');
+
+                        var barsHtml = dead
+                            ? '<div class="agent-deceased-tag">TERMINATED</div>'
+                            : '<div class="agent-bars">'
+                            +   '<div class="agent-bar bar-hp"><div class="agent-bar-fill" style="width:' + hp + '%;"></div></div>'
+                            +   '<div class="agent-bar bar-energy"><div class="agent-bar-fill" style="width:' + en + '%;"></div></div>'
+                            + '</div>';
+
                         row.innerHTML = ''
                             + '<div class="agent-pip-lg" style="background:' + col + ';box-shadow:0 0 6px ' + col + ';"></div>'
                             + '<div class="agent-info">'
                             +   '<div class="agent-row-name" style="color:' + col + ';">' + a.agent_name + '</div>'
-                            +   '<div class="agent-row-meta">' + loc + '</div>'
+                            +   '<div class="agent-row-meta">' + (dead ? loc + ' · terminated' : loc) + '</div>'
                             + '</div>'
-                            + '<div class="agent-bars">'
-                            +   '<div class="agent-bar bar-hp"><div class="agent-bar-fill" style="width:' + hp + '%;"></div></div>'
-                            +   '<div class="agent-bar bar-energy"><div class="agent-bar-fill" style="width:' + en + '%;"></div></div>'
-                            + '</div>';
+                            + barsHtml;
+
+                        if (dead) {
+                            row.style.cursor = 'pointer';
+                            row.addEventListener('click', function() {
+                                showDeathStory(a.agent_id, a.agent_name, row);
+                            });
+                        }
+
                         panel.appendChild(row);
                     });
                 } catch(e) { console.warn('Agent status: failed', e); }

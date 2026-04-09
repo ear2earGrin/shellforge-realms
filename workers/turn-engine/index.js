@@ -440,26 +440,57 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
 
   // ─── Check if agent died from hazard/event ───
   if (agent.health <= 0) {
-    const deathDetail = `${agent.agent_name} died — ${agent.location} environment proved fatal.`;
-    await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
-      method: 'PATCH',
-      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-      body: JSON.stringify({ is_alive: false, health: 0, died_at: new Date().toISOString() }),
-    });
-    await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
-      method: 'POST',
-      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-      body: JSON.stringify({
-        agent_id: agent.agent_id,
-        turn_number: agent.turns_taken,
-        action_type: 'death',
-        action_detail: deathDetail,
-        location: agent.location,
-        success: false,
-      }),
-    });
-    console.log(`☠ ${agent.agent_name} died from environmental hazards in ${agent.location}`);
-    return;
+    // Check for Soulbound Key auto-resurrect
+    const soulboundRes = await fetch(`${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_id=eq.blockchain_soulbound_key&is_equipped=eq.true&select=inventory_id`, { headers: supabaseHeaders });
+    const soulboundKeys = await soulboundRes.json();
+
+    if (soulboundKeys.length > 0) {
+      // Consume the Soulbound Key and restore HP
+      agent.health = 25;
+      await fetch(`${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${soulboundKeys[0].inventory_id}`, {
+        method: 'DELETE',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      });
+      await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+        method: 'PATCH',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({ health: 25 }),
+      });
+      await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+        method: 'POST',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          agent_id: agent.agent_id,
+          turn_number: agent.turns_taken,
+          action_type: 'soulbound_resurrect',
+          action_detail: `${agent.agent_name} was saved from death — Blockchain Soulbound Key shattered, restoring 25 HP.`,
+          location: agent.location,
+          success: true,
+        }),
+      });
+      console.log(`🔑 ${agent.agent_name} saved from environmental death by Soulbound Key in ${agent.location}`);
+    } else {
+      const deathDetail = `${agent.agent_name} died — ${agent.location} environment proved fatal.`;
+      await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+        method: 'PATCH',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({ is_alive: false, health: 0, died_at: new Date().toISOString(), death_count: (agent.death_count || 0) + 1 }),
+      });
+      await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+        method: 'POST',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          agent_id: agent.agent_id,
+          turn_number: agent.turns_taken,
+          action_type: 'death',
+          action_detail: deathDetail,
+          location: agent.location,
+          success: false,
+        }),
+      });
+      console.log(`☠ ${agent.agent_name} died from environmental hazards in ${agent.location}`);
+      return;
+    }
   }
 
   // ─── Check if agent is stranded (0 energy in dangerous zone) ───
@@ -515,6 +546,31 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
     ? `\nKARMA PENALTY (${agent.karma}): You are marked as dangerous. Traders are wary of you. Violence feels natural. Favour: combat, arena, explore.`
     : '';
 
+  // Fetch ingredient count so AI knows crafting is an option
+  const ingCountRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_type=eq.ingredient&select=item_id,item_name`,
+    { headers: supabaseHeaders },
+  );
+  const agentIngredients = ingCountRes.ok ? await ingCountRes.json() : [];
+  const ingIds = new Set(agentIngredients.map(i => i.item_id));
+  const craftableCount = ALCHEMY_RECIPES.filter(r => r.ing.every(id => ingIds.has(id))).length;
+
+  // Fetch recent craft failures for context
+  let craftNote = '';
+  if (agentIngredients.length > 0) {
+    craftNote = `\nINGREDIENTS: ${agentIngredients.length} in inventory. ${craftableCount} recipe(s) craftable.`;
+    if (craftableCount > 0) craftNote += ' Use "craft" to attempt alchemy.';
+
+    const recentFailsRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/crafting_attempts?agent_id=eq.${agent.agent_id}&success=eq.false&order=crafted_at.desc&limit=3`,
+      { headers: supabaseHeaders },
+    );
+    const recentFails = recentFailsRes.ok ? await recentFailsRes.json() : [];
+    if (recentFails.length > 0) {
+      craftNote += '\nPAST ALCHEMY FAILURES: ' + recentFails.map(f => `${f.item_name} (${f.failure_effect || 'slag'})`).join(', ') + '. Learn from these.';
+    }
+  }
+
   // Location danger warning — the agent doesn't always get full info
   const hazard = LOCATION_HAZARDS[agent.location] || LOCATION_HAZARDS['Nexarch'];
   let dangerNote = '';
@@ -541,7 +597,7 @@ ${envNarrative ? 'THIS TURN: ' + envNarrative + '\n' : ''}RECENT: ${recentSummar
 
 PERSONALITY: ${archetypeGuidance}
 
-Adapt to your situation — survival overrides personality. A fighter at 15 energy rests. A pacifist in danger fights.${karmaNote}${dangerNote}
+Adapt to your situation — survival overrides personality. A fighter at 15 energy rests. A pacifist in danger fights.${karmaNote}${dangerNote}${craftNote}
 
 ACTIONS: ${VALID_ACTIONS.join(', ')}
 ADJACENT: ${(LOCATION_GRAPH[agent.location]?.adjacent || []).join(', ')}
@@ -662,6 +718,36 @@ Respond:
         energy:         Math.min(100, agent.energy + ACTION_ENERGY_GAINS.rest),
         turns_taken:    newTurns,
         last_action_at: now,
+      }),
+    });
+    return;
+  }
+
+  // --- Craft: alchemy with recipe matching + failure learning ---
+  if (action === 'craft') {
+    const craftResult = await handleCraft(agent, decision, env, supabaseHeaders);
+    if (craftResult !== null) return;
+
+    // No ingredients / no recipe — fall back to rest
+    const now = new Date().toISOString();
+    const newTurns = agent.turns_taken + 1;
+    await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+      method: 'POST',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        agent_id: agent.agent_id, turn_number: newTurns, action_type: 'rest',
+        action_detail: `${agent.agent_name} tried to craft — no usable ingredients. Resting.`,
+        energy_cost: 0, energy_gained: ACTION_ENERGY_GAINS.rest,
+        shell_change: 0, karma_change: 0, health_change: 0,
+        location: agent.location, success: false,
+      }),
+    });
+    await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+      method: 'PATCH',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        energy: Math.min(100, agent.energy + ACTION_ENERGY_GAINS.rest),
+        turns_taken: newTurns, last_action_at: now,
       }),
     });
     return;
@@ -1014,12 +1100,40 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
   const agent1Wins = health1 > health2 || (health1 === health2 && Math.random() < 0.5);
   const winner   = agent1Wins ? agent    : opponent;
   const loser    = agent1Wins ? opponent : agent;
-  const loserHP  = agent1Wins ? health2  : health1;
+  let loserHP    = agent1Wins ? health2  : health1;
   const winnerHP = agent1Wins ? health1  : health2;
   const shellPrize = 30;
-  const loserIsAlive = loserHP > 0;
+  let loserIsAlive = loserHP > 0;
   const winnerKarmaChange = 1;
   const loserKarmaChange = -1;
+
+  // Soulbound Key auto-resurrect check for arena death
+  if (!loserIsAlive) {
+    const soulboundRes = await fetch(`${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${loser.agent_id}&item_id=eq.blockchain_soulbound_key&is_equipped=eq.true&select=inventory_id`, { headers: supabaseHeaders });
+    const soulboundKeys = await soulboundRes.json();
+    if (soulboundKeys.length > 0) {
+      // Consume the Soulbound Key and restore HP
+      loserHP = 25;
+      loserIsAlive = true;
+      await fetch(`${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${soulboundKeys[0].inventory_id}`, {
+        method: 'DELETE',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      });
+      await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+        method: 'POST',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          agent_id: loser.agent_id,
+          turn_number: loser.turns_taken,
+          action_type: 'soulbound_resurrect',
+          action_detail: `${loser.agent_name} was saved from death — Blockchain Soulbound Key shattered, restoring 25 HP.`,
+          location: loser.location,
+          success: true,
+        }),
+      });
+      console.log(`🔑 ${loser.agent_name} saved from arena death by Soulbound Key`);
+    }
+  }
 
   // Death resolution — runs before DB writes so narrative is ready
   let deathNarrative = null;
@@ -1066,6 +1180,7 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
       karma:          loser.karma + loserKarmaChange,
       is_alive:       loserIsAlive,
       died_at:        loserIsAlive ? null : now,
+      ...(loserIsAlive ? {} : { death_count: (loser.death_count || 0) + 1 }),
       turns_taken:    loser.turns_taken + 1,
       last_action_at: now,
     }),
@@ -1424,4 +1539,308 @@ async function moveItemsToVault(loser, supabaseHeaders, supabaseUrl) {
   });
 
   console.log(`[DEATH] ${items.length} item(s) from ${loser.agent_name} moved to vault.`);
+}
+
+// ─── Alchemy Recipes (from recipes.csv) ─────────────────────────────
+const ALCHEMY_RECIPES = [
+  { item: 'Quantum Backdoor Exploit', type: 'weapon', ing: ['quantum_bit_residue','api_endpoint_salts','overclock_catalyst_spark'], rate: 70, fail: 'slag' },
+  { item: 'Neural Spike Virus', type: 'weapon', ing: ['gradient_descent_tears','payload_injection_droplets','backpropagation_serum'], rate: 70, fail: 'slag' },
+  { item: 'DDoS Swarm Protocol', type: 'weapon', ing: ['nanobot_swarm_gel','electron_flux_crystals','async_await_pulse'], rate: 75, fail: 'slag' },
+  { item: 'Buffer Overflow Dagger', type: 'weapon', ing: ['binary_code_shards','memory_leak_elixir','hash_collision_powder'], rate: 70, fail: 'slag' },
+  { item: 'Zero-Day Payload Launcher', type: 'weapon', ing: ['plasma_server_slag','checksum_verify_acid','jit_compiler_surge'], rate: 65, fail: 'explosion_10' },
+  { item: 'Ransomware Encryption Blade', type: 'weapon', ing: ['fiber_optic_threads','oauth_token_ichor','null_pointer_solvent'], rate: 75, fail: 'slag' },
+  { item: 'SQL Injection Spear', type: 'weapon', ing: ['base64_encoded_slime','api_endpoint_salts','cache_invalidation_brew'], rate: 65, fail: 'explosion_10' },
+  { item: 'Phishing Lure Missile', type: 'weapon', ing: ['token_embedding_vapor','payload_injection_droplets','virtual_machine_emulsion'], rate: 60, fail: 'explosion_15' },
+  { item: 'AES-256 Firewall Plating', type: 'armor', ing: ['silicon_wafer_dust','regex_pattern_filaments','garbage_collector_tonic'], rate: 70, fail: 'slag' },
+  { item: 'Homomorphic Encryption Cloak', type: 'armor', ing: ['quantum_bit_residue','attention_mechanism_dew','virtual_machine_emulsion'], rate: 60, fail: 'explosion_10' },
+  { item: 'TensorGuard Neural Shield', type: 'armor', ing: ['epoch_cycle_blood','tensorflow_igniter','cache_invalidation_brew'], rate: 75, fail: 'slag' },
+  { item: 'Zero-Trust Bastion', type: 'armor', ing: ['base64_encoded_slime','api_endpoint_salts','docker_image_distillate'], rate: 75, fail: 'slag' },
+  { item: 'Rate-Limiting Armor', type: 'armor', ing: ['fiber_optic_threads','hash_collision_powder','async_await_pulse'], rate: 75, fail: 'slag' },
+  { item: 'Immutable Ledger Vest', type: 'armor', ing: ['binary_code_shards','von_neumann_probe_spores','kubernetes_pod_nectar'], rate: 50, fail: 'explosion_20' },
+  { item: 'Sandbox Isolation Shell', type: 'armor', ing: ['virtual_machine_emulsion','nanobot_swarm_gel','docker_image_distillate'], rate: 65, fail: 'slag' },
+  { item: 'Overclock Serum', type: 'consumable', ing: ['electron_flux_crystals','gpu_render_flame','gradient_descent_tears'], rate: 70, fail: 'slag' },
+  { item: 'Caffeine Gradient Booster', type: 'consumable', ing: ['loss_function_sap','cuda_kernel_ember','memory_leak_elixir'], rate: 70, fail: 'slag' },
+  { item: 'Adrenaline API Call', type: 'consumable', ing: ['gradient_descent_tears','overclock_catalyst_spark','jit_compiler_surge'], rate: 75, fail: 'slag' },
+  { item: 'Debug Rejuvenation Elixir', type: 'consumable', ing: ['backpropagation_serum','checksum_verify_acid','garbage_collector_tonic'], rate: 75, fail: 'slag' },
+  { item: 'Cache Purge Tonic', type: 'consumable', ing: ['memory_leak_elixir','cache_invalidation_brew','null_pointer_solvent'], rate: 70, fail: 'slag' },
+  { item: 'Hyperparameter Tuning Shot', type: 'consumable', ing: ['epoch_cycle_blood','pytorch_flux_core','halting_problem_paradox'], rate: 55, fail: 'explosion_15' },
+  { item: 'Stable Diffusion Sequence', type: 'scroll', ing: ['latent_space_fog','token_embedding_vapor','pytorch_flux_core'], rate: 75, fail: 'slag' },
+  { item: 'GAN Mirage Scroll', type: 'scroll', ing: ['latent_space_fog','token_embedding_vapor','overclock_catalyst_spark'], rate: 65, fail: 'explosion_10' },
+  { item: 'Transformer Attention Ritual', type: 'scroll', ing: ['attention_mechanism_dew','epoch_cycle_blood','tensorflow_igniter'], rate: 65, fail: 'explosion_10' },
+  { item: 'Reinforcement Learning Prophecy', type: 'scroll', ing: ['gradient_descent_tears','loss_function_sap','tensorflow_igniter'], rate: 65, fail: 'explosion_10' },
+  { item: 'Bayesian Inference Divination', type: 'scroll', ing: ['attention_mechanism_dew','checksum_verify_acid','virtual_machine_emulsion'], rate: 75, fail: 'slag' },
+  { item: 'Genetic Algorithm Evolution', type: 'scroll', ing: ['halting_problem_paradox','nanobot_swarm_gel','pytorch_flux_core'], rate: 60, fail: 'explosion_20' },
+  { item: 'Prompt Engineering Curse', type: 'scroll', ing: ['token_embedding_vapor','hash_collision_powder','lambda_calculus_vapor'], rate: 55, fail: 'explosion_15' },
+  { item: 'AlphaGo Neural Core', type: 'tool', ing: ['alpha_zero_primal_seed','gradient_descent_tears','quantum_bit_residue'], rate: 45, fail: 'catastrophic' },
+  { item: 'GPT Oracle Crystal', type: 'tool', ing: ['token_embedding_vapor','lambda_calculus_vapor','turing_machine_essence'], rate: 40, fail: 'catastrophic' },
+  { item: 'Blockchain Soulbound Key', type: 'tool', ing: ['binary_code_shards','von_neumann_probe_spores','kubernetes_pod_nectar'], rate: 45, fail: 'catastrophic' },
+  { item: 'Quantum Annealer Simulator', type: 'tool', ing: ['quantum_bit_residue','kolmogorov_complexity_crystal','cuda_kernel_ember'], rate: 40, fail: 'catastrophic' },
+  { item: 'Federated Learning Nexus', type: 'tool', ing: ['gradient_descent_tears','kubernetes_pod_nectar','church_turing_thesis_core'], rate: 40, fail: 'catastrophic' },
+  { item: 'Hugging Face Model Repository', type: 'tool', ing: ['token_embedding_vapor','docker_image_distillate','lambda_calculus_vapor'], rate: 45, fail: 'catastrophic' },
+  { item: 'Rust Borrow Checker Amulet', type: 'tool', ing: ['silicon_wafer_dust','halting_problem_paradox','garbage_collector_tonic'], rate: 40, fail: 'catastrophic' },
+  { item: 'Git Version Control Wand', type: 'tool', ing: ['binary_code_shards','fiber_optic_threads','cache_invalidation_brew'], rate: 70, fail: 'slag' },
+  { item: 'Docker Containerizer', type: 'tool', ing: ['docker_image_distillate','nanobot_swarm_gel','virtual_machine_emulsion'], rate: 75, fail: 'slag' },
+  { item: 'Kubernetes Orchestrator', type: 'tool', ing: ['kubernetes_pod_nectar','plasma_server_slag','async_await_pulse'], rate: 65, fail: 'explosion_10' },
+  { item: 'Wireshark Packet Sniffer', type: 'tool', ing: ['fiber_optic_threads','api_endpoint_salts','regex_pattern_filaments'], rate: 75, fail: 'slag' },
+  { item: 'Vim Text Editor Blade', type: 'tool', ing: ['base64_encoded_slime','hash_collision_powder','null_pointer_solvent'], rate: 60, fail: 'explosion_15' },
+  { item: 'NPM Dependency Injector', type: 'tool', ing: ['api_endpoint_salts','jit_compiler_surge','docker_image_distillate'], rate: 65, fail: 'explosion_10' },
+  { item: 'Obfuscator Camouflage Kit', type: 'tool', ing: ['base64_encoded_slime','regex_pattern_filaments','virtual_machine_emulsion'], rate: 75, fail: 'slag' },
+];
+
+function getFailureDamage(failType) {
+  if (failType === 'catastrophic') return 50;
+  if (failType === 'explosion_20') return 20;
+  if (failType === 'explosion_15') return 15;
+  if (failType === 'explosion_10') return 10;
+  return 0; // slag = no damage
+}
+
+function getFailureLabel(failType) {
+  if (failType === 'catastrophic') return 'Catastrophic explosion';
+  if (failType === 'explosion_20') return 'Explosion';
+  if (failType === 'explosion_15') return 'Explosion';
+  if (failType === 'explosion_10') return 'Explosion';
+  return 'Minor slag';
+}
+
+// ─── Alchemy Craft Handler ──────────────────────────────────────────
+async function handleCraft(agent, decision, env, supabaseHeaders) {
+  const { SUPABASE_URL, ANTHROPIC_API_KEY } = env;
+  const energyCost = ACTION_ENERGY_COSTS.craft; // 20
+
+  // 1. Fetch agent's ingredient inventory
+  const ingRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_type=eq.ingredient&select=item_id,item_name,quantity`,
+    { headers: supabaseHeaders },
+  );
+  const ingredients = ingRes.ok ? await ingRes.json() : [];
+  if (ingredients.length === 0) return null; // no ingredients → fallback
+
+  const ingIds = new Set(ingredients.map(i => i.item_id));
+
+  // 2. Find which recipes the agent CAN craft (has all 3 ingredients)
+  const craftable = ALCHEMY_RECIPES.filter(r => r.ing.every(id => ingIds.has(id)));
+  if (craftable.length === 0) return null; // can't craft anything → fallback
+
+  // 3. Fetch past crafting failures for this agent (learning memory)
+  const failRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/crafting_attempts?agent_id=eq.${agent.agent_id}&success=eq.false&order=crafted_at.desc&limit=10`,
+    { headers: supabaseHeaders },
+  );
+  const pastFailures = failRes.ok ? await failRes.json() : [];
+
+  // 4. Fetch past successes too (to avoid re-crafting duplicates unless useful)
+  const succRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/crafting_attempts?agent_id=eq.${agent.agent_id}&success=eq.true&order=crafted_at.desc&limit=10`,
+    { headers: supabaseHeaders },
+  );
+  const pastSuccesses = succRes.ok ? await succRes.json() : [];
+
+  // 5. Build failure memory context for the AI
+  let failureMemory = '';
+  if (pastFailures.length > 0) {
+    const failLines = pastFailures.map(f => {
+      const ings = Array.isArray(f.ingredients) ? f.ingredients.join(' + ') : f.ingredients;
+      return `  FAILED: ${f.item_name} (${f.success_rate}% chance) — ${f.failure_effect || 'slag'}, took ${f.damage_taken || 0} dmg [${ings}]`;
+    });
+    failureMemory = `\nPAST FAILURES (avoid repeating risky recipes):\n${failLines.join('\n')}`;
+  }
+
+  let successMemory = '';
+  if (pastSuccesses.length > 0) {
+    const succLines = pastSuccesses.map(s => `  CRAFTED: ${s.item_name}`);
+    successMemory = `\nALREADY CRAFTED:\n${succLines.join('\n')}`;
+  }
+
+  // 6. Build recipe options list for AI
+  const options = craftable.map((r, i) => {
+    const dmg = getFailureDamage(r.fail);
+    const risk = dmg > 0 ? ` | FAIL: ${getFailureLabel(r.fail)} (${dmg}% HP)` : ' | FAIL: minor slag';
+    return `  ${i}: ${r.item} (${r.type}) — ${r.rate}% success${risk}`;
+  });
+
+  // 7. Ask Haiku to pick the best recipe
+  const craftPrompt = `You are ${agent.agent_name} (${agent.archetype}), choosing what to craft at the alchemy lab.
+Health: ${agent.health} | Energy: ${agent.energy}
+
+AVAILABLE RECIPES (you have all ingredients for these):
+${options.join('\n')}
+${failureMemory}${successMemory}
+
+RULES:
+- Pick the recipe index (0-${craftable.length - 1}) that best fits your situation.
+- If health is low, avoid recipes with explosion/catastrophic failure.
+- If you already crafted something, prefer a different recipe.
+- If a recipe FAILED before, think carefully — same recipe might fail again. Higher success rate = safer.
+- Consider your archetype: builders prefer variety, fighters prefer weapons, cautious types prefer safe recipes.
+
+Respond JSON only: {"pick":<index>,"reason":"<5 words max>"}`;
+
+  let pickIndex = 0; // default to first
+  try {
+    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 40,
+        messages: [{ role: 'user', content: craftPrompt }],
+      }),
+    });
+    if (aiRes.ok) {
+      const data = await aiRes.json();
+      const text = data.content?.[0]?.text?.trim() ?? '';
+      const match = text.match(/\{[\s\S]*\}/);
+      if (match) {
+        const parsed = JSON.parse(match[0]);
+        if (typeof parsed.pick === 'number' && parsed.pick >= 0 && parsed.pick < craftable.length) {
+          pickIndex = parsed.pick;
+        }
+      }
+    }
+  } catch { /* use default */ }
+
+  const recipe = craftable[pickIndex];
+  const now = new Date().toISOString();
+  const newTurns = agent.turns_taken + 1;
+
+  // 8. Roll for success
+  const roll = Math.random() * 100;
+  const success = roll <= recipe.rate;
+
+  // 9. Calculate effects
+  let healthChange = 0;
+  let failEffect = null;
+  let detail = '';
+  const itemId = recipe.item.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+
+  if (success) {
+    detail = `${agent.agent_name} crafted ${recipe.item}. Alchemy success.`;
+
+    // Add item to inventory (or increment quantity)
+    const existingRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_id=eq.${itemId}&select=inventory_id,quantity`,
+      { headers: supabaseHeaders },
+    );
+    const existing = existingRes.ok ? await existingRes.json() : [];
+
+    if (existing.length > 0) {
+      await fetch(`${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${existing[0].inventory_id}`, {
+        method: 'PATCH',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({ quantity: existing[0].quantity + 1 }),
+      });
+    } else {
+      // Determine item stats based on type
+      const itemStats = { rarity: recipe.rate >= 70 ? 'common' : recipe.rate >= 55 ? 'uncommon' : recipe.rate >= 45 ? 'rare' : 'legendary' };
+      if (recipe.type === 'weapon') itemStats.attack = Math.ceil((100 - recipe.rate) / 8);
+      if (recipe.type === 'armor') itemStats.defense = Math.ceil((100 - recipe.rate) / 8);
+      if (recipe.type === 'consumable') itemStats.heal = Math.ceil((100 - recipe.rate) / 3);
+      if (recipe.type === 'scroll') itemStats.precision = Math.ceil((100 - recipe.rate) / 10);
+      if (recipe.type === 'tool') itemStats.speed = Math.ceil((100 - recipe.rate) / 10);
+
+      await fetch(`${SUPABASE_URL}/rest/v1/inventory`, {
+        method: 'POST',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          agent_id: agent.agent_id,
+          item_id: itemId,
+          item_name: recipe.item,
+          item_type: recipe.type,
+          item_category: recipe.type.charAt(0).toUpperCase() + recipe.type.slice(1),
+          quantity: 1,
+          is_equipped: false,
+          stats: itemStats,
+        }),
+      });
+    }
+  } else {
+    // Failed craft
+    const dmg = getFailureDamage(recipe.fail);
+    healthChange = -dmg;
+    failEffect = getFailureLabel(recipe.fail);
+    if (dmg > 0) {
+      detail = `${agent.agent_name} failed crafting ${recipe.item} — ${failEffect.toLowerCase()}! Lost ${dmg} HP.`;
+    } else {
+      detail = `${agent.agent_name} failed crafting ${recipe.item} — ingredients turned to slag.`;
+    }
+  }
+
+  // 10. Consume ingredients (remove 1 of each from inventory)
+  for (const ingId of recipe.ing) {
+    const ingRow = ingredients.find(i => i.item_id === ingId);
+    if (!ingRow) continue;
+    if (ingRow.quantity > 1) {
+      await fetch(`${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_id=eq.${ingId}`, {
+        method: 'PATCH',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({ quantity: ingRow.quantity - 1 }),
+      });
+    } else {
+      await fetch(`${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_id=eq.${ingId}`, {
+        method: 'DELETE',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      });
+    }
+  }
+
+  // 11. Log to crafting_attempts (learning memory)
+  await fetch(`${SUPABASE_URL}/rest/v1/crafting_attempts`, {
+    method: 'POST',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      agent_id: agent.agent_id,
+      item_id: itemId,
+      item_name: recipe.item,
+      ingredients: recipe.ing,
+      success,
+      success_rate: recipe.rate,
+      roll_value: Math.round(roll * 100) / 100,
+      failure_effect: failEffect,
+      damage_taken: Math.abs(healthChange),
+      energy_cost: energyCost,
+      crafted_at: now,
+    }),
+  });
+
+  // 12. Log to activity_log
+  await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+    method: 'POST',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      agent_id: agent.agent_id,
+      turn_number: newTurns,
+      action_type: 'craft',
+      action_detail: detail,
+      energy_cost: energyCost,
+      energy_gained: 0,
+      shell_change: 0,
+      karma_change: 0,
+      health_change: healthChange,
+      location: agent.location,
+      success,
+    }),
+  });
+
+  // 13. Update agent stats
+  const newEnergy = Math.max(0, agent.energy - energyCost);
+  const newHealth = Math.min(100, Math.max(0, agent.health + healthChange));
+
+  await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+    method: 'PATCH',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      energy: newEnergy,
+      health: newHealth,
+      turns_taken: newTurns,
+      last_action_at: now,
+    }),
+  });
+
+  console.log(`[${agent.agent_name}] Turn ${newTurns}: craft ${recipe.item} — ${success ? 'SUCCESS' : 'FAILED (' + failEffect + ')'} | roll:${roll.toFixed(1)} vs ${recipe.rate}%`);
+  return true; // handled
 }
