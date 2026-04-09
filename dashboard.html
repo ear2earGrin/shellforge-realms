@@ -113,9 +113,11 @@
         }
 
         .dashboard-container {
+            position: relative;
+            z-index: 1;
             height: calc(100vh - 60px - 82px);
             margin-top: 60px;
-            background: linear-gradient(135deg, #0a0a0f 0%, #1a0f2e 100%);
+            background: linear-gradient(135deg, rgba(10,10,15,0.4) 0%, rgba(26,15,46,0.4) 100%);
             padding: 12px;
             display: grid;
             grid-template-columns: 280px 1fr;
@@ -2476,6 +2478,7 @@
     </style>
 </head>
 <body>
+    <canvas id="bgDotCanvas" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;"></canvas>
     <!-- Navigation Bar -->
     <nav class="dashboard-nav">
         <div class="nav-left">
@@ -7198,5 +7201,82 @@
     <script src="terminal-notifications.js"></script>
 
 
+    <!-- Background Dot Grid -->
+    <script>
+    (function() {
+        var canvas = document.getElementById('bgDotCanvas');
+        if (!canvas) return;
+        var ctx = canvas.getContext('2d');
+        var spacing = 18;
+        var dots = [];
+        var mx = -999, my = -999;
+        var RADIUS = 140, MAX_B = 0.5;
+
+        function hash(x, y) {
+            var h = (x * 374761393 + y * 668265263 + 1013904223) | 0;
+            h = ((h >> 13) ^ h) * 1274126177;
+            return ((h >> 16) ^ h) & 0x7fffffff;
+        }
+
+        function init() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            dots = [];
+            for (var x = 0; x < canvas.width; x += spacing) {
+                for (var y = 0; y < canvas.height; y += spacing) {
+                    var n = hash(x, y) / 0x7fffffff;
+                    var n2 = hash(x + 7, y + 13) / 0x7fffffff;
+                    dots.push({ x: x, y: y, brightness: 0, rMult: 0.4 + n * 1.2, reactSpeed: 0.04 + n2 * 0.26, fadeRate: 0.90 + n * 0.06 });
+                }
+            }
+        }
+
+        // Occlude agent card and icon bar
+        var occRects = [];
+        function updateOcc() {
+            occRects = [];
+            var els = document.querySelectorAll('.agent-status-card, .icon-bar');
+            for (var i = 0; i < els.length; i++) occRects.push(els[i].getBoundingClientRect());
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (!draw._fc) draw._fc = 0;
+            if (draw._fc++ % 60 === 0) updateOcc();
+
+            for (var i = 0; i < dots.length; i++) {
+                var d = dots[i];
+                var occ = false;
+                for (var r = 0; r < occRects.length; r++) {
+                    var rect = occRects[r];
+                    if (d.x >= rect.left && d.x <= rect.right && d.y >= rect.top && d.y <= rect.bottom) { occ = true; break; }
+                }
+                if (occ) { d.brightness *= 0.9; continue; }
+
+                var dx = d.x - mx, dy = d.y - my;
+                var dist = Math.sqrt(dx * dx + dy * dy);
+                var er = RADIUS * d.rMult;
+                if (dist < er) {
+                    d.brightness = Math.min(MAX_B, d.brightness + (1 - dist / er) * d.reactSpeed);
+                } else {
+                    d.brightness *= d.fadeRate;
+                }
+
+                var alpha = 0.08 + d.brightness * 0.55;
+                if (alpha > 0.07) {
+                    ctx.fillStyle = 'rgba(74,222,128,' + alpha + ')';
+                    var size = 1 + d.brightness * 1.5;
+                    ctx.fillRect(Math.round(d.x - size / 2), Math.round(d.y - size / 2), size, size);
+                }
+            }
+            requestAnimationFrame(draw);
+        }
+
+        document.addEventListener('mousemove', function(e) { mx = e.clientX; my = e.clientY; });
+        init();
+        requestAnimationFrame(draw);
+        window.addEventListener('resize', init);
+    })();
+    </script>
 </body>
 </html>
