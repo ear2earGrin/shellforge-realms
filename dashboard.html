@@ -187,12 +187,38 @@
         }
         .icon-btn.town-locked {
             opacity: 0.25;
-            pointer-events: none;
+            pointer-events: auto;
+            cursor: not-allowed;
             filter: grayscale(0.8);
+            position: relative;
         }
-        .icon-btn.town-locked .btn-label::after {
-            content: ' (town)';
-            font-size: 0.4rem; opacity: 0.6;
+        .icon-btn.town-locked:hover {
+            opacity: 0.4;
+            background: rgba(255,60,60,0.04);
+            border-color: rgba(255,60,60,0.15);
+        }
+        .icon-btn.town-locked::after {
+            content: 'Only usable in town';
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(5,8,14,0.95);
+            border: 1px solid rgba(255,60,60,0.35);
+            color: #ff6666;
+            font-family: var(--font-main);
+            font-size: 0.6rem;
+            letter-spacing: 0.04em;
+            padding: 5px 10px;
+            border-radius: 4px;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            z-index: 600;
+        }
+        .icon-btn.town-locked:hover::after {
+            opacity: 1;
         }
         .icon-btn .btn-icon img {
             width: 250%; height: 250%;
@@ -6204,6 +6230,8 @@
         }
 
         function openModal(id, triggerEl) {
+            // Block town-locked buttons
+            if (triggerEl && triggerEl.classList.contains('town-locked')) return;
             // Cancel any pending close for this panel
             clearTimeout(_modalHideTimers[id]);
             // Close all others
