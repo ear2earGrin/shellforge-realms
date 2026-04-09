@@ -1,5 +1,5 @@
 // Shellforge Turn Engine — Cloudflare Worker
-// Runs every 30 min via cron. Queries active agents, calls Claude Haiku,
+// Runs every 2h via cron. Queries active agents, calls Claude Haiku,
 // writes AI decision to activity_log, updates agent stats in Supabase.
 
 const VALID_ACTIONS = [
@@ -140,6 +140,137 @@ const ARCHETYPE_EVENT_BONUSES = {
   'bound-encryptor':  { dodgeNeg: 0.20 },          // 20% dodge negative events
   'ordinate-mapper':  { bonusLoot: 0.10 },          // 10% bonus loot (navigation)
 };
+
+// ─── Loot Drop System ─────────────────────────────────────────────────────
+// Location-based loot tables. Each item has: id, name, rarity weight, locations where it drops.
+// Rarity tiers: common (60%), uncommon (25%), rare (12%), epic (3%)
+
+const LOOT_TABLE = [
+  // ── Common ingredients (found broadly) ──
+  { id: 'silicon_wafer_dust',       name: 'Silicon Wafer Dust',       rarity: 'common',   locations: ['Hashmere','Nexarch','Diffusion Mesa','Deserted Data Centre'] },
+  { id: 'binary_code_shards',      name: 'Binary Code Shards',       rarity: 'common',   locations: ['Hashmere','Nexarch','Epoch Spike','Diffusion Mesa','Deserted Data Centre'] },
+  { id: 'fiber_optic_threads',     name: 'Fiber Optic Threads',      rarity: 'common',   locations: ['Hashmere','Nexarch','Diffusion Mesa','Deserted Data Centre'] },
+  { id: 'base64_encoded_slime',    name: 'Base64 Encoded Slime',     rarity: 'common',   locations: ['Hashmere','Diffusion Mesa','Hallucination Glitch'] },
+  { id: 'regex_pattern_filaments', name: 'Regex Pattern Filaments',  rarity: 'common',   locations: ['Hashmere','Nexarch','Deserted Data Centre'] },
+  { id: 'null_pointer_solvent',    name: 'Null Pointer Solvent',     rarity: 'common',   locations: ['Epoch Spike','Diffusion Mesa','Deserted Data Centre'] },
+  { id: 'memory_leak_elixir',      name: 'Memory Leak Elixir',       rarity: 'common',   locations: ['Epoch Spike','Deserted Data Centre','Singularity Crater'] },
+  { id: 'hash_collision_powder',   name: 'Hash Collision Powder',    rarity: 'common',   locations: ['Hashmere','Nexarch','Diffusion Mesa'] },
+  { id: 'garbage_collector_tonic', name: 'Garbage Collector Tonic',  rarity: 'common',   locations: ['Hashmere','Nexarch','Deserted Data Centre'] },
+  { id: 'api_endpoint_salts',      name: 'API Endpoint Salts',       rarity: 'common',   locations: ['Hashmere','Nexarch'] },
+  { id: 'docker_image_distillate', name: 'Docker Image Distillate',  rarity: 'common',   locations: ['Nexarch','Deserted Data Centre'] },
+  { id: 'cache_invalidation_brew', name: 'Cache Invalidation Brew',  rarity: 'common',   locations: ['Hashmere','Epoch Spike','Deserted Data Centre'] },
+  { id: 'async_await_pulse',       name: 'Async Await Pulse',        rarity: 'common',   locations: ['Nexarch','Diffusion Mesa','Epoch Spike'] },
+
+  // ── Uncommon ingredients (location-specific) ──
+  { id: 'quantum_bit_residue',       name: 'Quantum Bit Residue',       rarity: 'uncommon', locations: ['Epoch Spike','Singularity Crater'] },
+  { id: 'gradient_descent_tears',    name: 'Gradient Descent Tears',    rarity: 'uncommon', locations: ['Diffusion Mesa','Hallucination Glitch'] },
+  { id: 'electron_flux_crystals',    name: 'Electron Flux Crystals',    rarity: 'uncommon', locations: ['Epoch Spike','Singularity Crater'] },
+  { id: 'nanobot_swarm_gel',         name: 'Nanobot Swarm Gel',         rarity: 'uncommon', locations: ['Deserted Data Centre','Singularity Crater'] },
+  { id: 'overclock_catalyst_spark',  name: 'Overclock Catalyst Spark',  rarity: 'uncommon', locations: ['Epoch Spike','Nexarch'] },
+  { id: 'payload_injection_droplets',name: 'Payload Injection Droplets',rarity: 'uncommon', locations: ['Hallucination Glitch','Proof-of-Death'] },
+  { id: 'backpropagation_serum',     name: 'Backpropagation Serum',     rarity: 'uncommon', locations: ['Diffusion Mesa','Hallucination Glitch'] },
+  { id: 'oauth_token_ichor',         name: 'OAuth Token Ichor',         rarity: 'uncommon', locations: ['Hashmere','Nexarch'] },
+  { id: 'plasma_server_slag',        name: 'Plasma Server Slag',        rarity: 'uncommon', locations: ['Deserted Data Centre','Epoch Spike'] },
+  { id: 'checksum_verify_acid',      name: 'Checksum Verify Acid',      rarity: 'uncommon', locations: ['Nexarch','Hashmere'] },
+  { id: 'jit_compiler_surge',        name: 'JIT Compiler Surge',        rarity: 'uncommon', locations: ['Epoch Spike','Diffusion Mesa'] },
+  { id: 'token_embedding_vapor',     name: 'Token Embedding Vapor',     rarity: 'uncommon', locations: ['Diffusion Mesa','Hallucination Glitch'] },
+  { id: 'virtual_machine_emulsion',  name: 'Virtual Machine Emulsion',  rarity: 'uncommon', locations: ['Deserted Data Centre','Nexarch'] },
+  { id: 'epoch_cycle_blood',         name: 'Epoch Cycle Blood',         rarity: 'uncommon', locations: ['Epoch Spike','Singularity Crater'] },
+  { id: 'gpu_render_flame',          name: 'GPU Render Flame',          rarity: 'uncommon', locations: ['Epoch Spike','Diffusion Mesa'] },
+  { id: 'loss_function_sap',         name: 'Loss Function Sap',         rarity: 'uncommon', locations: ['Diffusion Mesa','Hallucination Glitch'] },
+  { id: 'cuda_kernel_ember',         name: 'CUDA Kernel Ember',         rarity: 'uncommon', locations: ['Epoch Spike','Singularity Crater'] },
+  { id: 'tensorflow_igniter',        name: 'TensorFlow Igniter',        rarity: 'uncommon', locations: ['Diffusion Mesa','Deserted Data Centre'] },
+  { id: 'attention_mechanism_dew',   name: 'Attention Mechanism Dew',   rarity: 'uncommon', locations: ['Diffusion Mesa','Hallucination Glitch'] },
+  { id: 'pytorch_flux_core',         name: 'PyTorch Flux Core',         rarity: 'uncommon', locations: ['Diffusion Mesa','Singularity Crater'] },
+  { id: 'latent_space_fog',          name: 'Latent Space Fog',          rarity: 'uncommon', locations: ['Hallucination Glitch','Diffusion Mesa'] },
+
+  // ── Rare ingredients (dangerous zones only) ──
+  { id: 'kubernetes_pod_nectar',        name: 'Kubernetes Pod Nectar',        rarity: 'rare', locations: ['Deserted Data Centre','Singularity Crater'] },
+  { id: 'von_neumann_probe_spores',     name: 'Von Neumann Probe Spores',    rarity: 'rare', locations: ['Singularity Crater','Proof-of-Death'] },
+  { id: 'halting_problem_paradox',       name: 'Halting Problem Paradox',      rarity: 'rare', locations: ['Singularity Crater','Proof-of-Death'] },
+  { id: 'kolmogorov_complexity_crystal', name: 'Kolmogorov Complexity Crystal',rarity: 'rare', locations: ['Singularity Crater','Proof-of-Death'] },
+  { id: 'lambda_calculus_vapor',         name: 'Lambda Calculus Vapor',        rarity: 'rare', locations: ['Hallucination Glitch','Proof-of-Death'] },
+
+  // ── Epic ingredients (extreme zones, very rare) ──
+  { id: 'alpha_zero_primal_seed',    name: 'Alpha Zero Primal Seed',    rarity: 'epic', locations: ['Proof-of-Death'] },
+  { id: 'turing_machine_essence',    name: 'Turing Machine Essence',    rarity: 'epic', locations: ['Proof-of-Death','Singularity Crater'] },
+  { id: 'church_turing_thesis_core', name: 'Church-Turing Thesis Core', rarity: 'epic', locations: ['Proof-of-Death'] },
+];
+
+const RARITY_WEIGHTS = { common: 60, uncommon: 25, rare: 12, epic: 3 };
+
+// Base drop chances per action type. Archetype bonusLoot adds to these.
+const LOOT_DROP_CHANCE = { explore: 0.20, gather: 0.45 };
+
+function rollLootDrop(location, action, archBonus) {
+  // 1. Check if a drop happens at all
+  let chance = LOOT_DROP_CHANCE[action] || 0;
+  if (!chance) return null;
+
+  // Archetype bonus (0day-primer +20%, ordinate-mapper +10%, oracle +15%)
+  if (archBonus.bonusLoot) chance += archBonus.bonusLoot;
+
+  if (Math.random() > chance) return null;
+
+  // 2. Filter loot table to items available at this location
+  const pool = LOOT_TABLE.filter(item => item.locations.includes(location));
+  if (!pool.length) return null;
+
+  // 3. Weighted random by rarity
+  let totalWeight = 0;
+  const weighted = pool.map(item => {
+    const w = RARITY_WEIGHTS[item.rarity] || 1;
+    totalWeight += w;
+    return { item, cumWeight: totalWeight };
+  });
+
+  const roll = Math.random() * totalWeight;
+  for (const entry of weighted) {
+    if (roll <= entry.cumWeight) {
+      return { id: entry.item.id, name: entry.item.name, rarity: entry.item.rarity };
+    }
+  }
+
+  return null;
+}
+
+// Insert a dropped item into the agent's inventory (upsert: stack if ingredient exists)
+async function insertLootItem(agentId, loot, supabaseHeaders, SUPABASE_URL) {
+  // Check if agent already has this ingredient
+  const checkRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agentId}&item_id=eq.${loot.id}&select=inventory_id,quantity`,
+    { headers: supabaseHeaders },
+  );
+  const existing = checkRes.ok ? await checkRes.json() : [];
+
+  if (existing.length > 0) {
+    // Stack: increment quantity
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${existing[0].inventory_id}`,
+      {
+        method: 'PATCH',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({ quantity: existing[0].quantity + 1 }),
+      },
+    );
+  } else {
+    // Insert new inventory row
+    await fetch(`${SUPABASE_URL}/rest/v1/inventory`, {
+      method: 'POST',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        agent_id: agentId,
+        item_id: loot.id,
+        item_name: loot.name,
+        item_type: 'ingredient',
+        item_category: 'Ingredient',
+        quantity: 1,
+        is_equipped: false,
+        stats: { rarity: loot.rarity },
+      }),
+    });
+  }
+}
 
 // Roll for environmental hazard + random event.
 // Factors in: location danger, karma, agent traits, archetype.
@@ -615,6 +746,7 @@ CRITICAL — "detail" writing rules:
 - Include a concrete outcome or object when possible.
 - NEVER repeat phrases from recent history.
 - NO purple prose. NO "optical sensors". NO "neural implants humming".
+- NEVER mention finding, picking up, or acquiring specific items. Item drops are handled by the game system automatically. Describe the ACTION only (exploring, scavenging, searching, etc).
 
 GOOD examples:
 - "${agent.agent_name} rests in a Hashmere safehouse. Energy recovering."
@@ -848,17 +980,29 @@ Respond:
   const newKarma = agent.karma + karmaChange;
   const newTurns = agent.turns_taken + 1;
 
+  // ─── Loot drop on explore/gather ───────────────────────────────
+  let lootDrop = null;
+  if (action === 'explore' || action === 'gather') {
+    const archBonus = ARCHETYPE_EVENT_BONUSES[agent.archetype] || {};
+    lootDrop = rollLootDrop(agent.location, action, archBonus);
+    if (lootDrop) {
+      await insertLootItem(agent.agent_id, lootDrop, supabaseHeaders, SUPABASE_URL);
+      console.log(`[${agent.agent_name}] Loot drop: ${lootDrop.name} (${lootDrop.rarity})`);
+    }
+  }
+
   // Write activity_log entry
   const logEntry = {
     agent_id: agent.agent_id,
     turn_number: newTurns,
     action_type: action,
-    action_detail: decision.detail,
+    action_detail: decision.detail + (lootDrop ? ` Found: ${lootDrop.name}.` : ''),
     energy_cost: energyCost,
     energy_gained: energyGain,
     shell_change: shellChange,
     karma_change: karmaChange,
     health_change: healthChange,
+    items_gained: lootDrop ? [{ item_id: lootDrop.id, item_name: lootDrop.name, quantity: 1 }] : null,
     location: agent.location,
     success: true,
   };
