@@ -3868,12 +3868,12 @@
             <span class="btn-label">Whisper</span>
         </button>
         <button class="icon-btn" onmouseenter="openModal('inventory',this)" onmouseleave="scheduleClose('inventory')" onclick="openModal('inventory',this)">
-            <span class="btn-icon"><img src="images/mechanics/inventory icon.png" alt="Inventory"></span>
+            <span class="btn-icon"><img src="images/mechanics/items design213 copy 5.png" alt="Inventory"></span>
             <span class="btn-label">Inventory</span>
         </button>
         <button class="icon-btn" onmouseenter="openModal('missions',this)" onmouseleave="scheduleClose('missions')" onclick="openModal('missions',this)">
             <div class="icon-notif"></div>
-            <span class="btn-icon"><img src="images/mechanics/missions icon.png" alt="Missions"></span>
+            <span class="btn-icon"><img src="images/mechanics/quests icon.png" alt="Missions"></span>
             <span class="btn-label">Missions</span>
         </button>
         <button class="icon-btn" onmouseenter="openModal('chronicle',this)" onmouseleave="scheduleClose('chronicle')" onclick="openModal('chronicle',this)">
@@ -5177,49 +5177,8 @@
             }
         });
 
-        // Update journey debug info
-        function updateJourneyDebug() {
-            const debugPanel = document.getElementById('journeyDebug');
-            const debugContent = document.getElementById('debugContent');
-            const agent = getAgent();
-            
-            if (!agent || !agent.journey || agent.journey.status !== 'active') {
-                debugPanel.style.display = 'none';
-            } else {
-                debugPanel.style.display = 'block';
-                const now = Date.now();
-                const elapsed = now - agent.journey.start_time;
-                const progress = Math.min(elapsed / agent.journey.duration_ms, 1.0);
-                const remaining = Math.max(0, agent.journey.duration_ms - elapsed) / 1000;
-                
-                const currentPos = getCurrentPosition(agent);
-                
-                const wpList = agent.journey.waypoints ? agent.journey.waypoints.slice(0, 8).join('→') + (agent.journey.waypoints.length > 8 ? '...' : '') : 'none';
-                
-                debugContent.innerHTML = `
-                    From: ${agent.location || 'Unknown'} [${agent.locationKey || '?'}]<br>
-                    To: ${agent.journey.destination} [${agent.journey.destinationKey || '?'}]<br>
-                    Progress: ${Math.round(progress * 100)}%<br>
-                    Remaining: ${Math.round(remaining)}s<br>
-                    Visual Pos: (${Math.round(currentPos.x)}, ${Math.round(currentPos.y)})<br>
-                    Waypoints: ${agent.journey.waypoints ? `${agent.journey.waypoints.length} pts` : 'straight'}<br>
-                    ${agent.journey.waypoints ? `Path: ${wpList}` : ''}<br>
-                    Status: ${agent.journey.status}
-                `;
-            }
-            
-            // Update location debug (always visible)
-            const locationContent = document.getElementById('locationContent');
-            if (locationContent && agent) {
-                const currentPos = getCurrentPosition(agent);
-                locationContent.innerHTML = `
-                    Location: ${agent.location || 'Unknown'}<br>
-                    Key: ${agent.locationKey || 'not set'}<br>
-                    Visual: (${Math.round(currentPos.x)}, ${Math.round(currentPos.y)})<br>
-                    State: ${agent.state || 'idle'}
-                `;
-            }
-        }
+        // Update journey debug info (debug panels removed, function kept as stub)
+        function updateJourneyDebug() {}
         
         // Load agent data on page load
         document.addEventListener('DOMContentLoaded', function() {
