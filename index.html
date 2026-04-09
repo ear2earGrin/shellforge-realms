@@ -1046,8 +1046,8 @@
             var occludeRects = [];
             function updateOccludeRects() {
                 occludeRects = [];
-                // Only occlude panel cards (they have their own bg), not full sections
-                var cards = document.querySelectorAll('.panel-card');
+                // Occlude panel cards and carousel (they have their own opaque content)
+                var cards = document.querySelectorAll('.panel-card, .carousel-container');
                 for (var i = 0; i < cards.length; i++) {
                     occludeRects.push(cards[i].getBoundingClientRect());
                 }
