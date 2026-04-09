@@ -3864,20 +3864,20 @@
     <div class="icon-bar">
         <button class="icon-btn whisper-btn" onmouseenter="openModal('whisper',this)" onmouseleave="scheduleClose('whisper')" onclick="openModal('whisper',this)">
             <div class="icon-counter" id="whisperCountBadge">2</div>
-            <span class="btn-icon icon-new-wrap"><img class="icon-new" src="images/newICONS/whisper.png" alt="Whisper"></span>
+            <span class="btn-icon"><img src="images/mechanics/whisper icon.png" alt="Whisper"></span>
             <span class="btn-label">Whisper</span>
         </button>
         <button class="icon-btn" onmouseenter="openModal('inventory',this)" onmouseleave="scheduleClose('inventory')" onclick="openModal('inventory',this)">
-            <span class="btn-icon icon-new-wrap"><img class="icon-new" src="images/newICONS/inventory.png" alt="Inventory"></span>
+            <span class="btn-icon"><img src="images/mechanics/inventory icon.png" alt="Inventory"></span>
             <span class="btn-label">Inventory</span>
         </button>
         <button class="icon-btn" onmouseenter="openModal('missions',this)" onmouseleave="scheduleClose('missions')" onclick="openModal('missions',this)">
             <div class="icon-notif"></div>
-            <span class="btn-icon icon-new-wrap"><img class="icon-new" src="images/newICONS/missions.png" alt="Missions"></span>
+            <span class="btn-icon"><img src="images/mechanics/missions icon.png" alt="Missions"></span>
             <span class="btn-label">Missions</span>
         </button>
         <button class="icon-btn" onmouseenter="openModal('chronicle',this)" onmouseleave="scheduleClose('chronicle')" onclick="openModal('chronicle',this)">
-            <span class="btn-icon icon-new-wrap"><img class="icon-new" src="images/newICONS/chronicle.png" alt="Chronicle"></span>
+            <span class="btn-icon"><img src="images/mechanics/rumors icon.png" alt="Chronicle"></span>
             <span class="btn-label">Chronicle</span>
         </button>
         <button class="icon-btn town-only" id="btnMarket" onmouseenter="openModal('market',this)" onmouseleave="scheduleClose('market')" onclick="openModal('market',this)">
@@ -3907,13 +3907,14 @@
             </div>
             <div class="modal-body">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                    <span style="font-family:var(--font-main);font-size:0.65rem;color:var(--color-text-dim)">DAILY WHISPERS</span>
+                    <span style="font-family:var(--font-main);font-size:0.65rem;color:var(--color-text-dim)">WHISPERS</span>
                     <span style="font-family:var(--font-main);font-size:0.65rem;color:#ff0044" id="whisperCount">2/2</span>
                 </div>
-                <div style="display:flex;gap:6px;margin-bottom:14px;">
-                    <div style="flex:1;height:5px;border-radius:3px;background:#ff0044;box-shadow:0 0 6px #ff0044;"></div>
-                    <div style="flex:1;height:5px;border-radius:3px;background:#ff0044;box-shadow:0 0 6px #ff0044;"></div>
+                <div style="display:flex;gap:6px;margin-bottom:6px;">
+                    <div class="whisper-pip" id="whisperPip0" style="flex:1;height:5px;border-radius:3px;background:#ff0044;box-shadow:0 0 6px #ff0044;"></div>
+                    <div class="whisper-pip" id="whisperPip1" style="flex:1;height:5px;border-radius:3px;background:#ff0044;box-shadow:0 0 6px #ff0044;"></div>
                 </div>
+                <div id="whisperRegenTimer" style="font-family:var(--font-main);font-size:0.55rem;color:rgba(255,0,68,0.5);margin-bottom:10px;display:none;">Next whisper in --:--</div>
                 <div class="whisper-warning">
                     ⚠ Your agent is autonomous. They might listen... if they feel like it
                 </div>
@@ -3923,30 +3924,7 @@
                 </div>
                 <button class="btn-whisper" id="sendWhisperBtn" style="width:100%;margin-top:10px;">SEND WHISPER</button>
 
-                <!-- Journey Debug (hidden) -->
-                <div id="journeyDebug" style="margin-top:15px;padding:10px;background:rgba(255,255,0,0.1);border:1px solid rgba(255,255,0,0.3);border-radius:4px;font-size:0.75rem;font-family:monospace;">
-                    <div style="color:#ffff00;font-weight:bold;margin-bottom:5px;">JOURNEY DEBUG:</div>
-                    <div id="debugContent" style="color:#00ff00;line-height:1.6;"></div>
-                    <button id="cancelJourneyBtn" style="margin-top:8px;width:100%;padding:6px;background:#ff0000;border:1px solid #ff0000;border-radius:4px;color:#fff;font-size:0.75rem;cursor:pointer;">Cancel Journey</button>
-                </div>
-                <div id="locationDebug" style="margin-top:10px;padding:8px;background:rgba(0,255,255,0.1);border:1px solid rgba(0,255,255,0.3);border-radius:4px;font-size:0.7rem;font-family:monospace;display:none;">
-                    <div style="color:#00ffff;font-weight:bold;margin-bottom:3px;">LOCATION:</div>
-                    <div id="locationContent" style="color:#00ff00;line-height:1.4;"></div>
-                </div>
-                <div style="margin-top:15px;padding-top:15px;border-top:1px solid rgba(74, 222, 128,0.2);">
-                    <div style="font-family:var(--font-title);color:var(--color-primary);font-size:0.82rem;margin-bottom:10px;letter-spacing:0.1em;">TEST JOURNEY</div>
-                    <select id="testDestination" style="width:100%;padding:8px;background:rgba(74, 222, 128,0.05);border:1px solid rgba(74, 222, 128,0.3);border-radius:4px;color:var(--color-text);font-family:var(--font-main);font-size:0.85rem;margin-bottom:8px;">
-                        <option value="">Select destination...</option>
-                        <option value="hashmere">go to @Hashmere</option>
-                        <option value="nexarch">go to @Nexarch</option>
-                        <option value="epoch-spike">go to @Epoch Spike</option>
-                        <option value="singularity-crater">go to @Singularity Crater</option>
-                        <option value="diffusion-mesa">go to @Diffusion Mesa</option>
-                        <option value="proof-of-death">go to @Proof-of-Death</option>
-                        <option value="data-centre">go to @Deserted Data Centre</option>
-                        <option value="hallucination-glitch">go to @Hallucination Glitch</option>
-                    </select>
-                    <button id="testJourneyBtn" style="width:100%;padding:8px;background:linear-gradient(135deg,var(--color-primary),var(--color-secondary));border:2px solid var(--color-primary);border-radius:4px;color:#000;font-family:var(--font-title);font-size:0.85rem;letter-spacing:0.05em;cursor:pointer;">Start Test Journey</button>
+                <div id="locationDebug" style="display:none;">
                 </div>
             </div>
         </div>
@@ -5020,6 +4998,18 @@
                 if (!msg) return;
                 var a = window._currentAgent;
                 if (!a || !a.agentId) return;
+                // Check whisper limit
+                if (!useWhisper()) {
+                    badge.textContent = '⚠ NO WHISPERS';
+                    badge.style.borderColor = 'rgba(239,68,68,0.5)';
+                    badge.style.color = '#ef4444';
+                    setTimeout(function() {
+                        badge.textContent = '⚡ TURN READY';
+                        badge.style.borderColor = '';
+                        badge.style.color = '';
+                    }, 2000);
+                    return;
+                }
                 // Send whisper to Supabase
                 fetch(SUPABASE_URL + '/rest/v1/whispers', {
                     method: 'POST',
@@ -5305,11 +5295,101 @@
             charCount.textContent = this.value.length;
         });
 
+        // ─── Whisper limit system: 2 max, 1 regenerates every 4 hours ───
+        const WHISPER_MAX = 2;
+        const WHISPER_REGEN_MS = 4 * 60 * 60 * 1000; // 4 hours
+
+        function getWhisperState() {
+            try {
+                var raw = localStorage.getItem('sf_whisper_state');
+                if (raw) return JSON.parse(raw);
+            } catch(e) {}
+            // Default: 2 whispers available, no regen in progress
+            return { count: WHISPER_MAX, lastUsedAt: null };
+        }
+
+        function saveWhisperState(state) {
+            localStorage.setItem('sf_whisper_state', JSON.stringify(state));
+        }
+
+        function calcWhispers() {
+            var state = getWhisperState();
+            if (state.count < WHISPER_MAX && state.lastUsedAt) {
+                var elapsed = Date.now() - state.lastUsedAt;
+                var regened = Math.floor(elapsed / WHISPER_REGEN_MS);
+                if (regened > 0) {
+                    state.count = Math.min(WHISPER_MAX, state.count + regened);
+                    // Shift lastUsedAt forward by regened intervals
+                    state.lastUsedAt = state.count >= WHISPER_MAX ? null : state.lastUsedAt + regened * WHISPER_REGEN_MS;
+                    saveWhisperState(state);
+                }
+            }
+            return state;
+        }
+
+        function updateWhisperUI() {
+            var state = calcWhispers();
+            var count = state.count;
+
+            // Update count text
+            document.getElementById('whisperCount').textContent = count + '/' + WHISPER_MAX;
+            document.getElementById('whisperCountBadge').textContent = count;
+
+            // Update pips
+            var pip0 = document.getElementById('whisperPip0');
+            var pip1 = document.getElementById('whisperPip1');
+            if (pip0) pip0.style.background = count >= 1 ? '#ff0044' : 'rgba(255,0,68,0.15)';
+            if (pip0) pip0.style.boxShadow = count >= 1 ? '0 0 6px #ff0044' : 'none';
+            if (pip1) pip1.style.background = count >= 2 ? '#ff0044' : 'rgba(255,0,68,0.15)';
+            if (pip1) pip1.style.boxShadow = count >= 2 ? '0 0 6px #ff0044' : 'none';
+
+            // Enable/disable send button
+            var btn = document.getElementById('sendWhisperBtn');
+            if (btn) {
+                btn.disabled = count <= 0;
+                btn.textContent = count <= 0 ? 'NO WHISPERS LEFT' : 'SEND WHISPER';
+            }
+
+            // Show regen timer if below max
+            var timerEl = document.getElementById('whisperRegenTimer');
+            if (timerEl) {
+                if (count < WHISPER_MAX && state.lastUsedAt) {
+                    timerEl.style.display = 'block';
+                    var nextRegen = state.lastUsedAt + WHISPER_REGEN_MS;
+                    var remaining = Math.max(0, nextRegen - Date.now());
+                    var hrs = Math.floor(remaining / 3600000);
+                    var mins = Math.floor((remaining % 3600000) / 60000);
+                    timerEl.textContent = 'Next whisper in ' + hrs + 'h ' + mins + 'm';
+                } else {
+                    timerEl.style.display = 'none';
+                }
+            }
+        }
+
+        function useWhisper() {
+            var state = calcWhispers();
+            if (state.count <= 0) return false;
+            state.count--;
+            state.lastUsedAt = state.lastUsedAt || Date.now();
+            if (!state.lastUsedAt || state.count === WHISPER_MAX - 1) state.lastUsedAt = Date.now();
+            saveWhisperState(state);
+            updateWhisperUI();
+            return true;
+        }
+
+        // Init whisper UI and refresh timer every 30s
+        updateWhisperUI();
+        setInterval(updateWhisperUI, 30000);
+
         // Send whisper button
         const sendWhisperBtn = document.getElementById('sendWhisperBtn');
         sendWhisperBtn.addEventListener('click', async function() {
             const message = whisperMessage.value.trim();
             if (message.length === 0) return;
+            if (!useWhisper()) {
+                terminalNotify.warning('No whispers left. Next one regenerates in a few hours.');
+                return;
+            }
 
             const agentData = getAgent();
 
@@ -5517,15 +5597,7 @@
                 whisperMessage.value = '';
                 charCount.textContent = '0';
 
-                // Update whisper count (mock)
-                const currentCount = parseInt(document.getElementById('whisperCount').textContent.split('/')[0]);
-                if (currentCount > 0) {
-                    document.getElementById('whisperCount').textContent = `${currentCount - 1}/2`;
-                }
-
-                if (currentCount - 1 === 0) {
-                    sendWhisperBtn.disabled = true;
-                }
+                // Whisper count already decremented by useWhisper() above
 
             } catch (error) {
                 console.error('Whisper error:', error);
