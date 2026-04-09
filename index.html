@@ -1015,8 +1015,8 @@
             var bgDots = [];
             var bgMouseX = -999, bgMouseY = -999;
             var bgAnimId = null;
-            var BG_RADIUS = 120;
-            var MAX_BRIGHTNESS = 0.15;
+            var BG_RADIUS = 140;
+            var MAX_BRIGHTNESS = 0.5;
 
             function bgHash(x, y) {
                 var h = (x * 374761393 + y * 668265263 + 1013904223) | 0;
@@ -1046,8 +1046,7 @@
             var occludeRects = [];
             function updateOccludeRects() {
                 occludeRects = [];
-                var hero = document.querySelector('.hero');
-                if (hero) occludeRects.push(hero.getBoundingClientRect());
+                // Only occlude panel cards (they have their own bg), not full sections
                 var cards = document.querySelectorAll('.panel-card');
                 for (var i = 0; i < cards.length; i++) {
                     occludeRects.push(cards[i].getBoundingClientRect());
@@ -1089,12 +1088,12 @@
                         d.brightness *= d.fadeRate;
                     }
 
-                    var base = 0.04;
-                    var alpha = base + d.brightness * 0.4;
+                    var base = 0.08;
+                    var alpha = base + d.brightness * 0.55;
 
-                    if (alpha > 0.05) {
+                    if (alpha > 0.07) {
                         ctx.fillStyle = 'rgba(74,222,128,' + alpha + ')';
-                        var size = 1 + d.brightness * 1.2;
+                        var size = 1 + d.brightness * 1.5;
                         ctx.fillRect(Math.round(d.x - size / 2), Math.round(d.y - size / 2), size, size);
                     }
                 }
