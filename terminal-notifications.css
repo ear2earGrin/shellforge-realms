@@ -223,3 +223,22 @@
         font-size: 0.85rem;
     }
 }
+
+@media (max-width: 480px) {
+    .terminal-notification {
+        max-width: 94%;
+        min-width: 0;
+        width: calc(100vw - 32px);
+        padding: 20px 22px;
+    }
+
+    .terminal-notification-message {
+        font-size: 0.85rem;
+    }
+
+    .terminal-notification-button {
+        padding: 10px 28px;
+        font-size: 0.85rem;
+        min-height: 44px;
+    }
+}
