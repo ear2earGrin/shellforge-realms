@@ -625,9 +625,14 @@
                     userId = userRow[0].user_id;
                     console.log('✅ User created in Supabase:', userId);
                 } else {
-                    // user may already exist
+                    // user may already exist — try username first, then email
                     const existing = await sbGet('users', 'username=eq.' + encodeURIComponent(username) + '&select=user_id&limit=1');
-                    if (existing && existing.length > 0) userId = existing[0].user_id;
+                    if (existing && existing.length > 0) {
+                        userId = existing[0].user_id;
+                    } else {
+                        const byEmail = await sbGet('users', 'email=eq.' + encodeURIComponent(email || username + '@shellforge.local') + '&select=user_id&limit=1');
+                        if (byEmail && byEmail.length > 0) userId = byEmail[0].user_id;
+                    }
                 }
 
                 // ── 2. Create agent row in Supabase ──

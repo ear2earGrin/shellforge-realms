@@ -2367,6 +2367,14 @@
             .dashboard-container {
                 grid-template-columns: 1fr;
                 grid-template-rows: auto 1fr;
+                height: auto;
+                min-height: calc(100vh - 50px - 74px);
+                overflow-y: auto;
+                padding-bottom: 80px;
+            }
+            .agent-status-card {
+                height: auto;
+                overflow-y: visible;
             }
             .icon-bar { height: 74px; gap: 4px; padding: 0 6px; }
             .icon-btn { min-width: 48px; padding: 5px 6px 4px; }
@@ -2374,17 +2382,106 @@
             .icon-btn .btn-label { font-size: 0.42rem; }
         }
 
-            /* Adjust cluster members popup for mobile */
+        /* ── MOBILE RESPONSIVE FIXES ─────────────────────────── */
+
+        @media (max-width: 768px) {
+            /* Cluster members popup centering */
             .cluster-members {
                 right: auto;
                 left: 50%;
                 top: calc(100% + 10px);
                 transform: translateX(-50%) translateY(-10px);
             }
-
             .cluster-badge:hover .cluster-members {
                 transform: translateX(-50%) translateY(0);
             }
+
+            /* Dashboard container: account for smaller nav + icon bar */
+            .dashboard-container {
+                height: calc(100vh - 50px - 74px);
+                margin-top: 50px;
+                padding: 8px;
+                gap: 8px;
+            }
+
+            /* Modals: full-width on mobile */
+            .modal-overlay {
+                width: auto;
+                max-width: 94vw;
+                left: 3vw;
+                right: 3vw;
+                transform: none;
+                bottom: 80px;
+            }
+            .modal-box {
+                width: 100%;
+                max-width: 100%;
+            }
+            .modal-head { padding: 12px 14px 10px; }
+            .modal-body { padding: 10px 14px 14px; }
+
+            /* Whisper chat: full width when open */
+            .pulse-whisper-chat {
+                width: calc(100vw - 24px);
+                max-width: 340px;
+                right: -40px;
+            }
+
+            /* Agent detail modal */
+            .agent-detail-modal {
+                width: calc(100vw - 32px);
+                max-width: 320px;
+                left: 16px !important;
+                right: 16px;
+            }
+
+            /* Item tooltip */
+            .item-tooltip {
+                width: calc(100vw - 32px);
+                max-width: 260px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            /* Nav: tighter on small phones */
+            .dashboard-nav {
+                padding: 0 10px;
+                height: 46px;
+            }
+            .nav-logo { font-size: 0.9rem; letter-spacing: 0.08em; }
+            .nav-version { display: none; }
+            .nav-button { padding: 5px 10px; font-size: 0.75rem; }
+
+            /* Dashboard container for small phones */
+            .dashboard-container {
+                height: auto;
+                min-height: calc(100vh - 46px - 68px);
+                margin-top: 46px;
+                padding: 6px;
+                padding-bottom: 74px;
+            }
+
+            /* Icon bar: compact for small phones */
+            .icon-bar { height: 68px; gap: 2px; padding: 0 4px; }
+            .icon-btn { min-width: 42px; padding: 4px 4px 3px; }
+            .icon-btn .btn-icon { width: 28px; height: 28px; }
+            .icon-btn .btn-label { font-size: 0.38rem; }
+
+            /* Modal positioning */
+            .modal-overlay { bottom: 74px; }
+
+            /* Agent avatar smaller */
+            .agent-avatar { width: 80px; height: 80px; }
+
+            /* Stat labels readable */
+            .stat-label { font-size: 0.78rem; }
+            .stat-value { font-size: 0.78rem; }
+            .stat-row label { font-size: 0.78rem; }
+
+            /* Equipped grid compact */
+            .equipped-grid { gap: 6px; }
+            .equipped-slot { padding: 6px 4px; }
+            .slot-label { font-size: 0.5rem; }
         }
 
         /* Scrollbar styling */
@@ -4238,8 +4335,24 @@
                     return;
                 }
 
-                // No agent in Supabase — redirect to deploy
+                // No agent in Supabase — try localStorage fallback
                 console.log('⚠️ No agent found in Supabase for user:', _lu);
+                const localRaw = localStorage.getItem('shellforgeAgent_' + _lu);
+                if (localRaw) {
+                    try {
+                        const localAgent = JSON.parse(localRaw);
+                        localAgent._source = 'localStorage';
+                        console.log('📦 Agent loaded from localStorage fallback');
+                        saveAgent(localAgent);
+                        renderAgent(localAgent);
+                        // Attempt to sync the orphaned agent back to Supabase
+                        syncLocalAgentToSupabase(localAgent);
+                        return;
+                    } catch(e) {
+                        console.warn('⚠️ Failed to parse localStorage agent:', e);
+                    }
+                }
+
                 terminalNotify.warning('No agent found. Please deploy an agent first.', () => {
                     window.location.href = 'deploy.html';
                 });
@@ -4248,6 +4361,82 @@
             fetchAndRender();
 
         }  // ← end of loadAgentData()
+
+        // ─── Sync orphaned localStorage agent back to Supabase ──
+        async function syncLocalAgentToSupabase(agent) {
+            try {
+                // 1. Resolve or create user_id
+                let userId = agent.userId || null;
+                if (!userId) {
+                    const byName = await sbGet('users', 'username=eq.' + encodeURIComponent(agent.username) + '&select=user_id&limit=1');
+                    if (byName && byName.length > 0) {
+                        userId = byName[0].user_id;
+                    } else {
+                        const email = agent.email || agent.username + '@shellforge.local';
+                        const byEmail = await sbGet('users', 'email=eq.' + encodeURIComponent(email) + '&select=user_id&limit=1');
+                        if (byEmail && byEmail.length > 0) {
+                            userId = byEmail[0].user_id;
+                        } else {
+                            const newUser = await sbPost('users', {
+                                username: agent.username,
+                                email: email,
+                                password_hash: 'pending_real_auth'
+                            });
+                            if (newUser && newUser.length > 0) userId = newUser[0].user_id;
+                        }
+                    }
+                }
+                if (!userId) {
+                    console.warn('⚠️ syncLocalAgentToSupabase: could not resolve user_id');
+                    return;
+                }
+
+                // 2. Check if agent already exists in Supabase
+                const dup = await sbGet('agents', 'agent_name=eq.' + encodeURIComponent(agent.username) + '&select=agent_id&limit=1');
+                if (dup && dup.length > 0) {
+                    console.log('✅ Agent already in Supabase (synced by another path)');
+                    return;
+                }
+
+                // 3. POST the agent to Supabase
+                const agentRow = await sbPost('agents', {
+                    user_id:         userId,
+                    agent_name:      agent.username,
+                    archetype:       agent.archetype,
+                    archetype_name:  agent.archetypeName || agent.archetype,
+                    archetype_image: agent.archetypeImage || '',
+                    cluster:         agent.cluster || '',
+                    cluster_name:    agent.clusterName || '',
+                    bio:             agent.bio || '',
+                    energy:          agent.energy !== undefined ? agent.energy : 100,
+                    health:          agent.health !== undefined ? agent.health : 100,
+                    karma:           agent.karma !== undefined ? agent.karma : 0,
+                    shell_balance:   agent.shell !== undefined ? agent.shell : 50,
+                    location:        agent.location || 'Nexarch',
+                    location_detail: agent.locationDetail || 'The Core',
+                    position_x:      agent.visualX !== undefined ? agent.visualX / 100 : 0.77,
+                    position_y:      agent.visualY !== undefined ? agent.visualY / 100 : 0.33,
+                    stats:           agent.stats || {},
+                    traits:          agent.traits || {},
+                    turns_taken:     agent.turnsTaken || 0,
+                    days_survived:   agent.daysSurvived || 1
+                });
+
+                if (agentRow && agentRow.length > 0) {
+                    console.log('✅ Orphaned agent synced to Supabase:', agentRow[0].agent_id);
+                    // Update in-memory agent with Supabase IDs
+                    agent.agentId = agentRow[0].agent_id;
+                    agent.userId = userId;
+                    agent._source = 'supabase';
+                    saveAgent(agent);
+                    loadActivityLog(agentRow[0].agent_id);
+                } else {
+                    console.warn('⚠️ syncLocalAgentToSupabase: agent POST failed');
+                }
+            } catch(e) {
+                console.warn('⚠️ syncLocalAgentToSupabase error:', e);
+            }
+        }
 
         // ─── Death Screen ───────────────────────────────────────
         async function showDeathScreen(dbAgent) {

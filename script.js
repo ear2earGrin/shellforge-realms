@@ -513,22 +513,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateSlide() {
         var visible = getVisibleCount();
-        var offset = -(currentIndex * (100 / visible));
-        track.style.transform = 'translateX(' + offset + '%)';
 
         // Update dots
         var dots = dotsContainer.querySelectorAll('.carousel-dot');
         dots.forEach(function(d) { d.classList.remove('active'); });
         if (dots[currentIndex]) dots[currentIndex].classList.add('active');
 
-        // On mobile, show/hide slides for compat
         if (visible === 1) {
+            // Mobile: use class-based show/hide, no transform
             slides.forEach(function(s, i) {
-                s.style.display = i === currentIndex ? 'block' : 'none';
+                s.style.display = '';
+                s.classList.toggle('active', i === currentIndex);
             });
             track.style.transform = 'none';
         } else {
-            slides.forEach(function(s) { s.style.display = 'block'; });
+            // Desktop: transform-based sliding
+            var offset = -(currentIndex * (100 / visible));
+            track.style.transform = 'translateX(' + offset + '%)';
+            slides.forEach(function(s) {
+                s.style.display = '';
+                s.classList.remove('active');
+            });
         }
     }
 
@@ -572,8 +577,9 @@ document.addEventListener('DOMContentLoaded', () => {
     buildDots();
     updateSlide();
 
-    // Auto-advance every 5 seconds
-    setInterval(nextSlide, 5000);
+    // Auto-advance: 3s on mobile, 5s on desktop
+    var autoInterval = window.innerWidth <= 768 ? 3000 : 5000;
+    setInterval(nextSlide, autoInterval);
 
     // Keyboard navigation
     document.addEventListener('keydown', function(e) {

@@ -164,12 +164,20 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
 @media (max-width: 480px) {
     .shellforge-title { font-size: 1.9rem; letter-spacing: 0.08em; }
     .mechanics-grid { grid-template-columns: repeat(2, 1fr); }
-}
-
-@media (max-width: 480px) {
-    .shellforge-title { font-size: 2rem; }
     .hero-col-left,
     .hero-col-right { flex: 1 1 100%; }
+
+    /* Hero grid: tighter on small phones */
+    .hero-grid { padding: 10px; gap: 8px; }
+
+    /* Readable fonts on small screens */
+    .activity-line { font-size: 0.75rem; }
+    .mechanic-name { font-size: 0.6rem; }
+    .marker-label { font-size: 0.55rem; left: 18px; }
+
+    /* Login button: bigger touch target */
+    .login-button-link { padding: 12px; font-size: 0.85rem; min-height: 44px; }
+    .agent-login-link { margin-top: 8px; }
 }
 
 .container {
@@ -1400,21 +1408,35 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
     background: var(--color-primary);
 }
 
-/* Mobile carousel: 1 image at a time */
+/* Mobile carousel: 1 image at a time, no arrows */
 @media (max-width: 768px) {
+    .carousel-track {
+        display: block;
+    }
     .carousel-slide {
-        min-width: 100%;
+        display: none;
+        width: 100%;
+        min-width: 0;
         padding: 0;
+        background: transparent;
+    }
+    .carousel-slide.active {
+        display: block;
     }
     .carousel-slide img {
+        width: 100%;
         height: auto;
-        max-height: 600px;
-        object-fit: contain;
+        max-height: 70vh;
+        object-fit: cover;
+        border-radius: 0;
     }
     .carousel-caption {
         left: 0;
         right: 0;
         border-radius: 0;
+    }
+    .carousel-btn {
+        display: none;
     }
 }
 
