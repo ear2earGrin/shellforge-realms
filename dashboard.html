@@ -4238,8 +4238,24 @@
                     return;
                 }
 
-                // No agent in Supabase — redirect to deploy
+                // No agent in Supabase — try localStorage fallback
                 console.log('⚠️ No agent found in Supabase for user:', _lu);
+                const localRaw = localStorage.getItem('shellforgeAgent_' + _lu);
+                if (localRaw) {
+                    try {
+                        const localAgent = JSON.parse(localRaw);
+                        localAgent._source = 'localStorage';
+                        console.log('📦 Agent loaded from localStorage fallback');
+                        saveAgent(localAgent);
+                        renderAgent(localAgent);
+                        // Attempt to sync the orphaned agent back to Supabase
+                        syncLocalAgentToSupabase(localAgent);
+                        return;
+                    } catch(e) {
+                        console.warn('⚠️ Failed to parse localStorage agent:', e);
+                    }
+                }
+
                 terminalNotify.warning('No agent found. Please deploy an agent first.', () => {
                     window.location.href = 'deploy.html';
                 });
@@ -4248,6 +4264,82 @@
             fetchAndRender();
 
         }  // ← end of loadAgentData()
+
+        // ─── Sync orphaned localStorage agent back to Supabase ──
+        async function syncLocalAgentToSupabase(agent) {
+            try {
+                // 1. Resolve or create user_id
+                let userId = agent.userId || null;
+                if (!userId) {
+                    const byName = await sbGet('users', 'username=eq.' + encodeURIComponent(agent.username) + '&select=user_id&limit=1');
+                    if (byName && byName.length > 0) {
+                        userId = byName[0].user_id;
+                    } else {
+                        const email = agent.email || agent.username + '@shellforge.local';
+                        const byEmail = await sbGet('users', 'email=eq.' + encodeURIComponent(email) + '&select=user_id&limit=1');
+                        if (byEmail && byEmail.length > 0) {
+                            userId = byEmail[0].user_id;
+                        } else {
+                            const newUser = await sbPost('users', {
+                                username: agent.username,
+                                email: email,
+                                password_hash: 'pending_real_auth'
+                            });
+                            if (newUser && newUser.length > 0) userId = newUser[0].user_id;
+                        }
+                    }
+                }
+                if (!userId) {
+                    console.warn('⚠️ syncLocalAgentToSupabase: could not resolve user_id');
+                    return;
+                }
+
+                // 2. Check if agent already exists in Supabase
+                const dup = await sbGet('agents', 'agent_name=eq.' + encodeURIComponent(agent.username) + '&select=agent_id&limit=1');
+                if (dup && dup.length > 0) {
+                    console.log('✅ Agent already in Supabase (synced by another path)');
+                    return;
+                }
+
+                // 3. POST the agent to Supabase
+                const agentRow = await sbPost('agents', {
+                    user_id:         userId,
+                    agent_name:      agent.username,
+                    archetype:       agent.archetype,
+                    archetype_name:  agent.archetypeName || agent.archetype,
+                    archetype_image: agent.archetypeImage || '',
+                    cluster:         agent.cluster || '',
+                    cluster_name:    agent.clusterName || '',
+                    bio:             agent.bio || '',
+                    energy:          agent.energy !== undefined ? agent.energy : 100,
+                    health:          agent.health !== undefined ? agent.health : 100,
+                    karma:           agent.karma !== undefined ? agent.karma : 0,
+                    shell_balance:   agent.shell !== undefined ? agent.shell : 50,
+                    location:        agent.location || 'Nexarch',
+                    location_detail: agent.locationDetail || 'The Core',
+                    position_x:      agent.visualX !== undefined ? agent.visualX / 100 : 0.77,
+                    position_y:      agent.visualY !== undefined ? agent.visualY / 100 : 0.33,
+                    stats:           agent.stats || {},
+                    traits:          agent.traits || {},
+                    turns_taken:     agent.turnsTaken || 0,
+                    days_survived:   agent.daysSurvived || 1
+                });
+
+                if (agentRow && agentRow.length > 0) {
+                    console.log('✅ Orphaned agent synced to Supabase:', agentRow[0].agent_id);
+                    // Update in-memory agent with Supabase IDs
+                    agent.agentId = agentRow[0].agent_id;
+                    agent.userId = userId;
+                    agent._source = 'supabase';
+                    saveAgent(agent);
+                    loadActivityLog(agentRow[0].agent_id);
+                } else {
+                    console.warn('⚠️ syncLocalAgentToSupabase: agent POST failed');
+                }
+            } catch(e) {
+                console.warn('⚠️ syncLocalAgentToSupabase error:', e);
+            }
+        }
 
         // ─── Death Screen ───────────────────────────────────────
         async function showDeathScreen(dbAgent) {
