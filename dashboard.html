@@ -2367,6 +2367,14 @@
             .dashboard-container {
                 grid-template-columns: 1fr;
                 grid-template-rows: auto 1fr;
+                height: auto;
+                min-height: calc(100vh - 50px - 74px);
+                overflow-y: auto;
+                padding-bottom: 80px;
+            }
+            .agent-status-card {
+                height: auto;
+                overflow-y: visible;
             }
             .icon-bar { height: 74px; gap: 4px; padding: 0 6px; }
             .icon-btn { min-width: 48px; padding: 5px 6px 4px; }
@@ -2446,9 +2454,11 @@
 
             /* Dashboard container for small phones */
             .dashboard-container {
-                height: calc(100vh - 46px - 68px);
+                height: auto;
+                min-height: calc(100vh - 46px - 68px);
                 margin-top: 46px;
                 padding: 6px;
+                padding-bottom: 74px;
             }
 
             /* Icon bar: compact for small phones */

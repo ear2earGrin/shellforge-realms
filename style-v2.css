@@ -1417,7 +1417,7 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
     .carousel-slide img {
         height: auto;
         max-height: 600px;
-        object-fit: contain;
+        object-fit: cover;
     }
     .carousel-caption {
         left: 0;
