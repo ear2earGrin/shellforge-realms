@@ -4685,14 +4685,25 @@
             function buildTooltipHTML(slot) {
                 var rarity = (slot.dataset.rarity || 'common').toLowerCase();
                 var color = RARITY_COLORS[rarity] || RARITY_COLORS.common;
+                var isAI = slot.dataset.ai === '1';
                 var html = '<div style="font-size:0.95rem;letter-spacing:0.08em;margin-bottom:6px;color:' + color + ';font-weight:bold;">&gt; ' +
-                    (slot.dataset.name || '').toUpperCase() + '</div>';
+                    (slot.dataset.name || '').toUpperCase();
+                if (isAI) {
+                    html += ' <span style="font-size:0.55rem;color:#00f0ff;border:1px solid #00f0ff;padding:1px 4px;margin-left:4px;border-radius:3px;letter-spacing:0.1em;vertical-align:middle;">AI</span>';
+                }
+                html += '</div>';
                 html += '<div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;opacity:0.8;">' +
                     '<span style="margin-right:8px;">&gt; Type: ' + (slot.dataset.type || 'Unknown') + '</span>' +
                     '<span style="color:' + color + ';">&gt; ' + rarity.charAt(0).toUpperCase() + rarity.slice(1) + '</span></div>';
                 if (slot.dataset.desc) {
                     html += '<div style="font-size:0.75rem;color:#a0b0a8;line-height:1.5;margin-bottom:8px;font-style:italic;border-top:1px solid rgba(74,222,128,0.15);padding-top:8px;">' +
                         slot.dataset.desc + '</div>';
+                }
+                if (slot.dataset.traits) {
+                    var traits = slot.dataset.traits.split(',').map(function(t) {
+                        return '<span style="display:inline-block;font-size:0.62rem;color:#00f0ff;border:1px solid rgba(0,240,255,0.35);background:rgba(0,240,255,0.08);padding:2px 6px;margin:0 4px 4px 0;border-radius:3px;letter-spacing:0.06em;text-transform:uppercase;">' + t.trim() + '</span>';
+                    }).join('');
+                    html += '<div style="margin-bottom:8px;">' + traits + '</div>';
                 }
                 if (slot.dataset.stats) {
                     var stats = slot.dataset.stats.split('|').map(function(s) {
@@ -6749,9 +6760,13 @@
         function renderInvSlot(item) {
             var meta = getItemMeta(item);
             var rarity = (meta.rarity || 'common').toLowerCase();
-            var statsStr = getItemStats(item) || meta.desc || '';
+            var statsStr = getItemStats(item);
             var price = getItemPrice(item);
             var equipped = item.is_equipped ? ' equipped' : '';
+
+            // AI-generated items carry traits + a bespoke description in stats
+            var traits = (item.stats && Array.isArray(item.stats.traits)) ? item.stats.traits : [];
+            var aiGenerated = !!(item.stats && item.stats.ai_generated);
 
             var html = '<div class="inventory-slot' + equipped + '"';
             html += ' data-name="' + escInvAttr(meta.name) + '"';
@@ -6759,6 +6774,8 @@
             html += ' data-rarity="' + rarity + '"';
             html += ' data-desc="' + escInvAttr(meta.desc) + '"';
             if (statsStr) html += ' data-stats="' + escInvAttr(statsStr) + '"';
+            if (traits.length) html += ' data-traits="' + escInvAttr(traits.join(',')) + '"';
+            if (aiGenerated) html += ' data-ai="1"';
             html += ' data-price="' + price + '"';
             html += ' data-item-id="' + item.item_id + '"';
             if (item.inventory_id) html += ' data-inv-id="' + item.inventory_id + '"';
