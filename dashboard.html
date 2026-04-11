@@ -4208,9 +4208,16 @@
         async function sbGet(table, query) {
             try {
                 const r = await fetch(SUPABASE_URL + '/rest/v1/' + table + '?' + query, { headers: SB_HEADERS });
-                if (!r.ok) return null;
+                if (!r.ok) {
+                    const errText = await r.text().catch(() => '');
+                    console.error('[sbGet] ' + table + ' failed: HTTP ' + r.status, errText);
+                    return null;
+                }
                 return await r.json();
-            } catch(e) { return null; }
+            } catch(e) {
+                console.error('[sbGet] ' + table + ' threw:', e);
+                return null;
+            }
         }
 
         async function sbPost(table, body) {
@@ -4220,9 +4227,16 @@
                     headers: { ...SB_HEADERS, 'Prefer': 'return=representation' },
                     body: JSON.stringify(body)
                 });
-                if (!r.ok) return null;
+                if (!r.ok) {
+                    const errText = await r.text().catch(() => '');
+                    console.error('[sbPost] ' + table + ' failed: HTTP ' + r.status, errText, 'body:', body);
+                    return null;
+                }
                 return await r.json();
-            } catch(e) { return null; }
+            } catch(e) {
+                console.error('[sbPost] ' + table + ' threw:', e, 'body:', body);
+                return null;
+            }
         }
 
         // ─── Agent in-memory state (source of truth: Supabase) ─────
@@ -6843,26 +6857,24 @@
             var shell = _currentAgent.shell || 0;
             if (shell < item.current_price) return;
 
-            // 1. Deduct $SHELL from agent
-            var newShell = shell - item.current_price;
-            await fetch(SUPABASE_URL + '/rest/v1/agents?agent_id=eq.' + _currentAgent.agentId, {
-                method: 'PATCH',
-                headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                body: JSON.stringify({ shell_balance: newShell })
-            });
-            _currentAgent.shell = newShell;
-
-            // 2. Add item to inventory (upsert)
+            // 1. Add item to inventory FIRST (so we never deduct shells without granting the item)
             var itemId = item.item_id || item.item_name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
             var existing = await sbGet('inventory', 'agent_id=eq.' + _currentAgent.agentId + '&item_id=eq.' + itemId + '&select=inventory_id,quantity');
+            var invOk = false;
             if (existing && existing.length > 0) {
-                await fetch(SUPABASE_URL + '/rest/v1/inventory?inventory_id=eq.' + existing[0].inventory_id, {
+                var patchRes = await fetch(SUPABASE_URL + '/rest/v1/inventory?inventory_id=eq.' + existing[0].inventory_id, {
                     method: 'PATCH',
                     headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
                     body: JSON.stringify({ quantity: existing[0].quantity + 1 })
                 });
+                if (!patchRes.ok) {
+                    var patchErr = await patchRes.text().catch(() => '');
+                    console.error('[marketBuy] inventory PATCH failed:', patchRes.status, patchErr);
+                } else {
+                    invOk = true;
+                }
             } else {
-                await sbPost('inventory', {
+                var inserted = await sbPost('inventory', {
                     agent_id: _currentAgent.agentId,
                     item_id: itemId,
                     item_name: item.item_name,
@@ -6872,7 +6884,30 @@
                     is_equipped: false,
                     stats: { rarity: 'common', price: item.base_price }
                 });
+                invOk = inserted !== null;
             }
+
+            if (!invOk) {
+                console.error('[marketBuy] ABORT: inventory write failed for', item.item_name, '— shells NOT deducted');
+                if (typeof showNotification === 'function') {
+                    showNotification('Purchase failed: could not add item to inventory', 'error');
+                } else {
+                    alert('Purchase failed: could not add item to inventory');
+                }
+                return;
+            }
+
+            // 2. Deduct $SHELL from agent (only after inventory write succeeded)
+            var newShell = shell - item.current_price;
+            var shellPatchRes = await fetch(SUPABASE_URL + '/rest/v1/agents?agent_id=eq.' + _currentAgent.agentId, {
+                method: 'PATCH',
+                headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                body: JSON.stringify({ shell_balance: newShell })
+            });
+            if (!shellPatchRes.ok) {
+                console.error('[marketBuy] shell deduction failed:', shellPatchRes.status);
+            }
+            _currentAgent.shell = newShell;
 
             // 3. Update market listing (stock--, demand_count++, recalc price)
             var newStock = item.stock - 1;

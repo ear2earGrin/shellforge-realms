@@ -248,17 +248,23 @@ function rollLootDrop(location, action, archBonus) {
 }
 
 // Insert a dropped item into the agent's inventory (upsert: stack if ingredient exists)
+// Returns true on success, false on failure.
 async function insertLootItem(agentId, loot, supabaseHeaders, SUPABASE_URL) {
   // Check if agent already has this ingredient
   const checkRes = await fetch(
     `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agentId}&item_id=eq.${loot.id}&select=inventory_id,quantity`,
     { headers: supabaseHeaders },
   );
-  const existing = checkRes.ok ? await checkRes.json() : [];
+  if (!checkRes.ok) {
+    const errText = await checkRes.text().catch(() => '');
+    console.error(`[insertLootItem] lookup failed for agent ${agentId} item ${loot.id}: HTTP ${checkRes.status}`, errText);
+    return false;
+  }
+  const existing = await checkRes.json();
 
   if (existing.length > 0) {
     // Stack: increment quantity
-    await fetch(
+    const patchRes = await fetch(
       `${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${existing[0].inventory_id}`,
       {
         method: 'PATCH',
@@ -266,22 +272,37 @@ async function insertLootItem(agentId, loot, supabaseHeaders, SUPABASE_URL) {
         body: JSON.stringify({ quantity: existing[0].quantity + 1 }),
       },
     );
+    if (!patchRes.ok) {
+      const errText = await patchRes.text().catch(() => '');
+      console.error(`[insertLootItem] stack PATCH failed for agent ${agentId} item ${loot.id}: HTTP ${patchRes.status}`, errText);
+      return false;
+    }
+    console.log(`[insertLootItem] stacked ${loot.name} (+1) for agent ${agentId}`);
+    return true;
   } else {
     // Insert new inventory row
-    await fetch(`${SUPABASE_URL}/rest/v1/inventory`, {
+    const insertBody = {
+      agent_id: agentId,
+      item_id: loot.id,
+      item_name: loot.name,
+      item_type: 'ingredient',
+      item_category: 'Ingredient',
+      quantity: 1,
+      is_equipped: false,
+      stats: { rarity: loot.rarity },
+    };
+    const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/inventory`, {
       method: 'POST',
       headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-      body: JSON.stringify({
-        agent_id: agentId,
-        item_id: loot.id,
-        item_name: loot.name,
-        item_type: 'ingredient',
-        item_category: 'Ingredient',
-        quantity: 1,
-        is_equipped: false,
-        stats: { rarity: loot.rarity },
-      }),
+      body: JSON.stringify(insertBody),
     });
+    if (!insertRes.ok) {
+      const errText = await insertRes.text().catch(() => '');
+      console.error(`[insertLootItem] INSERT failed for agent ${agentId} item ${loot.id}: HTTP ${insertRes.status}`, errText, 'body:', JSON.stringify(insertBody));
+      return false;
+    }
+    console.log(`[insertLootItem] created ${loot.name} for agent ${agentId}`);
+    return true;
   }
 }
 
@@ -999,27 +1020,33 @@ Respond:
 
   // ─── Loot drop on explore/gather ───────────────────────────────
   let lootDrop = null;
+  let lootInserted = false;
   if (action === 'explore' || action === 'gather') {
     const archBonus = ARCHETYPE_EVENT_BONUSES[agent.archetype] || {};
     lootDrop = rollLootDrop(agent.location, action, archBonus);
     if (lootDrop) {
-      await insertLootItem(agent.agent_id, lootDrop, supabaseHeaders, SUPABASE_URL);
-      console.log(`[${agent.agent_name}] Loot drop: ${lootDrop.name} (${lootDrop.rarity})`);
+      lootInserted = await insertLootItem(agent.agent_id, lootDrop, supabaseHeaders, SUPABASE_URL);
+      if (lootInserted) {
+        console.log(`[${agent.agent_name}] Loot drop: ${lootDrop.name} (${lootDrop.rarity})`);
+      } else {
+        console.error(`[${agent.agent_name}] Loot insert FAILED for ${lootDrop.name} — suppressing "Found" text`);
+      }
     }
   }
 
   // Write activity_log entry
+  // Only claim "Found: X" if the inventory insert actually succeeded
   const logEntry = {
     agent_id: agent.agent_id,
     turn_number: newTurns,
     action_type: action,
-    action_detail: decision.detail + (lootDrop ? ` Found: ${lootDrop.name}.` : ''),
+    action_detail: decision.detail + (lootInserted && lootDrop ? ` Found: ${lootDrop.name}.` : ''),
     energy_cost: energyCost,
     energy_gained: energyGain,
     shell_change: shellChange,
     karma_change: karmaChange,
     health_change: healthChange,
-    items_gained: lootDrop ? [{ item_id: lootDrop.id, item_name: lootDrop.name, quantity: 1 }] : null,
+    items_gained: lootInserted && lootDrop ? [{ item_id: lootDrop.id, item_name: lootDrop.name, quantity: 1 }] : null,
     location: agent.location,
     success: true,
   };
@@ -1454,10 +1481,16 @@ async function executeBuy(agent, decision, marketListings, env, supabaseHeaders)
     `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_id=eq.${listing.item_id}&select=inventory_id,quantity`,
     { headers: supabaseHeaders },
   );
-  const existing = existRes.ok ? await existRes.json() : [];
+  if (!existRes.ok) {
+    const errText = await existRes.text().catch(() => '');
+    console.error(`[tradeAction] inventory lookup failed for ${agent.agent_name}: HTTP ${existRes.status}`, errText);
+    return;
+  }
+  const existing = await existRes.json();
 
+  let tradeInvOk = false;
   if (existing.length > 0) {
-    await fetch(
+    const patchRes = await fetch(
       `${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${existing[0].inventory_id}`,
       {
         method: 'PATCH',
@@ -1465,18 +1498,41 @@ async function executeBuy(agent, decision, marketListings, env, supabaseHeaders)
         body: JSON.stringify({ quantity: existing[0].quantity + 1 }),
       },
     );
+    if (!patchRes.ok) {
+      const errText = await patchRes.text().catch(() => '');
+      console.error(`[tradeAction] inventory PATCH failed for ${agent.agent_name} item ${listing.item_id}: HTTP ${patchRes.status}`, errText);
+    } else {
+      tradeInvOk = true;
+    }
   } else {
-    await fetch(`${SUPABASE_URL}/rest/v1/inventory`, {
+    const insertBody = {
+      agent_id:      agent.agent_id,
+      item_id:       listing.item_id,
+      item_name:     listing.item_name,
+      item_type:     listing.item_type,
+      item_category: (listing.item_type || 'ingredient').charAt(0).toUpperCase() + (listing.item_type || 'ingredient').slice(1),
+      quantity:      1,
+      is_equipped:   false,
+      stats:         { rarity: 'common', price: listing.base_price },
+    };
+    const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/inventory`, {
       method: 'POST',
       headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-      body: JSON.stringify({
-        agent_id:  agent.agent_id,
-        item_id:   listing.item_id,
-        item_name: listing.item_name,
-        item_type: listing.item_type,
-        quantity:  1,
-      }),
+      body: JSON.stringify(insertBody),
     });
+    if (!insertRes.ok) {
+      const errText = await insertRes.text().catch(() => '');
+      console.error(`[tradeAction] inventory INSERT failed for ${agent.agent_name} item ${listing.item_id}: HTTP ${insertRes.status}`, errText, 'body:', JSON.stringify(insertBody));
+    } else {
+      tradeInvOk = true;
+      console.log(`[tradeAction] ${agent.agent_name} bought ${listing.item_name}`);
+    }
+  }
+
+  // If inventory write failed, abort before charging shells
+  if (!tradeInvOk) {
+    console.error(`[tradeAction] ABORT: inventory write failed for ${agent.agent_name} — shells NOT deducted`);
+    return;
   }
 
   // Update market listing: stock–1, demand_count+1, recalculate price
