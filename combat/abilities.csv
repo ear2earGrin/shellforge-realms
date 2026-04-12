@@ -1,0 +1,90 @@
+item_name,ability_name,type,coherence_cost,cooldown,power,duration,one_time,description
+Plasma-Edged Servo Blade,Plasma Slash,ATK,2,0,15,3,false,Superheated slash — 15 base damage + bleed DoT for 3 turns
+Railgun Forearm Mount,Railgun Shot,ATK,3,1,25,0,false,Electromagnetic piercing round — ignores 30% armor
+Pneumatic Piston Fist,Piston Strike,ATK,2,0,12,0,false,Hydraulic impact — knockback + 20% stun chance on crit
+Tungsten Fragmentation Launcher,Fragmentation Burst,ATK,4,2,20,0,false,Shoulder volley — AoE shrapnel damage to all enemies in zone
+EMP Discharge Gauntlet,EMP Discharge,DEBUFF,3,2,8,2,false,Palm-blast EMP — stuns target 2 turns + disables 1 random equipped item
+Cryo-Bore Drill Lance,Cryo Bore,ATK,4,1,22,0,false,Freezing drill strike — ignores 50% armor + 25% freeze chance
+Nanobot Swarm Ejector,Nanobot Corrosion,DEBUFF,3,1,0,3,false,Releases nanobots — corrodes enemy armor -20% per turn for 3 turns
+Buffer Overflow Exploit,Buffer Overflow,ATK,2,0,10,0,false,Escalating code injection — +5 damage for each turn elapsed in battle
+Neural Spike Virus,Neural Spike,DEBUFF,2,1,8,3,false,Injects chaotic gradients — target loses 50% accuracy for 3 turns
+DDoS Swarm Protocol,DDoS Flood,DEBUFF,3,3,0,2,false,Garbage request flood — stuns all enemies for 2 turns
+Zero-Day Payload,Zero-Day Strike,ATK,5,2,30,0,false,Unknown vulnerability exploit — ignores 75% of all defenses
+Quantum Backdoor Exploit,Quantum Backdoor,ATK,2,1,20,0,false,Entangled channel bypass — massive single-target burst damage
+SQL Injection Payload,SQL Injection,DEBUFF,4,2,10,0,false,Malicious query — purges all enemy buffs + applies 2 random debuffs
+Ransomware Lockout Worm,Ransomware Lock,DEBUFF,3,2,5,3,false,Encrypts subsystems — locks 1 enemy action per turn + 5 DoT for 3 turns
+Tungsten Alloy Chassis Plate,Tungsten Guard,DEF,1,0,0,1,false,Heavy plating brace — reduces incoming physical damage 60% this turn
+Faraday Cage Neural Helm,Faraday Shield,PASSIVE,0,0,0,0,false,Always active — blocks all electromagnetic and EMP-based attacks
+Reactive Ceramic Plating,Ceramic React,DEF,2,0,0,1,false,Absorbs first hit each turn + stacks +5% defense permanently per trigger
+Titanium Mesh Exoskeleton,Exo Reinforce,PASSIVE,0,0,0,0,false,Always active — +40% physical defense and +15% movement speed
+Cryo-Cooled Heat Sink Array,Heat Dissipation,PASSIVE,0,0,0,0,false,Always active — prevents all overheat debuffs + 10% passive damage reduction
+Salvaged Siege Chassis,Siege Mode,DEF,3,2,0,2,false,Locks into fortress stance — +80% defense for 2 turns but -30% speed
+AES-256 Firewall Protocol,AES Firewall,DEF,1,0,0,1,false,Encryption barrier — blocks 80% software damage + reflects 20% back
+Homomorphic Encryption Cloak,Encryption Cloak,PASSIVE,0,0,0,0,false,Always active — immune to all scans + 30% miss chance from software attacks
+Zero-Trust Authentication Layer,Zero-Trust Check,DEF,2,0,0,1,false,Verification gate — enemies must pass check or deal only 50% damage
+TensorGuard Neural Shield,TensorGuard,PASSIVE,0,0,0,0,false,Always active — converts model-poisoning attacks into +10% attack buff
+Sandbox Isolation Runtime,Sandbox Isolate,DEF,3,1,0,1,false,Quarantine protocol — neutralizes all active viruses + grants intel buff (+10% crit)
+Rate-Limiting Throttle Daemon,Rate Limiter,DEBUFF,2,2,0,4,false,Background throttle — halves enemy attack speed for 4 turns
+Coolant Flush Cartridge,Coolant Flush,HEAL,0,0,0,0,true,Thermal purge — clears all overheat and burn debuffs + heals 20% HP
+Emergency Servo Lubricant,Servo Lube,BUFF,0,0,0,0,true,Fast-acting lube — removes all movement and speed debuffs instantly
+Welding Patch Kit,Weld Patch,HEAL,0,0,0,0,true,Field repair — heals 35% hull integrity
+Overclock Reactor Injector,Overclock Inject,BUFF,0,0,0,2,true,Reactor overdrive — +200% actions for 2 turns but 15% meltdown risk
+EMP Hardening Capsule,EMP Hardening,BUFF,0,0,0,3,true,Surge coating — immune to EMP and stun effects for 3 turns
+Salvage Reclamation Drone,Salvage Deploy,UTIL,0,0,0,0,true,Micro-drone launch — recovers 1 item destroyed in last 3 turns
+Debug Rejuvenation Patch,Debug Cleanse,HEAL,0,0,0,0,true,Full diagnostic — removes all debuffs + reveals all enemy weaknesses
+Caffeine Gradient Booster,Caffeine Boost,HEAL,0,0,0,0,true,Processing surge — refreshes all cooldowns + heals 40% HP
+Cache Purge Tonic,Cache Purge,BUFF,0,0,0,0,true,Memory wipe — restores full coherence pool instantly
+Hot Patch Injection,Hot Patch,HEAL,0,0,0,0,true,Runtime patch — heals 25% HP + removes 1 random debuff
+Context Window Expansion,Context Expand,BUFF,0,0,0,3,true,Memory expansion — doubles processing power for 3 turns + increased crit chance
+Hyperparameter Tuning Shot,Hyperparameter Shot,BUFF,0,0,0,0,true,One-shot optimization — permanently boosts 1 random stat by 20-100%
+Stable Diffusion Sequence,Diffusion Decoys,UTIL,0,0,0,3,true,Holographic generation — creates 3 decoys granting 50% miss chance for 3 turns
+GAN Mirage Scroll,GAN Mirage,DEF,0,0,0,3,true,Adversarial clones — 2 damage-absorbing copies lasting 3 turns
+Transformer Attention Ritual,Attention Dodge,DEF,0,0,0,3,true,Self-attention prediction — auto-dodges the next 3 incoming attacks
+Reinforcement Learning Prophecy,RL Prophecy,BUFF,0,0,0,0,true,Reward compounding — gain +1 extra action per enemy defeated this battle
+Bayesian Inference Divination,Bayesian Scan,UTIL,0,0,0,0,true,Probabilistic analysis — reveals all hidden areas + all enemy inventories
+Genetic Algorithm Evolution,Genetic Evolve,BUFF,0,0,0,0,true,Evolutionary mutation — randomly upgrades 3 equipped items by +1 rarity tier
+Prompt Engineering Curse,Prompt Curse,DEBUFF,0,0,0,3,true,Adversarial injection — forces target to invert their next 3 actions
+Recursive Function Spiral,Recursive Echo,UTIL,0,0,0,0,true,Self-reference loop — repeats last successful action once for free
+Monte Carlo Simulation Rune,Monte Carlo Preview,UTIL,0,0,0,0,true,Future branching — preview 3 possible outcomes and choose the best one
+Gradient Vanishing Hex,Vanishing Gradient,DEBUFF,0,0,0,5,true,Signal degradation — enemy loses 15% attack power each turn for 5 turns
+AlphaGo Neural Core,Neural Prediction,PASSIVE,0,0,0,0,false,Always active — 90% chance to predict opponent move each turn
+AlphaGo Neural Core,Alpha Strike,ATK,6,3,35,0,false,Calculated strike — guaranteed crit if prediction was correct this turn
+Quantum Annealer Processor,Quantum Solve,PASSIVE,0,0,0,0,false,Always active — bypasses all puzzles and locks encountered
+Quantum Annealer Processor,Annealing Pulse,ATK,5,2,28,0,false,Quantum disruption wave — ignores all defenses completely
+Von Neumann Self-Replicator,Self-Replicate,UTIL,6,99,0,0,false,Forbidden replication — creates exact copy of self with 50% stats (once per battle)
+Satoshi Genesis Block Signet,Genesis Resurrection,PASSIVE,0,0,0,0,false,Always active — resurrect once per battle with 50% HP upon death
+Satoshi Genesis Block Signet,Block Chain,DEF,4,2,0,1,false,Immutable ledger defense — blocks any single attack completely for 1 turn
+GPT Oracle Crystal,Oracle Query,UTIL,5,3,0,3,false,Language model divination — reveals optimal action for next 3 turns
+GPT Oracle Crystal,Word of Power,ATK,6,3,40,0,false,Crystallized language blast — massive software damage from compressed meaning
+Blockchain Soulbound Key,Soulbound Protection,PASSIVE,0,0,0,0,false,Always active — preserves all equipped items on death ignoring vault limits
+Blockchain Soulbound Key,Immutable Defense,DEF,5,3,0,1,false,Eternal chain ward — one incoming attack is completely nullified
+Federated Learning Nexus,Federated Share,PASSIVE,0,0,0,0,false,Always active — all active buffs are shared with every ally simultaneously
+Federated Learning Nexus,Nexus Pulse,BUFF,4,2,0,2,false,Distributed optimization — applies a random buff to all allies for 2 turns
+Rust Borrow Checker Amulet,Borrow Check,PASSIVE,0,0,0,0,false,Always active — complete immunity to crashes and runtime errors
+Rust Borrow Checker Amulet,Ownership Claim,DEBUFF,5,3,0,0,false,Memory seizure — steals 1 enemy buff permanently
+Hugging Face Model Repository,Model Swap,UTIL,4,1,0,0,false,Hot-swap protocol — swap up to 5 equipped items mid-battle from inventory
+Hugging Face Model Repository,Repository Pull,BUFF,3,2,0,2,false,Archive access — temporarily equip any item from inventory for 2 turns
+Dijkstra Shortest Path Compass,Shortest Path,PASSIVE,0,0,0,0,false,Always active — +25% travel speed and always optimal route
+Dijkstra Shortest Path Compass,Pathfinder Strike,ATK,4,1,20,0,false,Optimal trajectory — always hits and cannot miss or be dodged
+Diagnostic Probe Array,Probe Scan,UTIL,1,1,0,0,false,Multi-sensor sweep — reveals all enemy stats and active weaknesses
+Soldering Gauntlet,Field Solder,HEAL,2,1,0,0,false,Emergency weld — heals ally for 25% hull integrity
+Salvage Extraction Claw,Salvage Passive,PASSIVE,0,0,0,0,false,Always active — +50% loot drop chance from defeated enemies
+Portable Foundry Anvil,Field Craft,UTIL,4,99,0,0,false,Mobile fabrication — craft a Common or Uncommon hardware item mid-battle (once per battle)
+Hydraulic Jack Lifter,Hydraulic Toss,UTIL,3,2,0,0,false,Pneumatic throw — repositions 1 enemy anywhere on the battlefield
+Arc Welder Repair Rig,Full Repair,PASSIVE,0,0,0,0,false,Always active — 100% hull heal between battles (out-of-combat only)
+Git Rollback Module,Git Rollback,UTIL,2,99,0,0,false,Version revert — rewinds 1 failed action as if it never happened (once per battle)
+Docker Containerizer,Docker Escape,UTIL,2,1,0,0,false,Self-containerize — instantly escape any trap or restraint effect
+Kubernetes Orchestrator,K8s Deploy,UTIL,5,99,0,5,false,Cluster orchestration — summons 3 autonomous minion drones for 5 turns (once per battle)
+Wireshark Packet Sniffer,Packet Sniff,UTIL,3,2,0,0,false,Deep inspection — intercepts and steals 1 random item from target
+Nmap Reconnaissance Scanner,Nmap Sweep,UTIL,2,1,0,0,false,Network scan — reveals entire zone including hidden enemies and traps
+Vim Reality Editor,Vim Edit,UTIL,5,99,0,3,false,Reality modification — alter 1 game rule for the next 3 turns (once per battle)
+Proximity Mine Cluster,Deploy Mines,TRAP,2,1,18,0,false,Scatter charges — AoE damage triggered when any enemy enters the zone
+Razor Wire Entanglement Rig,Deploy Wire,TRAP,2,1,0,3,false,Perimeter wire — slows all enemies in area by 50% for 3 turns
+Turret Drone Sentry,Deploy Turret,TRAP,3,99,10,5,false,Auto-turret — attacks nearest enemy for 10 damage each turn for 5 turns (once per battle)
+Magnetic Tether Trap,Deploy Tether,TRAP,2,1,0,1,false,Magnetic pull — drags target to location + immobilizes for 1 turn
+EMP Pulse Landmine,Deploy EMP Mine,TRAP,4,99,0,2,false,Buried EMP — stuns all enemies in radius 2 turns + disables equipped items (once per battle)
+Honeypot Decoy Server,Deploy Honeypot,TRAP,1,1,0,2,false,Fake signal — lures 1 enemy to false position for 2 turns
+Logic Bomb Tripwire,Deploy Logic Bomb,TRAP,3,1,30,0,false,Dormant code — detonates for 30 damage when enemy performs specific action
+Cryptojacker Leech Node,Deploy Leech,TRAP,1,1,0,5,false,Parasitic miner — drains 10% enemy energy per turn for 5 turns
+Rootkit Persistence Mine,Deploy Rootkit,TRAP,3,1,0,0,false,Deep-embed malware — applies permanent debuff that persists until cleansed
+Packet Storm Jammer,Deploy Jammer,TRAP,4,99,0,3,false,Network flood — blocks all enemy communication and buff-sharing for 3 turns (once per battle)
