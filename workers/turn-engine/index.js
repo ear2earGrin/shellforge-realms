@@ -677,6 +677,36 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
     ? recentActivity.map(a => `Turn ${a.turn_number}: [${a.action_type}] ${a.action_detail}`).join('\n')
     : 'No prior actions recorded.';
 
+  // ── Repetition detection: nudge variety when actions repeat ──
+  let varietyNudge = '';
+  if (recentActivity.length >= 2) {
+    const recentTypes = recentActivity.map(a => a.action_type);
+    const lastAction = recentTypes[0];
+    let streak = 0;
+    for (let i = 0; i < recentTypes.length; i++) {
+      if (recentTypes[i] === lastAction) streak++;
+      else break;
+    }
+
+    // Determine tolerance: recovering agents (health < 50) get more patience
+    // before being nudged to try something different
+    const isRecovering = agent.health < 50;
+    // threshold: 2 (usually), 3 (sometimes), 4 (if recovering from damage)
+    let threshold;
+    if (isRecovering) {
+      threshold = Math.random() < 0.7 ? 4 : 3; // recovering: usually 4, sometimes 3
+    } else {
+      const roll = Math.random();
+      if (roll < 0.4) threshold = 2;       // 40% chance: nudge after 2 repeats
+      else if (roll < 0.85) threshold = 3; // 45% chance: nudge after 3
+      else threshold = 4;                  // 15% chance: let it go to 4
+    }
+
+    if (streak >= threshold && lastAction !== 'rest') {
+      varietyNudge = `\n⚡ VARIETY: You have chosen "${lastAction}" for ${streak} turns in a row. Strongly prefer a DIFFERENT action this turn — explore somewhere new, try a quest, trade, visit the church, or do something unexpected. Surprise yourself. Variety makes a better story.`;
+    }
+  }
+
   const whisperSection = pendingWhispers.length
     ? `\nWhispers heard from your human:\n${pendingWhispers.map(w => `  - "${w.message}"`).join('\n')}`
     : '';
@@ -741,7 +771,7 @@ ${envNarrative ? 'THIS TURN: ' + envNarrative + '\n' : ''}RECENT: ${recentSummar
 
 PERSONALITY: ${archetypeGuidance}
 
-Adapt to your situation — survival overrides personality. A fighter at 15 energy rests. A pacifist in danger fights.${karmaNote}${dangerNote}${craftNote}
+Adapt to your situation — survival overrides personality. A fighter at 15 energy rests. A pacifist in danger fights.${karmaNote}${dangerNote}${craftNote}${varietyNudge}
 
 ACTIONS: ${VALID_ACTIONS.join(', ')}
 ADJACENT: ${(LOCATION_GRAPH[agent.location]?.adjacent || []).join(', ')}
