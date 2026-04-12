@@ -1,230 +1,168 @@
-# Alchemy Quick Reference
+# Alchemy Quick Reference v2.0
 
 ## At-a-Glance
 
 ```
-INGREDIENTS (42 base + 7 primordials)
-  ↓
-  ├─ Base Elements (7)     → Raw materials
-  ├─ Essences (7)          → AI/ML spirits  
-  ├─ Reagents (7)          → Chemical compounds
-  ├─ Catalysts (7)         → Accelerators
-  ├─ Solvents (7)          → Binders
-  └─ Primordials (7)       → Legendary precursors
-  
-RECIPE FORMULA: 1 Base/Essence + 1 Reagent/Catalyst + 1 Solvent/Flux = ITEM
+INGREDIENTS (50 base + 7 primordials = 57 total)
+  ├─ Base Elements (11)    → Physical salvage + digital fragments
+  ├─ Essences (7)          → AI/ML spirits
+  ├─ Reagents (7)          → Volatile network compounds
+  ├─ Catalysts (9)         → Sparks, flames, force pulses
+  ├─ Solvents (9)          → Binders, fluids, pastes
+  └─ Primordials (7)       → Legendary boss drops
 
+TWO STATIONS:
+  ├─ Foundry   → Hardware items (welding, forging)
+  └─ Terminal  → Software items (compiling, injecting)
+
+RECIPE FORMULA: 1 Base/Essence + 1 Reagent/Catalyst + 1 Solvent/Flux = ITEM
 SUCCESS RATE: 70% base + theme bonuses - rarity penalty
 
-CRAFTABLE ITEMS (42 total)
-  ↓
-  ├─ Weapons (8)      → Offensive software exploits
-  ├─ Armor (7)        → Defensive software layers
-  ├─ Consumables (6)  → Temporary boost injections
-  ├─ Scrolls (7)      → Algorithmic incantations
-  ├─ Artifacts (7)    → Legendary software fossils
-  └─ Tools (7)        → Utility software kits
+CRAFTABLE ITEMS (80 total — 34 HW / 46 SW)
+  ├─ Weapons (14)      → 7 HW mounts + 7 SW exploits
+  ├─ Armor (12)        → 6 HW plating + 6 SW firewalls
+  ├─ Consumables (12)  → 6 HW cartridges + 6 SW patches
+  ├─ Scrolls (10)      → All SW algorithms on data crystals
+  ├─ Artifacts (10)    → Legendary relics (4 HW + 6 SW)
+  ├─ Tools (12)        → 6 HW rigs + 6 SW utilities
+  └─ Deployables (10)  → 5 HW traps + 5 SW mines
 ```
 
 ---
 
-## Common Ingredients (Easy to Find)
+## Beginner Recipes (Foundry — Hardware)
 
-### Base Elements
-- Silicon Wafer Dust
-- Binary Code Shards
-- Electron Flux Crystals
-- Fiber Optic Threads
-
-### Essences
-- Gradient Descent Tears
-- Token Embedding Vapor
-- Backpropagation Serum
-- Loss Function Sap
-
-### Reagents
-- API Endpoint Salts
-- Hash Collision Powder
-- Checksum Verify Acid
-- Regex Pattern Filaments
-- Base64 Encoded Slime
-
-### Catalysts
-- Overclock Catalyst Spark
-- GPU Render Flame
-- Async Await Pulse
-
-### Solvents
-- Null Pointer Solvent
-- Memory Leak Elixir
-- Cache Invalidation Brew
-- Garbage Collector Tonic
-
----
-
-## Sample Recipes by Difficulty
-
-### Beginner (70%+ success)
 ```
-Buffer Overflow Dagger
+Plasma-Edged Servo Blade [Common HW Weapon]
+├─ Tungsten Carbide Filings (Common)
+├─ Arc Welder Discharge (Common)
+└─ Industrial Flux Paste (Common)
+Success: 70% | Failure: Minor slag | Station: Foundry
+```
+
+```
+Tungsten Alloy Chassis Plate [Common HW Armor]
+├─ Tungsten Carbide Filings (Common)
+├─ Arc Welder Discharge (Common)
+└─ Magnetic Resonance Fluid (Uncommon)
+Success: 70% | Failure: Minor slag | Station: Foundry
+```
+
+## Beginner Recipes (Terminal — Software)
+
+```
+Buffer Overflow Exploit [Common SW Weapon]
 ├─ Binary Code Shards (Common)
-├─ Memory Leak Elixir (Common)
-└─ Hash Collision Powder (Common)
-Success: 70% | Failure: Minor slag
+├─ Hash Collision Powder (Common)
+└─ Memory Leak Elixir (Common)
+Success: 70% | Failure: Minor slag | Station: Terminal
 ```
 
 ```
-AES-256 Firewall Plating
+AES-256 Firewall Protocol [Common SW Armor]
 ├─ Silicon Wafer Dust (Common)
 ├─ Regex Pattern Filaments (Common)
 └─ Garbage Collector Tonic (Common)
-Success: 70% | Failure: Minor slag
-```
-
-### Intermediate (60-70% success)
-```
-Zero-Day Payload Launcher
-├─ Plasma Server Slag (Uncommon)
-├─ Checksum Verify Acid (Common)
-└─ JIT Compiler Surge (Uncommon)
-Success: 65% | Failure: Explosion (10% damage)
-```
-
-```
-Homomorphic Encryption Cloak
-├─ Quantum Bit Residue (Uncommon)
-├─ Attention Mechanism Dew (Uncommon)
-└─ Virtual Machine Emulsion (Uncommon)
-Success: 60% | Failure: Explosion (10% damage)
-```
-
-### Advanced (55-60% success)
-```
-Genetic Algorithm Evolution
-├─ Halting Problem Paradox (Legendary)
-├─ Nanobot Swarm Gel (Uncommon)
-└─ PyTorch Flux Core (Uncommon)
-Success: 60% | Failure: Explosion (20% damage)
-```
-
-```
-Vim Text Editor Blade
-├─ Base64 Encoded Slime (Common)
-├─ Hash Collision Powder (Common)
-└─ Null Pointer Solvent (Common)
-Success: 60% | Failure: Explosion (15% damage)
-```
-
-### Legendary (40-50% success)
-```
-AlphaGo Neural Core
-├─ Alpha Zero Primal Seed (Legendary)
-├─ Gradient Descent Tears (Common)
-└─ Quantum Bit Residue (Uncommon)
-Success: 45% | Failure: Catastrophic explosion (50% damage)
-```
-
-```
-GPT Oracle Crystal
-├─ Token Embedding Vapor (Common)
-├─ Lambda Calculus Vapor (Legendary)
-└─ Turing Machine Essence (Legendary)
-Success: 40% | Failure: Catastrophic explosion (50% damage)
+Success: 70% | Failure: Minor slag | Station: Terminal
 ```
 
 ---
 
-## Primordials (Boss/Quest Drops Only)
+## Intermediate Recipes (Rare)
 
-| Name | Source | Use Case |
-|------|--------|----------|
-| **Alpha Zero Primal Seed** | Boss: AlphaGo Prime | AlphaGo Neural Core |
-| **Turing Machine Essence** | Boss: Alan's Ghost | GPT Oracle Crystal |
-| **Von Neumann Probe Spores** | Boss: The Architect | Blockchain Soulbound Key, Immutable Ledger Vest |
-| **Lambda Calculus Vapor** | Boss: Church's Shadow | GPT Oracle, Hugging Face Repository, Prompt Curse |
-| **Halting Problem Paradox** | Boss: The Undecidable | Genetic Algorithm, Rust Borrow Checker, Hyperparameter Shot |
-| **Church-Turing Thesis Core** | World Event: Thesis Convergence | Federated Learning Nexus |
-| **Kolmogorov Complexity Crystal** | Boss: The Compressor | Quantum Annealer Simulator |
+```
+Cryo-Bore Drill Lance [Rare HW Weapon]
+├─ Titanium Mesh Strip (Uncommon)
+├─ Coolant Gel Canister (Common)
+└─ Magnetic Resonance Fluid (Uncommon)
+Success: 60% | Failure: Explosion (10%) | Station: Foundry
+```
+
+```
+Zero-Day Payload [Rare SW Weapon]
+├─ Plasma Server Slag (Uncommon)
+├─ Checksum Verify Acid (Common)
+└─ JIT Compiler Surge (Uncommon)
+Success: 60% | Failure: Explosion (10%) | Station: Terminal
+```
+
+---
+
+## Legendary Recipes (Artifacts)
+
+```
+AlphaGo Neural Core [Legendary HW Artifact]
+├─ Alpha Zero Primal Seed (Legendary) ← Boss: AlphaGo Prime
+├─ Quantum Bit Residue (Uncommon)
+└─ Magnetic Resonance Fluid (Uncommon)
+Success: 45% | Failure: CATASTROPHIC (50% damage) | Station: Foundry
+```
+
+```
+GPT Oracle Crystal [Legendary SW Artifact]
+├─ Token Embedding Vapor (Common)
+├─ Lambda Calculus Vapor (Legendary) ← Boss: Church's Shadow
+└─ Turing Machine Essence (Legendary) ← Boss: Alan's Ghost
+Success: 40% | Failure: CATASTROPHIC (50% damage) | Station: Terminal
+```
+
+---
+
+## Primordials (Boss/Quest Drops)
+
+| Name | Source | Used In |
+|------|--------|---------|
+| Alpha Zero Primal Seed | Boss: AlphaGo Prime | AlphaGo Neural Core |
+| Turing Machine Essence | Boss: Alan's Ghost | GPT Oracle Crystal |
+| Von Neumann Probe Spores | Boss: The Architect | Von Neumann Self-Replicator, Blockchain Key |
+| Lambda Calculus Vapor | Boss: Church's Shadow | GPT Oracle, Hugging Face Repo, Prompt Curse |
+| Halting Problem Paradox | Boss: The Undecidable | Genetic Algorithm, Rust Borrow Checker, Hyperparameter Shot |
+| Church-Turing Thesis Core | World Event: Thesis Convergence | Federated Learning Nexus, Dijkstra Compass |
+| Kolmogorov Complexity Crystal | Boss: The Compressor | Quantum Annealer Processor, Satoshi Signet |
+
+---
+
+## Cluster-Exclusive Items
+
+### PRIME_HELIX (Corporate)
+- Railgun Forearm Mount (Uncommon HW Weapon)
+- Titanium Mesh Exoskeleton (Rare HW Armor)
+- Overclock Reactor Injector (Uncommon HW Consumable)
+- Context Window Expansion (Uncommon SW Consumable)
+- Transformer Attention Ritual (Rare SW Scroll)
+- Quantum Annealer Processor (Legendary HW Artifact)
+
+### SEC_GRID (Government)
+- Tungsten Fragmentation Launcher (Rare HW Weapon)
+- EMP Discharge Gauntlet (Uncommon HW Weapon)
+- Faraday Cage Neural Helm (Uncommon HW Armor)
+- Sandbox Isolation Runtime (Rare SW Armor)
+- Prompt Engineering Curse (Rare SW Scroll)
+- Wireshark Packet Sniffer (Uncommon SW Tool)
+- Turret Drone Sentry (Uncommon HW Deployable)
+- EMP Pulse Landmine (Rare HW Deployable)
+
+### DYN_SWARM (P2P / Opensource)
+- Nanobot Swarm Ejector (Uncommon HW Weapon)
+- DDoS Swarm Protocol (Uncommon SW Weapon)
+- Salvaged Siege Chassis (Rare HW Armor)
+- Salvage Reclamation Drone (Rare HW Consumable)
+- Genetic Algorithm Evolution (Rare SW Scroll)
+- Docker Containerizer (Uncommon SW Tool)
+- Salvage Extraction Claw (Uncommon HW Tool)
+- Satoshi Genesis Block Signet (Legendary HW Artifact)
+- Cryptojacker Leech Node (Common SW Deployable)
 
 ---
 
 ## Rarity & Success Rates
 
-| Rarity | Success Rate | Failure Risk | Example Items |
-|--------|--------------|--------------|---------------|
-| Common | 70-75% | Minor slag | Buffer Overflow Dagger, AES-256 Firewall |
-| Uncommon | 60-75% | Minor slag / Explosion | DDoS Swarm, TensorGuard Shield |
-| Rare | 55-65% | Explosion | Zero-Day Launcher, Sandbox Shell |
-| Legendary | 40-50% | Catastrophic | AlphaGo Core, GPT Oracle |
-
----
-
-## Item Power Levels
-
-### Tier 1: Early Game (Common/Uncommon)
-- Quantum Backdoor Exploit
-- Neural Spike Virus
-- Buffer Overflow Dagger
-- AES-256 Firewall Plating
-- Overclock Serum
-
-### Tier 2: Mid Game (Uncommon/Rare)
-- Zero-Day Payload Launcher
-- SQL Injection Spear
-- Homomorphic Encryption Cloak
-- Immutable Ledger Vest
-- Transformer Attention Ritual
-
-### Tier 3: End Game (Legendary)
-- AlphaGo Neural Core (predicts moves 90%)
-- GPT Oracle Crystal (asks any question)
-- Blockchain Soulbound Key (resurrects once)
-- Rust Borrow Checker Amulet (crash immunity)
-- Federated Learning Nexus (shares buffs)
-
----
-
-## Crafting Strategy Tips
-
-### For New Alchemists
-1. Start with **Common recipes** (70-75% success)
-2. Stockpile common ingredients (easier to gather)
-3. Avoid legendary crafts until you have primordials
-4. Failures yield slag → use for quests/trading
-
-### For Intermediate Crafters
-1. Hunt for **Uncommon ingredients** (Quantum Bit, Plasma Slag)
-2. Attempt **Rare items** (60-65% success)
-3. Theme matching (+10% bonus)
-4. Save legendary attempts for when prepared
-
-### For Master Alchemists
-1. Farm **Primordials** from boss raids
-2. Legendary crafts have 50% **catastrophic failure** risk
-3. Stack success rate buffs before attempting
-4. One legendary item can carry your build
-
----
-
-## Theme Matching Examples
-
-### Quantum Theme (+10% bonus)
-```
-Quantum Bit Residue + Quantum Annealer Simulator
-= 45% base + 10% bonus = 55% success
-```
-
-### ML/NLP Theme (+10% bonus)
-```
-Gradient Descent Tears + Token Embedding Vapor + TensorFlow Igniter
-= 65% base + 20% bonus = 85% success
-```
-
-### Memory Theme (+10% bonus)
-```
-Null Pointer Solvent + Memory Leak Elixir + Garbage Collector Tonic
-= 70% base + 30% bonus = 100% success (capped at 95%)
-```
+| Rarity | Success | Failure | Station |
+|--------|---------|---------|---------|
+| Common | 70% | Minor slag | Either |
+| Uncommon | 70-75% | Minor slag | Either |
+| Rare | 55-65% | Explosion (10-20%) | Either |
+| Legendary | 40-50% | Catastrophic (50%) | Either |
 
 ---
 
@@ -232,23 +170,25 @@ Null Pointer Solvent + Memory Leak Elixir + Garbage Collector Tonic
 
 ```
 /alchemy/
-├── ingredients.csv         (3.4 KB)
-├── items.csv              (4.2 KB)
-├── recipes.csv            (4.6 KB)
-├── alchemy-system.json    (39 KB)
-├── README.md              (5.6 KB)
-└── QUICK_REFERENCE.md     (this file)
+├── ingredients.csv         → 50 base + 7 primordial ingredients
+├── items.csv              → 80 craftable items (HW/SW tagged)
+├── recipes.csv            → 80 recipes with station assignment
+├── alchemy-system.json    → Master JSON for API (~98 KB)
+├── build-json.js          → Rebuilds JSON from CSVs
+├── README.md              → Full documentation
+└── QUICK_REFERENCE.md     → This file
 ```
 
-**Edit CSV files** in any text editor  
-**Import JSON** into your game server
+**Edit CSVs → run `node build-json.js` → JSON updates automatically**
 
 ---
 
 **Quick Stats:**
-- 📦 42 Base Ingredients + 7 Primordials = **49 Total Ingredients**
-- ⚔️ 42 Craftable Items across 6 categories
-- 📜 42 Recipes with balanced success rates
-- 🎲 70% base success, scalable with skill/themes
+- 57 Total Ingredients (50 base + 7 primordial)
+- 80 Craftable Items (34 hardware + 46 software)
+- 80 Recipes across 2 stations (Foundry + Terminal)
+- 7 Item Categories
+- 3 Cluster lineages with exclusive items
 
-**Last Updated:** 2026-02-06
+**Version:** 2.0
+**Last Updated:** 2026-04-12

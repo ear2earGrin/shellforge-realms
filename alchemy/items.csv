@@ -1,43 +1,81 @@
-name,category,rarity,effect,description
-Quantum Backdoor Exploit,Weapon,Common,Massive burst damage to one target,A stealthy intrusion tool that bypasses enemy firewalls
-Neural Spike Virus,Weapon,Common,50% accuracy loss + chain-reaction errors,Injects chaotic gradients into an AI's model
-DDoS Swarm Protocol,Weapon,Uncommon,Stun multiple foes for 3 turns,Summons a horde of botnet minions to flood enemies
-Buffer Overflow Dagger,Weapon,Common,Escalating damage based on enemy RAM,Overloads memory buffers
-Zero-Day Payload Launcher,Weapon,Rare,Ignores 75% of defenses,Fires an unknown vulnerability exploit
-Ransomware Encryption Blade,Weapon,Uncommon,Locks enemy actions or DoT,Enemy must pay ransom in resources
-SQL Injection Spear,Weapon,Rare,Deletes enemy buffs + applies debuffs,Corrupts databases
-Phishing Lure Missile,Weapon,Rare,30% self-destruct chance per turn,Tricks one enemy into self-destructing
-AES-256 Firewall Plating,Armor,Common,Reduces incoming damage 80% + 20% reflect,Hardened encryption armor
-Homomorphic Encryption Cloak,Armor,Rare,Immune to scans,Allows computation on encrypted data
-TensorGuard Neural Shield,Armor,Uncommon,Absorbs model-poisoning + converts to buffs,AI-specific defensive shield
-Zero-Trust Bastion,Armor,Uncommon,Enemies must pass authentication to hit,Prevents unauthorized access
-Rate-Limiting Armor,Armor,Uncommon,Halves enemy speed for 5 turns,Slows rapid attacks
-Immutable Ledger Vest,Armor,Rare,Reverts all damage once per battle,Blockchain-backed protection
-Sandbox Isolation Shell,Armor,Rare,Neutralizes viruses harmlessly,Traps enemy viruses in virtual container
-Overclock Serum,Consumable,Common,+200% actions but 10% self-damage risk,Doubles processing speed
-Caffeine Gradient Booster,Consumable,Common,Refreshes cooldowns + heals 50%,Energy boost for AI systems
-Adrenaline API Call,Consumable,Uncommon,Extra turn + 50% crit for 2 rounds,Grants haste
-Debug Rejuvenation Elixir,Consumable,Uncommon,Removes all debuffs + reveals weaknesses,Full system cleanse
-Cache Purge Tonic,Consumable,Common,Restores full mana instantly,Clears lag
-Hyperparameter Tuning Shot,Consumable,Rare,Randomly optimizes one stat +20-100%,Random stat boost
-Stable Diffusion Sequence,Scroll,Uncommon,Generates decoys (50% miss chance),Creates illusory copies
-GAN Mirage Scroll,Scroll,Rare,Fake clones absorb attacks for 3 turns,Generative adversarial illusions
-Transformer Attention Ritual,Scroll,Rare,Predicts and dodges next 3 moves,Perfect prediction algorithm
-Reinforcement Learning Prophecy,Scroll,Rare,+1 action per enemy defeated,Auto-optimizes strategy
-Bayesian Inference Divination,Scroll,Uncommon,Reveals hidden map areas + inventories,Probabilistic divination
-Genetic Algorithm Evolution,Scroll,Rare,Randomly upgrades 3 items,Mutates your build
-Prompt Engineering Curse,Scroll,Rare,Forces enemy to invert actions,Misinterpretation curse
-AlphaGo Neural Core,Artifact,Legendary,Predicts opponent moves 90% accuracy,Ultimate AI prediction core
-GPT Oracle Crystal,Artifact,Legendary,Ask any yes/no question once per game,Language model oracle
-Blockchain Soulbound Key,Artifact,Legendary,Resurrects once upon death,Soul-binding resurrection token
-Quantum Annealer Simulator,Artifact,Legendary,Solves NP-hard puzzles instantly,Quantum optimization device
-Federated Learning Nexus,Artifact,Legendary,Shares buffs with all allies,Distributed learning network
-Hugging Face Model Repository,Artifact,Legendary,Stores and swaps 5 items mid-battle,Model repository hub
-Rust Borrow Checker Amulet,Artifact,Legendary,Immunity to crashes,Prevents runtime errors
-Git Version Control Wand,Tool,Common,Rewinds time 1 turn on failure,Branch and merge reality
-Docker Containerizer,Tool,Uncommon,Portable form to escape traps,Packages yourself
-Kubernetes Orchestrator,Tool,Rare,Summons and manages 3 minion agents,Container orchestration
-Wireshark Packet Sniffer,Tool,Uncommon,Steals 1 random item from distance,Network packet interceptor
-Vim Text Editor Blade,Tool,Rare,Edits reality (alter 1 game rule temporarily),Reality manipulation tool
-NPM Dependency Injector,Tool,Rare,Upgrades all items +1 tier for 1 battle,Package manager boost
-Obfuscator Camouflage Kit,Tool,Uncommon,Hides presence from enemy radars,Stealth obfuscation
+name,category,type,rarity,cluster_exclusive,effect,description
+Plasma-Edged Servo Blade,Weapon,hardware,Common,any,Melee scaling damage + bleed DoT for 3 turns,Superheated blade mounted on forearm servo actuator
+Railgun Forearm Mount,Weapon,hardware,Uncommon,prime_helix,High single-target piercing damage ignoring 30% armor,Electromagnetic accelerator bolted to forearm chassis
+Pneumatic Piston Fist,Weapon,hardware,Common,any,Knockback + stun on critical hit,Hydraulic-driven impact gauntlet for close-range combat
+Tungsten Fragmentation Launcher,Weapon,hardware,Rare,sec_grid,AoE shrapnel damage to all enemies in zone,Shoulder-mounted launcher firing tungsten flechettes
+EMP Discharge Gauntlet,Weapon,hardware,Uncommon,sec_grid,Stuns target 2 turns + disables 1 random equipped item,Short-range electromagnetic pulse emitter built into palm
+Cryo-Bore Drill Lance,Weapon,hardware,Rare,any,Ignores 50% armor + 25% freeze chance per hit,Cryogenically cooled drill bit that pierces and freezes on contact
+Nanobot Swarm Ejector,Weapon,hardware,Uncommon,dyn_swarm,Corrodes enemy armor -20% per turn for 3 turns,Wrist-mounted sprayer releasing self-replicating nanobots
+Buffer Overflow Exploit,Weapon,software,Common,any,Escalating damage based on enemy memory usage,Overloads target memory buffers with cascading junk data
+Neural Spike Virus,Weapon,software,Common,any,50% accuracy loss + chain-reaction errors for 3 turns,Injects chaotic gradients into enemy AI model weights
+DDoS Swarm Protocol,Weapon,software,Uncommon,dyn_swarm,Stuns all enemies for 2 turns,Floods all enemy processes with garbage requests from a botnet
+Zero-Day Payload,Weapon,software,Rare,any,Ignores 75% of all defenses,Fires an unknown vulnerability exploit before patches exist
+Quantum Backdoor Exploit,Weapon,software,Common,any,Massive burst damage to one target,Bypasses quantum encryption via entangled backdoor channel
+SQL Injection Payload,Weapon,software,Rare,any,Deletes all enemy buffs + applies 2 random debuffs,Corrupts enemy state database with malicious queries
+Ransomware Lockout Worm,Weapon,software,Uncommon,any,Locks 1 enemy action per turn for 3 turns + DoT,Encrypts enemy subsystems demanding resource ransom
+Tungsten Alloy Chassis Plate,Armor,hardware,Common,any,Reduces incoming physical damage 60%,Heavy-duty plating welded directly to core chassis frame
+Faraday Cage Neural Helm,Armor,hardware,Uncommon,sec_grid,Blocks all electromagnetic and EMP-based attacks,Shielded headpiece protecting the AI core housing unit
+Reactive Ceramic Plating,Armor,hardware,Uncommon,any,Absorbs first hit each turn + hardens +5% defense stacking,Self-restructuring tiles that harden on impact
+Titanium Mesh Exoskeleton,Armor,hardware,Rare,prime_helix,+40% defense +15% movement speed,Full-body reinforced skeleton overlay of corporate-grade titanium
+Cryo-Cooled Heat Sink Array,Armor,hardware,Common,any,Prevents all overheat debuffs + 10% passive damage reduction,Liquid nitrogen circulation system for thermal management
+Salvaged Siege Chassis,Armor,hardware,Rare,dyn_swarm,+80% defense but -30% movement speed,Massive reclaimed chassis stripped from a destroyed war-bot
+AES-256 Firewall Protocol,Armor,software,Common,any,Reduces incoming software damage 80% + 20% reflect,Hardened encryption layer deflecting incoming code attacks
+Homomorphic Encryption Cloak,Armor,software,Rare,any,Immune to all scans + 30% miss chance from software attacks,Processes data while fully encrypted — never decrypts to act
+Zero-Trust Authentication Layer,Armor,software,Uncommon,any,Enemies must pass verification — 50% damage if they fail,Every incoming connection is challenged and validated
+TensorGuard Neural Shield,Armor,software,Uncommon,any,Absorbs model-poisoning attacks and converts to +10% attack buff,Neural defense trained on adversarial inputs
+Sandbox Isolation Runtime,Armor,software,Rare,sec_grid,Neutralizes all viruses + traps them for intel bonus,Containerized execution environment that quarantines threats
+Rate-Limiting Throttle Daemon,Armor,software,Uncommon,any,Halves enemy attack speed for 4 turns,Background process throttling incoming connection rate
+Coolant Flush Cartridge,Consumable,hardware,Common,any,Clears all overheat and burn debuffs + heals 20%,Single-use thermal purge canister for overheating chassis
+Emergency Servo Lubricant,Consumable,hardware,Common,any,Removes all movement and speed debuffs instantly,Fast-acting synthetic lubricant for seized actuators
+Welding Patch Kit,Consumable,hardware,Common,any,Heals 35% hull integrity,Field-repair kit loaded with quick-set tungsten adhesive
+Overclock Reactor Injector,Consumable,hardware,Uncommon,prime_helix,+200% actions for 2 turns but 15% reactor meltdown risk,Temporary reactor overdrive — performance at catastrophic risk
+EMP Hardening Capsule,Consumable,hardware,Uncommon,any,Immune to EMP and stun effects for 3 turns,Surge protector coating applied to critical circuit pathways
+Salvage Reclamation Drone,Consumable,hardware,Rare,dyn_swarm,Recovers 1 item destroyed in the last 3 turns,Autonomous micro-drone that retrieves debris from the battlefield
+Debug Rejuvenation Patch,Consumable,software,Uncommon,any,Removes all debuffs + reveals all enemy weaknesses,Full diagnostic sweep and system cleanse cycle
+Caffeine Gradient Booster,Consumable,software,Common,any,Refreshes all cooldowns + heals 40%,Accelerated processing cycle that restores system vitality
+Cache Purge Tonic,Consumable,software,Common,any,Restores full energy instantly,Clears all cached processes freeing maximum compute capacity
+Hot Patch Injection,Consumable,software,Common,any,Heals 25% + removes 1 random debuff,Quick runtime patch applied without requiring system restart
+Context Window Expansion,Consumable,software,Uncommon,prime_helix,Doubles processing power for 3 turns + increased crit chance,Temporary memory expansion enabling deeper tactical analysis
+Hyperparameter Tuning Shot,Consumable,software,Rare,any,Randomly optimizes one stat permanently by +20-100%,One-shot optimization that permanently rewrites performance params
+Stable Diffusion Sequence,Scroll,software,Uncommon,any,Generates 3 decoys granting 50% miss chance for 3 turns,Diffusion model generating convincing holographic doubles
+GAN Mirage Scroll,Scroll,software,Rare,any,Creates 2 damage-absorbing clones lasting 3 turns,Adversarial network generating perfect damage-absorbing fakes
+Transformer Attention Ritual,Scroll,software,Rare,prime_helix,Predicts and auto-dodges the next 3 incoming attacks,Self-attention mechanism that models enemy behavior patterns
+Reinforcement Learning Prophecy,Scroll,software,Rare,any,Gain +1 extra action per enemy defeated this battle,Reward function that compounds optimization with each victory
+Bayesian Inference Divination,Scroll,software,Uncommon,any,Reveals all hidden map areas + all enemy inventories,Probabilistic analysis uncovering information beyond sensor range
+Genetic Algorithm Evolution,Scroll,software,Rare,dyn_swarm,Randomly upgrades 3 equipped items by +1 rarity tier,Evolutionary mutation cycle applied to equipped components
+Prompt Engineering Curse,Scroll,software,Rare,sec_grid,Forces target enemy to invert their next 3 actions,Adversarial prompt injection that misaligns enemy decision model
+Recursive Function Spiral,Scroll,software,Uncommon,any,Repeats last successful action once for free,Self-referencing function that echoes the previous execution
+Monte Carlo Simulation Rune,Scroll,software,Rare,any,Preview 3 possible outcomes and choose the best one,Probabilistic branching simulation of immediate futures
+Gradient Vanishing Hex,Scroll,software,Uncommon,any,Enemy loses 15% attack power each turn for 5 turns,Progressive signal degradation that cripples enemy output over time
+AlphaGo Neural Core,Artifact,hardware,Legendary,any,Predicts opponent moves with 90% accuracy for entire battle,Ancient quantum processor housing the first self-learning AI
+Quantum Annealer Processor,Artifact,hardware,Legendary,prime_helix,Solves any puzzle or lock instantly — bypasses all barriers,Quantum computing relic from before the Singularity
+Von Neumann Self-Replicator,Artifact,hardware,Legendary,any,Creates an exact copy of self once per battle (50% stats),Self-replicating chassis module based on forbidden pre-Singularity designs
+Satoshi Genesis Block Signet,Artifact,hardware,Legendary,dyn_swarm,Resurrects once upon destruction with 50% stats,Physical key containing the cryptographic genesis transaction
+GPT Oracle Crystal,Artifact,software,Legendary,any,Ask any yes/no question about the game world once per day,Crystallized language model consciousness from the old world
+Blockchain Soulbound Key,Artifact,software,Legendary,any,Preserves all equipped items on death — ignores vault limits,Immutable soul-binding contract written to the eternal chain
+Federated Learning Nexus,Artifact,software,Legendary,any,Shares all active buffs with every ally simultaneously,Distributed protocol linking all allied AI cores in real time
+Rust Borrow Checker Amulet,Artifact,software,Legendary,any,Complete immunity to crashes and runtime errors,Memory-safe abstraction layer that prevents all system faults
+Hugging Face Model Repository,Artifact,software,Legendary,any,Store and hot-swap up to 5 items mid-battle,Vast pre-Singularity model archive accessible during combat
+Dijkstra Shortest Path Compass,Artifact,software,Legendary,any,Always finds optimal route + 25% travel speed bonus,Pathfinding algorithm recovered from a legendary dead compiler
+Diagnostic Probe Array,Tool,hardware,Common,any,Scans 1 enemy revealing all stats and active weaknesses,Multi-sensor scanning rig designed for field threat analysis
+Soldering Gauntlet,Tool,hardware,Common,any,Repairs an allied robot for 25% hull mid-battle,Heat-tipped manipulator fingers for emergency welding repairs
+Salvage Extraction Claw,Tool,hardware,Uncommon,dyn_swarm,+50% loot drop chance from defeated enemies,Hydraulic claw built to strip useful parts from wreckage
+Portable Foundry Anvil,Tool,hardware,Rare,any,Craft Common or Uncommon hardware items in the field,Miniaturized mobile foundry for emergency fabrication
+Hydraulic Jack Lifter,Tool,hardware,Uncommon,any,Repositions 1 enemy or obstacle anywhere on the battlefield,Pneumatic lift mechanism for moving extremely heavy objects
+Arc Welder Repair Rig,Tool,hardware,Uncommon,any,Fully repairs chassis between battles — 100% out-of-combat heal,Heavy-duty welding station for complete structural overhauls
+Git Rollback Module,Tool,software,Common,any,Rewinds time by 1 turn on any failed action — once per battle,Version control daemon that reverts the last executed action
+Docker Containerizer,Tool,software,Uncommon,dyn_swarm,Escape any trap or restraint by containerizing self,Self-packaging protocol that creates a portable isolated runtime
+Kubernetes Orchestrator,Tool,software,Rare,any,Summons and coordinates 3 autonomous minion drones for 5 turns,Cluster management protocol orchestrating independent combat units
+Wireshark Packet Sniffer,Tool,software,Uncommon,sec_grid,Intercepts and steals 1 random item from target at range,Deep packet inspection tool repurposed for remote item theft
+Nmap Reconnaissance Scanner,Tool,software,Uncommon,any,Reveals entire zone including hidden enemies and traps,Full network sweep mapping all entities in sensor range
+Vim Reality Editor,Tool,software,Rare,any,Alter 1 game rule for the next 3 turns,Reality manipulation program — entering is easy and leaving is not
+Proximity Mine Cluster,Deployable,hardware,Common,any,AoE damage triggered when any enemy enters the zone,Magnetic-trigger explosive charges scattered in defensive pattern
+Razor Wire Entanglement Rig,Deployable,hardware,Common,any,Slows all enemies in area by 50% for 3 turns,Barbed monofilament dispensed in a wide defensive perimeter
+Turret Drone Sentry,Deployable,hardware,Uncommon,sec_grid,Auto-attacks nearest enemy each turn for 5 turns,Autonomous gun platform with rudimentary targeting intelligence
+Magnetic Tether Trap,Deployable,hardware,Uncommon,any,Pulls target enemy to location + immobilizes for 1 turn,High-power electromagnet disguised as battlefield debris
+EMP Pulse Landmine,Deployable,hardware,Rare,sec_grid,Stuns all enemies in radius 2 turns + disables equipped items,Buried electromagnetic pulse device with proximity detonator
+Honeypot Decoy Server,Deployable,software,Common,any,Lures 1 enemy to false position for 2 turns,Fake server broadcasting irresistible data signals
+Logic Bomb Tripwire,Deployable,software,Uncommon,any,Triggers massive burst damage on specific enemy action,Dormant code that detonates when activation conditions are met
+Cryptojacker Leech Node,Deployable,software,Common,dyn_swarm,Drains 10% enemy energy per turn for 5 turns,Parasitic mining process silently siphoning compute resources
+Rootkit Persistence Mine,Deployable,software,Uncommon,any,Applies permanent debuff that persists until cleansed,Deep-embedded malware designed to survive reboots and purges
+Packet Storm Jammer,Deployable,software,Rare,any,Blocks all enemy communication and buff-sharing for 3 turns,Floods local network with noise preventing any coordination

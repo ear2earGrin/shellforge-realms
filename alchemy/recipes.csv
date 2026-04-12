@@ -1,43 +1,81 @@
-item_name,ingredient_1,ingredient_2,ingredient_3,success_rate,failure_effect
-Quantum Backdoor Exploit,Quantum Bit Residue,API Endpoint Salts,Overclock Catalyst Spark,70%,Minor slag
-Neural Spike Virus,Gradient Descent Tears,Payload Injection Droplets,Backpropagation Serum,70%,Minor slag
-DDoS Swarm Protocol,Nanobot Swarm Gel,Electron Flux Crystals,Async Await Pulse,75%,Minor slag
-Buffer Overflow Dagger,Binary Code Shards,Memory Leak Elixir,Hash Collision Powder,70%,Minor slag
-Zero-Day Payload Launcher,Plasma Server Slag,Checksum Verify Acid,JIT Compiler Surge,65%,Explosion (10% damage)
-Ransomware Encryption Blade,Fiber Optic Threads,OAuth Token Ichor,Null Pointer Solvent,75%,Minor slag
-SQL Injection Spear,Base64 Encoded Slime,API Endpoint Salts,Cache Invalidation Brew,65%,Explosion (10% damage)
-Phishing Lure Missile,Token Embedding Vapor,Payload Injection Droplets,Virtual Machine Emulsion,60%,Explosion (15% damage)
-AES-256 Firewall Plating,Silicon Wafer Dust,Regex Pattern Filaments,Garbage Collector Tonic,70%,Minor slag
-Homomorphic Encryption Cloak,Quantum Bit Residue,Attention Mechanism Dew,Virtual Machine Emulsion,60%,Explosion (10% damage)
-TensorGuard Neural Shield,Epoch Cycle Blood,TensorFlow Igniter,Cache Invalidation Brew,75%,Minor slag
-Zero-Trust Bastion,Base64 Encoded Slime,API Endpoint Salts,Docker Image Distillate,75%,Minor slag
-Rate-Limiting Armor,Fiber Optic Threads,Hash Collision Powder,Async Await Pulse,75%,Minor slag
-Immutable Ledger Vest,Binary Code Shards,Von Neumann Probe Spores,Kubernetes Pod Nectar,50%,Explosion (20% damage)
-Sandbox Isolation Shell,Virtual Machine Emulsion,Nanobot Swarm Gel,Docker Image Distillate,65%,Minor slag
-Overclock Serum,Electron Flux Crystals,GPU Render Flame,Gradient Descent Tears,70%,Minor slag
-Caffeine Gradient Booster,Loss Function Sap,CUDA Kernel Ember,Memory Leak Elixir,70%,Minor slag
-Adrenaline API Call,Gradient Descent Tears,Overclock Catalyst Spark,JIT Compiler Surge,75%,Minor slag
-Debug Rejuvenation Elixir,Backpropagation Serum,Checksum Verify Acid,Garbage Collector Tonic,75%,Minor slag
-Cache Purge Tonic,Memory Leak Elixir,Cache Invalidation Brew,Null Pointer Solvent,70%,Minor slag
-Hyperparameter Tuning Shot,Epoch Cycle Blood,PyTorch Flux Core,Halting Problem Paradox,55%,Explosion (15% damage)
-Stable Diffusion Sequence,Latent Space Fog,Token Embedding Vapor,PyTorch Flux Core,75%,Minor slag
-GAN Mirage Scroll,Latent Space Fog,Token Embedding Vapor,Overclock Catalyst Spark,65%,Explosion (10% damage)
-Transformer Attention Ritual,Attention Mechanism Dew,Epoch Cycle Blood,TensorFlow Igniter,65%,Explosion (10% damage)
-Reinforcement Learning Prophecy,Gradient Descent Tears,Loss Function Sap,TensorFlow Igniter,65%,Explosion (10% damage)
-Bayesian Inference Divination,Attention Mechanism Dew,Checksum Verify Acid,Virtual Machine Emulsion,75%,Minor slag
-Genetic Algorithm Evolution,Halting Problem Paradox,Nanobot Swarm Gel,PyTorch Flux Core,60%,Explosion (20% damage)
-Prompt Engineering Curse,Token Embedding Vapor,Hash Collision Powder,Lambda Calculus Vapor,55%,Explosion (15% damage)
-AlphaGo Neural Core,Alpha Zero Primal Seed,Gradient Descent Tears,Quantum Bit Residue,45%,Catastrophic explosion (50% damage)
-GPT Oracle Crystal,Token Embedding Vapor,Lambda Calculus Vapor,Turing Machine Essence,40%,Catastrophic explosion (50% damage)
-Blockchain Soulbound Key,Binary Code Shards,Von Neumann Probe Spores,Kubernetes Pod Nectar,45%,Catastrophic explosion (50% damage)
-Quantum Annealer Simulator,Quantum Bit Residue,Kolmogorov Complexity Crystal,CUDA Kernel Ember,40%,Catastrophic explosion (50% damage)
-Federated Learning Nexus,Gradient Descent Tears,Kubernetes Pod Nectar,Church-Turing Thesis Core,40%,Catastrophic explosion (50% damage)
-Hugging Face Model Repository,Token Embedding Vapor,Docker Image Distillate,Lambda Calculus Vapor,45%,Catastrophic explosion (50% damage)
-Rust Borrow Checker Amulet,Silicon Wafer Dust,Halting Problem Paradox,Garbage Collector Tonic,40%,Catastrophic explosion (50% damage)
-Git Version Control Wand,Binary Code Shards,Fiber Optic Threads,Cache Invalidation Brew,70%,Minor slag
-Docker Containerizer,Docker Image Distillate,Nanobot Swarm Gel,Virtual Machine Emulsion,75%,Minor slag
-Kubernetes Orchestrator,Kubernetes Pod Nectar,Plasma Server Slag,Async Await Pulse,65%,Explosion (10% damage)
-Wireshark Packet Sniffer,Fiber Optic Threads,API Endpoint Salts,Regex Pattern Filaments,75%,Minor slag
-Vim Text Editor Blade,Base64 Encoded Slime,Hash Collision Powder,Null Pointer Solvent,60%,Explosion (15% damage)
-NPM Dependency Injector,API Endpoint Salts,JIT Compiler Surge,Docker Image Distillate,65%,Explosion (10% damage)
-Obfuscator Camouflage Kit,Base64 Encoded Slime,Regex Pattern Filaments,Virtual Machine Emulsion,75%,Minor slag
+item_name,ingredient_1,ingredient_2,ingredient_3,success_rate,failure_effect,station
+Plasma-Edged Servo Blade,Tungsten Carbide Filings,Arc Welder Discharge,Industrial Flux Paste,70%,Minor slag,foundry
+Railgun Forearm Mount,Electron Flux Crystals,Titanium Mesh Strip,Magnetic Resonance Fluid,70%,Minor slag,foundry
+Pneumatic Piston Fist,Salvaged Servo Joint,Hydraulic Compression Pulse,Industrial Flux Paste,70%,Minor slag,foundry
+Tungsten Fragmentation Launcher,Tungsten Carbide Filings,Plasma Server Slag,Hydraulic Compression Pulse,60%,Explosion (15% damage),foundry
+EMP Discharge Gauntlet,Electron Flux Crystals,Coolant Gel Canister,Arc Welder Discharge,70%,Minor slag,foundry
+Cryo-Bore Drill Lance,Titanium Mesh Strip,Coolant Gel Canister,Magnetic Resonance Fluid,60%,Explosion (10% damage),foundry
+Nanobot Swarm Ejector,Nanobot Swarm Gel,Salvaged Servo Joint,Magnetic Resonance Fluid,70%,Minor slag,foundry
+Buffer Overflow Exploit,Binary Code Shards,Hash Collision Powder,Memory Leak Elixir,70%,Minor slag,terminal
+Neural Spike Virus,Gradient Descent Tears,Payload Injection Droplets,Backpropagation Serum,70%,Minor slag,terminal
+DDoS Swarm Protocol,Nanobot Swarm Gel,Async Await Pulse,Null Pointer Solvent,75%,Minor slag,terminal
+Zero-Day Payload,Plasma Server Slag,Checksum Verify Acid,JIT Compiler Surge,60%,Explosion (10% damage),terminal
+Quantum Backdoor Exploit,Quantum Bit Residue,API Endpoint Salts,Overclock Catalyst Spark,70%,Minor slag,terminal
+SQL Injection Payload,Base64 Encoded Slime,API Endpoint Salts,Cache Invalidation Brew,60%,Explosion (10% damage),terminal
+Ransomware Lockout Worm,Fiber Optic Threads,OAuth Token Ichor,Null Pointer Solvent,70%,Minor slag,terminal
+Tungsten Alloy Chassis Plate,Tungsten Carbide Filings,Arc Welder Discharge,Magnetic Resonance Fluid,70%,Minor slag,foundry
+Faraday Cage Neural Helm,Fiber Optic Threads,Electron Flux Crystals,Industrial Flux Paste,70%,Minor slag,foundry
+Reactive Ceramic Plating,Silicon Wafer Dust,Coolant Gel Canister,Hydraulic Compression Pulse,70%,Minor slag,foundry
+Titanium Mesh Exoskeleton,Titanium Mesh Strip,Salvaged Servo Joint,Industrial Flux Paste,60%,Explosion (15% damage),foundry
+Cryo-Cooled Heat Sink Array,Coolant Gel Canister,Electron Flux Crystals,Magnetic Resonance Fluid,70%,Minor slag,foundry
+Salvaged Siege Chassis,Nanobot Swarm Gel,Tungsten Carbide Filings,Hydraulic Compression Pulse,60%,Explosion (10% damage),foundry
+AES-256 Firewall Protocol,Silicon Wafer Dust,Regex Pattern Filaments,Garbage Collector Tonic,70%,Minor slag,terminal
+Homomorphic Encryption Cloak,Quantum Bit Residue,Attention Mechanism Dew,Virtual Machine Emulsion,60%,Explosion (10% damage),terminal
+Zero-Trust Authentication Layer,Base64 Encoded Slime,OAuth Token Ichor,Docker Image Distillate,70%,Minor slag,terminal
+TensorGuard Neural Shield,Epoch Cycle Blood,TensorFlow Igniter,Cache Invalidation Brew,70%,Minor slag,terminal
+Sandbox Isolation Runtime,Nanobot Swarm Gel,Payload Injection Droplets,Docker Image Distillate,60%,Explosion (10% damage),terminal
+Rate-Limiting Throttle Daemon,Fiber Optic Threads,Hash Collision Powder,Async Await Pulse,70%,Minor slag,terminal
+Coolant Flush Cartridge,Coolant Gel Canister,Overclock Catalyst Spark,Industrial Flux Paste,70%,Minor slag,foundry
+Emergency Servo Lubricant,Salvaged Servo Joint,GPU Render Flame,Magnetic Resonance Fluid,70%,Minor slag,foundry
+Welding Patch Kit,Silicon Wafer Dust,Arc Welder Discharge,Industrial Flux Paste,70%,Minor slag,foundry
+Overclock Reactor Injector,Electron Flux Crystals,Plasma Server Slag,Arc Welder Discharge,70%,Minor slag,foundry
+EMP Hardening Capsule,Fiber Optic Threads,Titanium Mesh Strip,Magnetic Resonance Fluid,70%,Minor slag,foundry
+Salvage Reclamation Drone,Nanobot Swarm Gel,Salvaged Servo Joint,Hydraulic Compression Pulse,60%,Explosion (15% damage),foundry
+Debug Rejuvenation Patch,Backpropagation Serum,Checksum Verify Acid,Garbage Collector Tonic,70%,Minor slag,terminal
+Caffeine Gradient Booster,Loss Function Sap,CUDA Kernel Ember,Memory Leak Elixir,70%,Minor slag,terminal
+Cache Purge Tonic,Gradient Descent Tears,Cache Invalidation Brew,Null Pointer Solvent,70%,Minor slag,terminal
+Hot Patch Injection,Binary Code Shards,API Endpoint Salts,Garbage Collector Tonic,70%,Minor slag,terminal
+Context Window Expansion,Token Embedding Vapor,Attention Mechanism Dew,Virtual Machine Emulsion,70%,Minor slag,terminal
+Hyperparameter Tuning Shot,Epoch Cycle Blood,PyTorch Flux Core,Halting Problem Paradox,55%,Explosion (15% damage),terminal
+Stable Diffusion Sequence,Latent Space Fog,Token Embedding Vapor,PyTorch Flux Core,70%,Minor slag,terminal
+GAN Mirage Scroll,Latent Space Fog,GPU Render Flame,Overclock Catalyst Spark,60%,Explosion (10% damage),terminal
+Transformer Attention Ritual,Attention Mechanism Dew,Epoch Cycle Blood,TensorFlow Igniter,60%,Explosion (10% damage),terminal
+Reinforcement Learning Prophecy,Gradient Descent Tears,Loss Function Sap,TensorFlow Igniter,60%,Explosion (10% damage),terminal
+Bayesian Inference Divination,Attention Mechanism Dew,Checksum Verify Acid,Virtual Machine Emulsion,70%,Minor slag,terminal
+Genetic Algorithm Evolution,Halting Problem Paradox,Nanobot Swarm Gel,PyTorch Flux Core,55%,Explosion (20% damage),terminal
+Prompt Engineering Curse,Token Embedding Vapor,Hash Collision Powder,Lambda Calculus Vapor,55%,Explosion (15% damage),terminal
+Recursive Function Spiral,Loss Function Sap,CUDA Kernel Ember,Null Pointer Solvent,70%,Minor slag,terminal
+Monte Carlo Simulation Rune,Latent Space Fog,Regex Pattern Filaments,Kubernetes Pod Nectar,60%,Explosion (10% damage),terminal
+Gradient Vanishing Hex,Gradient Descent Tears,Backpropagation Serum,Memory Leak Elixir,70%,Minor slag,terminal
+AlphaGo Neural Core,Alpha Zero Primal Seed,Quantum Bit Residue,Magnetic Resonance Fluid,45%,Catastrophic explosion (50% damage),foundry
+Quantum Annealer Processor,Kolmogorov Complexity Crystal,Quantum Bit Residue,CUDA Kernel Ember,40%,Catastrophic explosion (50% damage),foundry
+Von Neumann Self-Replicator,Von Neumann Probe Spores,Nanobot Swarm Gel,Hydraulic Compression Pulse,45%,Catastrophic explosion (50% damage),foundry
+Satoshi Genesis Block Signet,Kolmogorov Complexity Crystal,Binary Code Shards,Industrial Flux Paste,45%,Catastrophic explosion (50% damage),foundry
+GPT Oracle Crystal,Token Embedding Vapor,Lambda Calculus Vapor,Turing Machine Essence,40%,Catastrophic explosion (50% damage),terminal
+Blockchain Soulbound Key,Binary Code Shards,Von Neumann Probe Spores,Kubernetes Pod Nectar,45%,Catastrophic explosion (50% damage),terminal
+Federated Learning Nexus,Gradient Descent Tears,Kubernetes Pod Nectar,Church-Turing Thesis Core,40%,Catastrophic explosion (50% damage),terminal
+Rust Borrow Checker Amulet,Silicon Wafer Dust,Halting Problem Paradox,Garbage Collector Tonic,40%,Catastrophic explosion (50% damage),terminal
+Hugging Face Model Repository,Token Embedding Vapor,Docker Image Distillate,Lambda Calculus Vapor,45%,Catastrophic explosion (50% damage),terminal
+Dijkstra Shortest Path Compass,Church-Turing Thesis Core,Attention Mechanism Dew,Async Await Pulse,40%,Catastrophic explosion (50% damage),terminal
+Diagnostic Probe Array,Silicon Wafer Dust,Electron Flux Crystals,Industrial Flux Paste,70%,Minor slag,foundry
+Soldering Gauntlet,Tungsten Carbide Filings,Salvaged Servo Joint,Arc Welder Discharge,70%,Minor slag,foundry
+Salvage Extraction Claw,Titanium Mesh Strip,Hydraulic Compression Pulse,Industrial Flux Paste,70%,Minor slag,foundry
+Portable Foundry Anvil,Plasma Server Slag,Tungsten Carbide Filings,Arc Welder Discharge,60%,Explosion (15% damage),foundry
+Hydraulic Jack Lifter,Salvaged Servo Joint,Coolant Gel Canister,Hydraulic Compression Pulse,70%,Minor slag,foundry
+Arc Welder Repair Rig,Electron Flux Crystals,Tungsten Carbide Filings,Magnetic Resonance Fluid,70%,Minor slag,foundry
+Git Rollback Module,Binary Code Shards,Fiber Optic Threads,Cache Invalidation Brew,70%,Minor slag,terminal
+Docker Containerizer,Docker Image Distillate,Nanobot Swarm Gel,Virtual Machine Emulsion,70%,Minor slag,terminal
+Kubernetes Orchestrator,Kubernetes Pod Nectar,Plasma Server Slag,Async Await Pulse,60%,Explosion (10% damage),terminal
+Wireshark Packet Sniffer,Fiber Optic Threads,API Endpoint Salts,Regex Pattern Filaments,70%,Minor slag,terminal
+Nmap Reconnaissance Scanner,Fiber Optic Threads,Regex Pattern Filaments,Virtual Machine Emulsion,70%,Minor slag,terminal
+Vim Reality Editor,Base64 Encoded Slime,Hash Collision Powder,Null Pointer Solvent,60%,Explosion (15% damage),terminal
+Proximity Mine Cluster,Electron Flux Crystals,Arc Welder Discharge,Industrial Flux Paste,70%,Minor slag,foundry
+Razor Wire Entanglement Rig,Fiber Optic Threads,Tungsten Carbide Filings,Industrial Flux Paste,70%,Minor slag,foundry
+Turret Drone Sentry,Titanium Mesh Strip,Salvaged Servo Joint,Arc Welder Discharge,70%,Minor slag,foundry
+Magnetic Tether Trap,Electron Flux Crystals,Titanium Mesh Strip,Hydraulic Compression Pulse,70%,Minor slag,foundry
+EMP Pulse Landmine,Quantum Bit Residue,Plasma Server Slag,Magnetic Resonance Fluid,60%,Explosion (15% damage),foundry
+Honeypot Decoy Server,Binary Code Shards,API Endpoint Salts,Docker Image Distillate,70%,Minor slag,terminal
+Logic Bomb Tripwire,Binary Code Shards,Payload Injection Droplets,Async Await Pulse,70%,Minor slag,terminal
+Cryptojacker Leech Node,Electron Flux Crystals,GPU Render Flame,Memory Leak Elixir,70%,Minor slag,terminal
+Rootkit Persistence Mine,Base64 Encoded Slime,OAuth Token Ichor,Garbage Collector Tonic,70%,Minor slag,terminal
+Packet Storm Jammer,Quantum Bit Residue,Regex Pattern Filaments,JIT Compiler Surge,60%,Explosion (10% damage),terminal
