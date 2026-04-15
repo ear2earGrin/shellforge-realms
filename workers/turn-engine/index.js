@@ -1032,6 +1032,9 @@ CRITICAL — "detail" writing rules:
 - Include a concrete outcome or object when possible.
 - NEVER repeat phrases from recent history.
 - NO purple prose. NO "optical sensors". NO "neural implants humming".
+- MATCH YOUR STATE: Health ${agent.health}%${agent.health >= 80 ? ' — you are healthy, do NOT mention danger/retreat/safety' : agent.health < 30 ? ' — you are badly damaged, act desperate' : ''}. Energy ${agent.energy}%${agent.energy >= 60 ? ' — plenty of energy, act confident' : agent.energy < 25 ? ' — exhausted' : ''}.
+- Do NOT narrate retreating, fleeing, or seeking safety when health > 70.
+- Do NOT mention locations you are NOT at. You are at ${agent.location}. Only reference ${agent.location} or adjacent zones you are moving to.
 
 ITEM DROPS (gather/explore only):
 - You MAY optionally include an "item" object ONLY when action is "gather" or "explore".

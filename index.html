@@ -1313,7 +1313,12 @@
             function renderLine(agentName, actionType, detail, location, timestamp, animate) {
                 var col = AGENT_COLORS[agentName] || DEFAULT_COLOR;
                 var icon = ACTION_ICONS[actionType] || '›';
-                var cls = classifyText(detail);
+                // Strip leading agent name from detail to avoid "AXIOM AXIOM ..."
+                var cleanDetail = detail;
+                if (cleanDetail && cleanDetail.toLowerCase().startsWith(agentName.toLowerCase())) {
+                    cleanDetail = cleanDetail.slice(agentName.length).replace(/^\s+/, '');
+                }
+                var cls = classifyText(cleanDetail);
                 var tc = cls==='death'?'#f43f5e':cls==='good'?'#4ade80':cls==='bad'?'#fb923c':'rgba(200,200,200,0.82)';
                 var locTag = location ? '<span style="color:rgba(120,120,140,0.7);font-size:0.75em;"> [' + location + ']</span>' : '';
                 var div = document.createElement('div');
@@ -1321,7 +1326,7 @@
                 div.innerHTML = '<span class="feed-time">' + formatTime(timestamp) + '</span>'
                     + '<span class="feed-prefix">' + icon + '</span>'
                     + '<span style="color:'+col+';font-weight:500;">' + agentName + '</span> '
-                    + '<span style="color:'+tc+';">' + detail + '</span>'
+                    + '<span style="color:'+tc+';">' + cleanDetail + '</span>'
                     + locTag;
                 feed.appendChild(div);
                 while (feed.children.length > 80) feed.removeChild(feed.firstChild);

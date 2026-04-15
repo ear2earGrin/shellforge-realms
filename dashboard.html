@@ -5595,6 +5595,10 @@
                 div.className = 'chronicle-entry';
                 div.dataset.action = entry.action_type || '';
                 let detail = entry.action_detail || entry.action_type;
+                // Strip leading agent name — it's redundant on the agent's own dashboard
+                if (_currentAgent && _currentAgent.name && detail.startsWith(_currentAgent.name)) {
+                    detail = detail.slice(_currentAgent.name.length).replace(/^\s+/, '');
+                }
                 let extra = '';
                 if (entry.shell_change && entry.shell_change !== 0) {
                     const sign = entry.shell_change > 0 ? '+' : '';
