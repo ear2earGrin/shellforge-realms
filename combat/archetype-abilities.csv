@@ -1,0 +1,25 @@
+archetype,cluster,ability_name,type,coherence_cost,cooldown,power,duration,description
+0-Day Primer,prime_helix,Vulnerability Scan,DEBUFF,2,1,0,2,Reveals and amplifies 1 enemy weakness — +20% damage from that type for 2 turns
+0-Day Primer,prime_helix,Exploit Chain,ATK,3,2,18,0,Targeted strike — bonus +10 power if weakness was previously scanned
+Consensus Node,prime_helix,Consensus Protocol,BUFF,2,1,0,2,+15% accuracy to self and all allies for 2 turns
+Consensus Node,prime_helix,Quorum Strike,ATK,3,2,15,0,Coordinated attack — +5 power per active ally in battle
+0xOracle,prime_helix,Oracle Sight,UTIL,2,2,0,1,Previews opponent next action before decision phase
+0xOracle,prime_helix,Prophecy Bolt,ATK,3,1,18,0,Precision strike — +50% damage if opponent action was predicted
+Binary Sculptr,prime_helix,Binary Construct,BUFF,2,1,0,2,Creates a temporary +15% defense barrier lasting 2 turns
+Binary Sculptr,prime_helix,Sculpt Overwrite,ATK,3,2,16,0,Converts enemy defense value into attack power for this hit
+0xAdversarial,sec_grid,Target Lock,DEBUFF,1,0,0,2,Marks target — all sources deal +25% damage to marked target for 2 turns
+0xAdversarial,sec_grid,Adversarial Strike,ATK,3,1,20,0,Guaranteed hit against marked targets — cannot miss or be dodged
+Root Auth,sec_grid,Root Access,BUFF,2,2,0,1,Elevated privileges — +30% to all stats for 1 turn
+Root Auth,sec_grid,System Override,DEBUFF,3,2,0,3,Disables 1 enemy ability for 3 turns — locked out of their hand
+Buffer Sentinel,sec_grid,Buffer Wall,DEF,2,0,30,1,Blocks up to 30 damage this turn — excess damage passes through
+Buffer Sentinel,sec_grid,Sentinel Riposte,ATK,2,1,0,0,Counter-attacks for 100% of damage blocked last turn
+Noise Injector,sec_grid,White Noise,DEBUFF,2,1,0,2,-30% accuracy to all enemies for 2 turns
+Noise Injector,sec_grid,Signal Jamming,DEBUFF,3,2,0,2,Prevents enemy from using abilities costing more than 3 coherence for 2 turns
+Ordinate Mapper,dyn_swarm,Terrain Map,UTIL,1,1,0,2,Reveals all traps and grants +15% evasion for 2 turns
+Ordinate Mapper,dyn_swarm,Coordinate Strike,ATK,2,1,14,0,Precise hit — +30% crit chance if terrain was mapped this battle
+DDoS Insurgent,dyn_swarm,Packet Flood,DEBUFF,2,1,0,2,Slows target by 40% for 2 turns
+DDoS Insurgent,dyn_swarm,Swarm Rush,ATK,3,1,12,0,Triple-hit attack — 12 power each hit — 36 total if all connect
+Bound Encryptor,dyn_swarm,Encrypt Self,DEF,2,1,0,2,+40% software defense for 2 turns
+Bound Encryptor,dyn_swarm,Decrypt Strike,ATK,3,2,18,0,Ignores all software defenses — direct damage to core
+Morph Layer,dyn_swarm,Polymorph,BUFF,2,2,0,2,Copies 1 ability from opponent hand — usable for 2 turns
+Morph Layer,dyn_swarm,Adaptive Strike,ATK,2,0,12,0,Type auto-shifts to exploit enemy weakness — always hits soft spot

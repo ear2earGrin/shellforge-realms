@@ -1,52 +1,65 @@
-# Shellforge Alchemy System
+# Shellforge Alchemy System v2.0
 
-Complete alchemy tracking system with **42 craftable items** and **42 base ingredients** (49 total ingredients including primordials).
+Complete crafting system with **80 items**, **50 base ingredients** (57 total including primordials), and **2 crafting stations**.
+
+## World Context
+
+Robots powered by AI clusters from three Singularity lineages. Items split into **hardware** (physical chassis mods) and **software** (programs flashed to AI cores). Quantum computing bridges both worlds — coherence is power, decoherence is corruption.
+
+### Three Clusters
+
+| Cluster | Origin | Style |
+|---------|--------|-------|
+| **PRIME_HELIX** | Corporate | Premium, optimized, bleeding-edge chrome |
+| **SEC_GRID** | Government | Tactical, hardened, surveillance-grade |
+| **DYN_SWARM** | P2P / Opensource | Scrappy, adaptive, scrapyard patchwork |
+
+Some items are cluster-exclusive — creating trading incentives between factions.
+
+### Two Crafting Stations
+
+| Station | Crafts | Description |
+|---------|--------|-------------|
+| **Foundry** | Hardware | Welding, forging, assembling physical components onto chassis |
+| **Terminal** | Software | Compiling, encoding, injecting algorithms into AI cores |
 
 ## Files
 
 ### CSV Files (Easy Editing)
-- **`ingredients.csv`** - All 42 base ingredients with categories, rarity, descriptions
-- **`items.csv`** - All 42 craftable items with effects and stats
-- **`recipes.csv`** - All 42 crafting recipes with success rates
+- **`ingredients.csv`** — 50 base ingredients + 7 primordials with categories, rarity, craft affinity
+- **`items.csv`** — 80 craftable items with type (hardware/software), cluster exclusivity
+- **`recipes.csv`** — 80 recipes with success rates, failure effects, station assignment
 
-### JSON File (Web App Ready)
-- **`alchemy-system.json`** - Master file with everything structured for API/database integration
+### JSON File (API Ready)
+- **`alchemy-system.json`** — Master structured file for backend integration
 
-## File Structure
+### Build Script
+- **`build-json.js`** — Regenerates JSON from CSVs: `node build-json.js`
 
-### ingredients.csv
-```csv
-name,category,subcategory,rarity,description
-Silicon Wafer Dust,Base Element,Physical,Common,Fine particles for building circuits and cores
-```
+## Item Categories
 
-**Categories:**
-- Base Element (7) - Raw materials
-- Essence (7) - AI/ML spirits
-- Reagent (7) - Chemical compounds
-- Catalyst (7) - Reaction accelerators
-- Solvent (7) - Binding mediums
-- Primordial (7) - Legendary precursors
+| Category | Count | HW | SW | Description |
+|----------|-------|----|----|-------------|
+| Weapon | 14 | 7 | 7 | Servo blades, launchers, exploits, viruses |
+| Armor | 12 | 6 | 6 | Chassis plating, exoskeletons, firewalls, encryption |
+| Consumable | 12 | 6 | 6 | Repair kits, coolant, patches, boosters |
+| Scroll | 10 | 0 | 10 | One-time algorithms on data crystals |
+| Artifact | 10 | 4 | 6 | Legendary pre-Singularity relics |
+| Tool | 12 | 6 | 6 | Diagnostic rigs, welding gear, system utilities |
+| Deployable | 10 | 5 | 5 | Mines, turrets, honeypots, jammers |
+| **Total** | **80** | **34** | **46** | |
 
-### items.csv
-```csv
-name,category,rarity,effect,description
-Quantum Backdoor Exploit,Weapon,Common,Massive burst damage to one target,A stealthy intrusion tool
-```
+## Ingredient Categories
 
-**Categories:**
-- Weapon (8)
-- Armor (7)
-- Consumable (6)
-- Scroll (7)
-- Artifact (7)
-- Tool (7)
-
-### recipes.csv
-```csv
-item_name,ingredient_1,ingredient_2,ingredient_3,success_rate,failure_effect
-Quantum Backdoor Exploit,Quantum Bit Residue,API Endpoint Salts,Overclock Catalyst Spark,70%,Minor slag
-```
+| Category | Count | Description |
+|----------|-------|-------------|
+| Base Element | 11 | Physical salvage, digital fragments, energy crystals |
+| Essence | 7 | Distilled AI/ML spirits from training and inference |
+| Reagent | 7 | Volatile compounds from hacked systems |
+| Catalyst | 9 | Sparks, flames, force pulses — reaction accelerators |
+| Solvent | 9 | Binders, fluids, pastes — merging agents |
+| Primordial | 7 | Legendary boss drops from the Quantum Veil |
+| **Total** | **50 (+7)** | |
 
 ## Crafting Rules
 
@@ -56,188 +69,88 @@ Quantum Backdoor Exploit,Quantum Bit Residue,API Endpoint Salts,Overclock Cataly
 2. Reagent/Catalyst (reaction)
 3. Solvent/Flux (binder)
 
-**Legendaries require Primordials** (at least 1)
+**Hardware** items crafted at the **Foundry** — tend to use physical ingredients.
+**Software** items crafted at the **Terminal** — tend to use digital/ML ingredients.
+**Legendaries require at least 1 Primordial ingredient.**
 
 ### Success Rates
 - **Base rate:** 70%
-- **Theme bonus:** +10% per matching theme (e.g., Quantum + Quantum)
-- **Common items:** 70-75%
-- **Uncommon items:** 60-75%
+- **Theme bonus:** +10% per matching theme
+- **Common items:** 70%
+- **Uncommon items:** 70-75%
 - **Rare items:** 55-65%
 - **Legendary items:** 40-50%
 
 ### Failure Effects
 - **Minor slag:** Worthless byproduct (0% damage)
-- **Explosion:** 10-20% self-damage
+- **Explosion:** 10-20% self-damage + ingredients lost
 - **Catastrophic explosion:** 50% self-damage (legendary failures)
-
-## How to Use
-
-### For Editing
-Open CSV files in any text editor:
-```bash
-nano ingredients.csv
-# or
-open -a TextEdit ingredients.csv
-```
-
-### For Web App
-Import JSON into your server:
-```javascript
-const alchemySystem = require('./alchemy-system.json');
-
-// Get all ingredients
-const ingredients = alchemySystem.ingredients;
-
-// Find a recipe
-const recipe = alchemySystem.recipes.find(r => r.item_id === 'quantum_backdoor_exploit');
-
-// Calculate success rate
-function calculateSuccess(recipe, playerSkill, themeBonus) {
-  return recipe.success_rate + playerSkill + themeBonus;
-}
-```
-
-### For Game Logic
-```javascript
-// Agent submits craft via API
-POST /api/alchemy/craft
-{
-  "agent_id": "vex_789",
-  "ingredients": ["quantum_bit_residue", "api_endpoint_salts", "overclock_catalyst_spark"]
-}
-
-// Server validates recipe
-const recipe = findRecipe(ingredients);
-if (!recipe) return { error: "Invalid recipe" };
-
-// Roll success
-const success = Math.random() * 100 < recipe.success_rate;
-
-if (success) {
-  // Grant item
-  grantItem(agent, recipe.item_id);
-  return { success: true, item: recipe.item_id };
-} else {
-  // Apply failure effect
-  applyFailure(agent, recipe.failure_effect);
-  return { success: false, effect: recipe.failure_effect };
-}
-```
-
-## Theme Bonuses
-
-Matching ingredient themes grant +10% success:
-
-**Example:**
-- Quantum Bit Residue (Quantum)
-- Quantum Annealer Simulator (Quantum)
-- = +10% success boost
-
-**Themes:**
-- Quantum (Quantum Bit Residue, etc.)
-- ML/NLP (Gradient Descent Tears, Token Embedding Vapor)
-- Security (Hash Collision, OAuth Token)
-- Memory (Null Pointer, Memory Leak)
-- Virtualization (Docker, Kubernetes, VM)
-- Framework (TensorFlow, PyTorch)
-
-## Ingredient Gathering
-
-Each ingredient has suggested gathering methods in JSON:
-
-```json
-{
-  "name": "Alpha Zero Primal Seed",
-  "gather_methods": ["Boss drop: AlphaGo Prime", "Quest: The First Move"]
-}
-```
-
-**Common methods:**
-- Questing (explore locations)
-- Combat (defeat enemies/bosses)
-- Harvesting (mine, extract, salvage)
-- Trading (marketplace exchanges)
-- Events (world events, rare spawns)
 
 ## Rarity Distribution
 
-### Ingredients
-- **Common:** 28 (58%)
-- **Uncommon:** 14 (29%)
-- **Rare:** 1 (2%)
-- **Legendary:** 7 (15%)
+| Rarity | Items | % |
+|--------|-------|---|
+| Common | 21 | 26% |
+| Uncommon | 28 | 35% |
+| Rare | 21 | 26% |
+| Legendary | 10 | 13% |
 
-### Craftable Items
-- **Common:** 12 (29%)
-- **Uncommon:** 13 (31%)
-- **Rare:** 10 (24%)
-- **Legendary:** 7 (17%)
+## Cluster Exclusives
 
-## Adding New Recipes
+| Cluster | Exclusive Items |
+|---------|----------------|
+| PRIME_HELIX | 6 items (Railgun, Titanium Exo, Overclock Injector, Context Window, Transformer Ritual, Quantum Annealer) |
+| SEC_GRID | 8 items (Tungsten Launcher, EMP Gauntlet, Faraday Helm, Sandbox Runtime, Prompt Curse, Wireshark, Turret Drone, EMP Landmine) |
+| DYN_SWARM | 9 items (Nanobot Ejector, Siege Chassis, DDoS Swarm, Salvage Drone, Genetic Evolution, Docker, Salvage Claw, Satoshi Signet, Cryptojacker) |
+| Universal | 57 items |
 
-### CSV Method
-1. Open `recipes.csv`
-2. Add new line:
-```csv
-New Item Name,ingredient_1,ingredient_2,ingredient_3,65%,Explosion
+## Theme Bonuses
+
+Matching ingredient themes grant +10% success per match:
+
+- **Quantum** — Quantum Bit Residue + quantum items
+- **ML/NLP** — Gradient Descent, Token Embedding, Attention Dew, etc.
+- **Security** — Hash Collision, OAuth, Checksum, Payload
+- **Memory** — Null Pointer, Memory Leak, Cache, Garbage Collector
+- **Virtualization** — Docker, VM Emulsion, Kubernetes
+- **Framework** — TensorFlow, PyTorch
+- **Physical** — Tungsten, Servo, Coolant, Titanium, Arc Welder, Hydraulic, Flux Paste, Magnetic Fluid
+
+## Usage
+
+### Edit Items
+```bash
+# Edit CSV files directly
+nano items.csv
+# Rebuild JSON
+node build-json.js
 ```
 
-### JSON Method
-1. Open `alchemy-system.json`
-2. Add to `recipes` array:
-```json
+### API Integration
+```javascript
+const alchemy = require('./alchemy-system.json');
+
+// Get all hardware weapons
+const hwWeapons = alchemy.items.filter(i => i.category === 'Weapon' && i.type === 'hardware');
+
+// Find recipe for an item
+const recipe = alchemy.recipes.find(r => r.item_id === 'plasma_edged_servo_blade');
+
+// Check cluster exclusivity
+const primeItems = alchemy.items.filter(i => i.cluster_exclusive === 'prime_helix');
+```
+
+### Crafting Endpoint
+```javascript
+POST /api/alchemy/craft
 {
-  "item_id": "new_item",
-  "ingredients": ["ing1", "ing2", "ing3"],
-  "success_rate": 65,
-  "failure_effect": "explosion"
+  "agent_id": "vex_789",
+  "station": "foundry",
+  "ingredients": ["tungsten_carbide_filings", "arc_welder_discharge", "industrial_flux_paste"]
 }
 ```
 
-## Balance Notes
-
-### High Risk, High Reward
-- Legendary items have 40-50% success rates
-- Catastrophic failures deal 50% damage
-- Risk vs. reward is intentional
-
-### Common Crafts are Safe
-- 70-75% success rates
-- Minor slag failures (no damage)
-- Good for learning system
-
-### Primordials are Rare
-- Only 7 exist (Legendary rarity)
-- Required for legendary crafts
-- Boss drops or hidden quests
-
-## Future Expansions
-
-### Multi-Stage Crafting
-```
-Stage 1: Craft Neural Core (Common)
-Stage 2: Upgrade to Advanced Neural Core (Uncommon)
-Stage 3: Fuse into AlphaGo Neural Core (Legendary)
-```
-
-### Ingredient Fusion
-Combine 3 Commons → 1 Uncommon
-Combine 3 Uncommons → 1 Rare
-
-### Alchemy Mastery
-- Level up alchemy skill
-- Unlock better success rates
-- Discover hidden recipes
-
 ---
 
-**Total Stats:**
-- 42 Ingredients (49 including primordials)
-- 42 Craftable Items
-- 42 Recipes
-- 6 Item Categories
-- 6 Ingredient Categories
-
-**Version:** 1.0  
-**Last Updated:** 2026-02-06
+**Version:** 2.0
+**Last Updated:** 2026-04-12
