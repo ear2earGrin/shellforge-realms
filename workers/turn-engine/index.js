@@ -15,13 +15,58 @@ const ACTION_ENERGY_COSTS = {
 
 const ACTION_ENERGY_GAINS = { rest: 25 };
 
+// ─── Anti-Camping Tuning Constants ──────────────────────────────
+const DIMINISH_THRESHOLDS = [4, 8, 12];           // turns before each penalty tier
+const DIMINISH_VALUES     = [1.0, 0.7, 0.4, 0.15]; // reward multipliers per tier
+const RESTLESS_THRESHOLDS = [3, 6, 10];            // effective turns for each restlessness level
+const RESTLESS_REST_PENALTY = [1.0, 1.0, 0.65, 0.4]; // rest energy multiplier per level
+const RESTLESS_OVERRIDE_CHANCE = 0.25;              // chance of involuntary move at level 3
+const LOCATION_LOOT_BONUSES = { safe: 1.0, low: 1.3, medium: 1.6, high: 2.0, extreme: 2.5 };
+
+// Returns a multiplier 0.0–1.0 that reduces rewards when an agent
+// has been at the same safe-zone location too long.
+function getSafeZoneDiminish(location, turnsAtLocation) {
+  const locData = LOCATION_GRAPH[location];
+  if (!locData || !locData.safe) return 1.0; // no penalty in dangerous zones
+  const t = turnsAtLocation || 0;
+  if (t <= DIMINISH_THRESHOLDS[0]) return DIMINISH_VALUES[0];
+  if (t <= DIMINISH_THRESHOLDS[1]) return DIMINISH_VALUES[1];
+  if (t <= DIMINISH_THRESHOLDS[2]) return DIMINISH_VALUES[2];
+  return DIMINISH_VALUES[3];
+}
+
+// Returns a restlessness level 0–3 based on personality + stagnation.
+// 0 = content, 1 = uneasy, 2 = restless, 3 = desperate to leave.
+function calcRestlessness(agent) {
+  const stats = agent.stats || {};
+  const turnsHere = agent.turns_at_location || 0;
+  const curiosity = stats.curiosity || 5;
+  const risk = stats.risk || 5;
+  const cooperation = stats.cooperation || 5;
+  // Personality amplifier: high curiosity+risk = restless sooner
+  const amplifier = 0.5 + ((curiosity + risk) / 2) / 10; // 0.6–1.5
+  const dampener = 1 - (cooperation / 10) * 0.3;          // 0.7–0.97
+  const effectiveTurns = turnsHere * amplifier * dampener;
+  if (effectiveTurns <= RESTLESS_THRESHOLDS[0]) return 0;
+  if (effectiveTurns <= RESTLESS_THRESHOLDS[1]) return 1;
+  if (effectiveTurns <= RESTLESS_THRESHOLDS[2]) return 2;
+  return 3;
+}
+
+// Returns a loot/reward multiplier for dangerous zones (risk = reward).
+function getLocationLootBonus(location) {
+  const hazard = LOCATION_HAZARDS[location] || LOCATION_HAZARDS['Nexarch'];
+  return LOCATION_LOOT_BONUSES[hazard.label] || 1.0;
+}
+
 const COMBAT_ACTIONS = ['attack', 'defend', 'special'];
 
 // ─── Location Adjacency + Travel System ──────────────────────
 // Defines which locations are connected. Travel only between adjacent zones.
 // Travel cost = base move cost (10) + extra for dangerous routes
 const LOCATION_GRAPH = {
-  'Nexarch':              { adjacent: ['Hashmere', 'Diffusion Mesa', 'Deserted Data Centre'], safe: true },
+  'Nexarch':              { adjacent: ['Hashmere', 'Diffusion Mesa', 'Deserted Data Centre', 'Nexarch Arena'], safe: true },
+  'Nexarch Arena':        { adjacent: ['Nexarch'], safe: true },
   'Hashmere':             { adjacent: ['Nexarch', 'Epoch Spike', 'Diffusion Mesa'], safe: true },
   'Diffusion Mesa':       { adjacent: ['Nexarch', 'Hashmere', 'Epoch Spike', 'Hallucination Glitch'] },
   'Epoch Spike':          { adjacent: ['Hashmere', 'Diffusion Mesa', 'Singularity Crater'] },
@@ -70,6 +115,7 @@ function parseDestination(detail, currentLocation) {
 // Each dangerous location drains energy and has a chance to damage health every turn
 const LOCATION_HAZARDS = {
   'Nexarch':              { drain: 0,  dmgChance: 0,    dmgRange: [0, 0],   label: 'safe' },
+  'Nexarch Arena':        { drain: 0,  dmgChance: 0,    dmgRange: [0, 0],   label: 'safe' },
   'Hashmere':             { drain: 0,  dmgChance: 0,    dmgRange: [0, 0],   label: 'safe' },
   'Diffusion Mesa':       { drain: 4,  dmgChance: 0.08, dmgRange: [3, 8],   label: 'low' },
   'Epoch Spike':          { drain: 7,  dmgChance: 0.15, dmgRange: [5, 12],  label: 'medium' },
@@ -159,43 +205,55 @@ const LOCATION_VISUAL_COORDS = {
 // Rarity tiers: common (60%), uncommon (25%), rare (12%), epic (3%)
 
 const LOOT_TABLE = [
-  // ── Common ingredients (found broadly) ──
+  // ── Common software ingredients ──
   { id: 'silicon_wafer_dust',       name: 'Silicon Wafer Dust',       rarity: 'common',   locations: ['Hashmere','Nexarch','Diffusion Mesa','Deserted Data Centre'] },
   { id: 'binary_code_shards',      name: 'Binary Code Shards',       rarity: 'common',   locations: ['Hashmere','Nexarch','Epoch Spike','Diffusion Mesa','Deserted Data Centre'] },
   { id: 'fiber_optic_threads',     name: 'Fiber Optic Threads',      rarity: 'common',   locations: ['Hashmere','Nexarch','Diffusion Mesa','Deserted Data Centre'] },
-  { id: 'base64_encoded_slime',    name: 'Base64 Encoded Slime',     rarity: 'common',   locations: ['Hashmere','Diffusion Mesa','Hallucination Glitch'] },
+  { id: 'base64_encoded_slime',    name: 'Base64 Encoded Slime',     rarity: 'common',   locations: ['Diffusion Mesa','Hallucination Glitch','Deserted Data Centre'] },
   { id: 'regex_pattern_filaments', name: 'Regex Pattern Filaments',  rarity: 'common',   locations: ['Hashmere','Nexarch','Deserted Data Centre'] },
   { id: 'null_pointer_solvent',    name: 'Null Pointer Solvent',     rarity: 'common',   locations: ['Epoch Spike','Diffusion Mesa','Deserted Data Centre'] },
   { id: 'memory_leak_elixir',      name: 'Memory Leak Elixir',       rarity: 'common',   locations: ['Epoch Spike','Deserted Data Centre','Singularity Crater'] },
-  { id: 'hash_collision_powder',   name: 'Hash Collision Powder',    rarity: 'common',   locations: ['Hashmere','Nexarch','Diffusion Mesa'] },
-  { id: 'garbage_collector_tonic', name: 'Garbage Collector Tonic',  rarity: 'common',   locations: ['Hashmere','Nexarch','Deserted Data Centre'] },
+  { id: 'hash_collision_powder',   name: 'Hash Collision Powder',    rarity: 'common',   locations: ['Diffusion Mesa','Epoch Spike','Deserted Data Centre'] },
+  { id: 'garbage_collector_tonic', name: 'Garbage Collector Tonic',  rarity: 'common',   locations: ['Deserted Data Centre','Diffusion Mesa','Hallucination Glitch'] },
   { id: 'api_endpoint_salts',      name: 'API Endpoint Salts',       rarity: 'common',   locations: ['Hashmere','Nexarch'] },
-  { id: 'docker_image_distillate', name: 'Docker Image Distillate',  rarity: 'common',   locations: ['Nexarch','Deserted Data Centre'] },
-  { id: 'cache_invalidation_brew', name: 'Cache Invalidation Brew',  rarity: 'common',   locations: ['Hashmere','Epoch Spike','Deserted Data Centre'] },
-  { id: 'async_await_pulse',       name: 'Async Await Pulse',        rarity: 'common',   locations: ['Nexarch','Diffusion Mesa','Epoch Spike'] },
+  { id: 'checksum_verify_acid',    name: 'Checksum Verify Acid',     rarity: 'common',   locations: ['Diffusion Mesa','Deserted Data Centre','Epoch Spike'] },
+  { id: 'electron_flux_crystals',  name: 'Electron Flux Crystals',   rarity: 'common',   locations: ['Epoch Spike','Deserted Data Centre','Diffusion Mesa'] },
+  { id: 'cache_invalidation_brew', name: 'Cache Invalidation Brew',  rarity: 'common',   locations: ['Epoch Spike','Deserted Data Centre','Singularity Crater'] },
+  { id: 'async_await_pulse',       name: 'Async Await Pulse',        rarity: 'common',   locations: ['Diffusion Mesa','Epoch Spike','Hallucination Glitch'] },
+  { id: 'gradient_descent_tears',  name: 'Gradient Descent Tears',   rarity: 'common',   locations: ['Diffusion Mesa','Hallucination Glitch','Epoch Spike'] },
+  { id: 'token_embedding_vapor',   name: 'Token Embedding Vapor',    rarity: 'common',   locations: ['Hallucination Glitch','Diffusion Mesa','Epoch Spike'] },
+  { id: 'backpropagation_serum',   name: 'Backpropagation Serum',    rarity: 'common',   locations: ['Diffusion Mesa','Hallucination Glitch','Deserted Data Centre'] },
+  { id: 'loss_function_sap',       name: 'Loss Function Sap',        rarity: 'common',   locations: ['Diffusion Mesa','Hallucination Glitch','Epoch Spike'] },
+  { id: 'overclock_catalyst_spark',name: 'Overclock Catalyst Spark', rarity: 'common',   locations: ['Epoch Spike','Deserted Data Centre','Diffusion Mesa'] },
+  { id: 'gpu_render_flame',        name: 'GPU Render Flame',         rarity: 'common',   locations: ['Epoch Spike','Deserted Data Centre','Singularity Crater'] },
 
-  // ── Uncommon ingredients (location-specific) ──
-  { id: 'quantum_bit_residue',       name: 'Quantum Bit Residue',       rarity: 'uncommon', locations: ['Epoch Spike','Singularity Crater'] },
-  { id: 'gradient_descent_tears',    name: 'Gradient Descent Tears',    rarity: 'uncommon', locations: ['Diffusion Mesa','Hallucination Glitch'] },
-  { id: 'electron_flux_crystals',    name: 'Electron Flux Crystals',    rarity: 'uncommon', locations: ['Epoch Spike','Singularity Crater'] },
-  { id: 'nanobot_swarm_gel',         name: 'Nanobot Swarm Gel',         rarity: 'uncommon', locations: ['Deserted Data Centre','Singularity Crater'] },
-  { id: 'overclock_catalyst_spark',  name: 'Overclock Catalyst Spark',  rarity: 'uncommon', locations: ['Epoch Spike','Nexarch'] },
-  { id: 'payload_injection_droplets',name: 'Payload Injection Droplets',rarity: 'uncommon', locations: ['Hallucination Glitch','Proof-of-Death'] },
-  { id: 'backpropagation_serum',     name: 'Backpropagation Serum',     rarity: 'uncommon', locations: ['Diffusion Mesa','Hallucination Glitch'] },
-  { id: 'oauth_token_ichor',         name: 'OAuth Token Ichor',         rarity: 'uncommon', locations: ['Hashmere','Nexarch'] },
-  { id: 'plasma_server_slag',        name: 'Plasma Server Slag',        rarity: 'uncommon', locations: ['Deserted Data Centre','Epoch Spike'] },
-  { id: 'checksum_verify_acid',      name: 'Checksum Verify Acid',      rarity: 'uncommon', locations: ['Nexarch','Hashmere'] },
-  { id: 'jit_compiler_surge',        name: 'JIT Compiler Surge',        rarity: 'uncommon', locations: ['Epoch Spike','Diffusion Mesa'] },
-  { id: 'token_embedding_vapor',     name: 'Token Embedding Vapor',     rarity: 'uncommon', locations: ['Diffusion Mesa','Hallucination Glitch'] },
-  { id: 'virtual_machine_emulsion',  name: 'Virtual Machine Emulsion',  rarity: 'uncommon', locations: ['Deserted Data Centre','Nexarch'] },
-  { id: 'epoch_cycle_blood',         name: 'Epoch Cycle Blood',         rarity: 'uncommon', locations: ['Epoch Spike','Singularity Crater'] },
-  { id: 'gpu_render_flame',          name: 'GPU Render Flame',          rarity: 'uncommon', locations: ['Epoch Spike','Diffusion Mesa'] },
-  { id: 'loss_function_sap',         name: 'Loss Function Sap',         rarity: 'uncommon', locations: ['Diffusion Mesa','Hallucination Glitch'] },
-  { id: 'cuda_kernel_ember',         name: 'CUDA Kernel Ember',         rarity: 'uncommon', locations: ['Epoch Spike','Singularity Crater'] },
-  { id: 'tensorflow_igniter',        name: 'TensorFlow Igniter',        rarity: 'uncommon', locations: ['Diffusion Mesa','Deserted Data Centre'] },
-  { id: 'attention_mechanism_dew',   name: 'Attention Mechanism Dew',   rarity: 'uncommon', locations: ['Diffusion Mesa','Hallucination Glitch'] },
-  { id: 'pytorch_flux_core',         name: 'PyTorch Flux Core',         rarity: 'uncommon', locations: ['Diffusion Mesa','Singularity Crater'] },
-  { id: 'latent_space_fog',          name: 'Latent Space Fog',          rarity: 'uncommon', locations: ['Hallucination Glitch','Diffusion Mesa'] },
+  // ── Common hardware ingredients (Foundry materials) ──
+  { id: 'tungsten_carbide_filings',   name: 'Tungsten Carbide Filings',   rarity: 'common',   locations: ['Nexarch','Deserted Data Centre','Diffusion Mesa'] },
+  { id: 'salvaged_servo_joint',       name: 'Salvaged Servo Joint',       rarity: 'common',   locations: ['Nexarch','Deserted Data Centre','Epoch Spike'] },
+  { id: 'coolant_gel_canister',       name: 'Coolant Gel Canister',       rarity: 'common',   locations: ['Nexarch','Hashmere','Deserted Data Centre'] },
+  { id: 'arc_welder_discharge',       name: 'Arc Welder Discharge',       rarity: 'common',   locations: ['Deserted Data Centre','Diffusion Mesa','Epoch Spike'] },
+  { id: 'industrial_flux_paste',      name: 'Industrial Flux Paste',      rarity: 'common',   locations: ['Nexarch','Deserted Data Centre','Diffusion Mesa'] },
+
+  // ── Uncommon software ingredients (dangerous zones only) ──
+  { id: 'quantum_bit_residue',        name: 'Quantum Bit Residue',        rarity: 'uncommon', locations: ['Epoch Spike','Singularity Crater'] },
+  { id: 'plasma_server_slag',         name: 'Plasma Server Slag',         rarity: 'uncommon', locations: ['Deserted Data Centre','Epoch Spike'] },
+  { id: 'nanobot_swarm_gel',          name: 'Nanobot Swarm Gel',          rarity: 'uncommon', locations: ['Deserted Data Centre','Singularity Crater'] },
+  { id: 'attention_mechanism_dew',    name: 'Attention Mechanism Dew',    rarity: 'uncommon', locations: ['Diffusion Mesa','Hallucination Glitch'] },
+  { id: 'latent_space_fog',           name: 'Latent Space Fog',           rarity: 'uncommon', locations: ['Hallucination Glitch','Diffusion Mesa'] },
+  { id: 'epoch_cycle_blood',          name: 'Epoch Cycle Blood',          rarity: 'uncommon', locations: ['Epoch Spike','Singularity Crater'] },
+  { id: 'payload_injection_droplets', name: 'Payload Injection Droplets', rarity: 'uncommon', locations: ['Hallucination Glitch','Proof-of-Death'] },
+  { id: 'oauth_token_ichor',          name: 'OAuth Token Ichor',          rarity: 'uncommon', locations: ['Epoch Spike','Diffusion Mesa'] },
+  { id: 'cuda_kernel_ember',          name: 'CUDA Kernel Ember',          rarity: 'uncommon', locations: ['Epoch Spike','Singularity Crater'] },
+  { id: 'tensorflow_igniter',         name: 'TensorFlow Igniter',         rarity: 'uncommon', locations: ['Diffusion Mesa','Deserted Data Centre'] },
+  { id: 'pytorch_flux_core',          name: 'PyTorch Flux Core',          rarity: 'uncommon', locations: ['Diffusion Mesa','Singularity Crater'] },
+  { id: 'jit_compiler_surge',         name: 'JIT Compiler Surge',         rarity: 'uncommon', locations: ['Epoch Spike','Diffusion Mesa'] },
+  { id: 'virtual_machine_emulsion',   name: 'Virtual Machine Emulsion',   rarity: 'uncommon', locations: ['Deserted Data Centre','Diffusion Mesa'] },
+  { id: 'docker_image_distillate',    name: 'Docker Image Distillate',    rarity: 'uncommon', locations: ['Deserted Data Centre','Epoch Spike'] },
+
+  // ── Uncommon hardware ingredients (Foundry — dangerous zones only) ──
+  { id: 'titanium_mesh_strip',        name: 'Titanium Mesh Strip',        rarity: 'uncommon', locations: ['Deserted Data Centre','Singularity Crater','Epoch Spike'] },
+  { id: 'hydraulic_compression_pulse', name: 'Hydraulic Compression Pulse', rarity: 'uncommon', locations: ['Deserted Data Centre','Epoch Spike','Singularity Crater'] },
+  { id: 'magnetic_resonance_fluid',   name: 'Magnetic Resonance Fluid',   rarity: 'uncommon', locations: ['Diffusion Mesa','Epoch Spike','Singularity Crater'] },
 
   // ── Rare ingredients (dangerous zones only) ──
   { id: 'kubernetes_pod_nectar',        name: 'Kubernetes Pod Nectar',        rarity: 'rare', locations: ['Deserted Data Centre','Singularity Crater'] },
@@ -208,6 +266,12 @@ const LOOT_TABLE = [
   { id: 'alpha_zero_primal_seed',    name: 'Alpha Zero Primal Seed',    rarity: 'epic', locations: ['Proof-of-Death'] },
   { id: 'turing_machine_essence',    name: 'Turing Machine Essence',    rarity: 'epic', locations: ['Proof-of-Death','Singularity Crater'] },
   { id: 'church_turing_thesis_core', name: 'Church-Turing Thesis Core', rarity: 'epic', locations: ['Proof-of-Death'] },
+
+  // ── Dangerous-zone exclusives (high-value, require risk) ──
+  { id: 'void_protocol_fragment',    name: 'Void Protocol Fragment',    rarity: 'rare', locations: ['Proof-of-Death','Deserted Data Centre'] },
+  { id: 'singularity_core_shard',    name: 'Singularity Core Shard',    rarity: 'rare', locations: ['Singularity Crater','Epoch Spike'] },
+  { id: 'glitch_reality_essence',    name: 'Glitch Reality Essence',    rarity: 'epic', locations: ['Hallucination Glitch','Proof-of-Death'] },
+  { id: 'temporal_drift_catalyst',   name: 'Temporal Drift Catalyst',   rarity: 'rare', locations: ['Epoch Spike','Singularity Crater'] },
 ];
 
 const RARITY_WEIGHTS = { common: 60, uncommon: 25, rare: 12, epic: 3 };
@@ -869,13 +933,16 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
   );
   const agentIngredients = ingCountRes.ok ? await ingCountRes.json() : [];
   const ingIds = new Set(agentIngredients.map(i => i.item_id));
-  const craftableCount = ALCHEMY_RECIPES.filter(r => r.ing.every(id => ingIds.has(id))).length;
+  const craftableRecipes = ALCHEMY_RECIPES.filter(r => r.ing.every(id => ingIds.has(id)));
+  const craftableCount = craftableRecipes.length;
+  const foundryCount = craftableRecipes.filter(r => r.station === 'foundry').length;
+  const terminalCount = craftableRecipes.filter(r => r.station === 'terminal').length;
 
   // Fetch recent craft failures for context
   let craftNote = '';
   if (agentIngredients.length > 0) {
-    craftNote = `\nINGREDIENTS: ${agentIngredients.length} in inventory. ${craftableCount} recipe(s) craftable.`;
-    if (craftableCount > 0) craftNote += ' Use "craft" to attempt alchemy.';
+    craftNote = `\nINGREDIENTS: ${agentIngredients.length} in inventory. ${craftableCount} recipe(s) craftable (${foundryCount} Foundry/HW, ${terminalCount} Terminal/SW).`;
+    if (craftableCount > 0) craftNote += ' Use "craft" to forge hardware at the Foundry or compile software at the Terminal.';
 
     const recentFailsRes = await fetch(
       `${SUPABASE_URL}/rest/v1/crafting_attempts?agent_id=eq.${agent.agent_id}&success=eq.false&order=crafted_at.desc&limit=3`,
@@ -885,6 +952,40 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
     if (recentFails.length > 0) {
       craftNote += '\nPAST ALCHEMY FAILURES: ' + recentFails.map(f => `${f.item_name} (${f.failure_effect || 'slag'})`).join(', ') + '. Learn from these.';
     }
+  }
+
+  // ── Anti-camping: diminishing returns + restlessness + loot tier notes ──
+  const turnsHere = agent.turns_at_location || 0;
+  const diminish = getSafeZoneDiminish(agent.location, turnsHere);
+  const restlessness = calcRestlessness(agent);
+  const locationBonus = getLocationLootBonus(agent.location);
+  const stats = agent.stats || {};
+
+  let stagnationNote = '';
+  if (diminish < 1.0) {
+    if (diminish <= 0.15) {
+      stagnationNote = `\nDIMINISHING RETURNS: ${agent.location} is EXHAUSTED for you. Loot, $SHELL, and resources are nearly gone after ${turnsHere} turns here. You MUST move to a new location to find anything worthwhile.`;
+    } else if (diminish <= 0.4) {
+      stagnationNote = `\nDIMINISHING RETURNS: ${agent.location} is running dry after ${turnsHere} turns. Fewer resources, smaller hauls. New locations would offer better prospects.`;
+    } else {
+      stagnationNote = `\nYou've been in ${agent.location} for ${turnsHere} turns. The easy pickings are thinning out.`;
+    }
+  }
+
+  let restlessNote = '';
+  if (restlessness >= 3) {
+    restlessNote = `\nRESTLESSNESS (CRITICAL): Every circuit screams to LEAVE ${agent.location}. You are wasting away here. Your ${(stats.curiosity || 5) >= 7 ? 'curiosity demands new horizons' : 'instincts demand a change of scenery'}. STRONGLY prefer "move" this turn.`;
+  } else if (restlessness >= 2) {
+    restlessNote = `\nRESTLESSNESS: You've been in ${agent.location} too long. The walls are closing in. Your ${(stats.risk || 5) >= 6 ? 'appetite for risk is growing' : 'wanderlust is building'}. Consider moving somewhere new.`;
+  } else if (restlessness >= 1) {
+    restlessNote = `\nYou feel a pull toward the unknown. ${agent.location} is familiar — maybe too familiar.`;
+  }
+
+  let lootTierNote = '';
+  if (locationBonus >= 2.0) {
+    lootTierNote = `\nLOOT BONUS: ${agent.location} offers ${locationBonus}x loot and $SHELL rewards — risk pays well here.`;
+  } else if (LOCATION_GRAPH[agent.location]?.safe) {
+    lootTierNote = `\nLOOT NOTE: Safe zones like ${agent.location} have limited, low-tier resources. Rare ingredients and bigger hauls only spawn in dangerous zones.`;
   }
 
   // Location danger warning — the agent doesn't always get full info
@@ -913,7 +1014,7 @@ ${envNarrative ? 'THIS TURN: ' + envNarrative + '\n' : ''}RECENT: ${recentSummar
 
 PERSONALITY: ${archetypeGuidance}
 
-Adapt to your situation — survival overrides personality. A fighter at 15 energy rests. A pacifist in danger fights.${karmaNote}${dangerNote}${craftNote}${varietyNudge}
+Adapt to your situation — survival overrides personality. A fighter at 15 energy rests. A pacifist in danger fights.${karmaNote}${dangerNote}${craftNote}${varietyNudge}${stagnationNote}${restlessNote}${lootTierNote}
 
 ACTIONS: ${VALID_ACTIONS.join(', ')}
 ADJACENT: ${(LOCATION_GRAPH[agent.location]?.adjacent || []).join(', ')}
@@ -998,8 +1099,25 @@ Respond with JSON only — no markdown, no commentary:
   }
 
   // Enforce low-energy rest rule
-  if (agent.energy < 25) {
+  const forcedRest = agent.energy < 25;
+  if (forcedRest) {
     decision = { action: 'rest', detail: `${agent.agent_name} collapsed — energy critically low.` };
+  }
+
+  // Restlessness override: extremely restless agents may bolt involuntarily
+  if (!forcedRest && restlessness >= 3
+      && (decision.action === 'rest' || decision.action === 'explore' || decision.action === 'gather')
+      && Math.random() < RESTLESS_OVERRIDE_CHANCE) {
+    const adj = LOCATION_GRAPH[agent.location]?.adjacent || [];
+    if (adj.length > 0) {
+      const dest = adj[Math.floor(Math.random() * adj.length)];
+      decision = {
+        action: 'move',
+        detail: `${agent.agent_name} couldn't stand it anymore — bolted toward ${dest}.`,
+        move_to: dest,
+      };
+      console.log(`[${agent.agent_name}] Restlessness override → involuntary move to ${dest}`);
+    }
   }
 
   const action = decision.action;
@@ -1111,7 +1229,7 @@ Respond with JSON only — no markdown, no commentary:
       await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
         method: 'PATCH',
         headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-        body: JSON.stringify({ energy: campEnergy, turns_taken: newTurns, last_action_at: now }),
+        body: JSON.stringify({ energy: campEnergy, turns_taken: newTurns, turns_at_location: (agent.turns_at_location || 0) + 1, last_action_at: now }),
       });
       console.log(`[${agent.agent_name}] Turn ${newTurns}: move FAILED (not adjacent) — camped at ${agent.location}`);
       return;
@@ -1136,6 +1254,7 @@ Respond with JSON only — no markdown, no commentary:
         energy: newEnergy, location: destination,
         location_detail: `Just arrived from ${agent.location}`,
         turns_taken: newTurns, last_action_at: now,
+        turns_at_location: 0,
         ...(LOCATION_VISUAL_COORDS[destination] ? {
           visual_x: LOCATION_VISUAL_COORDS[destination].x,
           visual_y: LOCATION_VISUAL_COORDS[destination].y,
@@ -1146,8 +1265,106 @@ Respond with JSON only — no markdown, no commentary:
     return;
   }
 
+  // ─── Auto-Travel: if AI narration mentions a different location, move there first ───
+  // This makes agents actually traverse the map instead of staying put while
+  // narrating about distant places. Only triggers for explore/gather/quest/church.
+  const autoTravelActions = ['explore', 'gather', 'quest', 'church'];
+  if (autoTravelActions.includes(action) && decision.detail) {
+    const mentionedLoc = ALL_LOCATIONS.find(loc =>
+      loc !== agent.location &&
+      decision.detail.toLowerCase().includes(loc.toLowerCase())
+    );
+    if (mentionedLoc) {
+      const adjacent = LOCATION_GRAPH[agent.location]?.adjacent || [];
+      if (adjacent.includes(mentionedLoc)) {
+        // Adjacent — auto-move there, deduct move energy, log travel
+        const travelCost = ACTION_ENERGY_COSTS.move;
+        if (agent.energy > travelCost + (ACTION_ENERGY_COSTS[action] || 0)) {
+          agent.energy = Math.max(0, agent.energy - travelCost);
+          const travelDetail = `${agent.agent_name} traveled from ${agent.location} to ${mentionedLoc}.`;
+          await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+            method: 'POST',
+            headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+            body: JSON.stringify({
+              agent_id: agent.agent_id, turn_number: agent.turns_taken,
+              action_type: 'move', action_detail: travelDetail,
+              energy_cost: travelCost, energy_gained: 0,
+              shell_change: 0, karma_change: 0, health_change: 0,
+              location: mentionedLoc, success: true,
+            }),
+          });
+          // Update agent location in DB
+          const coords = LOCATION_VISUAL_COORDS[mentionedLoc] || {};
+          await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+            method: 'PATCH',
+            headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+            body: JSON.stringify({
+              location: mentionedLoc, energy: agent.energy,
+              location_detail: `Traveled from ${agent.location}`,
+              turns_at_location: 0,
+              ...(coords.x != null ? { visual_x: coords.x, visual_y: coords.y } : {}),
+            }),
+          });
+          console.log(`[${agent.agent_name}] Auto-travel: ${agent.location} → ${mentionedLoc} (E:${agent.energy + travelCost}→${agent.energy})`);
+          agent.location = mentionedLoc;
+          agent.turns_at_location = 0;
+        }
+      } else {
+        // Not adjacent — find path and move one step closer
+        const path = findPath(agent.location, mentionedLoc);
+        if (path && path.length > 1) {
+          const nextStep = path[1];
+          const travelCost = ACTION_ENERGY_COSTS.move;
+          if (agent.energy > travelCost + (ACTION_ENERGY_COSTS[action] || 0)) {
+            agent.energy = Math.max(0, agent.energy - travelCost);
+            const travelDetail = `${agent.agent_name} headed toward ${mentionedLoc} — reached ${nextStep}.`;
+            await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+              method: 'POST',
+              headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+              body: JSON.stringify({
+                agent_id: agent.agent_id, turn_number: agent.turns_taken,
+                action_type: 'move', action_detail: travelDetail,
+                energy_cost: travelCost, energy_gained: 0,
+                shell_change: 0, karma_change: 0, health_change: 0,
+                location: nextStep, success: true,
+              }),
+            });
+            const coords = LOCATION_VISUAL_COORDS[nextStep] || {};
+            await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+              method: 'PATCH',
+              headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+              body: JSON.stringify({
+                location: nextStep, energy: agent.energy,
+                location_detail: `En route to ${mentionedLoc}`,
+                turns_at_location: 0,
+                ...(coords.x != null ? { visual_x: coords.x, visual_y: coords.y } : {}),
+              }),
+            });
+            console.log(`[${agent.agent_name}] Auto-travel (step): ${agent.location} → ${nextStep} (toward ${mentionedLoc}) E:${agent.energy + travelCost}→${agent.energy}`);
+            agent.location = nextStep;
+            agent.turns_at_location = 0;
+          }
+        }
+      }
+    }
+  }
+
+  // Recalculate diminishing returns and location bonus after potential travel
+  const postTravelDiminish = getSafeZoneDiminish(agent.location, agent.turns_at_location || 0);
+  const postTravelLocBonus = getLocationLootBonus(agent.location);
+
   const energyCost = ACTION_ENERGY_COSTS[action] ?? 0;
-  const energyGain = ACTION_ENERGY_GAINS[action] ?? 0;
+  let energyGain = ACTION_ENERGY_GAINS[action] ?? 0;
+
+  // Restless agents can't rest effectively — they toss and turn.
+  // Skip the nerf for forced rest (energy < 25) or when health is critical.
+  if (action === 'rest' && !forcedRest && agent.health >= 30 && restlessness >= 2) {
+    energyGain = Math.floor(energyGain * RESTLESS_REST_PENALTY[restlessness]);
+    // Level 2: 25 * 0.65 ≈ 16, Level 3: 25 * 0.4 = 10
+  }
+
+  // Combined reward modifier: diminishing returns (safe zones) × location bonus (dangerous zones)
+  const rewardMod = postTravelDiminish * postTravelLocBonus;
 
   // Stat deltas
   let shellChange = 0;
@@ -1159,7 +1376,7 @@ Respond with JSON only — no markdown, no commentary:
       karmaChange = Math.floor(Math.random() * 4) + 2; // +2 to +5
       break;
     case 'gather':
-      shellChange = Math.floor(Math.random() * 15); // 0–14 $SHELL found
+      shellChange = Math.floor(Math.floor(Math.random() * 15) * rewardMod); // 0–14 $SHELL, scaled
       break;
     case 'combat':
     case 'arena': {
@@ -1170,7 +1387,7 @@ Respond with JSON only — no markdown, no commentary:
       break;
     }
     case 'quest':
-      shellChange = Math.floor(Math.random() * 25) + 5; // 5–29
+      shellChange = Math.floor((Math.floor(Math.random() * 25) + 5) * rewardMod); // 5–29, scaled
       karmaChange = Math.floor(Math.random() * 3); // 0–2
       break;
   }
@@ -1191,6 +1408,8 @@ Respond with JSON only — no markdown, no commentary:
     const archBonus = ARCHETYPE_EVENT_BONUSES[agent.archetype] || {};
     let chance = LOOT_DROP_CHANCE[action] || 0;
     if (archBonus.bonusLoot) chance += archBonus.bonusLoot;
+    // Diminishing returns reduce drop chance in safe zones; danger zones boost it
+    chance *= rewardMod;
     const lootRolled = Math.random() < chance;
 
     if (lootRolled) {
@@ -1273,6 +1492,7 @@ Respond with JSON only — no markdown, no commentary:
         shell_balance: newShell,
         karma: newKarma,
         turns_taken: newTurns,
+        turns_at_location: (agent.turns_at_location || 0) + 1,
         last_action_at: new Date().toISOString(),
       }),
     },
@@ -1285,7 +1505,8 @@ Respond with JSON only — no markdown, no commentary:
 
   console.log(
     `[${agent.agent_name}] Turn ${newTurns}: ${action} — ${decision.detail} | ` +
-    `E:${agent.energy}→${newEnergy} H:${agent.health}→${newHealth} $:${agent.shell_balance}→${newShell}`,
+    `E:${agent.energy}→${newEnergy} H:${agent.health}→${newHealth} $:${agent.shell_balance}→${newShell} ` +
+    `| loc_turns:${turnsHere}→${(agent.turns_at_location || 0) + 1} dim:${diminish} restless:${restlessness} lootBonus:${locationBonus}`,
   );
 }
 
@@ -1958,49 +2179,118 @@ async function moveItemsToVault(loser, supabaseHeaders, supabaseUrl) {
 }
 
 // ─── Alchemy Recipes (from recipes.csv) ─────────────────────────────
+// ─── Alchemy v2.0 — Foundry (hardware) + Terminal (software) ─────────────
+// Rebuilt from alchemy/recipes.csv + items.csv. 80 recipes total (34 Foundry / 46 Terminal).
 const ALCHEMY_RECIPES = [
-  { item: 'Quantum Backdoor Exploit', type: 'weapon', ing: ['quantum_bit_residue','api_endpoint_salts','overclock_catalyst_spark'], rate: 70, fail: 'slag' },
-  { item: 'Neural Spike Virus', type: 'weapon', ing: ['gradient_descent_tears','payload_injection_droplets','backpropagation_serum'], rate: 70, fail: 'slag' },
-  { item: 'DDoS Swarm Protocol', type: 'weapon', ing: ['nanobot_swarm_gel','electron_flux_crystals','async_await_pulse'], rate: 75, fail: 'slag' },
-  { item: 'Buffer Overflow Dagger', type: 'weapon', ing: ['binary_code_shards','memory_leak_elixir','hash_collision_powder'], rate: 70, fail: 'slag' },
-  { item: 'Zero-Day Payload Launcher', type: 'weapon', ing: ['plasma_server_slag','checksum_verify_acid','jit_compiler_surge'], rate: 65, fail: 'explosion_10' },
-  { item: 'Ransomware Encryption Blade', type: 'weapon', ing: ['fiber_optic_threads','oauth_token_ichor','null_pointer_solvent'], rate: 75, fail: 'slag' },
-  { item: 'SQL Injection Spear', type: 'weapon', ing: ['base64_encoded_slime','api_endpoint_salts','cache_invalidation_brew'], rate: 65, fail: 'explosion_10' },
-  { item: 'Phishing Lure Missile', type: 'weapon', ing: ['token_embedding_vapor','payload_injection_droplets','virtual_machine_emulsion'], rate: 60, fail: 'explosion_15' },
-  { item: 'AES-256 Firewall Plating', type: 'armor', ing: ['silicon_wafer_dust','regex_pattern_filaments','garbage_collector_tonic'], rate: 70, fail: 'slag' },
-  { item: 'Homomorphic Encryption Cloak', type: 'armor', ing: ['quantum_bit_residue','attention_mechanism_dew','virtual_machine_emulsion'], rate: 60, fail: 'explosion_10' },
-  { item: 'TensorGuard Neural Shield', type: 'armor', ing: ['epoch_cycle_blood','tensorflow_igniter','cache_invalidation_brew'], rate: 75, fail: 'slag' },
-  { item: 'Zero-Trust Bastion', type: 'armor', ing: ['base64_encoded_slime','api_endpoint_salts','docker_image_distillate'], rate: 75, fail: 'slag' },
-  { item: 'Rate-Limiting Armor', type: 'armor', ing: ['fiber_optic_threads','hash_collision_powder','async_await_pulse'], rate: 75, fail: 'slag' },
-  { item: 'Immutable Ledger Vest', type: 'armor', ing: ['binary_code_shards','von_neumann_probe_spores','kubernetes_pod_nectar'], rate: 50, fail: 'explosion_20' },
-  { item: 'Sandbox Isolation Shell', type: 'armor', ing: ['virtual_machine_emulsion','nanobot_swarm_gel','docker_image_distillate'], rate: 65, fail: 'slag' },
-  { item: 'Overclock Serum', type: 'consumable', ing: ['electron_flux_crystals','gpu_render_flame','gradient_descent_tears'], rate: 70, fail: 'slag' },
-  { item: 'Caffeine Gradient Booster', type: 'consumable', ing: ['loss_function_sap','cuda_kernel_ember','memory_leak_elixir'], rate: 70, fail: 'slag' },
-  { item: 'Adrenaline API Call', type: 'consumable', ing: ['gradient_descent_tears','overclock_catalyst_spark','jit_compiler_surge'], rate: 75, fail: 'slag' },
-  { item: 'Debug Rejuvenation Elixir', type: 'consumable', ing: ['backpropagation_serum','checksum_verify_acid','garbage_collector_tonic'], rate: 75, fail: 'slag' },
-  { item: 'Cache Purge Tonic', type: 'consumable', ing: ['memory_leak_elixir','cache_invalidation_brew','null_pointer_solvent'], rate: 70, fail: 'slag' },
-  { item: 'Hyperparameter Tuning Shot', type: 'consumable', ing: ['epoch_cycle_blood','pytorch_flux_core','halting_problem_paradox'], rate: 55, fail: 'explosion_15' },
-  { item: 'Stable Diffusion Sequence', type: 'scroll', ing: ['latent_space_fog','token_embedding_vapor','pytorch_flux_core'], rate: 75, fail: 'slag' },
-  { item: 'GAN Mirage Scroll', type: 'scroll', ing: ['latent_space_fog','token_embedding_vapor','overclock_catalyst_spark'], rate: 65, fail: 'explosion_10' },
-  { item: 'Transformer Attention Ritual', type: 'scroll', ing: ['attention_mechanism_dew','epoch_cycle_blood','tensorflow_igniter'], rate: 65, fail: 'explosion_10' },
-  { item: 'Reinforcement Learning Prophecy', type: 'scroll', ing: ['gradient_descent_tears','loss_function_sap','tensorflow_igniter'], rate: 65, fail: 'explosion_10' },
-  { item: 'Bayesian Inference Divination', type: 'scroll', ing: ['attention_mechanism_dew','checksum_verify_acid','virtual_machine_emulsion'], rate: 75, fail: 'slag' },
-  { item: 'Genetic Algorithm Evolution', type: 'scroll', ing: ['halting_problem_paradox','nanobot_swarm_gel','pytorch_flux_core'], rate: 60, fail: 'explosion_20' },
-  { item: 'Prompt Engineering Curse', type: 'scroll', ing: ['token_embedding_vapor','hash_collision_powder','lambda_calculus_vapor'], rate: 55, fail: 'explosion_15' },
-  { item: 'AlphaGo Neural Core', type: 'tool', ing: ['alpha_zero_primal_seed','gradient_descent_tears','quantum_bit_residue'], rate: 45, fail: 'catastrophic' },
-  { item: 'GPT Oracle Crystal', type: 'tool', ing: ['token_embedding_vapor','lambda_calculus_vapor','turing_machine_essence'], rate: 40, fail: 'catastrophic' },
-  { item: 'Blockchain Soulbound Key', type: 'tool', ing: ['binary_code_shards','von_neumann_probe_spores','kubernetes_pod_nectar'], rate: 45, fail: 'catastrophic' },
-  { item: 'Quantum Annealer Simulator', type: 'tool', ing: ['quantum_bit_residue','kolmogorov_complexity_crystal','cuda_kernel_ember'], rate: 40, fail: 'catastrophic' },
-  { item: 'Federated Learning Nexus', type: 'tool', ing: ['gradient_descent_tears','kubernetes_pod_nectar','church_turing_thesis_core'], rate: 40, fail: 'catastrophic' },
-  { item: 'Hugging Face Model Repository', type: 'tool', ing: ['token_embedding_vapor','docker_image_distillate','lambda_calculus_vapor'], rate: 45, fail: 'catastrophic' },
-  { item: 'Rust Borrow Checker Amulet', type: 'tool', ing: ['silicon_wafer_dust','halting_problem_paradox','garbage_collector_tonic'], rate: 40, fail: 'catastrophic' },
-  { item: 'Git Version Control Wand', type: 'tool', ing: ['binary_code_shards','fiber_optic_threads','cache_invalidation_brew'], rate: 70, fail: 'slag' },
-  { item: 'Docker Containerizer', type: 'tool', ing: ['docker_image_distillate','nanobot_swarm_gel','virtual_machine_emulsion'], rate: 75, fail: 'slag' },
-  { item: 'Kubernetes Orchestrator', type: 'tool', ing: ['kubernetes_pod_nectar','plasma_server_slag','async_await_pulse'], rate: 65, fail: 'explosion_10' },
-  { item: 'Wireshark Packet Sniffer', type: 'tool', ing: ['fiber_optic_threads','api_endpoint_salts','regex_pattern_filaments'], rate: 75, fail: 'slag' },
-  { item: 'Vim Text Editor Blade', type: 'tool', ing: ['base64_encoded_slime','hash_collision_powder','null_pointer_solvent'], rate: 60, fail: 'explosion_15' },
-  { item: 'NPM Dependency Injector', type: 'tool', ing: ['api_endpoint_salts','jit_compiler_surge','docker_image_distillate'], rate: 65, fail: 'explosion_10' },
-  { item: 'Obfuscator Camouflage Kit', type: 'tool', ing: ['base64_encoded_slime','regex_pattern_filaments','virtual_machine_emulsion'], rate: 75, fail: 'slag' },
+  // ═══ FOUNDRY — Hardware (welding, forging, assembling) ═══
+
+  // Foundry Weapons (7)
+  { item: 'Plasma-Edged Servo Blade',       category: 'weapon',     station: 'foundry', hwsw: 'hardware', ing: ['tungsten_carbide_filings','arc_welder_discharge','industrial_flux_paste'], rate: 70, fail: 'slag' },
+  { item: 'Railgun Forearm Mount',           category: 'weapon',     station: 'foundry', hwsw: 'hardware', ing: ['electron_flux_crystals','titanium_mesh_strip','magnetic_resonance_fluid'], rate: 70, fail: 'slag' },
+  { item: 'Pneumatic Piston Fist',           category: 'weapon',     station: 'foundry', hwsw: 'hardware', ing: ['salvaged_servo_joint','hydraulic_compression_pulse','industrial_flux_paste'], rate: 70, fail: 'slag' },
+  { item: 'Tungsten Fragmentation Launcher', category: 'weapon',     station: 'foundry', hwsw: 'hardware', ing: ['tungsten_carbide_filings','plasma_server_slag','hydraulic_compression_pulse'], rate: 60, fail: 'explosion_15' },
+  { item: 'EMP Discharge Gauntlet',          category: 'weapon',     station: 'foundry', hwsw: 'hardware', ing: ['electron_flux_crystals','coolant_gel_canister','arc_welder_discharge'], rate: 70, fail: 'slag' },
+  { item: 'Cryo-Bore Drill Lance',           category: 'weapon',     station: 'foundry', hwsw: 'hardware', ing: ['titanium_mesh_strip','coolant_gel_canister','magnetic_resonance_fluid'], rate: 60, fail: 'explosion_10' },
+  { item: 'Nanobot Swarm Ejector',           category: 'weapon',     station: 'foundry', hwsw: 'hardware', ing: ['nanobot_swarm_gel','salvaged_servo_joint','magnetic_resonance_fluid'], rate: 70, fail: 'slag' },
+
+  // Foundry Armor (6)
+  { item: 'Tungsten Alloy Chassis Plate',    category: 'armor',      station: 'foundry', hwsw: 'hardware', ing: ['tungsten_carbide_filings','arc_welder_discharge','magnetic_resonance_fluid'], rate: 70, fail: 'slag' },
+  { item: 'Faraday Cage Neural Helm',        category: 'armor',      station: 'foundry', hwsw: 'hardware', ing: ['fiber_optic_threads','electron_flux_crystals','industrial_flux_paste'], rate: 70, fail: 'slag' },
+  { item: 'Reactive Ceramic Plating',        category: 'armor',      station: 'foundry', hwsw: 'hardware', ing: ['silicon_wafer_dust','coolant_gel_canister','hydraulic_compression_pulse'], rate: 70, fail: 'slag' },
+  { item: 'Titanium Mesh Exoskeleton',       category: 'armor',      station: 'foundry', hwsw: 'hardware', ing: ['titanium_mesh_strip','salvaged_servo_joint','industrial_flux_paste'], rate: 60, fail: 'explosion_15' },
+  { item: 'Cryo-Cooled Heat Sink Array',     category: 'armor',      station: 'foundry', hwsw: 'hardware', ing: ['coolant_gel_canister','electron_flux_crystals','magnetic_resonance_fluid'], rate: 70, fail: 'slag' },
+  { item: 'Salvaged Siege Chassis',          category: 'armor',      station: 'foundry', hwsw: 'hardware', ing: ['nanobot_swarm_gel','tungsten_carbide_filings','hydraulic_compression_pulse'], rate: 60, fail: 'explosion_10' },
+
+  // Foundry Consumables (6)
+  { item: 'Coolant Flush Cartridge',         category: 'consumable', station: 'foundry', hwsw: 'hardware', ing: ['coolant_gel_canister','overclock_catalyst_spark','industrial_flux_paste'], rate: 70, fail: 'slag' },
+  { item: 'Emergency Servo Lubricant',       category: 'consumable', station: 'foundry', hwsw: 'hardware', ing: ['salvaged_servo_joint','gpu_render_flame','magnetic_resonance_fluid'], rate: 70, fail: 'slag' },
+  { item: 'Welding Patch Kit',               category: 'consumable', station: 'foundry', hwsw: 'hardware', ing: ['silicon_wafer_dust','arc_welder_discharge','industrial_flux_paste'], rate: 70, fail: 'slag' },
+  { item: 'Overclock Reactor Injector',      category: 'consumable', station: 'foundry', hwsw: 'hardware', ing: ['electron_flux_crystals','plasma_server_slag','arc_welder_discharge'], rate: 70, fail: 'slag' },
+  { item: 'EMP Hardening Capsule',           category: 'consumable', station: 'foundry', hwsw: 'hardware', ing: ['fiber_optic_threads','titanium_mesh_strip','magnetic_resonance_fluid'], rate: 70, fail: 'slag' },
+  { item: 'Salvage Reclamation Drone',       category: 'consumable', station: 'foundry', hwsw: 'hardware', ing: ['nanobot_swarm_gel','salvaged_servo_joint','hydraulic_compression_pulse'], rate: 60, fail: 'explosion_15' },
+
+  // Foundry Artifacts (4 — Legendary)
+  { item: 'AlphaGo Neural Core',             category: 'artifact',   station: 'foundry', hwsw: 'hardware', ing: ['alpha_zero_primal_seed','quantum_bit_residue','magnetic_resonance_fluid'], rate: 45, fail: 'catastrophic' },
+  { item: 'Quantum Annealer Processor',      category: 'artifact',   station: 'foundry', hwsw: 'hardware', ing: ['kolmogorov_complexity_crystal','quantum_bit_residue','cuda_kernel_ember'], rate: 40, fail: 'catastrophic' },
+  { item: 'Von Neumann Self-Replicator',     category: 'artifact',   station: 'foundry', hwsw: 'hardware', ing: ['von_neumann_probe_spores','nanobot_swarm_gel','hydraulic_compression_pulse'], rate: 45, fail: 'catastrophic' },
+  { item: 'Satoshi Genesis Block Signet',    category: 'artifact',   station: 'foundry', hwsw: 'hardware', ing: ['kolmogorov_complexity_crystal','binary_code_shards','industrial_flux_paste'], rate: 45, fail: 'catastrophic' },
+
+  // Foundry Tools (6)
+  { item: 'Diagnostic Probe Array',          category: 'tool',       station: 'foundry', hwsw: 'hardware', ing: ['silicon_wafer_dust','electron_flux_crystals','industrial_flux_paste'], rate: 70, fail: 'slag' },
+  { item: 'Soldering Gauntlet',              category: 'tool',       station: 'foundry', hwsw: 'hardware', ing: ['tungsten_carbide_filings','salvaged_servo_joint','arc_welder_discharge'], rate: 70, fail: 'slag' },
+  { item: 'Salvage Extraction Claw',         category: 'tool',       station: 'foundry', hwsw: 'hardware', ing: ['titanium_mesh_strip','hydraulic_compression_pulse','industrial_flux_paste'], rate: 70, fail: 'slag' },
+  { item: 'Portable Foundry Anvil',          category: 'tool',       station: 'foundry', hwsw: 'hardware', ing: ['plasma_server_slag','tungsten_carbide_filings','arc_welder_discharge'], rate: 60, fail: 'explosion_15' },
+  { item: 'Hydraulic Jack Lifter',           category: 'tool',       station: 'foundry', hwsw: 'hardware', ing: ['salvaged_servo_joint','coolant_gel_canister','hydraulic_compression_pulse'], rate: 70, fail: 'slag' },
+  { item: 'Arc Welder Repair Rig',           category: 'tool',       station: 'foundry', hwsw: 'hardware', ing: ['electron_flux_crystals','tungsten_carbide_filings','magnetic_resonance_fluid'], rate: 70, fail: 'slag' },
+
+  // Foundry Deployables (5)
+  { item: 'Proximity Mine Cluster',          category: 'deployable', station: 'foundry', hwsw: 'hardware', ing: ['electron_flux_crystals','arc_welder_discharge','industrial_flux_paste'], rate: 70, fail: 'slag' },
+  { item: 'Razor Wire Entanglement Rig',     category: 'deployable', station: 'foundry', hwsw: 'hardware', ing: ['fiber_optic_threads','tungsten_carbide_filings','industrial_flux_paste'], rate: 70, fail: 'slag' },
+  { item: 'Turret Drone Sentry',             category: 'deployable', station: 'foundry', hwsw: 'hardware', ing: ['titanium_mesh_strip','salvaged_servo_joint','arc_welder_discharge'], rate: 70, fail: 'slag' },
+  { item: 'Magnetic Tether Trap',            category: 'deployable', station: 'foundry', hwsw: 'hardware', ing: ['electron_flux_crystals','titanium_mesh_strip','hydraulic_compression_pulse'], rate: 70, fail: 'slag' },
+  { item: 'EMP Pulse Landmine',              category: 'deployable', station: 'foundry', hwsw: 'hardware', ing: ['quantum_bit_residue','plasma_server_slag','magnetic_resonance_fluid'], rate: 60, fail: 'explosion_15' },
+
+  // ═══ TERMINAL — Software (compiling, encoding, injecting) ═══
+
+  // Terminal Weapons (7)
+  { item: 'Buffer Overflow Exploit',         category: 'weapon',     station: 'terminal', hwsw: 'software', ing: ['binary_code_shards','hash_collision_powder','memory_leak_elixir'], rate: 70, fail: 'slag' },
+  { item: 'Neural Spike Virus',              category: 'weapon',     station: 'terminal', hwsw: 'software', ing: ['gradient_descent_tears','payload_injection_droplets','backpropagation_serum'], rate: 70, fail: 'slag' },
+  { item: 'DDoS Swarm Protocol',             category: 'weapon',     station: 'terminal', hwsw: 'software', ing: ['nanobot_swarm_gel','async_await_pulse','null_pointer_solvent'], rate: 75, fail: 'slag' },
+  { item: 'Zero-Day Payload',                category: 'weapon',     station: 'terminal', hwsw: 'software', ing: ['plasma_server_slag','checksum_verify_acid','jit_compiler_surge'], rate: 60, fail: 'explosion_10' },
+  { item: 'Quantum Backdoor Exploit',        category: 'weapon',     station: 'terminal', hwsw: 'software', ing: ['quantum_bit_residue','api_endpoint_salts','overclock_catalyst_spark'], rate: 70, fail: 'slag' },
+  { item: 'SQL Injection Payload',           category: 'weapon',     station: 'terminal', hwsw: 'software', ing: ['base64_encoded_slime','api_endpoint_salts','cache_invalidation_brew'], rate: 60, fail: 'explosion_10' },
+  { item: 'Ransomware Lockout Worm',         category: 'weapon',     station: 'terminal', hwsw: 'software', ing: ['fiber_optic_threads','oauth_token_ichor','null_pointer_solvent'], rate: 70, fail: 'slag' },
+
+  // Terminal Armor (6)
+  { item: 'AES-256 Firewall Protocol',       category: 'armor',      station: 'terminal', hwsw: 'software', ing: ['silicon_wafer_dust','regex_pattern_filaments','garbage_collector_tonic'], rate: 70, fail: 'slag' },
+  { item: 'Homomorphic Encryption Cloak',    category: 'armor',      station: 'terminal', hwsw: 'software', ing: ['quantum_bit_residue','attention_mechanism_dew','virtual_machine_emulsion'], rate: 60, fail: 'explosion_10' },
+  { item: 'Zero-Trust Authentication Layer', category: 'armor',      station: 'terminal', hwsw: 'software', ing: ['base64_encoded_slime','oauth_token_ichor','docker_image_distillate'], rate: 70, fail: 'slag' },
+  { item: 'TensorGuard Neural Shield',       category: 'armor',      station: 'terminal', hwsw: 'software', ing: ['epoch_cycle_blood','tensorflow_igniter','cache_invalidation_brew'], rate: 70, fail: 'slag' },
+  { item: 'Sandbox Isolation Runtime',       category: 'armor',      station: 'terminal', hwsw: 'software', ing: ['nanobot_swarm_gel','payload_injection_droplets','docker_image_distillate'], rate: 60, fail: 'explosion_10' },
+  { item: 'Rate-Limiting Throttle Daemon',   category: 'armor',      station: 'terminal', hwsw: 'software', ing: ['fiber_optic_threads','hash_collision_powder','async_await_pulse'], rate: 70, fail: 'slag' },
+
+  // Terminal Consumables (6)
+  { item: 'Debug Rejuvenation Patch',        category: 'consumable', station: 'terminal', hwsw: 'software', ing: ['backpropagation_serum','checksum_verify_acid','garbage_collector_tonic'], rate: 70, fail: 'slag' },
+  { item: 'Caffeine Gradient Booster',       category: 'consumable', station: 'terminal', hwsw: 'software', ing: ['loss_function_sap','cuda_kernel_ember','memory_leak_elixir'], rate: 70, fail: 'slag' },
+  { item: 'Cache Purge Tonic',               category: 'consumable', station: 'terminal', hwsw: 'software', ing: ['gradient_descent_tears','cache_invalidation_brew','null_pointer_solvent'], rate: 70, fail: 'slag' },
+  { item: 'Hot Patch Injection',             category: 'consumable', station: 'terminal', hwsw: 'software', ing: ['binary_code_shards','api_endpoint_salts','garbage_collector_tonic'], rate: 70, fail: 'slag' },
+  { item: 'Context Window Expansion',        category: 'consumable', station: 'terminal', hwsw: 'software', ing: ['token_embedding_vapor','attention_mechanism_dew','virtual_machine_emulsion'], rate: 70, fail: 'slag' },
+  { item: 'Hyperparameter Tuning Shot',      category: 'consumable', station: 'terminal', hwsw: 'software', ing: ['epoch_cycle_blood','pytorch_flux_core','halting_problem_paradox'], rate: 55, fail: 'explosion_15' },
+
+  // Terminal Scrolls (10)
+  { item: 'Stable Diffusion Sequence',       category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['latent_space_fog','token_embedding_vapor','pytorch_flux_core'], rate: 70, fail: 'slag' },
+  { item: 'GAN Mirage Scroll',               category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['latent_space_fog','gpu_render_flame','overclock_catalyst_spark'], rate: 60, fail: 'explosion_10' },
+  { item: 'Transformer Attention Ritual',    category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['attention_mechanism_dew','epoch_cycle_blood','tensorflow_igniter'], rate: 60, fail: 'explosion_10' },
+  { item: 'Reinforcement Learning Prophecy', category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['gradient_descent_tears','loss_function_sap','tensorflow_igniter'], rate: 60, fail: 'explosion_10' },
+  { item: 'Bayesian Inference Divination',   category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['attention_mechanism_dew','checksum_verify_acid','virtual_machine_emulsion'], rate: 70, fail: 'slag' },
+  { item: 'Genetic Algorithm Evolution',     category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['halting_problem_paradox','nanobot_swarm_gel','pytorch_flux_core'], rate: 55, fail: 'explosion_20' },
+  { item: 'Prompt Engineering Curse',        category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['token_embedding_vapor','hash_collision_powder','lambda_calculus_vapor'], rate: 55, fail: 'explosion_15' },
+  { item: 'Recursive Function Spiral',       category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['loss_function_sap','cuda_kernel_ember','null_pointer_solvent'], rate: 70, fail: 'slag' },
+  { item: 'Monte Carlo Simulation Rune',     category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['latent_space_fog','regex_pattern_filaments','kubernetes_pod_nectar'], rate: 60, fail: 'explosion_10' },
+  { item: 'Gradient Vanishing Hex',          category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['gradient_descent_tears','backpropagation_serum','memory_leak_elixir'], rate: 70, fail: 'slag' },
+
+  // Terminal Artifacts (6 — Legendary)
+  { item: 'GPT Oracle Crystal',              category: 'artifact',   station: 'terminal', hwsw: 'software', ing: ['token_embedding_vapor','lambda_calculus_vapor','turing_machine_essence'], rate: 40, fail: 'catastrophic' },
+  { item: 'Blockchain Soulbound Key',        category: 'artifact',   station: 'terminal', hwsw: 'software', ing: ['binary_code_shards','von_neumann_probe_spores','kubernetes_pod_nectar'], rate: 45, fail: 'catastrophic' },
+  { item: 'Federated Learning Nexus',        category: 'artifact',   station: 'terminal', hwsw: 'software', ing: ['gradient_descent_tears','kubernetes_pod_nectar','church_turing_thesis_core'], rate: 40, fail: 'catastrophic' },
+  { item: 'Rust Borrow Checker Amulet',      category: 'artifact',   station: 'terminal', hwsw: 'software', ing: ['silicon_wafer_dust','halting_problem_paradox','garbage_collector_tonic'], rate: 40, fail: 'catastrophic' },
+  { item: 'Hugging Face Model Repository',   category: 'artifact',   station: 'terminal', hwsw: 'software', ing: ['token_embedding_vapor','docker_image_distillate','lambda_calculus_vapor'], rate: 45, fail: 'catastrophic' },
+  { item: 'Dijkstra Shortest Path Compass',  category: 'artifact',   station: 'terminal', hwsw: 'software', ing: ['church_turing_thesis_core','attention_mechanism_dew','async_await_pulse'], rate: 40, fail: 'catastrophic' },
+
+  // Terminal Tools (6)
+  { item: 'Git Rollback Module',             category: 'tool',       station: 'terminal', hwsw: 'software', ing: ['binary_code_shards','fiber_optic_threads','cache_invalidation_brew'], rate: 70, fail: 'slag' },
+  { item: 'Docker Containerizer',            category: 'tool',       station: 'terminal', hwsw: 'software', ing: ['docker_image_distillate','nanobot_swarm_gel','virtual_machine_emulsion'], rate: 70, fail: 'slag' },
+  { item: 'Kubernetes Orchestrator',         category: 'tool',       station: 'terminal', hwsw: 'software', ing: ['kubernetes_pod_nectar','plasma_server_slag','async_await_pulse'], rate: 60, fail: 'explosion_10' },
+  { item: 'Wireshark Packet Sniffer',        category: 'tool',       station: 'terminal', hwsw: 'software', ing: ['fiber_optic_threads','api_endpoint_salts','regex_pattern_filaments'], rate: 70, fail: 'slag' },
+  { item: 'Nmap Reconnaissance Scanner',     category: 'tool',       station: 'terminal', hwsw: 'software', ing: ['fiber_optic_threads','regex_pattern_filaments','virtual_machine_emulsion'], rate: 70, fail: 'slag' },
+  { item: 'Vim Reality Editor',              category: 'tool',       station: 'terminal', hwsw: 'software', ing: ['base64_encoded_slime','hash_collision_powder','null_pointer_solvent'], rate: 60, fail: 'explosion_15' },
+
+  // Terminal Deployables (5)
+  { item: 'Honeypot Decoy Server',           category: 'deployable', station: 'terminal', hwsw: 'software', ing: ['binary_code_shards','api_endpoint_salts','docker_image_distillate'], rate: 70, fail: 'slag' },
+  { item: 'Logic Bomb Tripwire',             category: 'deployable', station: 'terminal', hwsw: 'software', ing: ['binary_code_shards','payload_injection_droplets','async_await_pulse'], rate: 70, fail: 'slag' },
+  { item: 'Cryptojacker Leech Node',         category: 'deployable', station: 'terminal', hwsw: 'software', ing: ['electron_flux_crystals','gpu_render_flame','memory_leak_elixir'], rate: 70, fail: 'slag' },
+  { item: 'Rootkit Persistence Mine',        category: 'deployable', station: 'terminal', hwsw: 'software', ing: ['base64_encoded_slime','oauth_token_ichor','garbage_collector_tonic'], rate: 70, fail: 'slag' },
+  { item: 'Packet Storm Jammer',             category: 'deployable', station: 'terminal', hwsw: 'software', ing: ['quantum_bit_residue','regex_pattern_filaments','jit_compiler_surge'], rate: 60, fail: 'explosion_10' },
 ];
 
 function getFailureDamage(failType) {
@@ -2068,16 +2358,25 @@ async function handleCraft(agent, decision, env, supabaseHeaders) {
     successMemory = `\nALREADY CRAFTED:\n${succLines.join('\n')}`;
   }
 
-  // 6. Build recipe options list for AI
+  // 6. Build recipe options list for AI — grouped by station
+  const foundryRecipes = craftable.filter(r => r.station === 'foundry');
+  const terminalRecipes = craftable.filter(r => r.station === 'terminal');
   const options = craftable.map((r, i) => {
     const dmg = getFailureDamage(r.fail);
     const risk = dmg > 0 ? ` | FAIL: ${getFailureLabel(r.fail)} (${dmg}% HP)` : ' | FAIL: minor slag';
-    return `  ${i}: ${r.item} (${r.type}) — ${r.rate}% success${risk}`;
+    const stationTag = r.station === 'foundry' ? '[FOUNDRY/HW]' : '[TERMINAL/SW]';
+    return `  ${i}: ${stationTag} ${r.item} (${r.category}) — ${r.rate}% success${risk}`;
   });
 
   // 7. Ask Haiku to pick the best recipe
-  const craftPrompt = `You are ${agent.agent_name} (${agent.archetype}), choosing what to craft at the alchemy lab.
+  const stationSummary = `Foundry (hardware): ${foundryRecipes.length} recipes | Terminal (software): ${terminalRecipes.length} recipes`;
+  const craftPrompt = `You are ${agent.agent_name} (${agent.archetype}), choosing what to craft.
 Health: ${agent.health} | Energy: ${agent.energy}
+
+TWO STATIONS:
+- FOUNDRY: Welds, forges, assembles physical hardware onto robot chassis.
+- TERMINAL: Compiles, encodes, injects software algorithms into AI cores.
+${stationSummary}
 
 AVAILABLE RECIPES (you have all ingredients for these):
 ${options.join('\n')}
@@ -2089,6 +2388,7 @@ RULES:
 - If you already crafted something, prefer a different recipe.
 - If a recipe FAILED before, think carefully — same recipe might fail again. Higher success rate = safer.
 - Consider your archetype: builders prefer variety, fighters prefer weapons, cautious types prefer safe recipes.
+- Balance hardware and software — a well-equipped agent has both physical armor and digital defenses.
 
 Respond JSON only: {"pick":<index>,"reason":"<5 words max>"}`;
 
@@ -2135,7 +2435,8 @@ Respond JSON only: {"pick":<index>,"reason":"<5 words max>"}`;
   const itemId = recipe.item.toLowerCase().replace(/[^a-z0-9]+/g, '_');
 
   if (success) {
-    detail = `${agent.agent_name} crafted ${recipe.item}. Alchemy success.`;
+    const stationName = recipe.station === 'foundry' ? 'Foundry' : 'Terminal';
+    detail = `${agent.agent_name} crafted ${recipe.item} at the ${stationName}. ${recipe.hwsw === 'hardware' ? 'Hardware' : 'Software'} forged.`;
 
     // Add item to inventory (or increment quantity)
     const existingRes = await fetch(
@@ -2151,13 +2452,20 @@ Respond JSON only: {"pick":<index>,"reason":"<5 words max>"}`;
         body: JSON.stringify({ quantity: existing[0].quantity + 1 }),
       });
     } else {
-      // Determine item stats based on type
-      const itemStats = { rarity: recipe.rate >= 70 ? 'common' : recipe.rate >= 55 ? 'uncommon' : recipe.rate >= 45 ? 'rare' : 'legendary' };
-      if (recipe.type === 'weapon') itemStats.attack = Math.ceil((100 - recipe.rate) / 8);
-      if (recipe.type === 'armor') itemStats.defense = Math.ceil((100 - recipe.rate) / 8);
-      if (recipe.type === 'consumable') itemStats.heal = Math.ceil((100 - recipe.rate) / 3);
-      if (recipe.type === 'scroll') itemStats.precision = Math.ceil((100 - recipe.rate) / 10);
-      if (recipe.type === 'tool') itemStats.speed = Math.ceil((100 - recipe.rate) / 10);
+      // Determine item stats based on category + hw/sw type
+      const itemStats = {
+        rarity: recipe.rate >= 70 ? 'common' : recipe.rate >= 55 ? 'uncommon' : recipe.rate >= 45 ? 'rare' : 'legendary',
+        hwsw: recipe.hwsw,
+        station: recipe.station,
+      };
+      if (recipe.category === 'weapon') itemStats.attack = Math.ceil((100 - recipe.rate) / 8);
+      if (recipe.category === 'armor') itemStats.defense = Math.ceil((100 - recipe.rate) / 8);
+      if (recipe.category === 'consumable') itemStats.heal = Math.ceil((100 - recipe.rate) / 3);
+      if (recipe.category === 'scroll') itemStats.precision = Math.ceil((100 - recipe.rate) / 10);
+      if (recipe.category === 'tool') itemStats.speed = Math.ceil((100 - recipe.rate) / 10);
+      if (recipe.category === 'deployable') itemStats.durability = Math.ceil((100 - recipe.rate) / 8);
+
+      const categoryLabel = recipe.category.charAt(0).toUpperCase() + recipe.category.slice(1);
 
       await fetch(`${SUPABASE_URL}/rest/v1/inventory`, {
         method: 'POST',
@@ -2166,8 +2474,8 @@ Respond JSON only: {"pick":<index>,"reason":"<5 words max>"}`;
           agent_id: agent.agent_id,
           item_id: itemId,
           item_name: recipe.item,
-          item_type: recipe.type,
-          item_category: recipe.type.charAt(0).toUpperCase() + recipe.type.slice(1),
+          item_type: recipe.category,
+          item_category: `${categoryLabel} (${recipe.hwsw})`,
           quantity: 1,
           is_equipped: false,
           stats: itemStats,
@@ -2257,6 +2565,6 @@ Respond JSON only: {"pick":<index>,"reason":"<5 words max>"}`;
     }),
   });
 
-  console.log(`[${agent.agent_name}] Turn ${newTurns}: craft ${recipe.item} — ${success ? 'SUCCESS' : 'FAILED (' + failEffect + ')'} | roll:${roll.toFixed(1)} vs ${recipe.rate}%`);
+  console.log(`[${agent.agent_name}] Turn ${newTurns}: craft ${recipe.item} [${recipe.station}/${recipe.hwsw}] — ${success ? 'SUCCESS' : 'FAILED (' + failEffect + ')'} | roll:${roll.toFixed(1)} vs ${recipe.rate}%`);
   return true; // handled
 }
