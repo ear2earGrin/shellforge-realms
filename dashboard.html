@@ -2074,6 +2074,13 @@
             cursor: pointer;
             transition: all 0.3s ease;
             position: relative;
+            overflow: hidden;
+        }
+        .inventory-slot .slot-icon-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 2px;
         }
 
         .inventory-slot:hover {
@@ -6757,6 +6764,19 @@
             artifact: '💠', tool: '🔧', material: '🧱', ingredient: '🧬'
         };
 
+        // Resolve item icon path from name
+        function resolveItemIcon(name) {
+            if (!name) return null;
+            var slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+            var img = new Image();
+            img.src = 'images/items/' + slug + '.jpg';
+            // Cache result to avoid repeated 404 checks
+            if (!resolveItemIcon._cache) resolveItemIcon._cache = {};
+            if (slug in resolveItemIcon._cache) return resolveItemIcon._cache[slug];
+            resolveItemIcon._cache[slug] = 'images/items/' + slug + '.jpg';
+            return resolveItemIcon._cache[slug];
+        }
+
         function getItemMeta(item) {
             // Try ALCHEMY_ITEMS first (crafted items have full metadata)
             var meta = ALCHEMY_ITEMS[item.item_id];
@@ -6768,18 +6788,21 @@
                     cat: meta.cat,
                     rarity: dbRarity || meta.rarity,
                     desc: meta.desc,
-                    emoji: meta.emoji
+                    emoji: meta.emoji,
+                    image: (item.stats && item.stats.icon) || resolveItemIcon(meta.name)
                 };
             }
             // Fallback: build from DB row
             var rarity = 'Common';
             if (item.stats && item.stats.rarity) rarity = item.stats.rarity.charAt(0).toUpperCase() + item.stats.rarity.slice(1);
+            var itemName = item.item_name || item.item_id;
             return {
-                name: item.item_name || item.item_id,
+                name: itemName,
                 cat: (item.item_type || 'unknown').charAt(0).toUpperCase() + (item.item_type || '').slice(1),
                 rarity: rarity,
                 desc: (item.stats && item.stats.desc) ? item.stats.desc : '',
-                emoji: TYPE_EMOJI_FALLBACK[item.item_type] || '📦'
+                emoji: TYPE_EMOJI_FALLBACK[item.item_type] || '📦',
+                image: (item.stats && item.stats.icon) || resolveItemIcon(itemName)
             };
         }
 
@@ -6863,7 +6886,12 @@
             html += ' data-item-id="' + item.item_id + '"';
             if (item.inventory_id) html += ' data-inv-id="' + item.inventory_id + '"';
             html += ' data-item-type="' + (item.item_type || '') + '"';
-            html += '>' + (meta.emoji || '📦');
+            html += '>';
+            if (meta.image) {
+                html += '<img class="slot-icon-img" src="' + meta.image + '" alt="' + escInvAttr(meta.name) + '" onerror="this.style.display=\'none\';this.parentNode.insertAdjacentText(\'beforeend\',\'' + (meta.emoji || '📦').replace(/'/g, "\\'") + '\')">';
+            } else {
+                html += (meta.emoji || '📦');
+            }
             if (item.quantity > 1) {
                 html += '<div class="item-count">' + item.quantity + '</div>';
             }
