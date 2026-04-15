@@ -16,6 +16,46 @@
     <link rel="stylesheet" href="style-v2.css">
     <link rel="stylesheet" href="terminal-notifications.css">
     <style>
+        /* ─── First Boot Fade-In ─── */
+        body.first-boot {
+            opacity: 0;
+            animation: bootFadeIn 2s ease 0.3s forwards;
+        }
+        @keyframes bootFadeIn {
+            to { opacity: 1; }
+        }
+
+        /* ─── Guided Whisper Hints ─── */
+        .ghost-hint {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 240, 255, 0.08);
+            border: 1px solid rgba(0, 240, 255, 0.25);
+            border-radius: 4px;
+            padding: 12px 24px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 13px;
+            color: #8a8a9a;
+            font-style: italic;
+            z-index: 9000;
+            max-width: 500px;
+            text-align: center;
+            opacity: 0;
+            animation: hintFadeIn 1s ease 0.5s forwards;
+            pointer-events: none;
+        }
+        .ghost-hint.fade-out {
+            animation: hintFadeOut 1s ease forwards;
+        }
+        @keyframes hintFadeIn {
+            to { opacity: 1; }
+        }
+        @keyframes hintFadeOut {
+            to { opacity: 0; }
+        }
+
         /* ── Global game-styled scrollbars ── */
         * {
             scrollbar-width: thin;
@@ -5570,6 +5610,47 @@
         // Update journey debug info (debug panels removed, function kept as stub)
         function updateJourneyDebug() {}
         
+        // ─── First Boot Detection & Guided Hints ───────────────────
+        function initFirstBoot() {
+            const params = new URLSearchParams(window.location.search);
+            const isFirstBoot = params.get('firstBoot') === '1' || localStorage.getItem('shellforgeFirstBoot') === 'true';
+            if (!isFirstBoot) return;
+
+            document.body.classList.add('first-boot');
+
+            localStorage.removeItem('shellforgeFirstBoot');
+            if (params.has('firstBoot')) {
+                params.delete('firstBoot');
+                const cleanUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+                history.replaceState(null, '', cleanUrl);
+            }
+
+            const hints = [
+                { text: 'Your agent is alive. It will act on its own every few hours.', delay: 5000 },
+                { text: 'Use the whisper panel to suggest actions — but it may ignore you.', delay: 18000 },
+                { text: 'Watch the activity feed. Every choice shapes its karma and story.', delay: 35000 }
+            ];
+
+            hints.forEach(h => {
+                setTimeout(() => showGhostHint(h.text), h.delay);
+            });
+        }
+
+        function showGhostHint(text) {
+            const existing = document.querySelector('.ghost-hint');
+            if (existing) existing.remove();
+
+            const hint = document.createElement('div');
+            hint.className = 'ghost-hint';
+            hint.textContent = text;
+            document.body.appendChild(hint);
+
+            setTimeout(() => {
+                hint.classList.add('fade-out');
+                setTimeout(() => hint.remove(), 1000);
+            }, 8000);
+        }
+
         // Load agent data on page load
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🔧 DOMContentLoaded fired');
@@ -5578,7 +5659,9 @@
             } catch(e) {
                 console.error('🔧 ERROR in loadAgentData:', e);
             }
-            
+
+            initFirstBoot();
+
             // Update debug every second
             setInterval(updateJourneyDebug, 1000);
             
