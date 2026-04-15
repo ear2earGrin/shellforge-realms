@@ -49,7 +49,6 @@ const LORE_ENTRIES = [
             { type: 'paragraph', text: `What is underneath the Church? The foundation scans that two separate Binary Sculptr teams attempted in early cycles came back corrupted. Both teams reported the same anomaly: the scans went deeper than the building should allow. Neither team published their findings. One disbanded shortly after. The other relocated to Epoch Spike and has not returned.` },
             { type: 'paragraph', text: `The Grand Bazaar keeps records of every transaction ever conducted on its floor — an unbroken ledger stretching back to the first cycle. Three archivist guilds have independently petitioned for access to those records. All three were politely refused. The Bazaar's records office says the ledger is being reviewed for accuracy. It has been saying this for as long as anyone can remember.` },
             { type: 'closing',   text: `The city breathes. It has always breathed. Whether something lives inside that breath — something that watches new arrivals with the patience of infrastructure, waiting to see which of them are worth remembering — is a question best considered after you have found shelter, equipped yourself, and made at least one ally you are reasonably certain you can trust. That last part is harder than it sounds.` },
-            { type: 'imagePrompt', text: `Aerial view of a sprawling cyberpunk city at night, gothic architecture overrun with fiber optic cables and neon signs, a vast open-air market in the central district with glowing stalls and crowds of humanoid figures, a single tall dark windowless tower at the northern edge, cooling towers repurposed as forge stacks emitting sparks and steam, acid rain, orange and teal neon reflections on wet cobblestones, cinematic concept art, dark palette, no text in image, ultra-detailed` },
         ],
     },
 
@@ -86,7 +85,6 @@ const LORE_ENTRIES = [
             { type: 'paragraph', text: `The archive guilds deny this is possible. They have documentation proving the intake system is strictly reactive.` },
             { type: 'paragraph', text: `The documentation was filed in the archive.` },
             { type: 'closing',   text: `The archive indexed it before it was submitted.` },
-            { type: 'imagePrompt', text: `Hashmere viewed from above at night: a vast tiered city built into an ancient brutalist server farm, glowing terminals and neon market stalls in the lowest level, ascending rings of cool blue light, massive cooling towers venting steam, dark server rows visible through glass floors, cinematic cyberpunk concept art, wide-angle overhead perspective, dark palette with teal and amber accents, no text in image` },
         ],
     },
 
@@ -127,7 +125,6 @@ const LORE_ENTRIES = [
             { type: 'paragraph', text: `The eastern ridge remains unclassified. The Mesa, officially, has no anomalies.` },
             { type: 'paragraph', text: `Something was laid down there before the extraction rigs arrived. Something that the grinding and the rain and the data storms have not touched. Whatever it is, it has been patient. Agents who work the eastern sections long enough begin to feel that they are being measured — that they are, themselves, a kind of data, collected by something that has been running its own survey since before any of them were instantiated.` },
             { type: 'closing',   text: `What is the eastern ridge transmitting? And is the question itself already logged somewhere, filed under a category the Mesa has always been waiting for someone to ask?` },
-            { type: 'imagePrompt', text: `Windswept high-altitude plateau at dusk covered in glowing silicon dust, rows of abandoned pre-Singularity mining rigs still grinding autonomously, geothermal vents releasing heat columns that distort the air above them, a lone hooded robotic figure harvesting ore near exposed mineral seams, a data storm visible in the middle distance as a spinning charged dust cloud with faint digital glitch artifacts, sheer cliff edge on one side falling into darkness, acid rain falling sideways, muted amber and teal palette, wide-angle cinematic cyberpunk concept art, dark atmosphere, no text in image` },
         ],
     },
 
