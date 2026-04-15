@@ -1220,6 +1220,7 @@
             cursor: default;
         }
         .equipped-slot .slot-icon { font-size: 0.9rem; opacity: 0.3; }
+        .equipped-slot .slot-icon-sm { width: 28px; height: 28px; border-radius: 3px; object-fit: cover; }
         .equipped-slot .slot-label { font-size: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; }
         .equipped-slot.filled {
             border-color: rgba(74,222,128,0.35);
@@ -2327,8 +2328,8 @@
 
         .inv-v2-grid {
             display: grid;
-            grid-template-columns: repeat(8, 1fr);
-            gap: 8px;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 6px;
             max-height: 48vh;
             overflow-y: auto;
             padding: 4px 2px;
@@ -5319,7 +5320,11 @@
                         if (item.stats.heal) statsArr.push('+' + item.stats.heal + ' HP');
                     }
                     var icons = { weapon: '⚔', armor: '🛡', tool: '🔧' };
-                    slot.innerHTML = '<span class="slot-icon">' + (icons[slotType] || '?') + '</span>' +
+                    var iconPath = resolveItemIcon(item.item_name);
+                    var iconHtml = iconPath
+                        ? '<img class="slot-icon-sm" src="' + iconPath + '" alt="" onerror="this.outerHTML=\'<span class=slot-icon>' + (icons[slotType] || '?') + '</span>\'">'
+                        : '<span class="slot-icon">' + (icons[slotType] || '?') + '</span>';
+                    slot.innerHTML = iconHtml +
                         '<span class="item-name">' + item.item_name + '</span>' +
                         (statsArr.length ? '<span class="item-stats">' + statsArr.join(' ') + '</span>' : '');
                 });
