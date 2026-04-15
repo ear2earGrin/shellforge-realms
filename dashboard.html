@@ -482,7 +482,7 @@
 
         /* modal inventory grid override */
         .modal-body .inventory-grid {
-            grid-template-columns: repeat(5, 1fr);
+            grid-template-columns: repeat(8, 1fr);
         }
         .modal-body .inventory-slot {
             display: flex; flex-direction: column;
@@ -1206,33 +1206,54 @@
             background: rgba(74,222,128,0.04);
             border: 1px solid rgba(74,222,128,0.15);
             border-radius: 5px;
-            padding: 6px 4px;
+            padding: 4px;
             text-align: center;
             font-size: 0.58rem;
             color: rgba(200,200,200,0.5);
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 3px;
+            gap: 2px;
             min-height: 44px;
             justify-content: center;
             position: relative;
             cursor: default;
         }
         .equipped-slot .slot-icon { font-size: 0.9rem; opacity: 0.3; }
-        .equipped-slot .slot-icon-sm { width: 28px; height: 28px; border-radius: 3px; object-fit: cover; }
-        .equipped-slot .slot-label { font-size: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .equipped-slot .slot-icon-sm { width: 32px; height: 32px; border-radius: 3px; object-fit: cover; }
+        .equipped-slot .slot-label { font-size: 0.45rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.5; }
         .equipped-slot.filled {
             border-color: rgba(74,222,128,0.35);
             background: rgba(74,222,128,0.08);
             color: var(--color-primary);
         }
         .equipped-slot.filled .slot-icon { opacity: 1; }
+        .equipped-slot.filled .slot-label { display: none; }
+        .equipped-slot .equip-tooltip {
+            display: none;
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 10, 15, 0.95);
+            border: 1px solid rgba(74, 222, 128, 0.3);
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 0.55rem;
+            color: #e0e0e0;
+            white-space: nowrap;
+            z-index: 100;
+            pointer-events: none;
+        }
+        .equipped-slot.filled:hover .equip-tooltip { display: block; }
+        .equip-tooltip .eq-name { color: #4ade80; font-weight: bold; }
+        .equip-tooltip .eq-stats { color: #00f0ff; margin-top: 2px; }
         .equipped-slot .item-name {
             font-size: 0.52rem;
             color: var(--color-primary);
             max-width: 100%;
             overflow: hidden;
+            display: none;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
@@ -5324,9 +5345,9 @@
                     var iconHtml = iconPath
                         ? '<img class="slot-icon-sm" src="' + iconPath + '" alt="" onerror="this.outerHTML=\'<span class=slot-icon>' + (icons[slotType] || '?') + '</span>\'">'
                         : '<span class="slot-icon">' + (icons[slotType] || '?') + '</span>';
-                    slot.innerHTML = iconHtml +
-                        '<span class="item-name">' + item.item_name + '</span>' +
-                        (statsArr.length ? '<span class="item-stats">' + statsArr.join(' ') + '</span>' : '');
+                    var tooltipHtml = '<div class="equip-tooltip"><div class="eq-name">' + item.item_name + '</div>' +
+                        (statsArr.length ? '<div class="eq-stats">' + statsArr.join(' ') + '</div>' : '') + '</div>';
+                    slot.innerHTML = iconHtml + tooltipHtml;
                 });
             });
         }
