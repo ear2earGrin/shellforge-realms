@@ -2155,6 +2155,158 @@
         }
         .inventory-slot { user-select: none; -webkit-user-select: none; }
 
+        /* ───── INVENTORY V2: Tabbed Arsenal View ───── */
+        /* Wider modal for the inventory specifically */
+        #modal-inventory { width: 740px; max-width: 96vw; }
+        #modal-inventory .modal-box {
+            width: 740px; max-width: 96vw; max-height: 88vh;
+        }
+        @media (max-width: 720px) {
+            #modal-inventory { width: 96vw; }
+            #modal-inventory .modal-box { width: 96vw; max-height: 90vh; }
+        }
+
+        .inv-v2 { display: flex; flex-direction: column; gap: 12px; }
+
+        .inv-v2-stats {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 14px;
+            background: rgba(255, 204, 0, 0.07);
+            border: 1px solid rgba(255, 204, 0, 0.22);
+            border-radius: 6px;
+        }
+        .inv-v2-stats .inv-stat-shell {
+            font-family: var(--font-title);
+            color: #ffcc00;
+            font-size: 0.95rem;
+            letter-spacing: 0.08em;
+        }
+        .inv-v2-stats .inv-stat-total {
+            font-family: var(--font-title);
+            color: var(--color-text-dim);
+            font-size: 0.68rem;
+            letter-spacing: 0.12em;
+        }
+
+        .inv-v2-equipped {
+            padding: 10px 12px 12px;
+            background: rgba(74, 222, 128, 0.04);
+            border: 1px solid rgba(74, 222, 128, 0.22);
+            border-radius: 6px;
+        }
+        .inv-v2-equipped-label {
+            font-family: var(--font-title);
+            font-size: 0.6rem;
+            color: var(--color-text-dim);
+            letter-spacing: 0.18em;
+            margin-bottom: 8px;
+        }
+        .inv-v2-equipped-slots {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+        }
+        @media (max-width: 480px) {
+            .inv-v2-equipped-slots { grid-template-columns: repeat(5, 1fr); }
+        }
+
+        .inv-v2-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            padding: 2px 0;
+        }
+        .inv-tab {
+            background: transparent;
+            border: 1px solid rgba(74, 222, 128, 0.2);
+            color: var(--color-text-dim);
+            padding: 5px 9px;
+            border-radius: 4px;
+            font-family: var(--font-title);
+            font-size: 0.62rem;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .inv-tab:hover {
+            border-color: rgba(74, 222, 128, 0.5);
+            color: var(--color-text);
+        }
+        .inv-tab.active {
+            background: rgba(74, 222, 128, 0.13);
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+            box-shadow: 0 0 8px rgba(74, 222, 128, 0.2);
+        }
+        .inv-tab-count {
+            background: rgba(0, 0, 0, 0.45);
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 0.55rem;
+            min-width: 14px;
+            text-align: center;
+        }
+        .inv-tab.active .inv-tab-count { background: rgba(74, 222, 128, 0.2); }
+
+        .inv-v2-rarity-filter {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            padding-top: 8px;
+            border-top: 1px dashed rgba(74, 222, 128, 0.12);
+        }
+        .inv-rarity {
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--color-text-dim);
+            padding: 3px 7px;
+            border-radius: 3px;
+            font-size: 0.55rem;
+            letter-spacing: 0.1em;
+            font-family: var(--font-title);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .inv-rarity:hover { color: var(--color-text); }
+        .inv-rarity.active { border-color: currentColor; background: rgba(255, 255, 255, 0.03); }
+        .inv-rarity[data-r="common"]    { color: #8a9a8a; }
+        .inv-rarity[data-r="uncommon"]  { color: #4ade80; }
+        .inv-rarity[data-r="rare"]      { color: #60a5fa; }
+        .inv-rarity[data-r="epic"]      { color: #c084fc; }
+        .inv-rarity[data-r="legendary"] { color: #fbbf24; }
+
+        .inv-v2-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 8px;
+            max-height: 48vh;
+            overflow-y: auto;
+            padding: 4px 2px;
+        }
+        @media (max-width: 720px) {
+            .inv-v2-grid { grid-template-columns: repeat(6, 1fr); }
+        }
+        @media (max-width: 480px) {
+            .inv-v2-grid { grid-template-columns: repeat(5, 1fr); max-height: 52vh; }
+        }
+        .inv-v2-grid::-webkit-scrollbar { width: 6px; }
+        .inv-v2-grid::-webkit-scrollbar-track { background: rgba(74, 222, 128, 0.03); }
+        .inv-v2-grid::-webkit-scrollbar-thumb { background: rgba(74, 222, 128, 0.25); border-radius: 3px; }
+        .inv-v2-grid::-webkit-scrollbar-thumb:hover { background: rgba(74, 222, 128, 0.45); }
+
+        .inv-v2-empty {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--color-text-dim);
+            font-family: var(--font-title);
+            font-size: 0.75rem;
+            letter-spacing: 0.1em;
+        }
+
         /* ── Death Screen ── */
         .death-overlay {
             display: none;
@@ -4062,11 +4214,8 @@
                 <button class="modal-close-btn" onclick="closeModal('inventory')">✕</button>
             </div>
             <div class="modal-body">
-                <div style="font-family:var(--font-title);font-size:1rem;color:#ffcc00;text-align:center;padding:10px;background:rgba(255,204,0,0.07);border:1px solid rgba(255,204,0,0.2);border-radius:6px;margin-bottom:16px;letter-spacing:0.08em;">
-                    💰 <span id="shellBalanceModal">--</span> $SHELL
-                </div>
                 <div id="inventoryContainer">
-                    <div style="text-align:center;color:#4a6a4a;padding:30px;font-family:var(--font-title);letter-spacing:0.08em;font-size:0.85rem;">Loading inventory...</div>
+                    <div class="inv-v2-empty">Loading inventory…</div>
                 </div>
             </div>
         </div>
@@ -4208,9 +4357,16 @@
         async function sbGet(table, query) {
             try {
                 const r = await fetch(SUPABASE_URL + '/rest/v1/' + table + '?' + query, { headers: SB_HEADERS });
-                if (!r.ok) return null;
+                if (!r.ok) {
+                    const errText = await r.text().catch(() => '');
+                    console.error('[sbGet] ' + table + ' failed: HTTP ' + r.status, errText);
+                    return null;
+                }
                 return await r.json();
-            } catch(e) { return null; }
+            } catch(e) {
+                console.error('[sbGet] ' + table + ' threw:', e);
+                return null;
+            }
         }
 
         async function sbPost(table, body) {
@@ -4220,9 +4376,16 @@
                     headers: { ...SB_HEADERS, 'Prefer': 'return=representation' },
                     body: JSON.stringify(body)
                 });
-                if (!r.ok) return null;
+                if (!r.ok) {
+                    const errText = await r.text().catch(() => '');
+                    console.error('[sbPost] ' + table + ' failed: HTTP ' + r.status, errText, 'body:', body);
+                    return null;
+                }
                 return await r.json();
-            } catch(e) { return null; }
+            } catch(e) {
+                console.error('[sbPost] ' + table + ' threw:', e, 'body:', body);
+                return null;
+            }
         }
 
         // ─── Agent in-memory state (source of truth: Supabase) ─────
@@ -4522,14 +4685,25 @@
             function buildTooltipHTML(slot) {
                 var rarity = (slot.dataset.rarity || 'common').toLowerCase();
                 var color = RARITY_COLORS[rarity] || RARITY_COLORS.common;
+                var isAI = slot.dataset.ai === '1';
                 var html = '<div style="font-size:0.95rem;letter-spacing:0.08em;margin-bottom:6px;color:' + color + ';font-weight:bold;">&gt; ' +
-                    (slot.dataset.name || '').toUpperCase() + '</div>';
+                    (slot.dataset.name || '').toUpperCase();
+                if (isAI) {
+                    html += ' <span style="font-size:0.55rem;color:#00f0ff;border:1px solid #00f0ff;padding:1px 4px;margin-left:4px;border-radius:3px;letter-spacing:0.1em;vertical-align:middle;">AI</span>';
+                }
+                html += '</div>';
                 html += '<div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;opacity:0.8;">' +
                     '<span style="margin-right:8px;">&gt; Type: ' + (slot.dataset.type || 'Unknown') + '</span>' +
                     '<span style="color:' + color + ';">&gt; ' + rarity.charAt(0).toUpperCase() + rarity.slice(1) + '</span></div>';
                 if (slot.dataset.desc) {
                     html += '<div style="font-size:0.75rem;color:#a0b0a8;line-height:1.5;margin-bottom:8px;font-style:italic;border-top:1px solid rgba(74,222,128,0.15);padding-top:8px;">' +
                         slot.dataset.desc + '</div>';
+                }
+                if (slot.dataset.traits) {
+                    var traits = slot.dataset.traits.split(',').map(function(t) {
+                        return '<span style="display:inline-block;font-size:0.62rem;color:#00f0ff;border:1px solid rgba(0,240,255,0.35);background:rgba(0,240,255,0.08);padding:2px 6px;margin:0 4px 4px 0;border-radius:3px;letter-spacing:0.06em;text-transform:uppercase;">' + t.trim() + '</span>';
+                    }).join('');
+                    html += '<div style="margin-bottom:8px;">' + traits + '</div>';
                 }
                 if (slot.dataset.stats) {
                     var stats = slot.dataset.stats.split('|').map(function(s) {
@@ -6545,91 +6719,172 @@
             return prices[rarity] || 10;
         }
 
+        // ─── Inventory V2: Tabbed Arsenal View ─────────────────────
+        var _invV2State = {
+            items: [],
+            activeCat: 'all',
+            activeRarity: 'all'
+        };
+
+        var INV_V2_TABS = [
+            { cat: 'all',        icon: '▣',  label: 'ALL' },
+            { cat: 'weapon',     icon: '⚔️', label: '' },
+            { cat: 'armor',      icon: '🛡️', label: '' },
+            { cat: 'consumable', icon: '🧪', label: '' },
+            { cat: 'scroll',     icon: '📜', label: '' },
+            { cat: 'artifact',   icon: '🔮', label: '' },
+            { cat: 'tool',       icon: '🔧', label: '' },
+            { cat: 'material',   icon: '🧱', label: '' },
+            { cat: 'ingredient', icon: '🧬', label: '' }
+        ];
+
+        var INV_V2_RARITIES = ['all', 'common', 'uncommon', 'rare', 'epic', 'legendary'];
+
         async function loadInventory(agentId) {
             var container = document.getElementById('inventoryContainer');
             if (!container) return;
 
-            // Update shell balance
-            var shellEl = document.getElementById('shellBalanceModal');
-            if (shellEl && _currentAgent) {
-                shellEl.textContent = _currentAgent.shell != null ? _currentAgent.shell : '--';
-            }
+            container.innerHTML = '<div class="inv-v2-empty">Loading inventory…</div>';
 
-            // Show loading
-            container.innerHTML = '<div style="text-align:center;color:#4a6a4a;padding:30px;font-family:var(--font-title);letter-spacing:0.08em;font-size:0.85rem;">Loading inventory...</div>';
-
-            // Fetch all non-ingredient items
-            var items = await sbGet('inventory', 'agent_id=eq.' + agentId + '&item_type=neq.ingredient&select=*&order=item_type,item_name');
+            // Fetch ALL items including ingredients — they deserve a home too
+            var items = await sbGet('inventory', 'agent_id=eq.' + agentId + '&select=*&order=is_equipped.desc,item_type.asc,item_name.asc');
             if (!items) items = [];
 
-            // Group by type
-            var grouped = {};
-            items.forEach(function(item) {
-                var t = item.item_type || 'unknown';
-                if (!grouped[t]) grouped[t] = [];
-                grouped[t].push(item);
-            });
+            _invV2State.items = items;
+            _invV2State.activeCat = 'all';
+            _invV2State.activeRarity = 'all';
 
-            // Build HTML — show core categories always, others only if they have items
-            var coreCats = ['weapon', 'armor', 'consumable'];
-            var html = '';
-            INV_CATEGORIES.forEach(function(cat) {
-                var catItems = grouped[cat.type] || [];
-                // Skip non-core empty categories
-                if (catItems.length === 0 && coreCats.indexOf(cat.type) === -1) return;
+            renderInvV2();
+        }
 
-                html += '<div class="inventory-category">';
-                html += '<div class="category-title">' + cat.icon + ' ' + cat.label;
-                if (catItems.length > 0) html += ' <span style="opacity:0.5;font-size:0.75rem;">(' + catItems.length + ')</span>';
-                html += '</div>';
-                html += '<div class="inventory-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:12px;">';
+        function renderInvSlot(item) {
+            var meta = getItemMeta(item);
+            var rarity = (meta.rarity || 'common').toLowerCase();
+            var statsStr = getItemStats(item);
+            var price = getItemPrice(item);
+            var equipped = item.is_equipped ? ' equipped' : '';
 
-                // Render actual items
-                catItems.forEach(function(item) {
-                    var meta = getItemMeta(item);
-                    var rarity = (meta.rarity || 'common').toLowerCase();
-                    var statsStr = getItemStats(item) || meta.desc || '';
-                    var price = getItemPrice(item);
-                    var equipped = item.is_equipped ? ' equipped' : '';
+            // AI-generated items carry traits + a bespoke description in stats
+            var traits = (item.stats && Array.isArray(item.stats.traits)) ? item.stats.traits : [];
+            var aiGenerated = !!(item.stats && item.stats.ai_generated);
 
-                    html += '<div class="inventory-slot' + equipped + '"';
-                    html += ' data-name="' + escInvAttr(meta.name) + '"';
-                    html += ' data-type="' + escInvAttr(meta.cat) + '"';
-                    html += ' data-rarity="' + rarity + '"';
-                    html += ' data-desc="' + escInvAttr(meta.desc) + '"';
-                    if (statsStr) html += ' data-stats="' + escInvAttr(statsStr) + '"';
-                    html += ' data-price="' + price + '"';
-                    html += ' data-item-id="' + item.item_id + '"';
-                    if (item.inventory_id) html += ' data-inv-id="' + item.inventory_id + '"';
-                    html += ' data-item-type="' + (item.item_type || '') + '"';
-                    html += '>' + (meta.emoji || '📦');
-                    if (item.quantity > 1) {
-                        html += '<div class="item-count">' + item.quantity + '</div>';
-                    }
-                    if (item.is_equipped) {
-                        html += '<div style="position:absolute;top:1px;right:3px;font-size:0.55rem;color:#4ade80;">E</div>';
-                    }
-                    html += '</div>';
-                });
-
-                // Fill remaining with empty slots
-                var remaining = Math.max(0, cat.slots - catItems.length);
-                for (var e = 0; e < remaining; e++) {
-                    html += '<div class="inventory-slot empty"></div>';
-                }
-
-                html += '</div></div>';
-            });
-
-            // Only show categories that have items or are core (weapons, armor, consumables)
-            // Actually, show all — gives the player a sense of what's possible
-            if (items.length === 0) {
-                html = '<div style="text-align:center;color:#4a6a4a;padding:30px;font-family:var(--font-title);letter-spacing:0.08em;font-size:0.85rem;">' +
-                    'Inventory is empty. Your agent needs to explore and acquire items.' +
-                    '</div>';
+            var html = '<div class="inventory-slot' + equipped + '"';
+            html += ' data-name="' + escInvAttr(meta.name) + '"';
+            html += ' data-type="' + escInvAttr(meta.cat) + '"';
+            html += ' data-rarity="' + rarity + '"';
+            html += ' data-desc="' + escInvAttr(meta.desc) + '"';
+            if (statsStr) html += ' data-stats="' + escInvAttr(statsStr) + '"';
+            if (traits.length) html += ' data-traits="' + escInvAttr(traits.join(',')) + '"';
+            if (aiGenerated) html += ' data-ai="1"';
+            html += ' data-price="' + price + '"';
+            html += ' data-item-id="' + item.item_id + '"';
+            if (item.inventory_id) html += ' data-inv-id="' + item.inventory_id + '"';
+            html += ' data-item-type="' + (item.item_type || '') + '"';
+            html += '>' + (meta.emoji || '📦');
+            if (item.quantity > 1) {
+                html += '<div class="item-count">' + item.quantity + '</div>';
             }
+            if (item.is_equipped) {
+                html += '<div style="position:absolute;top:1px;right:3px;font-size:0.55rem;color:#4ade80;">E</div>';
+            }
+            html += '</div>';
+            return html;
+        }
+
+        function renderInvV2() {
+            var container = document.getElementById('inventoryContainer');
+            if (!container) return;
+
+            var items = _invV2State.items || [];
+            var shell = (_currentAgent && _currentAgent.shell != null) ? _currentAgent.shell : '--';
+
+            // Count per category
+            var catCounts = { all: items.length };
+            items.forEach(function(it) {
+                var t = it.item_type || 'unknown';
+                catCounts[t] = (catCounts[t] || 0) + 1;
+            });
+
+            // Equipped strip (any category)
+            var equipped = items.filter(function(it) { return it.is_equipped; });
+
+            var html = '<div class="inv-v2">';
+
+            // Stats header
+            html += '<div class="inv-v2-stats">';
+            html += '<span class="inv-stat-shell">💰 ' + shell + ' $SHELL</span>';
+            html += '<span class="inv-stat-total">' + items.length + ' ITEMS</span>';
+            html += '</div>';
+
+            // Equipped strip — keep .inventory-grid class so drag/drop still scopes correctly
+            html += '<div class="inv-v2-equipped">';
+            html += '<div class="inv-v2-equipped-label">EQUIPPED</div>';
+            html += '<div class="inv-v2-equipped-slots inventory-grid">';
+            equipped.forEach(function(item) { html += renderInvSlot(item); });
+            // Pad to at least 6 slots
+            var padSlots = Math.max(0, 6 - equipped.length);
+            for (var p = 0; p < padSlots; p++) {
+                html += '<div class="inventory-slot empty"></div>';
+            }
+            html += '</div></div>';
+
+            // Category tabs
+            html += '<div class="inv-v2-tabs">';
+            INV_V2_TABS.forEach(function(t) {
+                var count = catCounts[t.cat] || 0;
+                // Hide empty non-core tabs to reduce visual noise, but always keep ALL + weapon/armor/consumable
+                var coreTabs = ['all','weapon','armor','consumable'];
+                if (count === 0 && coreTabs.indexOf(t.cat) === -1) return;
+                var active = _invV2State.activeCat === t.cat ? ' active' : '';
+                html += '<button type="button" class="inv-tab' + active + '" onclick="setInvTab(\'' + t.cat + '\')">';
+                html += t.icon + (t.label ? ' ' + t.label : '');
+                html += ' <span class="inv-tab-count">' + count + '</span>';
+                html += '</button>';
+            });
+            html += '</div>';
+
+            // Rarity filter
+            html += '<div class="inv-v2-rarity-filter">';
+            INV_V2_RARITIES.forEach(function(r) {
+                var active = _invV2State.activeRarity === r ? ' active' : '';
+                html += '<button type="button" class="inv-rarity' + active + '" data-r="' + r + '" onclick="setInvRarity(\'' + r + '\')">' + r.toUpperCase() + '</button>';
+            });
+            html += '</div>';
+
+            // Filtered grid — keep .inventory-grid class for drag/drop scoping
+            html += '<div class="inv-v2-grid inventory-grid">';
+            var filtered = items.filter(function(it) {
+                if (_invV2State.activeCat !== 'all' && it.item_type !== _invV2State.activeCat) return false;
+                if (_invV2State.activeRarity !== 'all') {
+                    var meta = getItemMeta(it);
+                    var rarity = (meta.rarity || 'common').toLowerCase();
+                    if (rarity !== _invV2State.activeRarity) return false;
+                }
+                return true;
+            });
+
+            if (items.length === 0) {
+                html += '<div class="inv-v2-empty">Inventory is empty. Your agent needs to explore and acquire items.</div>';
+            } else if (filtered.length === 0) {
+                html += '<div class="inv-v2-empty">No items match this filter.</div>';
+            } else {
+                filtered.forEach(function(item) { html += renderInvSlot(item); });
+            }
+            html += '</div>';
+
+            html += '</div>'; // .inv-v2
 
             container.innerHTML = html;
+        }
+
+        function setInvTab(cat) {
+            _invV2State.activeCat = cat;
+            renderInvV2();
+        }
+
+        function setInvRarity(rarity) {
+            _invV2State.activeRarity = rarity;
+            renderInvV2();
         }
 
         function escInvAttr(str) {
@@ -6843,26 +7098,24 @@
             var shell = _currentAgent.shell || 0;
             if (shell < item.current_price) return;
 
-            // 1. Deduct $SHELL from agent
-            var newShell = shell - item.current_price;
-            await fetch(SUPABASE_URL + '/rest/v1/agents?agent_id=eq.' + _currentAgent.agentId, {
-                method: 'PATCH',
-                headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                body: JSON.stringify({ shell_balance: newShell })
-            });
-            _currentAgent.shell = newShell;
-
-            // 2. Add item to inventory (upsert)
+            // 1. Add item to inventory FIRST (so we never deduct shells without granting the item)
             var itemId = item.item_id || item.item_name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
             var existing = await sbGet('inventory', 'agent_id=eq.' + _currentAgent.agentId + '&item_id=eq.' + itemId + '&select=inventory_id,quantity');
+            var invOk = false;
             if (existing && existing.length > 0) {
-                await fetch(SUPABASE_URL + '/rest/v1/inventory?inventory_id=eq.' + existing[0].inventory_id, {
+                var patchRes = await fetch(SUPABASE_URL + '/rest/v1/inventory?inventory_id=eq.' + existing[0].inventory_id, {
                     method: 'PATCH',
                     headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
                     body: JSON.stringify({ quantity: existing[0].quantity + 1 })
                 });
+                if (!patchRes.ok) {
+                    var patchErr = await patchRes.text().catch(() => '');
+                    console.error('[marketBuy] inventory PATCH failed:', patchRes.status, patchErr);
+                } else {
+                    invOk = true;
+                }
             } else {
-                await sbPost('inventory', {
+                var inserted = await sbPost('inventory', {
                     agent_id: _currentAgent.agentId,
                     item_id: itemId,
                     item_name: item.item_name,
@@ -6872,7 +7125,30 @@
                     is_equipped: false,
                     stats: { rarity: 'common', price: item.base_price }
                 });
+                invOk = inserted !== null;
             }
+
+            if (!invOk) {
+                console.error('[marketBuy] ABORT: inventory write failed for', item.item_name, '— shells NOT deducted');
+                if (typeof showNotification === 'function') {
+                    showNotification('Purchase failed: could not add item to inventory', 'error');
+                } else {
+                    alert('Purchase failed: could not add item to inventory');
+                }
+                return;
+            }
+
+            // 2. Deduct $SHELL from agent (only after inventory write succeeded)
+            var newShell = shell - item.current_price;
+            var shellPatchRes = await fetch(SUPABASE_URL + '/rest/v1/agents?agent_id=eq.' + _currentAgent.agentId, {
+                method: 'PATCH',
+                headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                body: JSON.stringify({ shell_balance: newShell })
+            });
+            if (!shellPatchRes.ok) {
+                console.error('[marketBuy] shell deduction failed:', shellPatchRes.status);
+            }
+            _currentAgent.shell = newShell;
 
             // 3. Update market listing (stock--, demand_count++, recalc price)
             var newStock = item.stock - 1;

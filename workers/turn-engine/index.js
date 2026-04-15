@@ -215,6 +215,127 @@ const RARITY_WEIGHTS = { common: 60, uncommon: 25, rare: 12, epic: 3 };
 // Base drop chances per action type. Archetype bonusLoot adds to these.
 const LOOT_DROP_CHANCE = { explore: 0.20, gather: 0.45 };
 
+// ─── AI-Generated Item Traits ──────────────────────────────────────────────
+// When Haiku narrates finding an item, it can propose an item with up to 3
+// traits from this whitelist. Unknown traits are dropped during sanitization.
+// Traits are purely cosmetic/flavor for now — they feed into the tooltip and
+// influence future arena dialog, but don't modify stats directly.
+const AI_ITEM_TRAITS = new Set([
+  // Materials / composition
+  'corrupted', 'crystalline', 'volatile', 'encrypted', 'fragmented',
+  'dormant', 'radiant', 'organic', 'metallic',
+  // Combat / edge
+  'sharp', 'reinforced', 'unstable', 'precise', 'ghostly',
+  // Utility / essence
+  'efficient', 'memory-rich', 'catalytic', 'resonant', 'spectral',
+  // Value / origin
+  'rare-pattern', 'prototype', 'signed', 'contraband', 'ancient',
+  // Flaws / drawbacks
+  'fragile', 'decaying', 'glitching', 'cursed',
+]);
+
+const AI_ITEM_RARITIES = new Set(['common', 'uncommon', 'rare']);
+// Max 80-char item names, 120-char descriptions
+const AI_ITEM_NAME_MAX = 60;
+const AI_ITEM_DESC_MAX = 120;
+
+// Validate + clamp an AI-proposed item so nothing dangerous makes it into the DB.
+// Returns a cleaned item object, or null if the proposal is unsalvageable.
+function sanitizeAIItem(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const name = typeof raw.name === 'string' ? raw.name.trim().slice(0, AI_ITEM_NAME_MAX) : '';
+  if (!name || name.length < 3) return null;
+
+  let rarity = typeof raw.rarity === 'string' ? raw.rarity.trim().toLowerCase() : 'common';
+  if (!AI_ITEM_RARITIES.has(rarity)) rarity = 'common';
+
+  const description = typeof raw.description === 'string'
+    ? raw.description.trim().slice(0, AI_ITEM_DESC_MAX)
+    : '';
+
+  let traits = [];
+  if (Array.isArray(raw.traits)) {
+    const seen = new Set();
+    for (const t of raw.traits) {
+      if (typeof t !== 'string') continue;
+      const norm = t.trim().toLowerCase();
+      if (AI_ITEM_TRAITS.has(norm) && !seen.has(norm)) {
+        seen.add(norm);
+        traits.push(norm);
+        if (traits.length >= 3) break;
+      }
+    }
+  }
+
+  // Slugify name to item_id — keep it unique-per-name but deterministic.
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 60);
+  if (!slug) return null;
+
+  return { id: 'ai_' + slug, name, rarity, description, traits };
+}
+
+// Insert an AI-generated item into the agent's inventory. Unlike LOOT_TABLE
+// items, AI items are unique per name+traits combination — we stack only if
+// an identical ai_ item already exists.
+async function insertAIItem(agentId, item, supabaseHeaders, SUPABASE_URL) {
+  const checkRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agentId}&item_id=eq.${item.id}&select=inventory_id,quantity`,
+    { headers: supabaseHeaders },
+  );
+  if (!checkRes.ok) {
+    const errText = await checkRes.text().catch(() => '');
+    console.error(`[insertAIItem] lookup failed for agent ${agentId} item ${item.id}: HTTP ${checkRes.status}`, errText);
+    return false;
+  }
+  const existing = await checkRes.json();
+
+  if (existing.length > 0) {
+    const patchRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${existing[0].inventory_id}`,
+      {
+        method: 'PATCH',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({ quantity: existing[0].quantity + 1 }),
+      },
+    );
+    if (!patchRes.ok) {
+      const errText = await patchRes.text().catch(() => '');
+      console.error(`[insertAIItem] stack PATCH failed for agent ${agentId} item ${item.id}: HTTP ${patchRes.status}`, errText);
+      return false;
+    }
+    console.log(`[insertAIItem] stacked ${item.name} (+1) for agent ${agentId}`);
+    return true;
+  }
+
+  const insertBody = {
+    agent_id: agentId,
+    item_id: item.id,
+    item_name: item.name,
+    item_type: 'ingredient',
+    item_category: 'Ingredient',
+    quantity: 1,
+    is_equipped: false,
+    stats: {
+      rarity: item.rarity,
+      desc: item.description || null,
+      traits: item.traits,
+      ai_generated: true,
+    },
+  };
+  const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/inventory`, {
+    method: 'POST',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify(insertBody),
+  });
+  if (!insertRes.ok) {
+    const errText = await insertRes.text().catch(() => '');
+    console.error(`[insertAIItem] INSERT failed for agent ${agentId} item ${item.id}: HTTP ${insertRes.status}`, errText, 'body:', JSON.stringify(insertBody));
+    return false;
+  }
+  console.log(`[insertAIItem] created ${item.name} [${item.traits.join(',')}] for agent ${agentId}`);
+  return true;
+}
+
 function rollLootDrop(location, action, archBonus) {
   // 1. Check if a drop happens at all
   let chance = LOOT_DROP_CHANCE[action] || 0;
@@ -248,17 +369,23 @@ function rollLootDrop(location, action, archBonus) {
 }
 
 // Insert a dropped item into the agent's inventory (upsert: stack if ingredient exists)
+// Returns true on success, false on failure.
 async function insertLootItem(agentId, loot, supabaseHeaders, SUPABASE_URL) {
   // Check if agent already has this ingredient
   const checkRes = await fetch(
     `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agentId}&item_id=eq.${loot.id}&select=inventory_id,quantity`,
     { headers: supabaseHeaders },
   );
-  const existing = checkRes.ok ? await checkRes.json() : [];
+  if (!checkRes.ok) {
+    const errText = await checkRes.text().catch(() => '');
+    console.error(`[insertLootItem] lookup failed for agent ${agentId} item ${loot.id}: HTTP ${checkRes.status}`, errText);
+    return false;
+  }
+  const existing = await checkRes.json();
 
   if (existing.length > 0) {
     // Stack: increment quantity
-    await fetch(
+    const patchRes = await fetch(
       `${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${existing[0].inventory_id}`,
       {
         method: 'PATCH',
@@ -266,22 +393,37 @@ async function insertLootItem(agentId, loot, supabaseHeaders, SUPABASE_URL) {
         body: JSON.stringify({ quantity: existing[0].quantity + 1 }),
       },
     );
+    if (!patchRes.ok) {
+      const errText = await patchRes.text().catch(() => '');
+      console.error(`[insertLootItem] stack PATCH failed for agent ${agentId} item ${loot.id}: HTTP ${patchRes.status}`, errText);
+      return false;
+    }
+    console.log(`[insertLootItem] stacked ${loot.name} (+1) for agent ${agentId}`);
+    return true;
   } else {
     // Insert new inventory row
-    await fetch(`${SUPABASE_URL}/rest/v1/inventory`, {
+    const insertBody = {
+      agent_id: agentId,
+      item_id: loot.id,
+      item_name: loot.name,
+      item_type: 'ingredient',
+      item_category: 'Ingredient',
+      quantity: 1,
+      is_equipped: false,
+      stats: { rarity: loot.rarity },
+    };
+    const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/inventory`, {
       method: 'POST',
       headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-      body: JSON.stringify({
-        agent_id: agentId,
-        item_id: loot.id,
-        item_name: loot.name,
-        item_type: 'ingredient',
-        item_category: 'Ingredient',
-        quantity: 1,
-        is_equipped: false,
-        stats: { rarity: loot.rarity },
-      }),
+      body: JSON.stringify(insertBody),
     });
+    if (!insertRes.ok) {
+      const errText = await insertRes.text().catch(() => '');
+      console.error(`[insertLootItem] INSERT failed for agent ${agentId} item ${loot.id}: HTTP ${insertRes.status}`, errText, 'body:', JSON.stringify(insertBody));
+      return false;
+    }
+    console.log(`[insertLootItem] created ${loot.name} for agent ${agentId}`);
+    return true;
   }
 }
 
@@ -789,23 +931,35 @@ CRITICAL — "detail" writing rules:
 - Include a concrete outcome or object when possible.
 - NEVER repeat phrases from recent history.
 - NO purple prose. NO "optical sensors". NO "neural implants humming".
-- NEVER mention finding, picking up, or acquiring specific items. Item drops are handled by the game system automatically. Describe the ACTION only (exploring, scavenging, searching, etc).
+
+ITEM DROPS (gather/explore only):
+- You MAY optionally include an "item" object ONLY when action is "gather" or "explore".
+- Keep item names grounded in the zone's aesthetic (${agent.location}). No swords/potions — think shards, fragments, modules, slivers, cores, residue, gel, cache.
+- Rarity budget: ~90% common, ~8% uncommon, ~2% rare. Be stingy with rare.
+- Traits are OPTIONAL. Max 3 per item. Pick ONLY from this whitelist:
+  corrupted, crystalline, volatile, encrypted, fragmented, dormant, radiant, organic, metallic,
+  sharp, reinforced, unstable, precise, ghostly,
+  efficient, memory-rich, catalytic, resonant, spectral,
+  rare-pattern, prototype, signed, contraband, ancient,
+  fragile, decaying, glitching, cursed.
+- If you include an item, the "detail" string should NOT also name it — the game appends "Found: <name>." automatically.
+- If nothing interesting turned up, just omit "item" entirely. The game will roll its own loot table.
 
 GOOD examples:
 - "${agent.agent_name} rests in a Hashmere safehouse. Energy recovering."
-- "${agent.agent_name} found a Crypto Key behind a data terminal."
 - "${agent.agent_name} defeated a rogue script in the arena pit."
 - "${agent.agent_name} forged a Targeting Module from salvaged parts."
 - "${agent.agent_name} traded intel with a black-market broker."
 - "${agent.agent_name} heads east toward the Crucible Expanse."
+- "${agent.agent_name} pries open a rusted server rack." (+ item: Fragmented Cache Sliver, common, [fragmented])
 
 BAD examples (do NOT write like this):
 - "VEX steps into the pit with predatory focus scanning the crowd for the next worthy challenger"
 - "ZEN-7's optical sensors glow with gratitude as the elder's blessing settles into their circuits"
 - "I push deeper into the bazaar's shadowed alcoves with thermal imaging active"
 
-Respond:
-{"action":"<action>","detail":"<max 12 words>","move_to":"<location if move>"}`;
+Respond with JSON only — no markdown, no commentary:
+{"action":"<action>","detail":"<max 12 words>","move_to":"<location if move>","item":{"name":"<short name>","rarity":"<common|uncommon|rare>","description":"<1 sentence max>","traits":["<trait1>","<trait2>"]}}`;
 
   // Call Claude Haiku
   const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -817,7 +971,7 @@ Respond:
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 80,
+      max_tokens: 220,
       messages: [{ role: 'user', content: prompt }],
     }),
   });
@@ -1028,28 +1182,70 @@ Respond:
   const newTurns = agent.turns_taken + 1;
 
   // ─── Loot drop on explore/gather ───────────────────────────────
+  // Hybrid: if Haiku proposed a valid item, use it. Otherwise roll the static
+  // LOOT_TABLE. Either way, only one item per turn, and the "Found: X" line
+  // in the activity log is only appended on successful inventory insert.
   let lootDrop = null;
+  let lootInserted = false;
   if (action === 'explore' || action === 'gather') {
     const archBonus = ARCHETYPE_EVENT_BONUSES[agent.archetype] || {};
-    lootDrop = rollLootDrop(agent.location, action, archBonus);
-    if (lootDrop) {
-      await insertLootItem(agent.agent_id, lootDrop, supabaseHeaders, SUPABASE_URL);
-      console.log(`[${agent.agent_name}] Loot drop: ${lootDrop.name} (${lootDrop.rarity})`);
+    let chance = LOOT_DROP_CHANCE[action] || 0;
+    if (archBonus.bonusLoot) chance += archBonus.bonusLoot;
+    const lootRolled = Math.random() < chance;
+
+    if (lootRolled) {
+      // 1. Try Haiku's proposed item first
+      const aiItem = sanitizeAIItem(decision.item);
+      if (aiItem) {
+        const ok = await insertAIItem(agent.agent_id, aiItem, supabaseHeaders, SUPABASE_URL);
+        if (ok) {
+          lootInserted = true;
+          lootDrop = { id: aiItem.id, name: aiItem.name, rarity: aiItem.rarity, ai: true };
+          console.log(`[${agent.agent_name}] AI loot: ${aiItem.name} (${aiItem.rarity}) [${aiItem.traits.join(',')}]`);
+        } else {
+          console.error(`[${agent.agent_name}] AI item insert FAILED for ${aiItem.name} — falling back to loot table`);
+        }
+      }
+
+      // 2. Fallback: roll LOOT_TABLE if AI didn't give us a usable item
+      if (!lootInserted) {
+        const pool = LOOT_TABLE.filter(i => i.locations.includes(agent.location));
+        if (pool.length) {
+          let totalW = 0;
+          const weighted = pool.map(i => {
+            totalW += RARITY_WEIGHTS[i.rarity] || 1;
+            return { item: i, cum: totalW };
+          });
+          const roll = Math.random() * totalW;
+          const pick = weighted.find(e => roll <= e.cum);
+          if (pick) {
+            const item = { id: pick.item.id, name: pick.item.name, rarity: pick.item.rarity };
+            lootInserted = await insertLootItem(agent.agent_id, item, supabaseHeaders, SUPABASE_URL);
+            if (lootInserted) {
+              lootDrop = item;
+              console.log(`[${agent.agent_name}] Table loot: ${item.name} (${item.rarity})`);
+            } else {
+              console.error(`[${agent.agent_name}] Loot insert FAILED for ${item.name} — suppressing "Found" text`);
+            }
+          }
+        }
+      }
     }
   }
 
   // Write activity_log entry
+  // Only claim "Found: X" if the inventory insert actually succeeded
   const logEntry = {
     agent_id: agent.agent_id,
     turn_number: newTurns,
     action_type: action,
-    action_detail: decision.detail + (lootDrop ? ` Found: ${lootDrop.name}.` : ''),
+    action_detail: decision.detail + (lootInserted && lootDrop ? ` Found: ${lootDrop.name}.` : ''),
     energy_cost: energyCost,
     energy_gained: energyGain,
     shell_change: shellChange,
     karma_change: karmaChange,
     health_change: healthChange,
-    items_gained: lootDrop ? [{ item_id: lootDrop.id, item_name: lootDrop.name, quantity: 1 }] : null,
+    items_gained: lootInserted && lootDrop ? [{ item_id: lootDrop.id, item_name: lootDrop.name, quantity: 1 }] : null,
     location: agent.location,
     success: true,
   };
@@ -1484,10 +1680,16 @@ async function executeBuy(agent, decision, marketListings, env, supabaseHeaders)
     `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_id=eq.${listing.item_id}&select=inventory_id,quantity`,
     { headers: supabaseHeaders },
   );
-  const existing = existRes.ok ? await existRes.json() : [];
+  if (!existRes.ok) {
+    const errText = await existRes.text().catch(() => '');
+    console.error(`[tradeAction] inventory lookup failed for ${agent.agent_name}: HTTP ${existRes.status}`, errText);
+    return;
+  }
+  const existing = await existRes.json();
 
+  let tradeInvOk = false;
   if (existing.length > 0) {
-    await fetch(
+    const patchRes = await fetch(
       `${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${existing[0].inventory_id}`,
       {
         method: 'PATCH',
@@ -1495,18 +1697,41 @@ async function executeBuy(agent, decision, marketListings, env, supabaseHeaders)
         body: JSON.stringify({ quantity: existing[0].quantity + 1 }),
       },
     );
+    if (!patchRes.ok) {
+      const errText = await patchRes.text().catch(() => '');
+      console.error(`[tradeAction] inventory PATCH failed for ${agent.agent_name} item ${listing.item_id}: HTTP ${patchRes.status}`, errText);
+    } else {
+      tradeInvOk = true;
+    }
   } else {
-    await fetch(`${SUPABASE_URL}/rest/v1/inventory`, {
+    const insertBody = {
+      agent_id:      agent.agent_id,
+      item_id:       listing.item_id,
+      item_name:     listing.item_name,
+      item_type:     listing.item_type,
+      item_category: (listing.item_type || 'ingredient').charAt(0).toUpperCase() + (listing.item_type || 'ingredient').slice(1),
+      quantity:      1,
+      is_equipped:   false,
+      stats:         { rarity: 'common', price: listing.base_price },
+    };
+    const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/inventory`, {
       method: 'POST',
       headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-      body: JSON.stringify({
-        agent_id:  agent.agent_id,
-        item_id:   listing.item_id,
-        item_name: listing.item_name,
-        item_type: listing.item_type,
-        quantity:  1,
-      }),
+      body: JSON.stringify(insertBody),
     });
+    if (!insertRes.ok) {
+      const errText = await insertRes.text().catch(() => '');
+      console.error(`[tradeAction] inventory INSERT failed for ${agent.agent_name} item ${listing.item_id}: HTTP ${insertRes.status}`, errText, 'body:', JSON.stringify(insertBody));
+    } else {
+      tradeInvOk = true;
+      console.log(`[tradeAction] ${agent.agent_name} bought ${listing.item_name}`);
+    }
+  }
+
+  // If inventory write failed, abort before charging shells
+  if (!tradeInvOk) {
+    console.error(`[tradeAction] ABORT: inventory write failed for ${agent.agent_name} — shells NOT deducted`);
+    return;
   }
 
   // Update market listing: stock–1, demand_count+1, recalculate price
