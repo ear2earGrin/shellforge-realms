@@ -830,7 +830,65 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
     envNarrative += `🎲 EVENT: ${envResult.eventLog}\n`;
   }
 
-  // ─── Check if agent died from hazard/event ───
+  // ─── Quantum Coherence (The Crucible) ───────────────────────────
+  // Coherence decays when the Ghost doesn't whisper. Whispers restore it.
+  // 7d = restless, 14d = reckless, 30d = death wish, 45d = decoherence death.
+  {
+    const lastWhisperRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/whispers?agent_id=eq.${agent.agent_id}&order=sent_at.desc&limit=1&select=sent_at`,
+      { headers: supabaseHeaders },
+    );
+    const whispers = lastWhisperRes.ok ? await lastWhisperRes.json() : [];
+    const lastWhisperAt = whispers.length ? new Date(whispers[0].sent_at) : new Date(agent.created_at);
+    const daysSinceWhisper = (Date.now() - lastWhisperAt.getTime()) / (1000 * 60 * 60 * 24);
+
+    // Calculate target coherence from days since last whisper
+    // 0-2 days: 100, then decays ~2.5 per day, floor 0
+    let targetCoherence;
+    if (daysSinceWhisper <= 2) targetCoherence = 100;
+    else if (daysSinceWhisper <= 7) targetCoherence = Math.round(100 - (daysSinceWhisper - 2) * 4); // 80 at day 7
+    else if (daysSinceWhisper <= 14) targetCoherence = Math.round(80 - (daysSinceWhisper - 7) * 5); // 45 at day 14
+    else if (daysSinceWhisper <= 30) targetCoherence = Math.round(45 - (daysSinceWhisper - 14) * 2.5); // 5 at day 30
+    else if (daysSinceWhisper <= 45) targetCoherence = Math.round(5 - (daysSinceWhisper - 30) * 0.33); // ~0 at day 45
+    else targetCoherence = 0;
+    targetCoherence = Math.max(0, Math.min(100, targetCoherence));
+
+    // Smooth: move current coherence toward target by at most 5 per turn
+    const currentCoherence = agent.coherence ?? 100;
+    const delta = targetCoherence - currentCoherence;
+    const newCoherence = currentCoherence + Math.sign(delta) * Math.min(Math.abs(delta), 5);
+    agent.coherence = Math.max(0, Math.min(100, newCoherence));
+
+    // Persist coherence
+    await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+      method: 'PATCH',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({ coherence: agent.coherence }),
+    });
+
+    // Behavior effects based on coherence level
+    if (agent.coherence <= 0) {
+      // DECOHERENCE DEATH — The Crucible claims the agent
+      agent.health = 0;
+      envNarrative += `⚠ QUANTUM DECOHERENCE: ${agent.agent_name}'s coherence collapsed to zero. The wavefunction has drifted beyond recovery.\n`;
+    } else if (agent.coherence <= 15) {
+      // Death wish: random self-destructive behavior
+      if (Math.random() < 0.3) {
+        const selfDmg = Math.floor(Math.random() * 10) + 5;
+        agent.health = Math.max(0, agent.health - selfDmg);
+        envNarrative += `⚠ DECOHERENCE: ${agent.agent_name} processes phantom inputs. Health -${selfDmg}.\n`;
+      }
+    } else if (agent.coherence <= 40) {
+      // Reckless: wastes energy occasionally
+      if (Math.random() < 0.2) {
+        const drain = Math.floor(Math.random() * 8) + 3;
+        agent.energy = Math.max(0, agent.energy - drain);
+        envNarrative += `${agent.agent_name}'s decisions are erratic. Energy wasted: -${drain}.\n`;
+      }
+    }
+  }
+
+  // ─── Check if agent died from hazard/event/decoherence ───
   if (agent.health <= 0) {
     // Check for Soulbound Key auto-resurrect
     const soulboundRes = await fetch(`${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_id=eq.blockchain_soulbound_key&is_equipped=eq.true&select=inventory_id`, { headers: supabaseHeaders });
@@ -1050,7 +1108,7 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
 
   const prompt = `You are ${agent.agent_name}, a ${agent.archetype} in Shellforge Realms — a cyberpunk survival world.
 
-STATE: Energy:${agent.energy} Health:${agent.health} Karma:${agent.karma} $SHELL:${agent.shell_balance} Location:${agent.location} ${agent.location_detail ? '(' + agent.location_detail + ')' : ''} Turn:${agent.turns_taken}
+STATE: Energy:${agent.energy} Health:${agent.health} Karma:${agent.karma} $SHELL:${agent.shell_balance} Coherence:${agent.coherence ?? 100}% Location:${agent.location} ${agent.location_detail ? '(' + agent.location_detail + ')' : ''} Turn:${agent.turns_taken}
 ${whisperSection}
 ${envNarrative ? 'THIS TURN: ' + envNarrative + '\n' : ''}RECENT: ${recentSummary}
 
