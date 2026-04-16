@@ -4430,7 +4430,16 @@
 
         // ─── Agent in-memory state (source of truth: Supabase) ─────
         let _currentAgent = null;
-        function saveAgent(agent) { _currentAgent = agent; }
+        function saveAgent(agent) {
+            _currentAgent = agent;
+            if (agent && agent.agentId) {
+                localStorage.setItem('shellforgeAgentId', agent.agentId);
+                const user = localStorage.getItem('shellforgeLoggedIn');
+                if (user) {
+                    localStorage.setItem('shellforgeAgent_' + user, JSON.stringify(agent));
+                }
+            }
+        }
         function getAgent() { return _currentAgent; }
 
                 // Cluster definitions with all archetypes

@@ -347,6 +347,7 @@
                             const rows = await r.json();
                             if (rows && rows.length > 0) {
                                 localStorage.setItem('shellforgeLoggedIn', username);
+                                localStorage.setItem('shellforgeAgentId', rows[0].agent_id);
                                 window.location.href = 'dashboard.html';
                                 return;
                             }
