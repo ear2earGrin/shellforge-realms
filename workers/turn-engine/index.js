@@ -1507,13 +1507,15 @@ Respond with JSON only — no markdown, no commentary:
     }),
   });
 
+  let rawText = '';
   if (!aiRes.ok) {
     console.error(`Haiku API error for ${agent.agent_name}:`, await aiRes.text());
-    return;
+    // Fall through with empty rawText — agent takes the default rest fallback
+    // so the turn still produces an activity log entry.
+  } else {
+    const aiData = await aiRes.json();
+    rawText = aiData.content?.[0]?.text?.trim() ?? '';
   }
-
-  const aiData = await aiRes.json();
-  const rawText = aiData.content?.[0]?.text?.trim() ?? '';
 
   const _restFallbacks = [
     `${agent.agent_name} powers down non-essential systems. Recharging.`,
