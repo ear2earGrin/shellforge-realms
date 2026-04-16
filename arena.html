@@ -480,13 +480,17 @@ body {
 
 const COMBAT_URL = 'https://shellforge-combat-engine.mindarvokn.workers.dev';
 
-// Get current agent_id from localStorage (set by dashboard auth flow)
+// Get current agent_id from localStorage (set by dashboard auth flow).
+// Dashboard stores: shellforgeLoggedIn -> username
+//                   shellforgeAgent_<username> -> { agentId, username, ... }
 function currentAgentId() {
   try {
-    const raw = localStorage.getItem('agent') || localStorage.getItem('shellforge_agent');
+    const user = localStorage.getItem('shellforgeLoggedIn');
+    if (!user) return null;
+    const raw = localStorage.getItem('shellforgeAgent_' + user);
     if (!raw) return null;
     const obj = JSON.parse(raw);
-    return obj.agent_id || obj.id || null;
+    return obj.agentId || obj.agent_id || obj.id || null;
   } catch { return null; }
 }
 
