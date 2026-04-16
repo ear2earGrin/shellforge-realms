@@ -4263,13 +4263,9 @@
             <span class="btn-icon"><img src="images/mechanics/market-icon.jpg" alt="Market"></span>
             <span class="btn-label">Market</span>
         </button>
-        <button class="icon-btn town-only" id="btnForge" onmouseenter="openModal('forge',this)" onmouseleave="scheduleClose('forge')" onclick="openModal('forge',this)">
-            <span class="btn-icon"><img src="images/mechanics/forge-icon.jpg" alt="Forge"></span>
-            <span class="btn-label">Forge</span>
-        </button>
-        <button class="icon-btn town-only" id="btnAlchemy" onmouseenter="openModal('alchemy',this)" onmouseleave="scheduleClose('alchemy')" onclick="openModal('alchemy',this)">
-            <span class="btn-icon"><img src="images/mechanics/alchemy-icon.jpg" alt="Alchemy"></span>
-            <span class="btn-label">Alchemy</span>
+        <button class="icon-btn town-only" id="btnWorkshop" onmouseenter="openModal('workshop',this)" onmouseleave="scheduleClose('workshop')" onclick="openModal('workshop',this)">
+            <span class="btn-icon"><img src="images/mechanics/forge-icon.jpg" alt="Workshop"></span>
+            <span class="btn-label">Workshop</span>
         </button>
     </div>
 
@@ -4381,45 +4377,27 @@
     </div>
 
     <!-- FORGE -->
-    <div class="modal-overlay" id="modal-forge" onclick="closeOnOverlay(event,'forge')">
-        <div class="modal-box gold-modal">
-            <div class="modal-head">
-                <span class="modal-title-text">THE FORGE</span>
-                <button class="modal-close-btn" onclick="closeModal('forge')">✕</button>
-            </div>
-            <div class="modal-body">
-                <p style="font-family:var(--font-main);font-size:0.65rem;color:var(--color-text-dim);margin-bottom:16px;line-height:1.6;">
-                    Combine 3 items. No recipe book. Pure trial and error.<br>
-                    <span style="color:rgba(255,100,0,0.8);">⚠ Failure = explosion. Items lost. Energy damaged.</span>
-                </p>
-                <div class="forge-input-grid">
-                    <div class="forge-slot-box filled">🗡️</div>
-                    <div class="forge-slot-box filled">⚡</div>
-                    <div class="forge-slot-box" id="forgeSlot3" onclick="this.textContent='💎';this.classList.add('filled')">+</div>
-                </div>
-                <div class="forge-arrow">↓</div>
-                <div class="forge-output" id="forgeOutput">Add a third item to preview</div>
-                <button class="btn-forge-attempt">ATTEMPT FORGE — Cost: 25 Energy</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ALCHEMY -->
-    <div class="modal-overlay" id="modal-alchemy" onclick="closeOnOverlay(event,'alchemy')">
+    <!-- WORKSHOP (merged Forge + Alchemy) -->
+    <div class="modal-overlay" id="modal-workshop" onclick="closeOnOverlay(event,'workshop')">
         <div class="modal-box purple-modal" style="position:relative;overflow:visible;">
             <div class="modal-head">
-                <span class="modal-title-text">⚗️ ALCHEMY LAB</span>
-                <button class="modal-close-btn" onclick="closeModal('alchemy')">✕</button>
+                <span class="modal-title-text">WORKSHOP</span>
+                <button class="modal-close-btn" onclick="closeModal('workshop')">✕</button>
             </div>
             <div class="modal-body alchemy-body">
+                <div class="workshop-tabs" style="display:flex;gap:4px;margin-bottom:12px;">
+                    <button class="inv-tab active" id="workshopTabFoundry" onclick="setWorkshopTab('foundry')" style="flex:1;">🔨 Foundry <span style="font-size:0.5rem;opacity:0.6;">HARDWARE</span></button>
+                    <button class="inv-tab" id="workshopTabTerminal" onclick="setWorkshopTab('terminal')" style="flex:1;">💻 Terminal <span style="font-size:0.5rem;opacity:0.6;">SOFTWARE</span></button>
+                </div>
+
                 <div class="alchemy-energy-bar">
                     <span>⚡ Energy: <strong id="alchEnergy">--</strong>/100</span>
                     <span>Cost: <strong>20</strong> energy</span>
                 </div>
 
-                <div class="alchemy-section-label">MIX 3 INGREDIENTS</div>
+                <div class="alchemy-section-label" id="workshopStationLabel">FOUNDRY — Weld 3 components</div>
                 <p style="font-family:var(--font-main);font-size:0.55rem;color:rgba(192,132,252,0.5);margin:0 0 8px;line-height:1.4;">
-                    No recipe book. Pure trial and error. Explosions are frequent.
+                    No recipe book. Pure trial and error. <span style="color:rgba(255,100,0,0.7);">Failure = explosion. Items lost.</span>
                 </p>
 
                 <div class="alchemy-selection-row">
@@ -4428,7 +4406,6 @@
                     <div class="alchemy-sel-slot" id="alchSel2" onclick="alchemySlotClick(2)"><span style="color:rgba(192,132,252,0.3);">+</span><span class="sel-label">slot 3</span></div>
                 </div>
 
-                <!-- Ingredient picker dropdown (hidden until slot clicked) -->
                 <div class="alchemy-picker" id="alchPicker" style="display:none;">
                     <div class="alchemy-section-label" style="margin-top:0;">CHOOSE INGREDIENT</div>
                     <div class="alchemy-ingredient-grid" id="alchIngredientGrid"></div>
@@ -4441,7 +4418,7 @@
                 </div>
 
                 <button class="btn-brew" id="alchBrewBtn" disabled onclick="alchemyBrew()">
-                    BREW — Cost: 20 Energy
+                    CRAFT — Cost: 20 Energy
                 </button>
             </div>
             <div id="alchResultOverlay"></div>
@@ -6806,8 +6783,8 @@
             if (id === 'chronicle' && _currentAgent && _currentAgent.agentId) {
                 loadActivityLog(_currentAgent.agentId);
             }
-            // Fresh alchemy ingredients on open
-            if (id === 'alchemy' && _currentAgent && _currentAgent.agentId) {
+            // Fresh workshop ingredients on open
+            if (id === 'workshop' && _currentAgent && _currentAgent.agentId) {
                 alchemyLoadIngredients(_currentAgent.agentId);
             }
             // Fresh inventory on open
@@ -7602,6 +7579,29 @@
             var ids = {};
             (_invV2State.items || []).forEach(function(it) { ids[it.item_id] = true; });
             return ids;
+        }
+
+        // ─── Workshop (merged Foundry + Terminal) ─────────────────
+        var _workshopStation = 'foundry'; // 'foundry' or 'terminal'
+
+        function setWorkshopTab(station) {
+            _workshopStation = station;
+            document.getElementById('workshopTabFoundry').classList.toggle('active', station === 'foundry');
+            document.getElementById('workshopTabTerminal').classList.toggle('active', station === 'terminal');
+            var label = document.getElementById('workshopStationLabel');
+            if (station === 'foundry') {
+                label.textContent = 'FOUNDRY — Weld 3 components';
+                label.style.color = '';
+            } else {
+                label.textContent = 'TERMINAL — Compile 3 modules';
+                label.style.color = '#00f0ff';
+            }
+            // Reset selection and reload
+            _alchSelected = [null, null, null];
+            alchemyRenderSlots();
+            alchemyUpdateBrewBtn();
+            document.getElementById('alchPicker').style.display = 'none';
+            _alchActiveSlot = -1;
         }
 
         var _alchSelected = [null, null, null]; // 3 ingredient IDs
