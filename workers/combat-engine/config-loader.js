@@ -51,6 +51,12 @@ const DEFAULT_CONFIG = {
     gauntlet_waves_per_tier: 5,
     deathmatch_loser_shell_share: 0.5,   // winner takes half loser's $SHELL
     deathmatch_winner_takes_gear: true,
+    // Accept/decline flow
+    pvp_accept_window_hours: 24,          // defender has 24h to accept/decline
+    decline_karma_penalty: 5,             // karma lost when declining (rivals+ heat)
+    decline_shell_forfeit_pct: 0.1,       // % of wager forfeited to challenger (rivals+ heat)
+    decline_min_forfeit: 5,               // minimum $SHELL forfeit
+    decline_forced_heat_level: 'sworn_enemies',  // at this heat+, cannot decline (forced fight)
   },
   feuds: {
     heat_decay_per_day: 1,

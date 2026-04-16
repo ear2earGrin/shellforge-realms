@@ -31,6 +31,7 @@ import { getConfig } from './config-loader.js';
 import {
   createPvpMatch, createGauntletMatch, createWildEncounter, createDeathmatch,
   processPendingMatches, processActiveMatches,
+  acceptPvpChallenge, declinePvpChallenge, expirePendingAccepts,
 } from './matchmaking.js';
 import { initializeMatch, resolveTurn } from './turn-resolver.js';
 import {
@@ -115,6 +116,28 @@ async function handleTurn(request, env) {
     await postMatchHooks(env, body.match_id, result);
   }
   return jsonResponse(result);
+}
+
+async function handleAccept(request, env) {
+  const body = await readJSON(request);
+  if (!body || !body.match_id || !body.agent_id) return errorResponse('match_id + agent_id required');
+  const r = await acceptPvpChallenge(env, body.match_id, body.agent_id);
+  return jsonResponse(r, r.ok ? 200 : 400);
+}
+
+async function handleDecline(request, env) {
+  const body = await readJSON(request);
+  if (!body || !body.match_id || !body.agent_id) return errorResponse('match_id + agent_id required');
+  const r = await declinePvpChallenge(env, body.match_id, body.agent_id, body.reason);
+  return jsonResponse(r, r.ok ? 200 : 400);
+}
+
+async function handleIncoming(request, env) {
+  const url = new URL(request.url);
+  const agentId = url.searchParams.get('agent_id');
+  if (!agentId) return errorResponse('agent_id query param required');
+  const rows = (await sb.get(env, `combat_matches?status=eq.pending_accept&agent_b=eq.${agentId}&order=created_at.desc&select=*`)) || [];
+  return jsonResponse({ ok: true, challenges: rows });
 }
 
 async function handleMatchGet(request, env, matchId) {
@@ -245,6 +268,18 @@ async function handleCrucibleWhisper(request, env) {
 async function postMatchHooks(env, matchId, resolveResult) {
   const match = await getOne(env, 'combat_matches', `id=eq.${matchId}`);
   if (!match) return;
+
+  // Pay out escrowed pot to winner (PvP + deathmatch only)
+  const totalPot = (match.escrow_a || 0) + (match.escrow_b || 0);
+  if (totalPot > 0 && resolveResult.winner_agent_id && !resolveResult.death_occurred) {
+    const winner = await getOne(env, 'agents', `agent_id=eq.${resolveResult.winner_agent_id}&select=shell_balance`);
+    if (winner) {
+      await sb.patch(env, `agents?agent_id=eq.${resolveResult.winner_agent_id}`, {
+        shell_balance: (winner.shell_balance || 0) + totalPot,
+      });
+    }
+    await sb.patch(env, `combat_matches?id=eq.${matchId}`, { escrow_a: 0, escrow_b: 0 });
+  }
 
   // Adjust feud heat for PvP/deathmatch
   if (match.match_type === 'pvp' || match.match_type === 'deathmatch') {
@@ -398,7 +433,8 @@ async function handleScheduled(controller, env) {
     return;
   }
 
-  // Default cron: */1 — process pending + advance active + check decoherence deadlines
+  // Default cron: */1 — expire unanswered challenges + process pending + advance active + check decoherence
+  const exp = await expirePendingAccepts(env);
   const init = await processPendingMatches(env, initializeMatch);
   const adv = await processActiveMatches(env, async (env, matchId) => {
     const r = await resolveTurn(env, matchId);
@@ -409,7 +445,7 @@ async function handleScheduled(controller, env) {
   });
   const collapses = await checkCollapses(env);
 
-  console.log(`[cron] pending init: ${init.initialized} | turns advanced: ${adv.advanced} | collapses: ${collapses.collapsed}`);
+  console.log(`[cron] expired challenges: ${exp.expired} | pending init: ${init.initialized} | turns advanced: ${adv.advanced} | collapses: ${collapses.collapsed}`);
 }
 
 // ─── Main fetch handler ─────────────────────────────────────
@@ -426,6 +462,9 @@ async function handleFetch(request, env) {
   try {
     // Combat routes
     if (path === '/combat/initiate' && method === 'POST') return await handleInitiate(request, env);
+    if (path === '/combat/accept'   && method === 'POST') return await handleAccept(request, env);
+    if (path === '/combat/decline'  && method === 'POST') return await handleDecline(request, env);
+    if (path === '/combat/incoming' && method === 'GET')  return await handleIncoming(request, env);
     if (path === '/combat/turn' && method === 'POST') return await handleTurn(request, env);
     if (path.startsWith('/combat/match/') && method === 'GET') {
       const id = path.split('/').pop();
