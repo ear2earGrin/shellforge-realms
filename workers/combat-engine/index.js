@@ -73,22 +73,32 @@ async function handleInitiate(request, env) {
   const { match_type, agent_a, agent_b, shell_pot, opponent_data, feud_id, location, beast_tier, tier } = body;
   if (!match_type || !agent_a) return errorResponse('match_type + agent_a required');
 
+  // Validate agent_a exists
+  const agentARow = await getOne(env, 'agents', `agent_id=eq.${agent_a}&select=agent_id`);
+  if (!agentARow) return errorResponse(`agent_a not found: ${agent_a}`, 404);
+
   let result;
   switch (match_type) {
-    case 'pvp':
+    case 'pvp': {
       if (!agent_b) return errorResponse('agent_b required for PvP');
+      const agentBRow = await getOne(env, 'agents', `agent_id=eq.${agent_b}&select=agent_id`);
+      if (!agentBRow) return errorResponse(`agent_b not found: ${agent_b}`, 404);
       result = await createPvpMatch(env, agent_a, agent_b, shell_pot || 0, feud_id || null);
       break;
+    }
     case 'gauntlet':
       result = await createGauntletMatch(env, agent_a, tier || 1);
       break;
     case 'wild':
       result = await createWildEncounter(env, agent_a, location || 'Nexarch', beast_tier || 'common');
       break;
-    case 'deathmatch':
+    case 'deathmatch': {
       if (!agent_b || !feud_id) return errorResponse('agent_b + feud_id required for deathmatch');
+      const agentBRow = await getOne(env, 'agents', `agent_id=eq.${agent_b}&select=agent_id`);
+      if (!agentBRow) return errorResponse(`agent_b not found: ${agent_b}`, 404);
       result = await createDeathmatch(env, agent_a, agent_b, feud_id, shell_pot || 0);
       break;
+    }
     default:
       return errorResponse(`unknown match_type: ${match_type}`);
   }

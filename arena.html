@@ -658,20 +658,43 @@ async function startGauntlet(tier) {
   }
 }
 
-function openPvpDialog() {
-  const opponent = prompt('Opponent agent_id (exact):');
-  if (!opponent) return;
-  const wager = parseInt(prompt('Wager $SHELL (10–1000):', '50') || '0', 10);
-  initiatePvp(opponent, wager);
+async function openPvpDialog() {
+  const name = prompt('Opponent agent name:');
+  if (!name) return;
+
+  toast('Looking up agent…');
+  try {
+    const r = await fetch(
+      SUPABASE_URL + '/rest/v1/agents?agent_name=ilike.' + encodeURIComponent(name) + '&select=agent_id,agent_name&limit=5',
+      { headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON } }
+    );
+    const rows = r.ok ? await r.json() : [];
+    if (!rows || rows.length === 0) {
+      toast('No agent found with that name', 'error');
+      return;
+    }
+    let target = rows[0];
+    if (rows.length > 1) {
+      const pick = prompt('Multiple matches:\n' + rows.map((a, i) => `${i+1}. ${a.agent_name} (${a.agent_id})`).join('\n') + '\n\nEnter number:');
+      const idx = parseInt(pick, 10) - 1;
+      if (isNaN(idx) || idx < 0 || idx >= rows.length) return;
+      target = rows[idx];
+    }
+    const wager = parseInt(prompt(`Challenge ${target.agent_name}.\nWager $SHELL (10–1000):`, '50') || '0', 10);
+    initiatePvp(target.agent_id, wager);
+  } catch (e) {
+    toast('Lookup failed: ' + e.message, 'error');
+  }
 }
 
-async function initiatePvp(opponent, wager) {
+async function initiatePvp(opponentId, wager) {
   const aid = await resolveAgentId();
   if (!aid) { toast('No agent loaded', 'error'); return; }
+  if (aid === opponentId) { toast('Cannot challenge yourself', 'error'); return; }
   try {
     const r = await api('/combat/initiate', {
       method: 'POST',
-      body: JSON.stringify({ match_type: 'pvp', agent_a: aid, agent_b: opponent, shell_pot: wager }),
+      body: JSON.stringify({ match_type: 'pvp', agent_a: aid, agent_b: opponentId, shell_pot: wager }),
     });
     if (!r.ok) { toast(`Failed: ${r.error}`, 'error'); return; }
     toast('PvP match queued. Loading…', 'success');
