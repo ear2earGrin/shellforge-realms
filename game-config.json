@@ -1,0 +1,129 @@
+{
+  "_meta": {
+    "version": "1.0",
+    "description": "Single source of truth for all tunable values. Per Tier 1 Rule 5 of brief.md, no logic anywhere may hardcode numbers — they all live here.",
+    "last_updated": "2026-04-16"
+  },
+
+  "combat": {
+    "base_hp": 100,
+    "base_coherence": 10,
+    "coherence_max": 20,
+    "coherence_regen_per_turn": 2,
+    "overclock_threshold": 15,
+    "decoherence_accuracy_penalty": 0.20,
+    "decoherence_duration_turns": 2,
+    "crit_base_chance": 0.10,
+    "crit_damage_multiplier": 1.5,
+    "hw_vs_sw_advantage": 1.2,
+    "hw_vs_sw_resist": 0.8,
+    "max_turns": 20,
+    "flee_hp_threshold_percent": 0.20,
+    "basic_strike_power": 5,
+    "basic_strike_cost": 0,
+    "rng_damage_min": 1,
+    "rng_damage_max": 10,
+    "cooldown_basic_after_use": 0,
+    "overclock_decoherence_per_excess": 0.10
+  },
+
+  "arena": {
+    "pvp_min_shell_wager": 10,
+    "pvp_max_shell_wager": 1000,
+    "deathmatch_heat_threshold": 80,
+    "deathmatch_ghost_command_threshold": 60,
+    "blood_feud_ghost_veto_window_hours": 6,
+    "inactive_ghost_decision_window_hours": 24,
+    "spectator_betting_enabled": true,
+    "gauntlet_tier1_unlock_level": 1,
+    "gauntlet_tier2_unlock_level": 5,
+    "gauntlet_tier3_unlock_level": 10,
+    "gauntlet_nightmare_unlock_level": 15,
+    "gauntlet_waves_per_tier": 5,
+    "deathmatch_loser_shell_share": 0.5,
+    "deathmatch_winner_takes_gear": true
+  },
+
+  "feuds": {
+    "heat_decay_per_day": 1,
+    "cluster_encounter_heat": 5,
+    "archetype_enemy_heat": 10,
+    "market_undercut_heat": 3,
+    "market_crash_heat": 8,
+    "ghost_provoke_heat": 15,
+    "ghost_escalate_heat": 20,
+    "ghost_deescalate_heat": -15,
+    "pvp_win_heat_change": -5,
+    "pvp_loss_heat_change": 5,
+    "successful_trade_heat_change": -10,
+    "blood_feud_ghost_compliance": 0.30,
+    "threshold_tension": 20,
+    "threshold_rivals": 40,
+    "threshold_enemies": 60,
+    "threshold_sworn": 80,
+    "threshold_blood": 100,
+    "auto_challenge_enemies_chance": 0.40,
+    "auto_challenge_sworn_chance": 0.65,
+    "auto_challenge_blood_chance": 0.95
+  },
+
+  "crucible": {
+    "restless_days": 7,
+    "restless_arena_bonus": 0.15,
+    "reckless_days": 14,
+    "reckless_arena_bonus": 0.30,
+    "reckless_feud_bonus": 0.20,
+    "death_wish_days": 30,
+    "death_wish_deathmatch_seek_chance": 0.40,
+    "decoherence_days": 45,
+    "decoherence_fight_window_hours": 72,
+    "decoherence_collapse_damage_pct": 1.0
+  },
+
+  "whisper": {
+    "base_compliance": 0.50,
+    "archetype_match_bonus": 0.15,
+    "karma_aligned_bonus": 0.10,
+    "rage_state_penalty": -0.20,
+    "suicidal_suggestion_penalty": -0.30,
+    "free_whisper_max_per_match": 2,
+    "premium_whisper_window_seconds": 8,
+    "free_whispers_per_day": 2
+  },
+
+  "ai": {
+    "haiku_model": "claude-haiku-4-5-20251001",
+    "sonnet_model": "claude-sonnet-4-6",
+    "haiku_max_tokens": 60,
+    "sonnet_max_tokens": 200,
+    "decision_timeout_ms": 8000,
+    "fallback_to_random_on_failure": true,
+    "sonnet_milestone_triggers": [
+      "death_in_match",
+      "legendary_loot_drop",
+      "deathmatch_resolution",
+      "blood_feud_initiation",
+      "crucible_collapse"
+    ]
+  },
+
+  "alchemy": {
+    "base_success_rate": 70,
+    "theme_bonus": 10,
+    "rarity_penalty_common": 0,
+    "rarity_penalty_uncommon": 5,
+    "rarity_penalty_rare": 15,
+    "rarity_penalty_legendary": 30,
+    "minor_slag_damage": 0,
+    "explosion_damage_min": 10,
+    "explosion_damage_max": 20,
+    "catastrophic_damage": 50
+  },
+
+  "economy": {
+    "shell_starting_balance": 100,
+    "vault_inheritance_pct": 0.5,
+    "shell_burn_on_death_pct": 0.5,
+    "soul_nft_legendary_threshold_karma": 500
+  }
+}
