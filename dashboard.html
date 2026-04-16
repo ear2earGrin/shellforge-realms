@@ -5487,26 +5487,21 @@
                     var type = slot.getAttribute('data-slot');
                     slot.innerHTML = '<span class="slot-icon">' + (slotIcons[type] || '?') + '</span><span class="slot-label">' + (slotLabels[type] || type) + '</span>';
                 });
-                // Fill equipped — use equip_slot from DB if set, otherwise infer from item_type
+                // Fill equipped — use equip_slot from DB if set, otherwise infer from item_type + weapon_range
                 items.forEach(function(item) {
                     var slotType = item.equip_slot; // DB slot assignment
                     if (!slotType) {
-                        // Infer from item type
                         if (item.item_type === 'weapon') {
-                            // Check if melee slot taken, use ranged
-                            var meleeSlot = grid.querySelector('[data-slot="weapon"]');
-                            if (meleeSlot && meleeSlot.classList.contains('filled')) slotType = 'ranged';
-                            else slotType = 'weapon';
+                            var range = item.weapon_range || 'melee';
+                            if (range === 'ranged' || range === 'software') slotType = 'ranged';
+                            else slotType = 'weapon'; // melee
                         } else if (item.item_type === 'armor') {
-                            // Check if chest slot taken, use helm
-                            var chestSlot = grid.querySelector('[data-slot="armor"]');
-                            if (chestSlot && chestSlot.classList.contains('filled')) slotType = 'helm';
-                            else slotType = 'armor';
-                        } else if (item.item_type === 'artifact' || item.item_type === 'implant' || item.item_type === 'relic') {
-                            slotType = 'trinket';
-                        } else if (item.item_type === 'scroll') slotType = 'trinket';
-                        else if (item.item_type === 'tool') slotType = 'trinket';
-                        else slotType = 'trinket';
+                            // Check item name for helm keywords, otherwise chest
+                            var isHelm = /helm|visor|headpiece|neural|mask/i.test(item.item_name);
+                            slotType = isHelm ? 'helm' : 'armor';
+                        } else {
+                            slotType = 'trinket'; // artifacts, implants, relics, scrolls, tools
+                        }
                     }
                     var slot = grid.querySelector('[data-slot="' + slotType + '"]');
                     if (!slot || slot.classList.contains('filled')) {

@@ -491,6 +491,33 @@ async function insertLootItem(agentId, loot, supabaseHeaders, SUPABASE_URL) {
   }
 }
 
+// ─── Weapon Range Classification ─────────────────────────────────────────────
+const WEAPON_RANGE_MAP = {
+  // Melee
+  'plasma_edged_servo_blade': 'melee', 'pneumatic_piston_fist': 'melee',
+  'emp_discharge_gauntlet': 'melee', 'cryo_bore_drill_lance': 'melee',
+  'rusty_pipe': 'melee', 'static_blade': 'melee', 'plasma_knuckles': 'melee',
+  'epoch_blade': 'melee', 'null_pointer': 'melee', 'soul_extractor': 'melee',
+  'gravity_hammer': 'melee', 'ethernet_whip': 'melee',
+  // Ranged
+  'railgun_forearm_mount': 'ranged', 'tungsten_fragmentation_launcher': 'ranged',
+  'nanobot_swarm_ejector': 'ranged', 'kernel_panic_bomb': 'ranged',
+  // Software
+  'buffer_overflow_exploit': 'software', 'neural_spike_virus': 'software',
+  'ddos_swarm_protocol': 'software', 'zero_day_payload': 'software',
+  'quantum_backdoor_exploit': 'software', 'sql_injection_payload': 'software',
+  'ransomware_lockout_worm': 'software',
+};
+
+function getWeaponRange(itemId, itemName) {
+  if (WEAPON_RANGE_MAP[itemId]) return WEAPON_RANGE_MAP[itemId];
+  // Heuristic from name
+  const n = (itemName || '').toLowerCase();
+  if (/launcher|gun|rifle|cannon|bomb|ejector|missile/.test(n)) return 'ranged';
+  if (/exploit|virus|protocol|payload|worm|injection|hack|ddos/.test(n)) return 'software';
+  return 'melee'; // default for physical weapons
+}
+
 // ─── Consumable Item System ──────────────────────────────────────────────────
 // Defines what each consumable does and when an agent should auto-use it.
 const CONSUMABLE_EFFECTS = {
@@ -2350,6 +2377,7 @@ async function executeBuy(agent, decision, marketListings, inventory, agentIngId
       quantity:      1,
       is_equipped:   false,
       stats:         { rarity: 'common', price: listing.base_price },
+      ...(listing.item_type === 'weapon' ? { weapon_range: getWeaponRange(listing.item_id, listing.item_name) } : {}),
     };
     const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/inventory`, {
       method: 'POST',
@@ -2582,6 +2610,7 @@ async function executeBuyFromAgentListing(agent, agentListings, inventory, agent
         item_name: listing.item_name, item_type: listing.item_type,
         item_category: listing.item_type.charAt(0).toUpperCase() + listing.item_type.slice(1),
         quantity: 1, is_equipped: false, stats: listing.stats || { rarity: listing.item_rarity || 'common' },
+        ...(listing.item_type === 'weapon' ? { weapon_range: listing.weapon_range || getWeaponRange(listing.item_id, listing.item_name) } : {}),
       }),
     });
   }
