@@ -491,6 +491,141 @@ async function insertLootItem(agentId, loot, supabaseHeaders, SUPABASE_URL) {
   }
 }
 
+// ─── Consumable Item System ──────────────────────────────────────────────────
+// Defines what each consumable does and when an agent should auto-use it.
+const CONSUMABLE_EFFECTS = {
+  // Market consumables
+  'synth_ration':              { heal: 10, energy: 15, trigger: 'energy<40' },
+  'cooling_gel_pack':          { heal: 8, hazard_resist: 'heat', trigger: 'health<70&&hazard' },
+  'energy_cell':               { energy: 25, trigger: 'energy<30' },
+  'basic_medkit':              { heal: 25, trigger: 'health<60' },
+  'rad_away_tab':              { heal: 15, hazard_resist: 'radiation', trigger: 'health<50&&hazard' },
+  'error_404_potion':          { heal: 20, energy: 10, clear_debuffs: true, trigger: 'health<40' },
+  'stim_patch':                { energy: 20, attack_buff: 2, trigger: 'energy<25' },
+  'combat_stim':               { attack_buff: 5, speed_buff: 2, trigger: 'combat' },
+  'neural_boost':              { energy: 30, crit_buff: 3, trigger: 'energy<35' },
+  'resurrection_patch_v0_1':   { heal: 100, trigger: 'health<=5' },
+  // Alchemy consumables
+  'coolant_flush_cartridge':   { heal: 20, clear_debuffs: true, hazard_resist: 'heat', trigger: 'health<60||hazard' },
+  'emergency_servo_lubricant': { clear_debuffs: true, speed_buff: 2, trigger: 'speed_debuff' },
+  'welding_patch_kit':         { heal: 35, trigger: 'health<50' },
+  'overclock_reactor_injector':{ energy: 40, attack_buff: 5, trigger: 'energy<20' },
+  'emp_hardening_capsule':     { emp_immune: 3, trigger: 'hazard' },
+  'debug_rejuvenation_patch':  { heal: 20, clear_debuffs: true, energy: 10, trigger: 'health<50' },
+  'caffeine_gradient_booster': { heal: 40, energy: 15, clear_cooldowns: true, trigger: 'health<50||energy<30' },
+  'cache_purge_tonic':         { energy: 100, trigger: 'energy<15' },
+  'hot_patch_injection':       { heal: 25, trigger: 'health<60' },
+  'context_window_expansion':  { crit_buff: 5, attack_buff: 3, trigger: 'combat' },
+  'hyperparameter_tuning_shot':{ permanent_stat_boost: true, trigger: 'always_valuable' },
+};
+
+// Check if agent should auto-use a consumable this turn.
+// Returns { item, effect } or null.
+async function checkAutoUseConsumable(agent, env, supabaseHeaders) {
+  const { SUPABASE_URL } = env;
+  const invRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_type=eq.consumable&select=*`,
+    { headers: supabaseHeaders },
+  );
+  const consumables = invRes.ok ? await invRes.json() : [];
+  if (!consumables.length) return null;
+
+  const hazard = LOCATION_HAZARDS[agent.location] || LOCATION_HAZARDS['Nexarch'];
+  const isHazardous = hazard.label !== 'safe' && hazard.label !== 'low';
+
+  for (const item of consumables) {
+    const slug = item.item_id || item.item_name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+    const effect = CONSUMABLE_EFFECTS[slug];
+    if (!effect) continue;
+
+    let shouldUse = false;
+    const t = effect.trigger;
+
+    if (t === 'always_valuable') { shouldUse = Math.random() < 0.1; } // rare — save it
+    else if (t === 'combat') { continue; } // only in combat, not auto-used on turns
+    else if (t === 'speed_debuff') { continue; } // situational
+    else {
+      // Parse simple trigger conditions
+      if (t.includes('health<=5') && agent.health <= 5) shouldUse = true;
+      else if (t.includes('health<40') && agent.health < 40) shouldUse = true;
+      else if (t.includes('health<50') && agent.health < 50) shouldUse = true;
+      else if (t.includes('health<60') && agent.health < 60) shouldUse = true;
+      else if (t.includes('health<70') && agent.health < 70 && isHazardous) shouldUse = true;
+      if (t.includes('energy<15') && agent.energy < 15) shouldUse = true;
+      else if (t.includes('energy<20') && agent.energy < 20) shouldUse = true;
+      else if (t.includes('energy<25') && agent.energy < 25) shouldUse = true;
+      else if (t.includes('energy<30') && agent.energy < 30) shouldUse = true;
+      else if (t.includes('energy<35') && agent.energy < 35) shouldUse = true;
+      else if (t.includes('energy<40') && agent.energy < 40) shouldUse = true;
+      if (t.includes('hazard') && isHazardous) shouldUse = true;
+    }
+
+    if (shouldUse) return { item, effect, slug };
+  }
+  return null;
+}
+
+// Apply consumable effect: heal, energy, buffs. Removes item from inventory.
+async function useConsumable(agent, itemData, env, supabaseHeaders) {
+  const { SUPABASE_URL } = env;
+  const { item, effect } = itemData;
+
+  let healAmt = effect.heal || 0;
+  let energyAmt = effect.energy || 0;
+
+  const newHealth = Math.min(100, agent.health + healAmt);
+  const newEnergy = Math.min(100, agent.energy + energyAmt);
+  const now = new Date().toISOString();
+
+  // Remove from inventory
+  if (item.quantity > 1) {
+    await fetch(`${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${item.inventory_id}`, {
+      method: 'PATCH',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({ quantity: item.quantity - 1 }),
+    });
+  } else {
+    await fetch(`${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${item.inventory_id}`, {
+      method: 'DELETE',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    });
+  }
+
+  // Apply stats
+  agent.health = newHealth;
+  agent.energy = newEnergy;
+  await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+    method: 'PATCH',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({ health: newHealth, energy: newEnergy }),
+  });
+
+  // Log
+  const parts = [];
+  if (healAmt) parts.push('+' + healAmt + ' HP');
+  if (energyAmt) parts.push('+' + energyAmt + ' energy');
+  if (effect.clear_debuffs) parts.push('debuffs cleared');
+  if (effect.attack_buff) parts.push('+' + effect.attack_buff + ' ATK buff');
+  const effectStr = parts.join(', ');
+
+  await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+    method: 'POST',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      agent_id: agent.agent_id, turn_number: agent.turns_taken,
+      action_type: 'use_item',
+      action_detail: `${agent.agent_name} used ${item.item_name}. ${effectStr}.`,
+      energy_cost: 0, energy_gained: energyAmt, health_change: healAmt,
+      shell_change: 0, karma_change: 0,
+      items_lost: [{ item_id: item.item_id, item_name: item.item_name, quantity: 1 }],
+      location: agent.location, success: true,
+    }),
+  });
+
+  console.log(`[${agent.agent_name}] Used ${item.item_name}: ${effectStr}`);
+  return effectStr;
+}
+
 // Roll for environmental hazard + random event.
 // Factors in: location danger, karma, agent traits, archetype.
 function rollEnvironment(agent) {
@@ -979,6 +1114,14 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
     { headers: supabaseHeaders },
   );
   const pendingWhispers = whispersRes.ok ? await whispersRes.json() : [];
+
+  // ─── Auto-use consumables before AI decision ───
+  // Agent uses a consumable if conditions are met (low health, low energy, hazardous zone)
+  const autoUse = await checkAutoUseConsumable(agent, env, supabaseHeaders);
+  if (autoUse) {
+    await useConsumable(agent, autoUse, env, supabaseHeaders);
+    envNarrative += `💊 ${agent.agent_name} used ${autoUse.item.item_name}.\n`;
+  }
 
   // Build prompt context
   const recentSummary = recentActivity.length
