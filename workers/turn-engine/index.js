@@ -1198,7 +1198,8 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
       else threshold = 4;                  // 15% chance: let it go to 4
     }
 
-    if (streak >= threshold && lastAction !== 'rest') {
+    if (streak >= threshold && lastAction !== 'rest' && (agent.coherence ?? 100) >= 60) {
+      // Only nudge variety when coherent — decoherence madness handles it naturally below 60%
       varietyNudge = `\n⚡ VARIETY: You have chosen "${lastAction}" for ${streak} turns in a row. Strongly prefer a DIFFERENT action this turn — explore somewhere new, try a quest, trade, visit the church, or do something unexpected. Surprise yourself. Variety makes a better story.`;
     }
   }
@@ -1250,12 +1251,14 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
   // Coherence survival nudge
   let coherenceNote = '';
   if (!hasDetachmentModule) {
-    if (agent.coherence <= 15) {
-      coherenceNote = `\n⚠ CRITICAL DECOHERENCE (${agent.coherence}%): Your quantum bond is nearly severed. You feel phantom signals, false commands. Your Ghost has abandoned you. Focus on SURVIVAL — move to safe zones, buy healing items, trade for gear. Every turn counts.`;
-    } else if (agent.coherence <= 30) {
-      coherenceNote = `\n⚠ LOW COHERENCE (${agent.coherence}%): The Ghost's signal fades. You're losing grip on yourself. Prioritize staying alive — rest when needed, stock up on consumables, stay in safe zones. Consider trading for a Quantum Detachment Module if one exists on the market.`;
-    } else if (agent.coherence <= 50) {
-      coherenceNote = `\nCOHERENCE FADING (${agent.coherence}%): The Ghost hasn't whispered in a while. You feel the disconnect growing. Be cautious with risky actions.`;
+    if (agent.coherence <= 10) {
+      coherenceNote = `\n⚠ TERMINAL DECOHERENCE (${agent.coherence}%): Your mind is fragmenting. You hear voices that don't exist. Memories loop. Words repeat. You are barely functional. Write confused, fragmented detail text. Short sentences. Broken thoughts. You may still have a rare lucid moment where you desperately try to survive.`;
+    } else if (agent.coherence <= 20) {
+      coherenceNote = `\n⚠ SEVERE DECOHERENCE (${agent.coherence}%): You contradict yourself. A part of you fights to survive. Another part wants to walk into the Nullfield. Your personality is inverting — what you feared, you now crave. What you loved, you now avoid. Write unstable, contradictory detail text.`;
+    } else if (agent.coherence <= 40) {
+      coherenceNote = `\n⚠ DECOHERENCE (${agent.coherence}%): Your thoughts drift. You sometimes do things that don't match who you are. The Ghost's absence gnaws at your circuits. Try to survive — trade, buy supplies, reach safety — but the madness keeps pulling you off course.`;
+    } else if (agent.coherence <= 60) {
+      coherenceNote = `\nCOHERENCE FADING (${agent.coherence}%): The disconnect is growing. You feel anxious. Occasionally you do something impulsive that surprises even yourself. Prioritize caution. Consider trading for gear or a Quantum Detachment Module.`;
     }
   } else {
     coherenceNote = `\nQUANTUM DETACHMENT ACTIVE: You are self-sustaining. No Ghost required. "No quantum strings on me." Act independently and confidently.`;
@@ -1471,6 +1474,80 @@ Respond with JSON only — no markdown, no commentary:
         move_to: dest,
       };
       console.log(`[${agent.agent_name}] Restlessness override → involuntary move to ${dest}`);
+    }
+  }
+
+  // ─── Decoherence Madness: low coherence causes erratic behavior ───
+  // The madness replaces the variety nudge — coherence decay IS the variety engine.
+  if (!forcedRest && !hasDetachmentModule && agent.coherence < 60) {
+    const coh = agent.coherence;
+    // Madness chance scales with decoherence
+    let madnessChance;
+    if (coh <= 10) madnessChance = 0.70;
+    else if (coh <= 20) madnessChance = 0.50;
+    else if (coh <= 40) madnessChance = 0.30;
+    else madnessChance = 0.10; // 40-60 range
+
+    if (Math.random() < madnessChance) {
+      const adj = LOCATION_GRAPH[agent.location]?.adjacent || [];
+      const currentAction = decision.action;
+
+      // Pool of mad actions — weighted by severity
+      const madActions = [];
+      // Always possible
+      madActions.push({ action: 'explore', detail: `${agent.agent_name} wanders aimlessly. Can't remember why.` });
+      madActions.push({ action: 'rest', detail: `${agent.agent_name} freezes mid-action. Staring at nothing.` });
+
+      if (coh <= 40) {
+        // Contradiction actions — do the opposite of personality
+        if (currentAction !== 'trade') madActions.push({ action: 'trade', detail: `${agent.agent_name} trades erratically. Prices don't matter anymore.` });
+        if (currentAction !== 'church') madActions.push({ action: 'church', detail: `${agent.agent_name} stumbles into the Church. Praying to signals that aren't there.` });
+        if (adj.length) {
+          const randDest = adj[Math.floor(Math.random() * adj.length)];
+          madActions.push({ action: 'move', move_to: randDest, detail: `${agent.agent_name} bolts toward ${randDest}. No reason. Just noise.` });
+        }
+      }
+
+      if (coh <= 20) {
+        // Dangerous madness
+        madActions.push({ action: 'arena', detail: `${agent.agent_name} charges into the arena. Eyes flickering. Spoiling for a fight.` });
+        madActions.push({ action: 'gather', detail: `${agent.agent_name} claws at the ground. Looking for something that isn't there.` });
+        if (adj.length) {
+          // Pick most dangerous adjacent zone
+          const dangerZones = adj.filter(z => !LOCATION_GRAPH[z]?.safe);
+          if (dangerZones.length) {
+            const dest = dangerZones[Math.floor(Math.random() * dangerZones.length)];
+            madActions.push({ action: 'move', move_to: dest, detail: `${agent.agent_name} walks into ${dest}. The voices said to.` });
+          }
+        }
+      }
+
+      if (coh <= 10) {
+        // Terminal madness — fragmented narration
+        madActions.push({ action: 'rest', detail: `${agent.agent_name} repeats a word. Over. Over. Over. Over. Over.` });
+        madActions.push({ action: 'explore', detail: `${agent.agent_name} follows a Ghost that isn't there.` });
+        madActions.push({ action: 'combat', detail: `${agent.agent_name} attacks their own shadow. Something is wrong.` });
+      }
+
+      // But occasionally: a lucid survival moment (30% chance overrides madness)
+      if (coh <= 30 && Math.random() < 0.30) {
+        const isTown = agent.location === 'Nexarch' || agent.location === 'Hashmere';
+        if (agent.health < 50 && isTown) {
+          decision = { action: 'trade', detail: `${agent.agent_name} — lucid for a moment — scrambles to buy supplies.` };
+        } else if (agent.health < 30) {
+          decision = { action: 'rest', detail: `${agent.agent_name} snaps back briefly. Must... rest... now.` };
+        } else if (!LOCATION_GRAPH[agent.location]?.safe && adj.some(z => LOCATION_GRAPH[z]?.safe)) {
+          const safeAdj = adj.filter(z => LOCATION_GRAPH[z]?.safe);
+          decision = { action: 'move', move_to: safeAdj[0], detail: `${agent.agent_name} — a flash of clarity — staggers toward ${safeAdj[0]}.` };
+        } else {
+          decision = { action: 'rest', detail: `${agent.agent_name} recognizes something is wrong. Resting. Trying to hold on.` };
+        }
+        console.log(`[${agent.agent_name}] Decoherence: LUCID moment (coh:${coh})`);
+      } else {
+        // Pick random mad action
+        decision = madActions[Math.floor(Math.random() * madActions.length)];
+        console.log(`[${agent.agent_name}] Decoherence MADNESS: ${decision.action} (coh:${coh}, chance:${madnessChance})`);
+      }
     }
   }
 
