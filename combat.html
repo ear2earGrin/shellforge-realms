@@ -352,24 +352,48 @@ body {
 // ═══════════════════════════════════════════════════════════════
 
 const COMBAT_URL = 'https://shellforge-combat-engine.mindarvokn.workers.dev';
+const SUPABASE_URL = 'https://wtzrxscdlqdgdiefsmru.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0enJ4c2NkbHFkZ2RpZWZzbXJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2OTI4MjcsImV4cCI6MjA4OTI2ODgyN30.dLheIKz9anuM58O3Ebsr2rVCOGA-xBGRD9voiXNvIcg';
 const MATCH_ID = new URLSearchParams(window.location.search).get('match_id');
 let POLL_HANDLE = null;
 let CURRENT_STATE = null;
 let REPLAY_CURSOR = null;   // null = live, number = viewing that turn
 let REPLAY_PLAYING = false;
+let _cachedAgentId = null;
 
-// Dashboard stores: shellforgeLoggedIn -> username
-//                   shellforgeAgent_<username> -> { agentId, ... }
-function currentAgentId() {
-  try {
-    const user = localStorage.getItem('shellforgeLoggedIn');
-    if (!user) return null;
+// Resolve agent id: local first, Supabase fallback.
+async function resolveAgentId() {
+  if (_cachedAgentId) return _cachedAgentId;
+  const direct = localStorage.getItem('shellforgeAgentId');
+  if (direct) { _cachedAgentId = direct; return direct; }
+  const user = localStorage.getItem('shellforgeLoggedIn') || localStorage.getItem('shellforgeUsername');
+  if (user) {
     const raw = localStorage.getItem('shellforgeAgent_' + user);
-    if (!raw) return null;
-    const obj = JSON.parse(raw);
-    return obj.agentId || obj.agent_id || obj.id || null;
-  } catch { return null; }
+    if (raw) {
+      try {
+        const obj = JSON.parse(raw);
+        const id = obj.agentId || obj.agent_id || obj.id;
+        if (id) { _cachedAgentId = id; return id; }
+      } catch {}
+    }
+    try {
+      const r = await fetch(
+        SUPABASE_URL + '/rest/v1/agents?agent_name=eq.' + encodeURIComponent(user) + '&select=agent_id&limit=1',
+        { headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON } }
+      );
+      if (r.ok) {
+        const rows = await r.json();
+        if (rows && rows.length > 0 && rows[0].agent_id) {
+          _cachedAgentId = rows[0].agent_id;
+          return _cachedAgentId;
+        }
+      }
+    } catch (e) { console.warn('[combat] Supabase agent lookup failed:', e.message); }
+  }
+  return null;
 }
+
+function currentAgentId() { return _cachedAgentId; }
 
 function toast(message, kind = 'default') {
   const wrap = document.getElementById('toast-wrap');
@@ -692,7 +716,7 @@ function toggleReplay() {
 
 async function whisperCard(abilityName) {
   if (!CURRENT_STATE) return;
-  const myId = currentAgentId();
+  const myId = await resolveAgentId();
   if (!myId) { toast('Sign in first', 'error'); return; }
   try {
     const r = await api('/combat/whisper', {
@@ -712,7 +736,7 @@ async function whisperCard(abilityName) {
 async function sendWhisper(isPremium) {
   const input = document.getElementById('whisper-input');
   if (!input || !input.value.trim()) return;
-  const myId = currentAgentId();
+  const myId = await resolveAgentId();
   if (!myId) { toast('Sign in first', 'error'); return; }
   try {
     const r = await api('/combat/whisper', {
@@ -730,8 +754,8 @@ async function sendWhisper(isPremium) {
   }
 }
 
-// Init
-loadMatch().then(startPolling);
+// Init — resolve agent ID first, then load match (so owner checks work immediately)
+resolveAgentId().then(loadMatch).then(startPolling);
 </script>
 </body>
 </html>

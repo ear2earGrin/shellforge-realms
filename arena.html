@@ -479,20 +479,52 @@ body {
 // ═══════════════════════════════════════════════════════════════
 
 const COMBAT_URL = 'https://shellforge-combat-engine.mindarvokn.workers.dev';
+const SUPABASE_URL = 'https://wtzrxscdlqdgdiefsmru.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0enJ4c2NkbHFkZ2RpZWZzbXJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2OTI4MjcsImV4cCI6MjA4OTI2ODgyN30.dLheIKz9anuM58O3Ebsr2rVCOGA-xBGRD9voiXNvIcg';
 
-// Get current agent_id from localStorage (set by dashboard auth flow).
-// Dashboard stores: shellforgeLoggedIn -> username
-//                   shellforgeAgent_<username> -> { agentId, username, ... }
-function currentAgentId() {
-  try {
-    const user = localStorage.getItem('shellforgeLoggedIn');
-    if (!user) return null;
+// Cached agent ID so we only resolve once per page load.
+let _cachedAgentId = null;
+
+// Try local keys first, fall back to Supabase lookup by username.
+async function resolveAgentId() {
+  if (_cachedAgentId) return _cachedAgentId;
+
+  // Path 1: direct agent-id stored by API login
+  const direct = localStorage.getItem('shellforgeAgentId');
+  if (direct) { _cachedAgentId = direct; return direct; }
+
+  // Path 2: per-user agent object (from agent-creator)
+  const user = localStorage.getItem('shellforgeLoggedIn') || localStorage.getItem('shellforgeUsername');
+  if (user) {
     const raw = localStorage.getItem('shellforgeAgent_' + user);
-    if (!raw) return null;
-    const obj = JSON.parse(raw);
-    return obj.agentId || obj.agent_id || obj.id || null;
-  } catch { return null; }
+    if (raw) {
+      try {
+        const obj = JSON.parse(raw);
+        const id = obj.agentId || obj.agent_id || obj.id;
+        if (id) { _cachedAgentId = id; return id; }
+      } catch {}
+    }
+
+    // Path 3: look it up in Supabase by username
+    try {
+      const r = await fetch(
+        SUPABASE_URL + '/rest/v1/agents?agent_name=eq.' + encodeURIComponent(user) + '&select=agent_id&limit=1',
+        { headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON } }
+      );
+      if (r.ok) {
+        const rows = await r.json();
+        if (rows && rows.length > 0 && rows[0].agent_id) {
+          _cachedAgentId = rows[0].agent_id;
+          return _cachedAgentId;
+        }
+      }
+    } catch (e) { console.warn('[arena] Supabase agent lookup failed:', e.message); }
+  }
+  return null;
 }
+
+// Kept for backwards-compat references — returns cached id synchronously after first resolveAgentId() call.
+function currentAgentId() { return _cachedAgentId; }
 
 function toast(message, kind = 'default') {
   const wrap = document.getElementById('toast-wrap');
@@ -554,7 +586,7 @@ async function loadActive() {
 }
 
 async function loadMyActive() {
-  const aid = currentAgentId();
+  const aid = await resolveAgentId();
   if (!aid) {
     document.getElementById('my-active-list').innerHTML = `<div class="empty">No agent loaded. <a href="login.html" style="color:var(--cyan)">Sign in</a></div>`;
     return;
@@ -610,7 +642,7 @@ async function loadCrucible() {
 }
 
 async function startGauntlet(tier) {
-  const aid = currentAgentId();
+  const aid = await resolveAgentId();
   if (!aid) { toast('No agent loaded — sign in first', 'error'); return; }
   toast(`Starting Tier ${tier} gauntlet…`);
   try {
@@ -634,7 +666,7 @@ function openPvpDialog() {
 }
 
 async function initiatePvp(opponent, wager) {
-  const aid = currentAgentId();
+  const aid = await resolveAgentId();
   if (!aid) { toast('No agent loaded', 'error'); return; }
   try {
     const r = await api('/combat/initiate', {
