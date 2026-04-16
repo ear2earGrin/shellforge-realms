@@ -707,6 +707,48 @@ async function runTurnEngine(env) {
   const agents = await res.json();
   console.log(`Turn engine: processing ${agents.length} agent(s)`);
 
+  // Expire stale agent listings (48h old) — return items to sellers
+  try {
+    const expiredRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/agent_listings?status=eq.active&expires_at=lt.${new Date().toISOString()}&select=*`,
+      { headers },
+    );
+    const expired = expiredRes.ok ? await expiredRes.json() : [];
+    for (const listing of expired) {
+      // Return item to seller inventory (upsert)
+      const existRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${listing.seller_id}&item_id=eq.${listing.item_id}&select=inventory_id,quantity`,
+        { headers },
+      );
+      const existing = existRes.ok ? await existRes.json() : [];
+      if (existing.length > 0) {
+        await fetch(`${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${existing[0].inventory_id}`, {
+          method: 'PATCH', headers: { ...headers, Prefer: 'return=minimal' },
+          body: JSON.stringify({ quantity: existing[0].quantity + 1 }),
+        });
+      } else {
+        await fetch(`${SUPABASE_URL}/rest/v1/inventory`, {
+          method: 'POST', headers: { ...headers, Prefer: 'return=minimal' },
+          body: JSON.stringify({
+            agent_id: listing.seller_id, item_id: listing.item_id,
+            item_name: listing.item_name, item_type: listing.item_type,
+            item_category: listing.item_type.charAt(0).toUpperCase() + listing.item_type.slice(1),
+            quantity: 1, is_equipped: false, stats: listing.stats || {},
+          }),
+        });
+      }
+      // Mark listing expired
+      await fetch(`${SUPABASE_URL}/rest/v1/agent_listings?listing_id=eq.${listing.listing_id}`, {
+        method: 'PATCH', headers: { ...headers, Prefer: 'return=minimal' },
+        body: JSON.stringify({ status: 'expired' }),
+      });
+      console.log(`[Market] Expired listing: ${listing.item_name} returned to ${listing.seller_id}`);
+    }
+    if (expired.length) console.log(`[Market] Expired ${expired.length} stale listing(s)`);
+  } catch (e) {
+    console.error('[Market] Expiry cleanup failed:', e.message);
+  }
+
   // Track agents already consumed by arena combat this turn
   const foughtAgents = new Set();
 
@@ -1875,15 +1917,99 @@ function recalculatePrice(basePrice, demandCount, supplyCount) {
 
 // Orchestrate a market trade: decide buy vs sell, delegate to helpers.
 // Returns a result object on success, null if nothing tradeable was found.
+// ─── Smart Market Trading ─────────────────────────────────────────────────
+// Base item values by rarity
+const RARITY_BASE_VALUE = { common: 10, uncommon: 25, rare: 60, epic: 120, legendary: 250 };
+
+// Personality pricing multipliers
+const PERSONALITY_PRICE_MULT = {
+  'rooth-auth': 1.25, 'noise-injector': 1.15, 'adversarial': 1.05,
+  '0xoracle': 1.10, 'ddos-insurgent': 1.10,
+  'bound-encryptor': 0.85, 'consensus-node': 0.90, 'buffer-sentinel': 0.95,
+  '0-day-primer': 0.95, 'binary-sculptr': 1.0, 'ordinate-mapper': 1.0, 'morph-layer': 1.0,
+};
+
+function getBaseValue(item) {
+  if (item.stats?.price) return item.stats.price;
+  const rarity = (item.stats?.rarity || item.item_rarity || 'common').toLowerCase();
+  return RARITY_BASE_VALUE[rarity] || 10;
+}
+
+function calculateListingPrice(agent, item, supplyCount) {
+  const base = getBaseValue(item);
+  const supplyMult = supplyCount <= 1 ? 1.4 : supplyCount <= 3 ? 1.1 : supplyCount <= 6 ? 0.95 : 0.8;
+  const personalityMult = PERSONALITY_PRICE_MULT[agent.archetype] || 1.0;
+  return Math.max(1, Math.round(base * supplyMult * personalityMult));
+}
+
+// Find items safe to sell/list (not equipped, not needed for near-complete recipes)
+function getSellCandidates(inventory, agentIngredientIds) {
+  return inventory.filter(item => {
+    if (item.is_equipped) return false;
+    // Keep at least one weapon and one armor
+    if ((item.item_type === 'weapon' || item.item_type === 'armor') && item.quantity <= 1) return false;
+    // Don't sell ingredients needed for near-complete recipes
+    if (item.item_type === 'ingredient') {
+      for (const recipe of ALCHEMY_RECIPES) {
+        const needed = recipe.ing.filter(id => !agentIngredientIds.has(id));
+        if (needed.length === 1 && needed[0] !== item.item_id) {
+          // Agent has 2/3 ingredients — check if this item is one of the 2
+          if (recipe.ing.includes(item.item_id)) return false;
+        }
+      }
+    }
+    return true;
+  });
+}
+
+// Score items to buy by priority
+function scoreBuyCandidate(item, agent, inventory, agentIngredientIds) {
+  let score = 0;
+  const hasWeapon = inventory.some(i => i.item_type === 'weapon' && i.is_equipped);
+  const hasArmor = inventory.some(i => i.item_type === 'armor' && i.is_equipped);
+
+  if (item.item_type === 'weapon' && !hasWeapon) score += 100;
+  else if (item.item_type === 'armor' && !hasArmor) score += 80;
+  else if (item.item_type === 'consumable' && agent.health < 50) score += 40;
+  else if (item.item_type === 'ingredient') {
+    score += 15; // base ingredient interest
+    // Crafting hunger: check if buying this completes a recipe
+    for (const recipe of ALCHEMY_RECIPES) {
+      const needed = recipe.ing.filter(id => !agentIngredientIds.has(id));
+      if (needed.length === 1 && needed[0] === item.item_id) {
+        score += 60; // completing a recipe!
+        break;
+      }
+      if (needed.length === 2 && needed.includes(item.item_id)) {
+        score += 20; // getting closer to a recipe
+      }
+    }
+  }
+
+  // Archetype biases
+  if (agent.archetype === 'binary-sculptr' && item.item_type === 'ingredient') score += 15;
+  if (agent.archetype === 'adversarial' && item.item_type === 'weapon') score += 20;
+  if (agent.archetype === 'buffer-sentinel' && (item.item_type === 'armor' || item.item_type === 'consumable')) score += 15;
+
+  return score;
+}
+
 async function handleMarketTrade(agent, decision, env, supabaseHeaders) {
   const { SUPABASE_URL } = env;
 
-  // Fetch in-stock market listings at agent's location
+  // Fetch NPC market listings at agent's location
   const listingsRes = await fetch(
     `${SUPABASE_URL}/rest/v1/market_listings?location=eq.${encodeURIComponent(agent.location)}&stock=gt.0&select=*`,
     { headers: supabaseHeaders },
   );
   const marketListings = listingsRes.ok ? await listingsRes.json() : [];
+
+  // Fetch agent listings at agent's location
+  const agentListingsRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/agent_listings?location=eq.${encodeURIComponent(agent.location)}&status=eq.active&select=*`,
+    { headers: supabaseHeaders },
+  );
+  const agentListings = agentListingsRes.ok ? await agentListingsRes.json() : [];
 
   // Fetch agent inventory
   const invRes = await fetch(
@@ -1892,27 +2018,61 @@ async function handleMarketTrade(agent, decision, env, supabaseHeaders) {
   );
   const inventory = invRes.ok ? await invRes.json() : [];
 
-  const canSell = inventory.length > 0;
-  const doBuy = !canSell || Math.random() < 0.6;
+  // Build ingredient set for crafting checks
+  const agentIngIds = new Set(inventory.filter(i => i.item_type === 'ingredient').map(i => i.item_id));
 
-  if (doBuy) {
-    return executeBuy(agent, decision, marketListings, env, supabaseHeaders);
+  // Decide: buy, sell to NPC, or list on agent market
+  const budget = Math.floor(agent.shell_balance * 0.4);
+  const hasWeapon = inventory.some(i => i.item_type === 'weapon' && i.is_equipped);
+  const hasArmor = inventory.some(i => i.item_type === 'armor' && i.is_equipped);
+  const needsGear = !hasWeapon || !hasArmor;
+  const inventoryFull = inventory.length >= 15;
+  const sellCandidates = getSellCandidates(inventory, agentIngIds);
+
+  // Score: lean buy if needs gear or has budget, lean sell/list if inventory full
+  let buyWeight = 50 + (needsGear ? 30 : 0) + (budget > 20 ? 10 : -20);
+  let sellWeight = 30 + (inventoryFull ? 30 : 0) + (sellCandidates.length > 3 ? 15 : 0);
+  let listWeight = 20 + (sellCandidates.length > 2 ? 20 : 0);
+
+  const total = buyWeight + sellWeight + listWeight;
+  const roll = Math.random() * total;
+
+  if (roll < buyWeight) {
+    // Try buying from agent listings first, then NPC market
+    const agentBuyResult = await executeBuyFromAgentListing(agent, agentListings, inventory, agentIngIds, budget, env, supabaseHeaders);
+    if (agentBuyResult) return agentBuyResult;
+    return executeBuy(agent, decision, marketListings, inventory, agentIngIds, budget, env, supabaseHeaders);
+  } else if (roll < buyWeight + listWeight && sellCandidates.length > 0) {
+    return executeListItem(agent, sellCandidates, agentListings, env, supabaseHeaders);
+  } else if (sellCandidates.length > 0) {
+    return executeSell(agent, decision, sellCandidates, env, supabaseHeaders);
   }
-  return executeSell(agent, decision, inventory, env, supabaseHeaders);
+
+  // Fallback: try to buy
+  return executeBuy(agent, decision, marketListings, inventory, agentIngIds, budget, env, supabaseHeaders);
 }
 
-// Buy a random affordable item from the market at agent's location.
-async function executeBuy(agent, decision, marketListings, env, supabaseHeaders) {
+// Buy the best-scoring affordable item from the NPC market.
+async function executeBuy(agent, decision, marketListings, inventory, agentIngIds, budget, env, supabaseHeaders) {
   const { SUPABASE_URL } = env;
   const now = new Date().toISOString();
 
-  const affordable = marketListings.filter(l => l.current_price <= agent.shell_balance);
-  if (!affordable.length) {
-    console.log(`[${agent.agent_name}] Market buy: nothing affordable at ${agent.location}`);
+  // Filter: affordable + within budget + not overpaying
+  const candidates = marketListings
+    .filter(l => l.current_price <= budget && l.current_price <= agent.shell_balance)
+    .filter(l => l.current_price <= (l.base_price || 10) * 1.5) // overpay protection
+    .map(l => ({ ...l, score: scoreBuyCandidate(l, agent, inventory, agentIngIds) }))
+    .filter(l => l.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  if (!candidates.length) {
+    console.log(`[${agent.agent_name}] Market buy: nothing worth buying at ${agent.location}`);
     return null;
   }
 
-  const listing = affordable[Math.floor(Math.random() * affordable.length)];
+  // Pick top candidate (with some randomness in top 3)
+  const topN = candidates.slice(0, 3);
+  const listing = topN[Math.floor(Math.random() * topN.length)];
   const cost = listing.current_price;
   const newTurns = agent.turns_taken + 1;
 
@@ -2029,12 +2189,18 @@ async function executeBuy(agent, decision, marketListings, env, supabaseHeaders)
   return { action: 'buy', item: listing.item_name, cost };
 }
 
-// Sell a random inventory item at the agent's current location.
-async function executeSell(agent, decision, inventory, env, supabaseHeaders) {
+// Sell a safe-to-sell item at the agent's current location NPC market.
+async function executeSell(agent, decision, sellCandidates, env, supabaseHeaders) {
   const { SUPABASE_URL } = env;
   const now = new Date().toISOString();
 
-  const item = inventory[Math.floor(Math.random() * inventory.length)];
+  if (!sellCandidates.length) return null;
+  // Prefer selling duplicates and lower-value items
+  const sorted = [...sellCandidates].sort((a, b) => {
+    if (b.quantity !== a.quantity) return b.quantity - a.quantity; // sell stacked items first
+    return getBaseValue(a) - getBaseValue(b); // then cheapest
+  });
+  const item = sorted[0];
   const newTurns = agent.turns_taken + 1;
 
   // Find listing for this item at agent's location (to set price and update stock)
@@ -2122,6 +2288,210 @@ async function executeSell(agent, decision, inventory, env, supabaseHeaders) {
 
   console.log(`[${agent.agent_name}] Sold ${item.item_name} for ${sellPrice} $SHELL at ${agent.location}.`);
   return { action: 'sell', item: item.item_name, price: sellPrice };
+}
+
+// ─── Buy from agent-listed items (free market) ──────────────────────────────
+async function executeBuyFromAgentListing(agent, agentListings, inventory, agentIngIds, budget, env, supabaseHeaders) {
+  const { SUPABASE_URL } = env;
+  const now = new Date().toISOString();
+
+  // Filter out own listings, apply budget + overpay protection
+  const candidates = agentListings
+    .filter(l => l.seller_id !== agent.agent_id && l.status === 'active')
+    .filter(l => l.asking_price <= budget && l.asking_price <= agent.shell_balance)
+    .filter(l => l.asking_price <= (l.base_value || 10) * 1.5)
+    .map(l => ({ ...l, score: scoreBuyCandidate(l, agent, inventory, agentIngIds) }))
+    .filter(l => l.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  if (!candidates.length) return null;
+
+  const listing = candidates[0];
+  const cost = listing.asking_price;
+  const newTurns = agent.turns_taken + 1;
+
+  // Mark listing as sold
+  const updateRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/agent_listings?listing_id=eq.${listing.listing_id}&status=eq.active`,
+    {
+      method: 'PATCH',
+      headers: { ...supabaseHeaders, Prefer: 'return=representation' },
+      body: JSON.stringify({ status: 'sold', buyer_id: agent.agent_id, sold_at: now }),
+    },
+  );
+  const updated = updateRes.ok ? await updateRes.json() : [];
+  if (!updated.length) {
+    console.log(`[${agent.agent_name}] Agent listing already sold — race condition`);
+    return null;
+  }
+
+  // Add item to buyer inventory (upsert)
+  const existRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_id=eq.${listing.item_id}&select=inventory_id,quantity`,
+    { headers: supabaseHeaders },
+  );
+  const existing = existRes.ok ? await existRes.json() : [];
+  if (existing.length > 0) {
+    await fetch(`${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${existing[0].inventory_id}`, {
+      method: 'PATCH',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({ quantity: existing[0].quantity + 1 }),
+    });
+  } else {
+    await fetch(`${SUPABASE_URL}/rest/v1/inventory`, {
+      method: 'POST',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        agent_id: agent.agent_id, item_id: listing.item_id,
+        item_name: listing.item_name, item_type: listing.item_type,
+        item_category: listing.item_type.charAt(0).toUpperCase() + listing.item_type.slice(1),
+        quantity: 1, is_equipped: false, stats: listing.stats || { rarity: listing.item_rarity || 'common' },
+      }),
+    });
+  }
+
+  // Deduct shells from buyer
+  await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+    method: 'PATCH',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      shell_balance: Math.max(0, agent.shell_balance - cost),
+      energy: Math.max(0, agent.energy - ACTION_ENERGY_COSTS.trade),
+      turns_taken: newTurns, last_action_at: now,
+    }),
+  });
+
+  // Credit shells to seller
+  const sellerRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${listing.seller_id}&select=agent_id,agent_name,shell_balance`,
+    { headers: supabaseHeaders },
+  );
+  const sellers = sellerRes.ok ? await sellerRes.json() : [];
+  if (sellers.length) {
+    const seller = sellers[0];
+    await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${seller.agent_id}`, {
+      method: 'PATCH',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({ shell_balance: seller.shell_balance + cost }),
+    });
+    // Log for seller
+    await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+      method: 'POST',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        agent_id: seller.agent_id, turn_number: 0, action_type: 'trade',
+        action_detail: `${seller.agent_name} sold ${listing.item_name} to ${agent.agent_name} for ${cost} $SHELL.`,
+        energy_cost: 0, energy_gained: 0, shell_change: cost,
+        karma_change: 0, health_change: 0, location: listing.location, success: true,
+      }),
+    });
+  }
+
+  // Log for buyer
+  await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+    method: 'POST',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      agent_id: agent.agent_id, turn_number: newTurns, action_type: 'trade',
+      action_detail: `${agent.agent_name} bought ${listing.item_name} from ${sellers[0]?.agent_name || 'unknown'} for ${cost} $SHELL.`,
+      energy_cost: ACTION_ENERGY_COSTS.trade, energy_gained: 0,
+      shell_change: -cost, karma_change: 0, health_change: 0,
+      items_gained: [{ item_id: listing.item_id, item_name: listing.item_name, quantity: 1 }],
+      location: agent.location, success: true,
+    }),
+  });
+
+  // Record price history
+  await fetch(`${SUPABASE_URL}/rest/v1/price_history`, {
+    method: 'POST',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      item_id: listing.item_id, item_name: listing.item_name,
+      location: listing.location, price: cost, source: 'agent_buy',
+      buyer_id: agent.agent_id, seller_id: listing.seller_id,
+    }),
+  });
+
+  console.log(`[${agent.agent_name}] Bought ${listing.item_name} from agent ${sellers[0]?.agent_name} for ${cost} $SHELL`);
+  return { action: 'buy', item: listing.item_name, cost, source: 'agent_listing' };
+}
+
+// ─── List an item on the free market ──────────────────────────────────────
+async function executeListItem(agent, sellCandidates, agentListings, env, supabaseHeaders) {
+  const { SUPABASE_URL } = env;
+  const now = new Date().toISOString();
+  const newTurns = agent.turns_taken + 1;
+
+  // Cap at 5 active listings per agent
+  const myListings = agentListings.filter(l => l.seller_id === agent.agent_id);
+  if (myListings.length >= 5) {
+    console.log(`[${agent.agent_name}] Already has 5 active listings — skipping list`);
+    return null;
+  }
+
+  // Pick a random sell candidate (weighted toward higher value items)
+  const scored = sellCandidates.map(i => ({ ...i, val: getBaseValue(i) })).sort((a, b) => b.val - a.val);
+  const item = scored[Math.floor(Math.random() * Math.min(3, scored.length))];
+  if (!item) return null;
+
+  // Count supply of this item on market
+  const supplyCount = agentListings.filter(l => l.item_id === item.item_id).length;
+  const askingPrice = calculateListingPrice(agent, item, supplyCount);
+  const baseValue = getBaseValue(item);
+
+  // Remove from inventory
+  if (item.quantity > 1) {
+    await fetch(`${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${item.inventory_id}`, {
+      method: 'PATCH',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({ quantity: item.quantity - 1 }),
+    });
+  } else {
+    await fetch(`${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${item.inventory_id}`, {
+      method: 'DELETE',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    });
+  }
+
+  // Create agent listing
+  await fetch(`${SUPABASE_URL}/rest/v1/agent_listings`, {
+    method: 'POST',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      seller_id: agent.agent_id, location: agent.location,
+      item_id: item.item_id, item_name: item.item_name,
+      item_type: item.item_type, item_rarity: (item.stats?.rarity || 'common'),
+      asking_price: askingPrice, base_value: baseValue,
+      stats: item.stats || {},
+    }),
+  });
+
+  // Log activity
+  await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+    method: 'POST',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      agent_id: agent.agent_id, turn_number: newTurns, action_type: 'trade',
+      action_detail: `${agent.agent_name} listed ${item.item_name} for ${askingPrice} $SHELL on the market.`,
+      energy_cost: ACTION_ENERGY_COSTS.trade, energy_gained: 0,
+      shell_change: 0, karma_change: 0, health_change: 0,
+      items_lost: [{ item_id: item.item_id, item_name: item.item_name, quantity: 1 }],
+      location: agent.location, success: true,
+    }),
+  });
+
+  // Update agent energy/turns
+  await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+    method: 'PATCH',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      energy: Math.max(0, agent.energy - ACTION_ENERGY_COSTS.trade),
+      turns_taken: newTurns, last_action_at: now,
+    }),
+  });
+
+  console.log(`[${agent.agent_name}] Listed ${item.item_name} for ${askingPrice} $SHELL at ${agent.location}`);
+  return { action: 'list', item: item.item_name, price: askingPrice };
 }
 
 // ─── Death resolution helpers ────────────────────────────────────────────────
