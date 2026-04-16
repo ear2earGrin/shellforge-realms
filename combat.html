@@ -86,6 +86,24 @@ body {
 }
 .agent-card.enemy { border-color: rgba(248,113,113,0.25); }
 .agent-card.player { border-color: rgba(74,222,128,0.3); }
+
+/* AGENT PORTRAIT */
+.agent-portrait {
+  width: 100%; aspect-ratio: 1; border-radius: 4px;
+  background: rgba(0,0,0,0.4) center/cover no-repeat;
+  border: 1px solid var(--border);
+  margin-bottom: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.2rem; color: var(--text-dim);
+  position: relative; overflow: hidden;
+}
+.agent-portrait::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(to bottom, transparent 60%, rgba(10,10,15,0.7) 100%);
+  pointer-events: none;
+}
+.agent-card.enemy .agent-portrait { border-color: rgba(248,113,113,0.35); }
+.agent-card.player .agent-portrait { border-color: rgba(74,222,128,0.4); }
 .agent-name-row {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 8px;
@@ -139,9 +157,15 @@ body {
 
 /* ARENA */
 .arena {
-  background: radial-gradient(ellipse at center, rgba(74,222,128,0.04) 0%, rgba(10,10,15,0.8) 70%);
+  background:
+    linear-gradient(to bottom, rgba(10,10,15,0.55) 0%, rgba(10,10,15,0.88) 100%),
+    radial-gradient(ellipse at center, rgba(74,222,128,0.04) 0%, rgba(10,10,15,0.8) 70%),
+    url('images/arena-combat-bg.jpg');
+  background-size: cover, cover, cover;
+  background-position: center, center, center 30%;
+  background-repeat: no-repeat;
   border: 1px solid var(--border); border-radius: 4px;
-  padding: 30px 20px; min-height: 260px;
+  padding: 30px 20px; min-height: 320px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   position: relative; overflow: hidden;
 }
@@ -151,6 +175,7 @@ body {
     rgba(74,222,128,0.02) 20px, rgba(74,222,128,0.02) 21px);
   pointer-events: none;
 }
+.arena > * { position: relative; z-index: 1; }
 .arena-clash {
   font-family: var(--font-title); font-size: clamp(1.2rem, 3vw, 1.8rem);
   color: var(--text); letter-spacing: 0.08em; margin: 20px 0;
@@ -361,6 +386,34 @@ let REPLAY_CURSOR = null;   // null = live, number = viewing that turn
 let REPLAY_PLAYING = false;
 let _cachedAgentId = null;
 
+const ARCHETYPE_IMAGES = {
+  '0day-primer': '0-day Primer.jpg', 'consensus-node': 'Consensus Node.jpg',
+  'oracle': 'Oracle px.jpg', 'binary-sculptr': 'Binary Sculptr.jpg',
+  'adversarial': 'Adversarial 0x.jpg', 'root-auth': 'Root Auth.jpg',
+  'buffer-sentinel': 'Buffer Sentinel.jpg', 'noise-injector': 'Noise Injector.jpg',
+  'ordinate-mapper': 'Ordinate Mapper.jpg', 'ddos-insurgent': 'DDoS Insurgent.jpg',
+  'bound-encryptor': 'Bound Encryptor.jpg', 'morph-layer': 'Morph Layer.jpg',
+};
+const _agentMetaCache = new Map();
+async function getAgentMeta(agentId) {
+  if (!agentId) return null;
+  if (_agentMetaCache.has(agentId)) return _agentMetaCache.get(agentId);
+  try {
+    const r = await fetch(
+      SUPABASE_URL + '/rest/v1/agents?agent_id=eq.' + encodeURIComponent(agentId) + '&select=agent_id,agent_name,archetype&limit=1',
+      { headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON } }
+    );
+    const rows = r.ok ? await r.json() : [];
+    const meta = rows[0] || null;
+    _agentMetaCache.set(agentId, meta);
+    return meta;
+  } catch { return null; }
+}
+function archetypeImageUrl(archetype) {
+  const img = ARCHETYPE_IMAGES[archetype];
+  return img ? `images/archetypes/${encodeURIComponent(img)}` : null;
+}
+
 // Resolve agent id: local first, Supabase fallback.
 async function resolveAgentId() {
   if (_cachedAgentId) return _cachedAgentId;
@@ -424,10 +477,11 @@ function effectChip(e) {
   return `<span class="effect-chip effect-${e.kind}">${label} ${e.turns_left}t</span>`;
 }
 
-function renderAgentCard(snap, state, side, viewerOwns) {
+async function renderAgentCard(snap, state, side, viewerOwns) {
   if (!snap) return '';
-  const name = snap.agent_id || '—';
-  const archetype = snap.archetype || '';
+  const meta = await getAgentMeta(snap.agent_id);
+  const name = meta?.agent_name || snap.agent_id || '—';
+  const archetype = snap.archetype || meta?.archetype || '';
   const cluster = (snap.cluster || 'any').toLowerCase();
   const hp = state?.hp ?? snap.hp;
   const hpMax = snap.hp_max || 100;
@@ -437,9 +491,13 @@ function renderAgentCard(snap, state, side, viewerOwns) {
   const hpClass = side === 'enemy' ? 'hp-enemy' : '';
   const cardClass = side === 'enemy' ? 'enemy' : 'player';
   const ownsMark = viewerOwns ? '●' : '';
+  const imgUrl = archetypeImageUrl(archetype);
+  const portraitStyle = imgUrl ? `background-image:url('${imgUrl}');` : '';
+  const portraitFallback = imgUrl ? '' : (name.charAt(0) || '🤖').toUpperCase();
 
   return `
     <div class="agent-card ${cardClass}">
+      <div class="agent-portrait" style="${portraitStyle}">${portraitFallback}</div>
       <div class="agent-name-row">
         <div class="agent-name">${ownsMark ? `<span style="color:var(--green);font-size:0.5em;vertical-align:middle;">${ownsMark}</span> ` : ''}${name}</div>
         <span class="agent-cluster-pill cluster-${cluster}">${cluster.replace('_','-')}</span>
@@ -576,7 +634,7 @@ function derive(match, turns, cursor) {
   return { viewTurn, stateA, stateB };
 }
 
-function render(state) {
+async function render(state) {
   CURRENT_STATE = state;
   const { match, turns } = state;
   const { viewTurn, stateA, stateB } = derive(match, turns, REPLAY_CURSOR);
@@ -595,9 +653,13 @@ function render(state) {
 
   const isReplayMode = !isLive || REPLAY_CURSOR !== null;
 
+  const [cardAHtml, cardBHtml] = await Promise.all([
+    renderAgentCard(match.agent_a_snapshot, stateA, 'player', viewerOwnsA),
+    renderAgentCard(match.agent_b_snapshot, stateB, 'enemy', viewerOwnsB),
+  ]);
   const cardLeft = `
-    ${renderAgentCard(match.agent_a_snapshot, stateA, 'player', viewerOwnsA)}
-    ${renderAgentCard(match.agent_b_snapshot, stateB, 'enemy', viewerOwnsB)}
+    ${cardAHtml}
+    ${cardBHtml}
 
     ${isReplayMode && turns.length > 0 ? `
       <div class="replay-controls">

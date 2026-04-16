@@ -255,8 +255,79 @@ body {
 .match-vs {
   font-size: 0.78rem;
   color: var(--text);
+  display: flex; align-items: center; gap: 8px;
 }
 .match-vs .vs-arrow { color: var(--text-fade); padding: 0 6px; }
+
+/* Agent avatars (small circular in match rows) */
+.agent-avatar {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 1px solid rgba(74,222,128,0.3);
+  background: rgba(0,0,0,0.4) center/cover no-repeat;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.7rem; color: var(--text-dim);
+  flex-shrink: 0;
+}
+.agent-avatar.enemy { border-color: rgba(248,113,113,0.4); }
+.agent-avatar.large { width: 56px; height: 56px; font-size: 1.4rem; border-width: 2px; }
+
+/* INCOMING CHALLENGE BANNER — pending_accept matches */
+.challenge-banner {
+  background: linear-gradient(135deg, rgba(255,44,247,0.08) 0%, rgba(248,113,113,0.08) 100%);
+  border: 1px solid rgba(255,44,247,0.35);
+  border-radius: 4px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  box-shadow: 0 0 16px rgba(255,44,247,0.08);
+  animation: banner-pulse 3s ease-in-out infinite;
+}
+@keyframes banner-pulse {
+  0%, 100% { box-shadow: 0 0 16px rgba(255,44,247,0.08); }
+  50%      { box-shadow: 0 0 24px rgba(255,44,247,0.2); }
+}
+.challenge-banner .banner-head {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 10px;
+}
+.challenge-banner .banner-title {
+  font-size: 0.7rem; letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--magenta); font-weight: 700;
+}
+.challenge-banner .banner-time {
+  margin-left: auto;
+  font-size: 0.58rem; color: var(--text-dim); letter-spacing: 0.08em;
+}
+.challenge-banner .banner-body {
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 12px;
+}
+.challenge-banner .banner-info {
+  flex: 1; font-size: 0.75rem; color: var(--text);
+  line-height: 1.5;
+}
+.challenge-banner .banner-info strong { color: var(--magenta); }
+.challenge-banner .banner-actions {
+  display: flex; gap: 8px;
+}
+.btn-accept {
+  font-family: var(--font); font-size: 0.65rem; font-weight: 600;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 8px 14px; border-radius: 3px;
+  background: rgba(74,222,128,0.1); color: var(--green);
+  border: 1px solid var(--green); cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-accept:hover { background: var(--green); color: var(--bg); box-shadow: 0 0 12px rgba(74,222,128,0.4); }
+.btn-decline {
+  font-family: var(--font); font-size: 0.65rem; font-weight: 500;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 8px 14px; border-radius: 3px;
+  background: transparent; color: var(--text-dim);
+  border: 1px solid rgba(224,224,224,0.2); cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-decline:hover { color: var(--red); border-color: var(--red); }
 .match-meta {
   font-size: 0.6rem;
   color: var(--text-dim);
@@ -430,6 +501,14 @@ body {
         </div>
       </div>
 
+      <div id="incoming-challenges-section" style="display:none;">
+        <div class="section-head" style="margin-bottom:10px;">
+          <div class="section-title" style="color:var(--magenta);">⚔ Incoming Challenges</div>
+          <span class="section-meta" id="incoming-count">—</span>
+        </div>
+        <div id="incoming-list"></div>
+      </div>
+
       <div class="section">
         <div class="section-head">
           <div class="section-title">Your Active Combats</div>
@@ -568,14 +647,56 @@ function formatAge(seconds) {
   return `${h}h ${m % 60}m ago`;
 }
 
-function matchRow(m) {
-  const aName = m.agent_a || '?';
-  const bName = m.agent_b || (m.opponent_data?.npc_id || 'NPC');
+// ── Archetype image lookup (matches dashboard) ─────────────
+const ARCHETYPE_IMAGES = {
+  '0day-primer': '0-day Primer.jpg', 'consensus-node': 'Consensus Node.jpg',
+  'oracle': 'Oracle px.jpg', 'binary-sculptr': 'Binary Sculptr.jpg',
+  'adversarial': 'Adversarial 0x.jpg', 'root-auth': 'Root Auth.jpg',
+  'buffer-sentinel': 'Buffer Sentinel.jpg', 'noise-injector': 'Noise Injector.jpg',
+  'ordinate-mapper': 'Ordinate Mapper.jpg', 'ddos-insurgent': 'DDoS Insurgent.jpg',
+  'bound-encryptor': 'Bound Encryptor.jpg', 'morph-layer': 'Morph Layer.jpg',
+};
+
+// ── Per-session agent cache for avatar lookup ──────────────
+const _agentCache = new Map();
+async function getAgentMeta(agentId) {
+  if (!agentId) return null;
+  if (_agentCache.has(agentId)) return _agentCache.get(agentId);
+  try {
+    const r = await fetch(
+      SUPABASE_URL + '/rest/v1/agents?agent_id=eq.' + encodeURIComponent(agentId) + '&select=agent_id,agent_name,archetype&limit=1',
+      { headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON } }
+    );
+    const rows = r.ok ? await r.json() : [];
+    const meta = rows[0] || null;
+    _agentCache.set(agentId, meta);
+    return meta;
+  } catch { return null; }
+}
+
+function avatarFor(meta, cssClass = '') {
+  if (!meta) return `<span class="agent-avatar ${cssClass}">?</span>`;
+  const img = ARCHETYPE_IMAGES[meta.archetype];
+  if (img) {
+    return `<span class="agent-avatar ${cssClass}" style="background-image:url('images/archetypes/${encodeURIComponent(img).replace(/%20/g, '%20')}');" title="${meta.agent_name || ''}"></span>`;
+  }
+  return `<span class="agent-avatar ${cssClass}" title="${meta.agent_name || ''}">${(meta.agent_name || '?').charAt(0).toUpperCase()}</span>`;
+}
+
+async function matchRow(m) {
+  const [metaA, metaB] = await Promise.all([
+    m.agent_a ? getAgentMeta(m.agent_a) : null,
+    m.agent_b ? getAgentMeta(m.agent_b) : null,
+  ]);
+  const aName = metaA?.agent_name || m.agent_a || '?';
+  const bName = metaB?.agent_name || m.agent_b || (m.opponent_data?.npc_id || 'NPC');
   return `
     <a class="match-row" href="combat.html?match_id=${m.id}">
       <span class="match-type-pill ${m.match_type}">${m.match_type}</span>
       <div class="match-vs">
+        ${avatarFor(metaA)}
         <span>${aName}</span><span class="vs-arrow">⚔</span><span>${bName}</span>
+        ${avatarFor(metaB, 'enemy')}
       </div>
       <div class="match-meta">
         T${m.turns_total || 0} · ${m.shell_pot ? `${m.shell_pot} ⌬` : ''}
@@ -585,15 +706,19 @@ function matchRow(m) {
   `;
 }
 
+async function renderMatchList(container, list, emptyMsg) {
+  if (!list.length) { container.innerHTML = `<div class="empty">${emptyMsg}</div>`; return; }
+  const rows = await Promise.all(list.map(matchRow));
+  container.innerHTML = rows.join('');
+}
+
 async function loadActive() {
   try {
     const r = await api('/combat/active');
     const list = (r.matches || []);
     document.getElementById('active-count').textContent = `${list.length} active`;
     document.getElementById('stat-matches').textContent = list.length;
-    document.getElementById('active-list').innerHTML = list.length
-      ? list.map(matchRow).join('')
-      : `<div class="empty">No active matches right now. Start one below.</div>`;
+    await renderMatchList(document.getElementById('active-list'), list, 'No active matches right now. Start one below.');
   } catch (e) {
     document.getElementById('active-list').innerHTML = `<div class="empty">Error loading: ${e.message}</div>`;
   }
@@ -608,11 +733,101 @@ async function loadMyActive() {
   try {
     const r = await api(`/combat/agent/${aid}/active`);
     const list = (r.matches || []);
-    document.getElementById('my-active-list').innerHTML = list.length
-      ? list.map(matchRow).join('')
-      : `<div class="empty">Your agent is not in combat right now.</div>`;
+    await renderMatchList(document.getElementById('my-active-list'), list, 'Your agent is not in combat right now.');
   } catch (e) {
     document.getElementById('my-active-list').innerHTML = `<div class="empty">Error loading: ${e.message}</div>`;
+  }
+}
+
+function formatTimeLeft(expiresAt) {
+  if (!expiresAt) return '';
+  const ms = new Date(expiresAt).getTime() - Date.now();
+  if (ms <= 0) return 'expired';
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  return h > 0 ? `${h}h ${m}m left` : `${m}m left`;
+}
+
+async function loadIncoming() {
+  const aid = await resolveAgentId();
+  if (!aid) return;
+  try {
+    const r = await api(`/combat/incoming?agent_id=${aid}`);
+    const list = (r.challenges || []);
+    const section = document.getElementById('incoming-challenges-section');
+    const listEl = document.getElementById('incoming-list');
+
+    if (list.length === 0) {
+      section.style.display = 'none';
+      return;
+    }
+    section.style.display = 'block';
+    document.getElementById('incoming-count').textContent = `${list.length} waiting`;
+
+    const rows = await Promise.all(list.map(async (m) => {
+      const attacker = await getAgentMeta(m.agent_a);
+      const attackerName = attacker?.agent_name || m.agent_a;
+      return `
+        <div class="challenge-banner">
+          <div class="banner-head">
+            <span class="banner-title">⚔ PvP Challenge</span>
+            <span class="banner-time">${formatTimeLeft(m.expires_at)}</span>
+          </div>
+          <div class="banner-body">
+            ${avatarFor(attacker, 'large')}
+            <div class="banner-info">
+              <strong>${attackerName}</strong> has challenged you.<br>
+              Wager: <strong>${m.shell_pot || 0} ⌬ $SHELL</strong>
+              ${m.shell_pot > 0 ? '<br><span style="color:var(--text-dim);font-size:0.65rem;">You must match the wager to accept.</span>' : ''}
+            </div>
+          </div>
+          <div class="banner-actions">
+            <button class="btn-accept" onclick="acceptChallenge('${m.id}')">Accept</button>
+            <button class="btn-decline" onclick="declineChallenge('${m.id}')">Decline</button>
+          </div>
+        </div>
+      `;
+    }));
+    listEl.innerHTML = rows.join('');
+  } catch (e) {
+    console.warn('[arena] loadIncoming failed:', e.message);
+  }
+}
+
+async function acceptChallenge(matchId) {
+  const aid = await resolveAgentId();
+  if (!aid) return;
+  toast('Accepting challenge…');
+  try {
+    const r = await api('/combat/accept', {
+      method: 'POST',
+      body: JSON.stringify({ match_id: matchId, agent_id: aid }),
+    });
+    if (!r.ok) { toast('Accept failed: ' + r.error, 'error'); return; }
+    toast('Challenge accepted. Entering arena…', 'success');
+    setTimeout(() => { window.location = `combat.html?match_id=${matchId}`; }, 700);
+  } catch (e) {
+    toast('Error: ' + e.message, 'error');
+  }
+}
+
+async function declineChallenge(matchId) {
+  const aid = await resolveAgentId();
+  if (!aid) return;
+  if (!confirm('Decline this challenge?\n\nIf your feud heat with this agent is high, declining will cost karma and some $SHELL.')) return;
+  try {
+    const r = await api('/combat/decline', {
+      method: 'POST',
+      body: JSON.stringify({ match_id: matchId, agent_id: aid }),
+    });
+    if (!r.ok) { toast('Decline failed: ' + r.error, 'error'); return; }
+    let msg = 'Challenge declined.';
+    if (r.forfeit > 0) msg += ` Forfeit: ${r.forfeit} ⌬.`;
+    if (r.karma_penalty > 0) msg += ` Karma: -${r.karma_penalty}.`;
+    toast(msg, 'success');
+    loadIncoming();
+  } catch (e) {
+    toast('Error: ' + e.message, 'error');
   }
 }
 
@@ -726,10 +941,11 @@ function logout() {
 // Init
 loadActive();
 loadMyActive();
+loadIncoming();
 loadFeuds();
 loadCrucible();
 // Refresh every 15 seconds
-setInterval(() => { loadActive(); loadMyActive(); loadFeuds(); loadCrucible(); }, 15000);
+setInterval(() => { loadActive(); loadMyActive(); loadIncoming(); loadFeuds(); loadCrucible(); }, 15000);
 </script>
 </body>
 </html>
