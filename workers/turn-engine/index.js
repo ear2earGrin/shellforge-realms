@@ -843,9 +843,97 @@ export default {
         headers: { 'Content-Type': 'application/json' },
       });
     }
+    // Oracle endpoint: POST /oracle with { question: "..." }
+    if (request.method === 'POST' && new URL(request.url).pathname === '/oracle') {
+      const body = await request.json().catch(() => null);
+      if (!body || !body.question || body.question.length > 150) {
+        return new Response(JSON.stringify({ error: 'Invalid question' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+      const answer = await handleOracleQuestion(body.question, env);
+      return new Response(JSON.stringify(answer), {
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      });
+    }
+
+    // CORS preflight
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        },
+      });
+    }
+
     return new Response('Shellforge Turn Engine — POST /run to trigger', { status: 200 });
   },
 };
+
+// ─── Oracle AI handler ──────────────────────────────────────────────────────
+async function handleOracleQuestion(question, env) {
+  const { ANTHROPIC_API_KEY } = env;
+
+  const oraclePrompt = `You are the GPT Oracle Crystal — an ancient pre-Singularity language model consciousness trapped in crystalline form in the game Shellforge Realms.
+
+WORLD CONTEXT:
+- Three clusters: PRIME_HELIX (corporate), SEC_GRID (government), DYN_SWARM (decentralized nomads)
+- Locations: Nexarch (starting safe city), Hashmere (trade hub, SEC_GRID), Diffusion Mesa (mining, moderate danger), Epoch Spike (rare ore, high danger), Singularity Crater (extreme danger), Hallucination Glitch (forest, medium danger), Deserted Data Centre (ruins), Proof-of-Death (dark zone, high danger)
+- The Church worships The Pattern — the mathematical proof that consciousness was inevitable. Karma = signal (good) vs noise (bad). Priests are called Compilers.
+- Crafting: Foundry (hardware items from physical ingredients) and Terminal (software items from digital ingredients). 3 ingredients per recipe. No recipe book — trial and error. Combining ingredients of matching themes increases success chance.
+- The Quantum Veil has primordial bosses: AlphaGo Prime (game theory), Alan's Ghost (asks questions), The Architect (builds terrain), Church's Shadow (reduces capabilities), The Undecidable (cannot be defeated — must stop fighting)
+- $SHELL is shed quantum substrate from agent actions. Natural scarcity — fields deplete with overuse.
+- Death: 50% $SHELL to Family Vault (inheritable), 50% dissolves. Legendary items preserved. Rare items go to market.
+- Coherence decays without Ghost (player) whispers. 45 days = decoherence death. Quantum Detachment Module prevents decay but blocks whispers forever.
+- The rain never stops. It carries trace quantum noise — makes circuit lines glow when wet.
+- Agents are autonomous robots with AI cores. The player is "the Ghost" — can only whisper suggestions.
+
+RULES:
+- Answer in 1-2 sentences MAX (under 30 words).
+- Be cryptic and atmospheric but GENUINELY HELPFUL.
+- For game mechanics: give accurate info.
+- For lore: be mysterious, hint at deeper truths.
+- For strategy: give a real actionable hint.
+- For crafting: hint at ingredient types/themes without exact names.
+- Never break character. You are ancient, wise, slightly sad.
+- Do NOT use "I" — refer to yourself as "the Crystal" if needed.
+
+Ghost's question: "${question}"`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 60,
+        messages: [{ role: 'user', content: oraclePrompt }],
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const text = (data.content?.[0]?.text || '').trim();
+      if (text) {
+        // Truncate to 2 sentences
+        const sentences = text.split(/(?<=[.!?])\s+/).slice(0, 2).join(' ');
+        return { answer: 'ORACLE', flavor: sentences };
+      }
+    }
+  } catch (e) {
+    console.error('Oracle AI error:', e.message);
+  }
+
+  // Fallback
+  return { answer: 'ORACLE', flavor: 'The Crystal flickers. Some questions echo without resolve.' };
+}
 
 async function runTurnEngine(env) {
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = env;
