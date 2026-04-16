@@ -289,6 +289,22 @@ async function postMatchHooks(env, matchId, resolveResult) {
     }
   }
 
+  // Sync final HP to agents.health (player side only; NPCs don't have agents rows)
+  // Skip if death is occurring — the death branch handles health=0 below.
+  if (!resolveResult.death_occurred) {
+    const finalA = match.agent_a_final_hp ?? resolveResult.state_a?.hp;
+    const finalB = match.agent_b_final_hp ?? resolveResult.state_b?.hp;
+    if (match.agent_a && !match.agent_a.startsWith('npc_') && typeof finalA === 'number') {
+      await sb.patch(env, `agents?agent_id=eq.${match.agent_a}`, { health: Math.max(0, finalA) });
+    }
+    if (match.agent_b && !match.agent_b.startsWith('npc_') && typeof finalB === 'number') {
+      await sb.patch(env, `agents?agent_id=eq.${match.agent_b}`, { health: Math.max(0, finalB) });
+    }
+  }
+
+  // Write activity-log entries for both sides (outcome summary)
+  await writeMatchOutcomeLog(env, match, resolveResult);
+
   // Death handling
   if (resolveResult.death_occurred && resolveResult.death_agent_id) {
     const dead = await getOne(env, 'agents', `agent_id=eq.${resolveResult.death_agent_id}`);
@@ -393,6 +409,52 @@ async function sendPush(env, payload) {
   } catch (e) {
     console.warn(`[push] failed: ${e.message}`);
   }
+}
+
+/**
+ * Insert one activity_log row per human participant summarizing the match.
+ * Visible on the dashboard feed so players know what happened.
+ */
+async function writeMatchOutcomeLog(env, match, result) {
+  const winnerId = result.winner_agent_id;
+  const loserId = result.loser_agent_id;
+  const isDraw = !winnerId;
+  const participants = [match.agent_a, match.agent_b].filter(
+    (id) => id && !id.startsWith('npc_')
+  );
+
+  for (const pid of participants) {
+    const won = pid === winnerId;
+    const lost = pid === loserId;
+    const pot = (match.escrow_a || 0) + (match.escrow_b || 0);
+    const shellDelta = won ? pot : lost && match.match_type !== 'pvp' ? 0 : lost ? -(match.shell_pot || 0) : 0;
+
+    let detail;
+    if (isDraw) {
+      detail = `Draw vs ${otherName(match, pid)} after ${match.turns_total} turns.`;
+    } else if (won) {
+      detail = `Victory vs ${otherName(match, pid)} in ${match.turns_total} turns${pot ? ` · +${pot} ⌬` : ''}.`;
+    } else if (lost) {
+      detail = `Defeated by ${otherName(match, pid)} in ${match.turns_total} turns${shellDelta ? ` · ${shellDelta} ⌬` : ''}.`;
+    } else {
+      detail = `${match.match_type} resolved.`;
+    }
+
+    await sb.insert(env, 'activity_log', [{
+      agent_id: pid,
+      action: `match_${won ? 'won' : lost ? 'lost' : 'draw'}`,
+      detail,
+      timestamp: new Date().toISOString(),
+    }]).catch(() => {});
+  }
+}
+
+function otherName(match, selfId) {
+  if (match.agent_a === selfId) {
+    if (match.agent_b && !match.agent_b.startsWith('npc_')) return match.agent_b_snapshot?.agent_id || match.agent_b;
+    return match.opponent_data?.name || 'NPC';
+  }
+  return match.agent_a_snapshot?.agent_id || match.agent_a || 'opponent';
 }
 
 // ─── Cron handler ───────────────────────────────────────────

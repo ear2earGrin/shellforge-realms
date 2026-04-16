@@ -338,8 +338,15 @@ async function finalizeTurn(env, match, turnNum, stateA, stateB, actionA, action
     status = 'resolved';
   }
 
-  // Check death (only deathmatch/wild matches can have permadeath)
-  if (status === 'resolved' && (match.match_type === 'deathmatch' || match.match_type === 'wild')) {
+  // Check death. Deathmatch/wild always lethal for loser.
+  // Gauntlet lethal only if opponent_data.death_possible (nightmare tier).
+  // Never mark an NPC as dead (loserId must not start with 'npc_').
+  const loserIsPlayer = loserId && !loserId.startsWith('npc_');
+  const matchAllowsDeath =
+    match.match_type === 'deathmatch' ||
+    match.match_type === 'wild' ||
+    (match.match_type === 'gauntlet' && match.opponent_data?.death_possible === true);
+  if (status === 'resolved' && matchAllowsDeath && loserIsPlayer) {
     deathOccurred = true;
     deathAgent = loserId;
   }
@@ -392,7 +399,8 @@ export async function initializeMatch(env, matchId) {
   if (match.match_type === 'gauntlet' || match.match_type === 'wild') {
     // NPC opponent
     const difficulty = match.opponent_data?.difficulty || 'common';
-    snapB = buildNPCDeck(difficulty);
+    const npcName = match.opponent_data?.name || null;
+    snapB = buildNPCDeck(difficulty, npcName);
     // Use opponent_data agent_id if provided (for tracking)
     if (match.opponent_data?.npc_id) snapB.agent_id = match.opponent_data.npc_id;
   } else {

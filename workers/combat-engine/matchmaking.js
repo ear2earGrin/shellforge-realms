@@ -101,15 +101,35 @@ async function refundShell(env, agentId, amount) {
 /**
  * Create a Gauntlet (NPC training) match.
  */
+// Creature name pool per tier — picks one randomly so every fight feels different.
+const CREATURES_BY_TIER = {
+  1: ['Rogue Daemon', 'Cache Ghoul', 'Packet Drake', 'Bitrot Wraith', 'Stale Socket'],
+  2: ['Null Pointer Beast', 'Entropy Rider', 'Sandbox Hydra', 'Kernel Stalker', 'Shadow Lamba'],
+  3: ['Phantom Root', 'Corrupted Overseer', 'Byzantine Shade', 'Gradient Hunter', 'Forked Minotaur'],
+  4: ['Decoherence Leviathan', 'Null Sovereign', 'Prime Breaker', 'Silicon Apex', 'Last-Checkpoint Titan'],
+};
+
+function pickCreature(tier) {
+  const pool = CREATURES_BY_TIER[tier] || CREATURES_BY_TIER[1];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 export async function createGauntletMatch(env, agentId, tier = 1) {
   const difficulty = tier === 1 ? 'common' : tier === 2 ? 'uncommon' : tier === 3 ? 'rare' : 'legendary';
+  const creature = pickCreature(tier);
   const npcId = `npc_gauntlet_t${tier}_${Date.now()}`;
 
   const inserted = await sb.post(env, 'combat_matches', [{
     match_type: 'gauntlet',
     agent_a: agentId,
     agent_b: null,
-    opponent_data: { npc_id: npcId, difficulty, tier },
+    opponent_data: {
+      npc_id: npcId,
+      difficulty,
+      tier,
+      name: creature,
+      death_possible: tier >= 4,   // nightmare tier can kill the agent
+    },
     shell_pot: 0,
     status: 'pending',
   }]);

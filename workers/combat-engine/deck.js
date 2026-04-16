@@ -167,12 +167,13 @@ export function getPlayableHand(deck, activeEffects, currentCoherence) {
  * Build a compact NPC deck for gauntlet/wild encounters.
  * @param {string} difficulty - 'common'|'uncommon'|'rare'|'legendary'
  */
-export function buildNPCDeck(difficulty = 'common') {
+export function buildNPCDeck(difficulty = 'common', npcName = null) {
   const cfg = syncConfig().combat;
   const power = { common: 8, uncommon: 14, rare: 22, legendary: 30 }[difficulty] || 8;
   const hpMap = { common: 60, uncommon: 100, rare: 160, legendary: 240 };
   return {
     agent_id: `npc_${difficulty}_${Date.now()}`,
+    agent_name: npcName || null,
     archetype: 'NPC',
     cluster: 'wild',
     deck: [
