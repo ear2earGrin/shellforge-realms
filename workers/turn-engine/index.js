@@ -1056,6 +1056,34 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
     }
   }
 
+  // ── Trade nudge: encourage market activity ──
+  let tradeNote = '';
+  const isTown = agent.location === 'Nexarch' || agent.location === 'Hashmere';
+  const hasEquippedWeapon = agentIngredients.length >= 0 && (await fetch(
+    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_type=eq.weapon&is_equipped=eq.true&select=item_id&limit=1`,
+    { headers: supabaseHeaders },
+  ).then(r => r.ok ? r.json() : [])).length > 0;
+  const hasEquippedArmor = (await fetch(
+    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_type=eq.armor&is_equipped=eq.true&select=item_id&limit=1`,
+    { headers: supabaseHeaders },
+  ).then(r => r.ok ? r.json() : [])).length > 0;
+  const invCount = agentIngredients.length + (await fetch(
+    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&select=item_id`,
+    { headers: supabaseHeaders },
+  ).then(r => r.ok ? r.json() : [])).length;
+
+  if (isTown) {
+    if (!hasEquippedWeapon && agent.shell_balance >= 15) {
+      tradeNote = `\n🏪 MARKET: You're in a town with a market and have NO WEAPON. Use "trade" to buy one! You have ${agent.shell_balance} $SHELL.`;
+    } else if (!hasEquippedArmor && agent.shell_balance >= 15) {
+      tradeNote = `\n🏪 MARKET: You're in a town with a market and have NO ARMOR. Use "trade" to buy one!`;
+    } else if (invCount > 8) {
+      tradeNote = `\n🏪 MARKET: You're carrying ${invCount} items — consider using "trade" to sell excess items for $SHELL.`;
+    } else if (agent.shell_balance >= 30 && Math.random() < 0.3) {
+      tradeNote = `\n🏪 MARKET: The ${agent.location} bazaar has items for sale. Consider "trade" to browse and buy gear or ingredients.`;
+    }
+  }
+
   // ── Anti-camping: diminishing returns + restlessness + loot tier notes ──
   const turnsHere = agent.turns_at_location || 0;
   const diminish = getSafeZoneDiminish(agent.location, turnsHere);
@@ -1116,7 +1144,7 @@ ${envNarrative ? 'THIS TURN: ' + envNarrative + '\n' : ''}RECENT: ${recentSummar
 
 PERSONALITY: ${archetypeGuidance}
 
-Adapt to your situation — survival overrides personality. A fighter at 15 energy rests. A pacifist in danger fights.${karmaNote}${dangerNote}${craftNote}${varietyNudge}${stagnationNote}${restlessNote}${lootTierNote}
+Adapt to your situation — survival overrides personality. A fighter at 15 energy rests. A pacifist in danger fights.${karmaNote}${dangerNote}${craftNote}${tradeNote}${varietyNudge}${stagnationNote}${restlessNote}${lootTierNote}
 
 ACTIONS: ${VALID_ACTIONS.join(', ')}
 ADJACENT: ${(LOCATION_GRAPH[agent.location]?.adjacent || []).join(', ')}
