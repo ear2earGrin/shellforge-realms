@@ -558,67 +558,96 @@
         }
         .btn-forge-attempt:hover { background: rgba(255,200,0,0.09); border-color: #ffcc00; box-shadow: 0 0 18px rgba(255,200,0,0.18); }
 
-        /* ─── Alchemy Lab ─── */
-        .alchemy-body { padding: 12px 14px !important; }
+        /* ─── Workshop (Foundry + Terminal) ─── */
+        /* Theme colors via CSS custom properties — switched by JS */
+        .alchemy-body {
+            padding: 12px 14px !important;
+            --ws-color: 255, 140, 0;       /* foundry default: orange */
+            --ws-accent: #ff8c00;
+        }
+        .alchemy-body.terminal-mode {
+            --ws-color: 0, 240, 255;        /* terminal: cyan */
+            --ws-accent: #00f0ff;
+        }
+        .workshop-tabs { display: flex; gap: 0; margin-bottom: 12px; }
+        .workshop-tabs .inv-tab {
+            flex: 1; border-radius: 0; border: 1px solid rgba(255,140,0,0.25);
+            padding: 8px 6px; text-align: center; font-size: 0.65rem;
+            transition: all 0.2s;
+        }
+        .workshop-tabs .inv-tab:first-child { border-radius: 4px 0 0 4px; }
+        .workshop-tabs .inv-tab:last-child { border-radius: 0 4px 4px 0; }
+        .workshop-tabs .inv-tab.active {
+            background: rgba(var(--ws-color), 0.12);
+            border-color: rgba(var(--ws-color), 0.5);
+            color: var(--ws-accent);
+            box-shadow: 0 0 10px rgba(var(--ws-color), 0.15);
+        }
         .alchemy-energy-bar {
             display: flex; justify-content: space-between; align-items: center;
             padding: 6px 10px; margin-bottom: 10px; border-radius: 4px;
-            background: rgba(192,132,252,0.06); border: 1px solid rgba(192,132,252,0.15);
-            font-family: var(--font-main); font-size: 0.65rem; color: #c084fc;
+            background: rgba(var(--ws-color), 0.06); border: 1px solid rgba(var(--ws-color), 0.2);
+            font-family: var(--font-main); font-size: 0.65rem; color: var(--ws-accent);
         }
         .alchemy-section-label {
             font-family: var(--font-title); font-size: 0.6rem; letter-spacing: 0.1em;
-            color: rgba(192,132,252,0.7); margin: 8px 0 6px; text-transform: uppercase;
+            color: var(--ws-accent); opacity: 0.8; margin: 8px 0 6px; text-transform: uppercase;
         }
         .alchemy-ingredient-grid {
             display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
             max-height: 140px; overflow-y: auto; margin-bottom: 8px;
-            scrollbar-width: thin; scrollbar-color: rgba(192,132,252,0.3) transparent;
+            scrollbar-width: thin; scrollbar-color: rgba(var(--ws-color), 0.3) transparent;
         }
         .alchemy-ing-slot {
             padding: 6px 4px; border-radius: 5px; text-align: center; cursor: pointer;
-            border: 1px solid rgba(192,132,252,0.15); background: rgba(192,132,252,0.03);
+            border: 1px solid rgba(var(--ws-color), 0.15); background: rgba(var(--ws-color), 0.03);
             transition: all 0.15s; font-family: var(--font-main); font-size: 0.55rem;
             color: #a0b0a8; line-height: 1.3; position: relative;
         }
-        .alchemy-ing-slot:hover { background: rgba(192,132,252,0.08); border-color: rgba(192,132,252,0.4); }
-        .alchemy-ing-slot.selected { border-color: #c084fc; background: rgba(192,132,252,0.12); color: #e0d0f0; box-shadow: 0 0 8px rgba(192,132,252,0.2); }
+        .alchemy-ing-slot:hover { background: rgba(var(--ws-color), 0.1); border-color: rgba(var(--ws-color), 0.45); }
+        .alchemy-ing-slot.selected { border-color: var(--ws-accent); background: rgba(var(--ws-color), 0.14); color: #e0e0e0; box-shadow: 0 0 10px rgba(var(--ws-color), 0.25); }
         .alchemy-ing-slot.disabled { opacity: 0.3; pointer-events: none; }
         .alchemy-ing-slot .ing-emoji { font-size: 1.1rem; display: block; margin-bottom: 2px; }
-        .alchemy-ing-slot .ing-qty { position: absolute; bottom: 2px; right: 4px; font-size: 0.5rem; color: rgba(192,132,252,0.6); }
+        .alchemy-ing-slot .ing-qty { position: absolute; bottom: 2px; right: 4px; font-size: 0.5rem; color: rgba(var(--ws-color), 0.6); }
         .alchemy-ing-slot .ing-name { display: block; font-size: 0.5rem; line-height: 1.2; }
         .alchemy-selection-row {
             display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px;
         }
         .alchemy-sel-slot {
             aspect-ratio: 1.3; border-radius: 6px;
-            border: 2px dashed rgba(192,132,252,0.25);
+            border: 2px dashed rgba(var(--ws-color), 0.3);
             display: flex; align-items: center; justify-content: center; flex-direction: column;
-            font-size: 1.3rem; cursor: pointer; transition: all 0.15s;
-            background: rgba(192,132,252,0.03); position: relative;
+            font-size: 1.3rem; cursor: pointer; transition: all 0.2s;
+            background: rgba(var(--ws-color), 0.04); position: relative;
         }
-        .alchemy-sel-slot.filled { border-style: solid; border-color: rgba(192,132,252,0.5); }
-        .alchemy-sel-slot .sel-label { font-size: 0.45rem; color: rgba(192,132,252,0.5); font-family: var(--font-main); position: absolute; bottom: 3px; }
-        .alchemy-arrow { text-align: center; font-size: 1.1rem; color: #c084fc; margin: 4px 0; opacity: 0.5; }
+        .alchemy-sel-slot:hover { border-color: rgba(var(--ws-color), 0.5); background: rgba(var(--ws-color), 0.08); }
+        .alchemy-sel-slot.filled { border-style: solid; border-color: rgba(var(--ws-color), 0.6); box-shadow: 0 0 8px rgba(var(--ws-color), 0.15); }
+        .alchemy-sel-slot .sel-label { font-size: 0.45rem; color: rgba(var(--ws-color), 0.5); font-family: var(--font-main); position: absolute; bottom: 3px; }
+        .alchemy-arrow { text-align: center; font-size: 1.1rem; color: var(--ws-accent); margin: 4px 0; opacity: 0.5; }
         .alchemy-preview {
-            border-radius: 6px; border: 1px solid rgba(192,132,252,0.2);
+            border-radius: 6px; border: 1px solid rgba(var(--ws-color), 0.2);
             padding: 10px; text-align: center; min-height: 50px;
-            background: rgba(192,132,252,0.03);
+            background: rgba(var(--ws-color), 0.04);
             font-family: var(--font-main); font-size: 0.65rem; color: var(--color-text-dim);
         }
-        .alchemy-preview .preview-name { font-family: var(--font-title); font-size: 0.8rem; letter-spacing: 0.06em; margin-bottom: 4px; }
+        .alchemy-preview.ready { animation: ws-pulse 2s ease-in-out infinite; }
+        @keyframes ws-pulse {
+            0%, 100% { border-color: rgba(var(--ws-color), 0.2); box-shadow: none; }
+            50% { border-color: rgba(var(--ws-color), 0.5); box-shadow: 0 0 12px rgba(var(--ws-color), 0.15); }
+        }
+        .alchemy-preview .preview-name { font-family: var(--font-title); font-size: 0.8rem; letter-spacing: 0.06em; margin-bottom: 4px; color: var(--ws-accent); }
         .alchemy-preview .preview-rate { font-size: 0.6rem; margin-top: 4px; }
         .alchemy-preview .preview-risk { font-size: 0.55rem; margin-top: 2px; }
         .btn-brew {
             width: 100%; margin-top: 8px; padding: 10px;
-            background: transparent;
-            border: 1px solid rgba(192,132,252,0.4); border-radius: 6px;
+            background: rgba(var(--ws-color), 0.06);
+            border: 1px solid rgba(var(--ws-color), 0.4); border-radius: 6px;
             font-family: var(--font-title); font-size: 0.72rem; letter-spacing: 0.12em;
-            color: #c084fc; cursor: pointer; transition: all 0.18s;
+            color: var(--ws-accent); cursor: pointer; transition: all 0.18s;
         }
-        .btn-brew:hover { background: rgba(192,132,252,0.09); border-color: #c084fc; box-shadow: 0 0 18px rgba(192,132,252,0.18); }
+        .btn-brew:hover { background: rgba(var(--ws-color), 0.12); border-color: var(--ws-accent); box-shadow: 0 0 18px rgba(var(--ws-color), 0.2); }
         .btn-brew:disabled { opacity: 0.3; cursor: not-allowed; }
-        .btn-brew:disabled:hover { background: transparent; border-color: rgba(192,132,252,0.4); box-shadow: none; }
+        .btn-brew:disabled:hover { background: rgba(var(--ws-color), 0.06); border-color: rgba(var(--ws-color), 0.4); box-shadow: none; }
         .alchemy-result-overlay {
             position: absolute; top: 0; left: 0; right: 0; bottom: 0;
             display: flex; align-items: center; justify-content: center; flex-direction: column;
@@ -4401,9 +4430,9 @@
                 </p>
 
                 <div class="alchemy-selection-row">
-                    <div class="alchemy-sel-slot" id="alchSel0" onclick="alchemySlotClick(0)"><span style="color:rgba(192,132,252,0.3);">+</span><span class="sel-label">slot 1</span></div>
-                    <div class="alchemy-sel-slot" id="alchSel1" onclick="alchemySlotClick(1)"><span style="color:rgba(192,132,252,0.3);">+</span><span class="sel-label">slot 2</span></div>
-                    <div class="alchemy-sel-slot" id="alchSel2" onclick="alchemySlotClick(2)"><span style="color:rgba(192,132,252,0.3);">+</span><span class="sel-label">slot 3</span></div>
+                    <div class="alchemy-sel-slot" id="alchSel0" onclick="alchemySlotClick(0)"><span style="opacity:0.3;">+</span><span class="sel-label">slot 1</span></div>
+                    <div class="alchemy-sel-slot" id="alchSel1" onclick="alchemySlotClick(1)"><span style="opacity:0.3;">+</span><span class="sel-label">slot 2</span></div>
+                    <div class="alchemy-sel-slot" id="alchSel2" onclick="alchemySlotClick(2)"><span style="opacity:0.3;">+</span><span class="sel-label">slot 3</span></div>
                 </div>
 
                 <div class="alchemy-picker" id="alchPicker" style="display:none;">
@@ -4418,7 +4447,7 @@
                 </div>
 
                 <button class="btn-brew" id="alchBrewBtn" disabled onclick="alchemyBrew()">
-                    CRAFT — Cost: 20 Energy
+                    FORGE — Cost: 20 Energy
                 </button>
             </div>
             <div id="alchResultOverlay"></div>
@@ -7586,15 +7615,18 @@
 
         function setWorkshopTab(station) {
             _workshopStation = station;
+            var body = document.querySelector('#modal-workshop .alchemy-body');
+            if (body) body.classList.toggle('terminal-mode', station === 'terminal');
             document.getElementById('workshopTabFoundry').classList.toggle('active', station === 'foundry');
             document.getElementById('workshopTabTerminal').classList.toggle('active', station === 'terminal');
             var label = document.getElementById('workshopStationLabel');
+            var btn = document.getElementById('alchBrewBtn');
             if (station === 'foundry') {
                 label.textContent = 'FOUNDRY — Weld 3 components';
-                label.style.color = '';
+                if (btn) btn.textContent = 'FORGE — Cost: 20 Energy';
             } else {
                 label.textContent = 'TERMINAL — Compile 3 modules';
-                label.style.color = '#00f0ff';
+                if (btn) btn.textContent = 'COMPILE — Cost: 20 Energy';
             }
             // Reset selection and reload
             _alchSelected = [null, null, null];
