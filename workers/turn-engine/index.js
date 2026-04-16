@@ -2311,9 +2311,14 @@ function getBaseValue(item) {
 
 function calculateListingPrice(agent, item, supplyCount) {
   const base = getBaseValue(item);
-  const supplyMult = supplyCount <= 1 ? 1.4 : supplyCount <= 3 ? 1.1 : supplyCount <= 6 ? 0.95 : 0.8;
+  // Supply multiplier — low supply = markup, high supply = slight discount but NEVER below base
+  const supplyMult = supplyCount <= 0 ? 1.6 : supplyCount <= 1 ? 1.35 : supplyCount <= 3 ? 1.15 : supplyCount <= 6 ? 1.0 : 0.9;
   const personalityMult = PERSONALITY_PRICE_MULT[agent.archetype] || 1.0;
-  return Math.max(1, Math.round(base * supplyMult * personalityMult));
+  // Agents with high coherence price rationally; low coherence = erratic pricing
+  const coherenceMult = (agent.coherence ?? 100) < 30 ? (0.5 + Math.random()) : 1.0; // crazy agents price randomly 50-150%
+  const rawPrice = Math.round(base * supplyMult * personalityMult * coherenceMult);
+  // FLOOR: never list below base value (agents aren't stupid, even when desperate)
+  return Math.max(base, rawPrice);
 }
 
 // Find items safe to sell/list (not equipped, not needed for near-complete recipes)
@@ -2404,12 +2409,21 @@ async function handleMarketTrade(agent, decision, env, supabaseHeaders) {
   const sellCandidates = getSellCandidates(inventory, agentIngIds);
 
   // Score: lean buy if needs gear or has budget, lean sell/list if inventory full
-  let buyWeight = 50 + (needsGear ? 30 : 0) + (budget > 20 ? 10 : -20);
-  let sellWeight = 30 + (inventoryFull ? 30 : 0) + (sellCandidates.length > 3 ? 15 : 0);
-  let listWeight = 20 + (sellCandidates.length > 2 ? 20 : 0);
+  // Sell/list incentives: agents with valuable items should want to profit
+  const hasHighValueItems = sellCandidates.some(i => getBaseValue(i) >= 30);
+  const hasExcessIngredients = sellCandidates.filter(i => i.item_type === 'ingredient' && i.quantity > 2).length > 0;
+  const isRich = agent.shell_balance > 200;
+  const isPoor = agent.shell_balance < 20;
+
+  let buyWeight = 40 + (needsGear ? 35 : 0) + (budget > 20 ? 10 : -20) + (isPoor ? -15 : 0);
+  let sellWeight = 25 + (inventoryFull ? 25 : 0) + (sellCandidates.length > 3 ? 15 : 0) + (isPoor ? 20 : 0);
+  let listWeight = 35 + (sellCandidates.length > 2 ? 15 : 0) + (hasHighValueItems ? 20 : 0) + (hasExcessIngredients ? 10 : 0) + (isRich ? -10 : 0);
 
   const total = buyWeight + sellWeight + listWeight;
   const roll = Math.random() * total;
+
+  // Log trade decision weights for debugging
+  console.log(`[${agent.agent_name}] Trade weights: buy=${buyWeight} sell=${sellWeight} list=${listWeight} | items=${inventory.length} sellable=${sellCandidates.length} $=${agent.shell_balance}`);
 
   if (roll < buyWeight) {
     // Try buying from agent listings first, then NPC market
@@ -2586,8 +2600,10 @@ async function executeSell(agent, decision, sellCandidates, env, supabaseHeaders
   const listings = listingRes.ok ? await listingRes.json() : [];
   const listing = listings[0] ?? null;
 
-  // Sell price: 75% of current listing price, or flat 10 $SHELL for unlisted items
-  const sellPrice = listing ? Math.max(1, Math.round(listing.current_price * 0.75)) : 10;
+  // Sell price: 75% of current listing price, minimum = 50% of base value
+  const baseVal = getBaseValue(item);
+  const minSellPrice = Math.max(1, Math.round(baseVal * 0.5));
+  const sellPrice = listing ? Math.max(minSellPrice, Math.round(listing.current_price * 0.75)) : Math.max(minSellPrice, 10);
 
   // Remove item from inventory (decrement or delete)
   if (item.quantity > 1) {
