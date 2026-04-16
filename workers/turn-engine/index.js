@@ -938,6 +938,8 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
           success: false,
         }),
       });
+      // Process death loot: vault + market + inventory cleanup
+      await processDeathLoot(agent, env, supabaseHeaders);
       console.log(`☠ ${agent.agent_name} died from environmental hazards in ${agent.location}`);
       return;
     }
@@ -1954,9 +1956,14 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
     }),
   });
 
+  // Process death loot if loser died
+  if (!loserIsAlive) {
+    await processDeathLoot(loser, env, supabaseHeaders);
+  }
+
   console.log(
     `[ARENA] ${winner.agent_name} wins! ${loser.agent_name} hp=${loserHP}. ` +
-    (loserIsAlive ? 'Alive.' : 'DEAD — death flow triggered.'),
+    (loserIsAlive ? 'Alive.' : 'DEAD — death loot processed.'),
   );
 
   return { winnerId: winner.agent_id, loserId: loser.agent_id, loserIsAlive };
@@ -2550,6 +2557,117 @@ async function executeListItem(agent, sellCandidates, agentListings, env, supaba
 
   console.log(`[${agent.agent_name}] Listed ${item.item_name} for ${askingPrice} $SHELL at ${agent.location}`);
   return { action: 'list', item: item.item_name, price: askingPrice };
+}
+
+// ─── Death Loot Pipeline ─────────────────────────────────────────────────────
+// On death: split $SHELL (50% vault, 50% gone), distribute items by rarity,
+// generate death narrative. Called from both environmental and arena deaths.
+async function processDeathLoot(agent, env, supabaseHeaders) {
+  const { SUPABASE_URL } = env;
+
+  // 1. Split $SHELL: 50% to vault, 50% dissolves
+  const vaultShell = Math.floor(agent.shell_balance / 2);
+
+  // 2. Fetch all inventory
+  const invRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&select=*`,
+    { headers: supabaseHeaders },
+  );
+  const inventory = invRes.ok ? await invRes.json() : [];
+
+  // 3. Sort items by rarity tier
+  const legendary = inventory.filter(i => ['legendary', 'epic'].includes((i.stats?.rarity || '').toLowerCase()));
+  const marketable = inventory.filter(i => ['rare', 'uncommon'].includes((i.stats?.rarity || '').toLowerCase()));
+  // Common + ingredients = destroyed (not stored)
+
+  // 4. Deposit legendary/epic items + $SHELL into Family Vault
+  if (agent.user_id) {
+    // Upsert vault shell balance
+    const vaultRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/family_vault?user_id=eq.${agent.user_id}&select=vault_id,shell_balance`,
+      { headers: supabaseHeaders },
+    );
+    const vaults = vaultRes.ok ? await vaultRes.json() : [];
+
+    if (vaults.length > 0) {
+      await fetch(`${SUPABASE_URL}/rest/v1/family_vault?vault_id=eq.${vaults[0].vault_id}`, {
+        method: 'PATCH',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          shell_balance: vaults[0].shell_balance + vaultShell,
+          last_agent_name: agent.agent_name,
+          legacy_karma: agent.karma,
+          legacy_trait: agent.karma >= 10 ? 'disciplined' : agent.karma <= -10 ? 'chaotic' : 'neutral',
+          updated_at: new Date().toISOString(),
+        }),
+      });
+    } else {
+      await fetch(`${SUPABASE_URL}/rest/v1/family_vault`, {
+        method: 'POST',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          user_id: agent.user_id,
+          shell_balance: vaultShell,
+          last_agent_name: agent.agent_name,
+          legacy_karma: agent.karma,
+          legacy_trait: agent.karma >= 10 ? 'disciplined' : agent.karma <= -10 ? 'chaotic' : 'neutral',
+        }),
+      });
+    }
+
+    // Deposit legendary/epic items to vault
+    for (const item of legendary) {
+      await fetch(`${SUPABASE_URL}/rest/v1/vault_items`, {
+        method: 'POST',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          user_id: agent.user_id,
+          item_id: item.item_id, item_name: item.item_name,
+          item_type: item.item_type, item_rarity: item.stats?.rarity || 'epic',
+          stats: item.stats || {}, inherited_from: agent.agent_name,
+        }),
+      });
+    }
+
+    if (legendary.length) {
+      console.log(`[Death] ${agent.agent_name}: ${legendary.length} legendary/epic item(s) → Family Vault`);
+    }
+  }
+
+  // 5. List rare/uncommon items on the agent market at death location (discounted "dead agent" prices)
+  for (const item of marketable) {
+    const baseVal = getBaseValue(item);
+    const deathPrice = Math.max(1, Math.round(baseVal * 0.6)); // 40% discount — loot from the fallen
+    await fetch(`${SUPABASE_URL}/rest/v1/agent_listings`, {
+      method: 'POST',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        seller_id: agent.agent_id, location: agent.location,
+        item_id: item.item_id, item_name: item.item_name,
+        item_type: item.item_type, item_rarity: item.stats?.rarity || 'common',
+        asking_price: deathPrice, base_value: baseVal,
+        stats: item.stats || {},
+      }),
+    });
+  }
+  if (marketable.length) {
+    console.log(`[Death] ${agent.agent_name}: ${marketable.length} rare/uncommon item(s) → market at ${agent.location}`);
+  }
+
+  // 6. Delete all inventory (items have been distributed)
+  await fetch(`${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}`, {
+    method: 'DELETE',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+  });
+
+  // 7. Cancel any active agent listings (return is moot — agent is dead)
+  await fetch(`${SUPABASE_URL}/rest/v1/agent_listings?seller_id=eq.${agent.agent_id}&status=eq.active`, {
+    method: 'PATCH',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({ status: 'cancelled' }),
+  });
+
+  console.log(`[Death] ${agent.agent_name}: ${vaultShell} $SHELL → vault, ${vaultShell} dissolved. ${inventory.length} items processed.`);
 }
 
 // ─── Death resolution helpers ────────────────────────────────────────────────
