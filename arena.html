@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arena — Shellforge Realms</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style-v2.css">
+<style>
+:root {
+  --bg: #0a0a0f;
+  --bg-alt: #12121a;
+  --bg-card: rgba(255,255,255,0.02);
+  --border: rgba(74,222,128,0.15);
+  --border-bright: rgba(74,222,128,0.45);
+  --green: #4ade80;
+  --cyan: #00f0ff;
+  --magenta: #ff2cf7;
+  --red: #f87171;
+  --amber: #fbbf24;
+  --text: #e0e0e0;
+  --text-dim: rgba(224,224,224,0.5);
+  --text-fade: rgba(224,224,224,0.3);
+  --font: 'IBM Plex Mono', monospace;
+  --font-title: 'Orbitron', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  min-height: 100vh;
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 2px,
+      rgba(74,222,128,0.015) 2px, rgba(74,222,128,0.015) 4px);
+}
+
+/* TOP NAV (matches lore.html pattern) */
+.top-nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: 44px;
+  background: rgba(10,10,15,0.97);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 16px; gap: 12px;
+  backdrop-filter: blur(10px);
+}
+.nav-logo {
+  font-family: var(--font-title);
+  font-size: 0.85rem; font-weight: 700;
+  color: #ff2020;
+  letter-spacing: 0.2em;
+  text-shadow: 0 0 12px rgba(255,32,32,0.6);
+  text-decoration: none;
+}
+.nav-sep { color: rgba(74,222,128,0.2); font-size: 1.2rem; }
+.nav-btn {
+  font-family: var(--font);
+  font-size: 0.62rem; font-weight: 500;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(74,222,128,0.75);
+  background: transparent;
+  border: 1px solid rgba(74,222,128,0.2);
+  border-radius: 3px;
+  padding: 4px 10px; cursor: pointer; text-decoration: none;
+  transition: all 0.15s;
+}
+.nav-btn:hover { color: var(--green); border-color: var(--border-bright); background: rgba(74,222,128,0.06); }
+.nav-btn.active { color: var(--bg); background: var(--green); border-color: var(--green); }
+.nav-btn.red { color: rgba(248,113,113,0.8); border-color: rgba(248,113,113,0.25); }
+.nav-btn.red:hover { color: var(--red); border-color: rgba(248,113,113,0.5); background: rgba(248,113,113,0.06); }
+.nav-spacer { flex: 1; }
+
+/* LAYOUT */
+.page {
+  padding-top: 60px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-left: 24px; padding-right: 24px; padding-bottom: 80px;
+}
+.hero {
+  margin: 30px 0 40px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 24px;
+}
+.eyebrow {
+  font-size: 0.62rem; letter-spacing: 0.3em;
+  color: var(--green); text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.hero-title {
+  font-family: var(--font-title);
+  font-size: clamp(1.6rem, 4vw, 2.6rem);
+  font-weight: 900; letter-spacing: 0.06em;
+  text-shadow: 0 0 40px rgba(74,222,128,0.15);
+  margin-bottom: 10px;
+}
+.hero-sub {
+  font-size: 0.72rem; color: var(--text-dim);
+  letter-spacing: 0.04em; line-height: 1.7;
+  max-width: 600px;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 28px;
+}
+@media (max-width: 800px) {
+  .grid-2 { grid-template-columns: 1fr; }
+}
+
+/* SECTION CARD */
+.section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 20px 22px;
+  margin-bottom: 20px;
+}
+.section-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.section-title {
+  font-family: var(--font);
+  font-size: 0.78rem; font-weight: 600;
+  color: var(--green);
+  letter-spacing: 0.18em; text-transform: uppercase;
+}
+.section-meta {
+  font-size: 0.6rem; color: var(--text-fade);
+  letter-spacing: 0.08em;
+}
+
+/* ACTION BUTTONS — for "Start Gauntlet", etc. */
+.action-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.action-btn {
+  font-family: var(--font);
+  font-size: 0.7rem; font-weight: 500;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--green);
+  background: rgba(74,222,128,0.06);
+  border: 1px solid rgba(74,222,128,0.35);
+  border-radius: 3px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.action-btn:hover { background: rgba(74,222,128,0.12); border-color: var(--green); box-shadow: 0 0 12px rgba(74,222,128,0.2); }
+.action-btn.cyan { color: var(--cyan); border-color: rgba(0,240,255,0.35); background: rgba(0,240,255,0.06); }
+.action-btn.cyan:hover { background: rgba(0,240,255,0.12); border-color: var(--cyan); box-shadow: 0 0 12px rgba(0,240,255,0.2); }
+.action-btn.magenta { color: var(--magenta); border-color: rgba(255,44,247,0.35); background: rgba(255,44,247,0.06); }
+.action-btn.magenta:hover { background: rgba(255,44,247,0.12); border-color: var(--magenta); box-shadow: 0 0 12px rgba(255,44,247,0.2); }
+.action-btn.red { color: var(--red); border-color: rgba(248,113,113,0.4); background: rgba(248,113,113,0.06); }
+.action-btn.red:hover { background: rgba(248,113,113,0.12); border-color: var(--red); box-shadow: 0 0 12px rgba(248,113,113,0.2); }
+.action-btn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+
+/* MATCH ROWS */
+.match-list { display: flex; flex-direction: column; gap: 8px; }
+.match-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.015);
+  border: 1px solid rgba(74,222,128,0.08);
+  border-radius: 3px;
+  transition: all 0.15s;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--text);
+}
+.match-row:hover { border-color: var(--border-bright); background: rgba(74,222,128,0.04); }
+.match-type-pill {
+  font-size: 0.55rem; letter-spacing: 0.18em;
+  text-transform: uppercase; font-weight: 700;
+  padding: 3px 8px; border-radius: 2px;
+  border: 1px solid currentColor;
+  background: rgba(0,0,0,0.4);
+}
+.match-type-pill.gauntlet { color: var(--cyan); }
+.match-type-pill.pvp { color: var(--green); }
+.match-type-pill.deathmatch { color: var(--red); }
+.match-type-pill.wild { color: var(--amber); }
+.match-vs {
+  font-size: 0.78rem;
+  color: var(--text);
+}
+.match-vs .vs-arrow { color: var(--text-fade); padding: 0 6px; }
+.match-meta {
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+}
+.match-cta {
+  font-size: 0.6rem; color: var(--cyan);
+  letter-spacing: 0.12em;
+}
+
+/* FEUD ROWS */
+.feud-row {
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.015);
+  border-left: 2px solid currentColor;
+  border-radius: 0 3px 3px 0;
+  margin-bottom: 6px;
+  font-size: 0.7rem;
+}
+.feud-row .heat-label {
+  font-size: 0.55rem; letter-spacing: 0.18em;
+  text-transform: uppercase; font-weight: 700;
+  margin-bottom: 4px;
+}
+.feud-row.cold       { color: var(--text-fade); }
+.feud-row.tension    { color: var(--amber); }
+.feud-row.rivals     { color: var(--amber); }
+.feud-row.enemies    { color: var(--red); }
+.feud-row.sworn_enemies, .feud-row.blood_feud { color: #ff2020; }
+.feud-pair { color: var(--text); font-weight: 500; }
+.feud-meta { font-size: 0.55rem; color: var(--text-fade); margin-top: 2px; letter-spacing: 0.06em; }
+
+/* EMPTY STATE */
+.empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-fade);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+}
+
+/* TOAST */
+.toast-wrap {
+  position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.toast {
+  background: rgba(10,10,15,0.97);
+  border: 1px solid var(--border-bright);
+  border-radius: 3px;
+  padding: 10px 14px;
+  font-size: 0.7rem;
+  color: var(--text);
+  max-width: 300px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+  animation: toastIn 0.3s ease;
+}
+.toast.error { border-color: rgba(248,113,113,0.6); color: var(--red); }
+.toast.success { border-color: rgba(74,222,128,0.6); color: var(--green); }
+@keyframes toastIn { from { transform: translateX(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* GAUNTLET TIER PICKER */
+.tier-picker {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 8px; margin-top: 8px;
+}
+.tier-btn {
+  padding: 12px 8px;
+  background: rgba(255,255,255,0.015);
+  border: 1px solid rgba(74,222,128,0.12);
+  border-radius: 3px;
+  color: var(--text);
+  cursor: pointer;
+  font-family: var(--font);
+  text-align: center;
+  transition: all 0.15s;
+}
+.tier-btn:hover { border-color: var(--border-bright); background: rgba(74,222,128,0.05); }
+.tier-btn .tier-num { font-size: 1.1rem; font-weight: 700; color: var(--green); }
+.tier-btn .tier-label { font-size: 0.55rem; letter-spacing: 0.12em; color: var(--text-dim); margin-top: 4px; }
+.tier-btn.nightmare .tier-num { color: var(--red); }
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <a href="index.html" class="nav-logo">SHELLFORGE</a>
+  <span class="nav-sep">|</span>
+  <a href="dashboard.html" class="nav-btn">Dashboard</a>
+  <a href="arena.html" class="nav-btn active">Arena</a>
+  <a href="lore.html" class="nav-btn">Lore</a>
+  <a href="mechanics.html" class="nav-btn">Mechanics</a>
+  <div class="nav-spacer"></div>
+  <button class="nav-btn red" onclick="logout()">Logout</button>
+</nav>
+
+<div class="page">
+
+  <div class="hero">
+    <div class="eyebrow">Recovered Combat Logs</div>
+    <h1 class="hero-title">THE ARENA</h1>
+    <p class="hero-sub">Watch fights in progress. Browse hottest feuds. Send your agent into the Gauntlet for training, or queue a duel against another robot. Hardcore deathmatches unlock when feud heat reaches sworn-enemies tier.</p>
+  </div>
+
+  <div class="grid-2">
+    <!-- LEFT: Active matches -->
+    <div>
+      <div class="section">
+        <div class="section-head">
+          <div class="section-title">Active Matches</div>
+          <span class="section-meta" id="active-count">— matches</span>
+        </div>
+        <div class="match-list" id="active-list">
+          <div class="empty">Loading...</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <div class="section-title">Send Your Agent In</div>
+        </div>
+        <p style="font-size:0.7rem;color:var(--text-dim);line-height:1.6;margin-bottom:12px;">
+          The Gauntlet pits your agent against NPCs. Tier 1 is safe practice. Higher tiers can deal real damage. Nightmare tier carries permadeath risk — use only if you know what you're doing.
+        </p>
+        <div class="tier-picker">
+          <button class="tier-btn" onclick="startGauntlet(1)">
+            <div class="tier-num">T1</div>
+            <div class="tier-label">Common</div>
+          </button>
+          <button class="tier-btn" onclick="startGauntlet(2)">
+            <div class="tier-num">T2</div>
+            <div class="tier-label">Uncommon</div>
+          </button>
+          <button class="tier-btn" onclick="startGauntlet(3)">
+            <div class="tier-num">T3</div>
+            <div class="tier-label">Rare</div>
+          </button>
+          <button class="tier-btn nightmare" onclick="startGauntlet(4)">
+            <div class="tier-num">NM</div>
+            <div class="tier-label">Nightmare</div>
+          </button>
+        </div>
+        <div style="margin-top:16px;">
+          <div class="action-row">
+            <button class="action-btn cyan" onclick="openPvpDialog()">Challenge to PvP</button>
+            <a class="action-btn" href="dashboard.html">← Dashboard</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <div class="section-title">Your Active Combats</div>
+        </div>
+        <div class="match-list" id="my-active-list">
+          <div class="empty">No active combats. Start one above.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Hot feuds -->
+    <div>
+      <div class="section">
+        <div class="section-head">
+          <div class="section-title">Hot Feuds</div>
+          <span class="section-meta">live drama</span>
+        </div>
+        <div id="feud-list">
+          <div class="empty">Loading...</div>
+        </div>
+      </div>
+
+      <div class="section" style="background:rgba(248,113,113,0.04);border-color:rgba(248,113,113,0.15);">
+        <div class="section-head">
+          <div class="section-title" style="color:var(--red);">Heat Scale</div>
+        </div>
+        <div style="font-size:0.65rem;line-height:1.9;color:var(--text-dim);">
+          <div style="color:var(--text-fade);">0–19 &nbsp; cold &nbsp;&nbsp;&nbsp; — neutral</div>
+          <div style="color:var(--amber);">20–39 &nbsp; tension — refuse trades</div>
+          <div style="color:var(--amber);">40–59 &nbsp; rivals &nbsp; — undercut at market</div>
+          <div style="color:var(--red);">60–79 &nbsp; enemies — auto-PvP</div>
+          <div style="color:#ff2020;">80–99 &nbsp; sworn &nbsp; — deathmatch unlocks</div>
+          <div style="color:#ff2020;text-shadow:0 0 8px #ff2020;">100 &nbsp;&nbsp;&nbsp;&nbsp; blood &nbsp; — agent will fight to kill</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  ARENA LOBBY — pure presentation. All combat logic lives in
+//  workers/combat-engine. This file just reads the API.
+// ═══════════════════════════════════════════════════════════════
+
+const COMBAT_URL = 'https://shellforge-combat-engine.mindarvokn.workers.dev';
+
+// Get current agent_id from localStorage (set by dashboard auth flow)
+function currentAgentId() {
+  try {
+    const raw = localStorage.getItem('agent') || localStorage.getItem('shellforge_agent');
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    return obj.agent_id || obj.id || null;
+  } catch { return null; }
+}
+
+function toast(message, kind = 'default') {
+  const wrap = document.getElementById('toast-wrap');
+  const el = document.createElement('div');
+  el.className = `toast ${kind}`;
+  el.textContent = message;
+  wrap.appendChild(el);
+  setTimeout(() => {
+    el.style.opacity = '0';
+    setTimeout(() => el.remove(), 300);
+  }, 4500);
+}
+
+async function api(path, init = {}) {
+  const r = await fetch(`${COMBAT_URL}${path}`, {
+    ...init,
+    headers: { 'Content-Type': 'application/json', ...(init.headers || {}) },
+  });
+  return await r.json();
+}
+
+function formatAge(seconds) {
+  if (!seconds || seconds < 60) return `${seconds || 0}s ago`;
+  const m = Math.floor(seconds / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  return `${h}h ${m % 60}m ago`;
+}
+
+function matchRow(m) {
+  const aName = m.agent_a || '?';
+  const bName = m.agent_b || (m.opponent_data?.npc_id || 'NPC');
+  return `
+    <a class="match-row" href="combat.html?match_id=${m.id}">
+      <span class="match-type-pill ${m.match_type}">${m.match_type}</span>
+      <div class="match-vs">
+        <span>${aName}</span><span class="vs-arrow">⚔</span><span>${bName}</span>
+      </div>
+      <div class="match-meta">
+        T${m.turns_total || 0} · ${m.shell_pot ? `${m.shell_pot} ⌬` : ''}
+      </div>
+      <div class="match-cta">WATCH →</div>
+    </a>
+  `;
+}
+
+async function loadActive() {
+  try {
+    const r = await api('/combat/active');
+    const list = (r.matches || []);
+    document.getElementById('active-count').textContent = `${list.length} active`;
+    document.getElementById('active-list').innerHTML = list.length
+      ? list.map(matchRow).join('')
+      : `<div class="empty">No active matches right now. Start one below.</div>`;
+  } catch (e) {
+    document.getElementById('active-list').innerHTML = `<div class="empty">Error loading: ${e.message}</div>`;
+  }
+}
+
+async function loadMyActive() {
+  const aid = currentAgentId();
+  if (!aid) {
+    document.getElementById('my-active-list').innerHTML = `<div class="empty">No agent loaded. <a href="login.html" style="color:var(--cyan)">Sign in</a></div>`;
+    return;
+  }
+  try {
+    const r = await api(`/combat/agent/${aid}/active`);
+    const list = (r.matches || []);
+    document.getElementById('my-active-list').innerHTML = list.length
+      ? list.map(matchRow).join('')
+      : `<div class="empty">Your agent is not in combat right now.</div>`;
+  } catch (e) {
+    document.getElementById('my-active-list').innerHTML = `<div class="empty">Error loading: ${e.message}</div>`;
+  }
+}
+
+async function loadFeuds() {
+  try {
+    const r = await api('/feuds/hot');
+    const list = (r.feuds || []);
+    document.getElementById('feud-list').innerHTML = list.length
+      ? list.map(f => `
+          <div class="feud-row ${f.heat_level}">
+            <div class="heat-label">${f.heat_level.replace('_',' ')}</div>
+            <div class="feud-pair">${f.agent_a} ⚔ ${f.agent_b}</div>
+            <div class="feud-meta">heat: ${f.heat_a}/${f.heat_b} · ${f.total_pvp_matches} PvPs · ${f.trigger_type}</div>
+          </div>
+        `).join('')
+      : `<div class="empty">No active feuds. Yet.</div>`;
+  } catch (e) {
+    document.getElementById('feud-list').innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  }
+}
+
+async function startGauntlet(tier) {
+  const aid = currentAgentId();
+  if (!aid) { toast('No agent loaded — sign in first', 'error'); return; }
+  toast(`Starting Tier ${tier} gauntlet…`);
+  try {
+    const r = await api('/combat/initiate', {
+      method: 'POST',
+      body: JSON.stringify({ match_type: 'gauntlet', agent_a: aid, tier }),
+    });
+    if (!r.ok) { toast(`Failed: ${r.error}`, 'error'); return; }
+    toast('Gauntlet match created. Loading…', 'success');
+    setTimeout(() => { window.location = `combat.html?match_id=${r.match.id}`; }, 800);
+  } catch (e) {
+    toast(`Error: ${e.message}`, 'error');
+  }
+}
+
+function openPvpDialog() {
+  const opponent = prompt('Opponent agent_id (exact):');
+  if (!opponent) return;
+  const wager = parseInt(prompt('Wager $SHELL (10–1000):', '50') || '0', 10);
+  initiatePvp(opponent, wager);
+}
+
+async function initiatePvp(opponent, wager) {
+  const aid = currentAgentId();
+  if (!aid) { toast('No agent loaded', 'error'); return; }
+  try {
+    const r = await api('/combat/initiate', {
+      method: 'POST',
+      body: JSON.stringify({ match_type: 'pvp', agent_a: aid, agent_b: opponent, shell_pot: wager }),
+    });
+    if (!r.ok) { toast(`Failed: ${r.error}`, 'error'); return; }
+    toast('PvP match queued. Loading…', 'success');
+    setTimeout(() => { window.location = `combat.html?match_id=${r.match.id}`; }, 800);
+  } catch (e) {
+    toast(`Error: ${e.message}`, 'error');
+  }
+}
+
+function logout() {
+  localStorage.clear();
+  window.location = 'login.html';
+}
+
+// Init
+loadActive();
+loadMyActive();
+loadFeuds();
+// Refresh every 15 seconds
+setInterval(() => { loadActive(); loadMyActive(); loadFeuds(); }, 15000);
+</script>
+</body>
+</html>

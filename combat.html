@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Combat — Shellforge Realms</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0f; --bg-alt: #12121a;
+  --border: rgba(74,222,128,0.15); --border-bright: rgba(74,222,128,0.45);
+  --green: #4ade80; --cyan: #00f0ff; --magenta: #ff2cf7;
+  --red: #f87171; --amber: #fbbf24;
+  --text: #e0e0e0; --text-dim: rgba(224,224,224,0.5); --text-fade: rgba(224,224,224,0.3);
+  --font: 'IBM Plex Mono', monospace;
+  --font-title: 'Orbitron', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: var(--font); min-height: 100vh;
+  background-image: repeating-linear-gradient(0deg, transparent, transparent 2px,
+    rgba(74,222,128,0.015) 2px, rgba(74,222,128,0.015) 4px);
+}
+
+/* TOP NAV */
+.top-nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: 44px; background: rgba(10,10,15,0.97);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 16px; gap: 12px;
+  backdrop-filter: blur(10px);
+}
+.nav-logo { font-family: var(--font-title); font-size: 0.85rem; font-weight: 700;
+  color: #ff2020; letter-spacing: 0.2em; text-shadow: 0 0 12px rgba(255,32,32,0.6); text-decoration: none; }
+.nav-sep { color: rgba(74,222,128,0.2); font-size: 1.2rem; }
+.nav-btn {
+  font-family: var(--font); font-size: 0.62rem; font-weight: 500;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(74,222,128,0.75); background: transparent;
+  border: 1px solid rgba(74,222,128,0.2); border-radius: 3px;
+  padding: 4px 10px; cursor: pointer; text-decoration: none; transition: all 0.15s;
+}
+.nav-btn:hover { color: var(--green); border-color: var(--border-bright); background: rgba(74,222,128,0.06); }
+.nav-btn.active { color: var(--bg); background: var(--green); border-color: var(--green); }
+.nav-spacer { flex: 1; }
+
+/* LAYOUT */
+.combat-page {
+  padding-top: 60px; max-width: 1400px; margin: 0 auto;
+  padding-left: 16px; padding-right: 16px; padding-bottom: 40px;
+}
+.combat-grid {
+  display: grid;
+  grid-template-columns: 260px 1fr 300px;
+  gap: 16px; margin-top: 20px;
+}
+@media (max-width: 1000px) {
+  .combat-grid { grid-template-columns: 1fr; }
+}
+
+/* PANELS */
+.panel {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.panel-head {
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.panel-title {
+  font-size: 0.65rem; font-weight: 600; color: var(--green);
+  letter-spacing: 0.18em; text-transform: uppercase;
+}
+.panel-body { padding: 14px; }
+
+/* AGENT HEADER */
+.agent-card {
+  padding: 14px; background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border); border-radius: 4px;
+  margin-bottom: 16px;
+}
+.agent-card.enemy { border-color: rgba(248,113,113,0.25); }
+.agent-card.player { border-color: rgba(74,222,128,0.3); }
+.agent-name-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.agent-name { font-size: 0.95rem; font-weight: 600; letter-spacing: 0.04em; }
+.agent-cluster-pill {
+  font-size: 0.52rem; letter-spacing: 0.16em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 2px; border: 1px solid currentColor;
+}
+.cluster-prime_helix { color: var(--cyan); }
+.cluster-sec_grid { color: var(--amber); }
+.cluster-dyn_swarm { color: var(--magenta); }
+
+/* HP / COHERENCE BAR */
+.bar-wrap {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+  font-size: 0.65rem;
+}
+.bar-label { width: 36px; color: var(--text-dim); letter-spacing: 0.08em; }
+.bar-track {
+  flex: 1; height: 12px; background: rgba(0,0,0,0.5);
+  border: 1px solid var(--border); border-radius: 2px; overflow: hidden;
+  position: relative;
+}
+.bar-fill {
+  height: 100%; transition: width 0.5s ease;
+  background: linear-gradient(90deg, rgba(74,222,128,0.9), rgba(74,222,128,0.6));
+  box-shadow: 0 0 6px rgba(74,222,128,0.4);
+}
+.bar-fill.hp-enemy {
+  background: linear-gradient(90deg, rgba(248,113,113,0.9), rgba(248,113,113,0.6));
+  box-shadow: 0 0 6px rgba(248,113,113,0.4);
+}
+.bar-fill.coherence {
+  background: linear-gradient(90deg, rgba(0,240,255,0.85), rgba(0,240,255,0.5));
+  box-shadow: 0 0 6px rgba(0,240,255,0.4);
+}
+.bar-text { font-size: 0.6rem; color: var(--text); min-width: 52px; text-align: right; }
+
+/* EFFECTS CHIPS */
+.effects-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.effect-chip {
+  font-size: 0.52rem; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 2px 6px; border-radius: 2px;
+  border: 1px solid currentColor;
+  background: rgba(0,0,0,0.3);
+}
+.effect-buff, .effect-shield, .effect-hot { color: var(--green); }
+.effect-debuff, .effect-dot, .effect-trap { color: var(--red); }
+.effect-cooldown, .effect-marker { color: var(--text-dim); }
+
+/* ARENA */
+.arena {
+  background: radial-gradient(ellipse at center, rgba(74,222,128,0.04) 0%, rgba(10,10,15,0.8) 70%);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 30px 20px; min-height: 260px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  position: relative; overflow: hidden;
+}
+.arena::before {
+  content: ''; position: absolute; inset: 0;
+  background: repeating-linear-gradient(45deg, transparent, transparent 20px,
+    rgba(74,222,128,0.02) 20px, rgba(74,222,128,0.02) 21px);
+  pointer-events: none;
+}
+.arena-clash {
+  font-family: var(--font-title); font-size: clamp(1.2rem, 3vw, 1.8rem);
+  color: var(--text); letter-spacing: 0.08em; margin: 20px 0;
+  text-align: center;
+}
+.clash-symbol {
+  display: inline-block; margin: 0 18px;
+  font-size: 1.3em; color: var(--red);
+  text-shadow: 0 0 16px rgba(248,113,113,0.6);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 0.6; } 50% { opacity: 1; } }
+.arena-event {
+  font-size: 0.75rem; color: var(--text-dim);
+  letter-spacing: 0.06em; text-align: center;
+  min-height: 40px; line-height: 1.6;
+  max-width: 500px;
+  font-style: italic;
+}
+.arena-event .crit-flash {
+  color: var(--amber); font-weight: 700; font-style: normal;
+  text-shadow: 0 0 8px rgba(251,191,36,0.5);
+}
+.turn-indicator {
+  font-size: 0.65rem; color: var(--cyan);
+  letter-spacing: 0.18em; text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+/* HAND OF CARDS */
+.hand {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px; margin-top: 16px;
+}
+.card {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  border-radius: 3px; padding: 10px;
+  cursor: pointer; transition: all 0.15s;
+  position: relative;
+}
+.card:hover { border-color: var(--border-bright); background: rgba(74,222,128,0.04); transform: translateY(-1px); }
+.card.disabled { opacity: 0.35; cursor: not-allowed; }
+.card.disabled:hover { transform: none; background: rgba(255,255,255,0.02); }
+.card .card-cost {
+  position: absolute; top: 6px; right: 8px;
+  font-size: 0.7rem; color: var(--cyan);
+  background: rgba(0,0,0,0.5); padding: 1px 6px; border-radius: 2px;
+}
+.card .card-type {
+  font-size: 0.5rem; letter-spacing: 0.18em; text-transform: uppercase;
+  margin-bottom: 6px; color: var(--text-fade);
+}
+.card.type-ATK .card-type { color: var(--red); }
+.card.type-DEF .card-type { color: var(--cyan); }
+.card.type-BUFF, .card.type-HEAL { color: var(--green); }
+.card.type-BUFF .card-type, .card.type-HEAL .card-type { color: var(--green); }
+.card.type-DEBUFF .card-type, .card.type-TRAP .card-type { color: var(--magenta); }
+.card.type-UTIL .card-type { color: var(--amber); }
+.card.type-PASSIVE { opacity: 0.5; }
+.card .card-name {
+  font-size: 0.75rem; font-weight: 600;
+  color: var(--text); margin-bottom: 4px;
+  line-height: 1.3;
+}
+.card .card-desc {
+  font-size: 0.56rem; color: var(--text-dim);
+  line-height: 1.5;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.card .card-source {
+  font-size: 0.5rem; color: var(--text-fade);
+  letter-spacing: 0.1em; margin-top: 6px;
+}
+
+/* WHISPER BAR */
+.whisper-bar {
+  margin-top: 16px; display: flex; gap: 8px;
+  background: rgba(255,0,68,0.04);
+  border: 1px solid rgba(255,0,68,0.2);
+  border-radius: 3px; padding: 10px;
+}
+.whisper-bar input {
+  flex: 1; background: transparent; border: none; outline: none;
+  color: var(--text); font-family: var(--font); font-size: 0.75rem;
+  padding: 4px 6px;
+}
+.whisper-bar input::placeholder { color: var(--text-fade); font-style: italic; }
+.whisper-send {
+  font-family: var(--font); font-size: 0.65rem;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: #ff0044; background: rgba(255,0,68,0.1);
+  border: 1px solid rgba(255,0,68,0.4);
+  border-radius: 2px; padding: 5px 10px;
+  cursor: pointer; transition: all 0.15s;
+}
+.whisper-send:hover { background: rgba(255,0,68,0.2); border-color: #ff0044; }
+
+/* TURN LOG (right sidebar) */
+.turn-log {
+  max-height: 640px; overflow-y: auto;
+  padding: 14px;
+}
+.turn-log::-webkit-scrollbar { width: 6px; }
+.turn-log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.log-entry {
+  padding: 8px 10px; margin-bottom: 6px;
+  border-left: 2px solid var(--border);
+  font-size: 0.65rem; line-height: 1.6;
+  background: rgba(255,255,255,0.01);
+}
+.log-entry .log-turn {
+  font-size: 0.55rem; color: var(--text-fade);
+  letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 4px;
+}
+.log-entry .log-action {
+  color: var(--text); font-size: 0.65rem;
+}
+.log-entry .log-action .actor-a { color: var(--cyan); }
+.log-entry .log-action .actor-b { color: var(--red); }
+.log-entry.crit { border-left-color: var(--amber); }
+.log-entry.death { border-left-color: var(--red); background: rgba(248,113,113,0.04); }
+.log-entry.miss { opacity: 0.5; }
+
+/* STATUS BAR */
+.status-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 0.6rem; color: var(--text-dim);
+  letter-spacing: 0.08em; padding: 6px 0;
+}
+.status-bar .dot {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green); box-shadow: 0 0 6px var(--green);
+  margin-right: 6px;
+}
+.status-bar .dot.resolved { background: var(--text-fade); box-shadow: none; }
+
+/* TOAST */
+.toast-wrap { position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+  display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  background: rgba(10,10,15,0.97); border: 1px solid var(--border-bright);
+  border-radius: 3px; padding: 10px 14px; font-size: 0.7rem; color: var(--text);
+  max-width: 300px; box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+  animation: toastIn 0.3s ease;
+}
+.toast.error { border-color: rgba(248,113,113,0.6); color: var(--red); }
+.toast.success { border-color: rgba(74,222,128,0.6); color: var(--green); }
+@keyframes toastIn { from { transform: translateX(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* LOADING */
+.loading {
+  text-align: center; padding: 60px 20px;
+  color: var(--text-fade); font-size: 0.75rem;
+  letter-spacing: 0.12em;
+}
+
+/* REPLAY CONTROLS */
+.replay-controls {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; background: rgba(255,255,255,0.015);
+  border: 1px solid var(--border); border-radius: 3px;
+  margin-top: 12px;
+}
+.replay-controls input[type=range] { flex: 1; accent-color: var(--cyan); }
+.replay-btn {
+  font-family: var(--font); font-size: 0.6rem;
+  color: var(--cyan); background: rgba(0,240,255,0.06);
+  border: 1px solid rgba(0,240,255,0.35); border-radius: 2px;
+  padding: 4px 10px; cursor: pointer; letter-spacing: 0.12em;
+}
+.replay-btn:hover { background: rgba(0,240,255,0.14); }
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <a href="index.html" class="nav-logo">SHELLFORGE</a>
+  <span class="nav-sep">|</span>
+  <a href="dashboard.html" class="nav-btn">Dashboard</a>
+  <a href="arena.html" class="nav-btn">Arena</a>
+  <a href="lore.html" class="nav-btn">Lore</a>
+  <div class="nav-spacer"></div>
+  <span class="nav-btn" id="match-status">Loading…</span>
+</nav>
+
+<div class="combat-page">
+  <div id="combat-root">
+    <div class="loading">RECONSTRUCTING COMBAT STATE…</div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  COMBAT VIEWER — pure presentation. Reads from combat-engine API.
+//  URL param: ?match_id=<uuid>
+// ═══════════════════════════════════════════════════════════════
+
+const COMBAT_URL = 'https://shellforge-combat-engine.mindarvokn.workers.dev';
+const MATCH_ID = new URLSearchParams(window.location.search).get('match_id');
+let POLL_HANDLE = null;
+let CURRENT_STATE = null;
+let REPLAY_CURSOR = null;   // null = live, number = viewing that turn
+let REPLAY_PLAYING = false;
+
+function currentAgentId() {
+  try {
+    const raw = localStorage.getItem('agent') || localStorage.getItem('shellforge_agent');
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    return obj.agent_id || obj.id || null;
+  } catch { return null; }
+}
+
+function toast(message, kind = 'default') {
+  const wrap = document.getElementById('toast-wrap');
+  const el = document.createElement('div');
+  el.className = `toast ${kind}`;
+  el.textContent = message;
+  wrap.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 4500);
+}
+
+async function api(path, init = {}) {
+  const r = await fetch(`${COMBAT_URL}${path}`, {
+    ...init,
+    headers: { 'Content-Type': 'application/json', ...(init.headers || {}) },
+  });
+  return await r.json();
+}
+
+// ─── Rendering ───────────────────────────────────────────────
+
+function pct(num, denom) {
+  return denom > 0 ? Math.max(0, Math.min(100, (num / denom) * 100)) : 0;
+}
+
+function effectChip(e) {
+  const label = e.source ? `${e.kind} · ${e.source}` : e.kind;
+  return `<span class="effect-chip effect-${e.kind}">${label} ${e.turns_left}t</span>`;
+}
+
+function renderAgentCard(snap, state, side, viewerOwns) {
+  if (!snap) return '';
+  const name = snap.agent_id || '—';
+  const archetype = snap.archetype || '';
+  const cluster = (snap.cluster || 'any').toLowerCase();
+  const hp = state?.hp ?? snap.hp;
+  const hpMax = snap.hp_max || 100;
+  const coh = state?.coherence ?? snap.coherence;
+  const cohMax = snap.coherence_max || 20;
+  const effects = state?.effects || [];
+  const hpClass = side === 'enemy' ? 'hp-enemy' : '';
+  const cardClass = side === 'enemy' ? 'enemy' : 'player';
+  const ownsMark = viewerOwns ? '●' : '';
+
+  return `
+    <div class="agent-card ${cardClass}">
+      <div class="agent-name-row">
+        <div class="agent-name">${ownsMark ? `<span style="color:var(--green);font-size:0.5em;vertical-align:middle;">${ownsMark}</span> ` : ''}${name}</div>
+        <span class="agent-cluster-pill cluster-${cluster}">${cluster.replace('_','-')}</span>
+      </div>
+      <div style="font-size:0.6rem;color:var(--text-fade);letter-spacing:0.08em;margin-bottom:10px;">${archetype}</div>
+      <div class="bar-wrap">
+        <div class="bar-label">HP</div>
+        <div class="bar-track"><div class="bar-fill ${hpClass}" style="width:${pct(hp, hpMax)}%"></div></div>
+        <div class="bar-text">${hp}/${hpMax}</div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-label">⚡</div>
+        <div class="bar-track"><div class="bar-fill coherence" style="width:${pct(coh, cohMax)}%"></div></div>
+        <div class="bar-text">${coh}/${cohMax}</div>
+      </div>
+      ${effects.length ? `<div class="effects-row">${effects.map(effectChip).join('')}</div>` : ''}
+    </div>
+  `;
+}
+
+function renderCard(card, playable) {
+  return `
+    <div class="card type-${card.type} ${playable ? '' : 'disabled'}"
+         onclick="${playable ? `whisperCard('${(card.ability_name||'').replace(/'/g, "\\'")}')` : ''}">
+      <div class="card-cost">⚡${card.coherence_cost}</div>
+      <div class="card-type">${card.type}${card.one_time ? ' · 1-shot' : ''}</div>
+      <div class="card-name">${card.ability_name}</div>
+      <div class="card-desc">${card.description || ''}</div>
+      <div class="card-source">${card.source || ''}${card.item_name && card.source === 'item' ? ` — ${card.item_name}` : ''}${card.power > 0 ? ` · pwr ${card.power}` : ''}</div>
+    </div>
+  `;
+}
+
+function renderHand(snap, state, viewerOwns) {
+  if (!viewerOwns || !snap || !snap.deck) return '';
+  const coh = state?.coherence ?? snap.coherence;
+  const consumed = new Set();
+  const onCd = new Set();
+  for (const e of state?.effects || []) {
+    if (e.kind === 'marker') consumed.add((e.source || '').toLowerCase());
+    if (e.kind === 'cooldown') onCd.add((e.source || '').toLowerCase());
+  }
+  return `
+    <div style="margin-top:16px;">
+      <div class="panel-title" style="margin-bottom:8px;">Your Hand</div>
+      <div class="hand">
+        ${snap.deck.map(c => {
+          const playable = c.coherence_cost <= coh &&
+            !consumed.has(c.ability_name.toLowerCase()) &&
+            !onCd.has(c.ability_name.toLowerCase()) &&
+            c.type !== 'PASSIVE';
+          return renderCard(c, playable);
+        }).join('')}
+      </div>
+      <div class="whisper-bar">
+        <input id="whisper-input" placeholder="Whisper a tactic — 'attack', 'defend', or a card name…" />
+        <button class="whisper-send" onclick="sendWhisper(false)">Free</button>
+        <button class="whisper-send" onclick="sendWhisper(true)" title="Premium whispers carry more weight">Premium</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderArenaEvent(turn) {
+  if (!turn) {
+    return `<div class="turn-indicator">TURN 0 — Awaiting first move</div>
+            <div class="arena-clash">
+              <span>?</span><span class="clash-symbol">⚔</span><span>?</span>
+            </div>
+            <div class="arena-event">The match is initializing. Decks are being assembled.</div>`;
+  }
+  const aName = 'A', bName = 'B';
+  const events = (turn.effects_triggered || []).map(e => {
+    if (e.type === 'attack' && e.crit) return `<span class="crit-flash">CRIT</span> — ${e.message}`;
+    return e.message || '';
+  }).filter(Boolean);
+  const text = events.length ? events.join(' · ') : 'Both sides pause, calculating.';
+  const aAct = turn.agent_a_action?.ability_name || '—';
+  const bAct = turn.agent_b_action?.ability_name || '—';
+  return `
+    <div class="turn-indicator">TURN ${turn.turn_number}</div>
+    <div class="arena-clash">
+      <span>${aAct}</span><span class="clash-symbol">⚔</span><span>${bAct}</span>
+    </div>
+    <div class="arena-event">${text}</div>
+  `;
+}
+
+function renderTurnLog(turns) {
+  if (!turns || turns.length === 0) return '<div class="loading">No turns yet</div>';
+  return turns.slice().reverse().map(t => {
+    const aAct = t.agent_a_action?.ability_name || '—';
+    const bAct = t.agent_b_action?.ability_name || '—';
+    const events = (t.effects_triggered || []);
+    const hasCrit = events.some(e => e.crit);
+    const hasMiss = events.some(e => e.type === 'miss');
+    let cls = '';
+    if (hasCrit) cls = 'crit';
+    else if (hasMiss) cls = 'miss';
+
+    const eventStr = events.slice(0, 3).map(e => e.message).filter(Boolean).join(' · ');
+    return `
+      <div class="log-entry ${cls}">
+        <div class="log-turn">TURN ${t.turn_number}</div>
+        <div class="log-action">
+          <span class="actor-a">A:</span> ${aAct}
+          &nbsp;·&nbsp;
+          <span class="actor-b">B:</span> ${bAct}
+        </div>
+        ${eventStr ? `<div style="color:var(--text-dim);font-size:0.58rem;margin-top:4px;">${eventStr}</div>` : ''}
+        <div style="font-size:0.55rem;color:var(--text-fade);margin-top:3px;">
+          HP ${t.agent_a_hp_after}/${t.agent_b_hp_after} &nbsp;·&nbsp; ⚡ ${t.agent_a_coherence_after}/${t.agent_b_coherence_after}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function derive(match, turns, cursor) {
+  // Return derived state: latest or cursor-specific turn
+  const latestTurn = turns.length > 0 ? turns[turns.length - 1] : null;
+  const viewTurn = cursor !== null && cursor >= 0 && cursor < turns.length
+    ? turns[cursor] : latestTurn;
+  const stateA = viewTurn ? {
+    hp: viewTurn.agent_a_hp_after,
+    coherence: viewTurn.agent_a_coherence_after,
+    effects: viewTurn.active_effects_a || [],
+  } : null;
+  const stateB = viewTurn ? {
+    hp: viewTurn.agent_b_hp_after,
+    coherence: viewTurn.agent_b_coherence_after,
+    effects: viewTurn.active_effects_b || [],
+  } : null;
+  return { viewTurn, stateA, stateB };
+}
+
+function render(state) {
+  CURRENT_STATE = state;
+  const { match, turns } = state;
+  const { viewTurn, stateA, stateB } = derive(match, turns, REPLAY_CURSOR);
+  const myId = currentAgentId();
+  const viewerOwnsA = myId && myId === match.agent_a;
+  const viewerOwnsB = myId && myId === match.agent_b;
+  const canWhisper = (viewerOwnsA || viewerOwnsB) && match.status === 'in_progress';
+
+  // Status pill in nav
+  const statusEl = document.getElementById('match-status');
+  const isLive = match.status === 'in_progress';
+  statusEl.innerHTML = isLive
+    ? `<span class="dot"></span>LIVE · T${match.turns_total}`
+    : `<span class="dot resolved"></span>${match.status.toUpperCase()} · T${match.turns_total}`;
+  statusEl.style.color = isLive ? 'var(--green)' : 'var(--text-dim)';
+
+  const isReplayMode = !isLive || REPLAY_CURSOR !== null;
+
+  const cardLeft = `
+    ${renderAgentCard(match.agent_a_snapshot, stateA, 'player', viewerOwnsA)}
+    ${renderAgentCard(match.agent_b_snapshot, stateB, 'enemy', viewerOwnsB)}
+
+    ${isReplayMode && turns.length > 0 ? `
+      <div class="replay-controls">
+        <button class="replay-btn" onclick="toggleReplay()">${REPLAY_PLAYING ? '❚❚' : '▶'}</button>
+        <input type="range" min="0" max="${turns.length - 1}"
+               value="${REPLAY_CURSOR === null ? turns.length - 1 : REPLAY_CURSOR}"
+               oninput="setReplayCursor(parseInt(this.value))">
+        <span style="font-size:0.6rem;color:var(--text-dim);">
+          ${(REPLAY_CURSOR === null ? turns.length : REPLAY_CURSOR + 1)}/${turns.length}
+        </span>
+      </div>
+    ` : ''}
+  `;
+
+  const center = `
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">Arena</div>
+        <span style="font-size:0.55rem;color:var(--text-fade);letter-spacing:0.12em;">
+          ${match.match_type.toUpperCase()} ${match.shell_pot ? `· ${match.shell_pot} ⌬` : ''}
+        </span>
+      </div>
+      <div class="panel-body">
+        <div class="arena">
+          ${renderArenaEvent(viewTurn)}
+        </div>
+        ${canWhisper ? renderHand(
+          viewerOwnsA ? match.agent_a_snapshot : match.agent_b_snapshot,
+          viewerOwnsA ? stateA : stateB,
+          true
+        ) : ''}
+      </div>
+    </div>
+  `;
+
+  const right = `
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">Turn Log</div>
+        <span style="font-size:0.55rem;color:var(--text-fade);">${turns.length} turns</span>
+      </div>
+      <div class="turn-log">
+        ${renderTurnLog(turns)}
+      </div>
+    </div>
+  `;
+
+  document.getElementById('combat-root').innerHTML = `
+    <div class="combat-grid">
+      <div>${cardLeft}</div>
+      <div>${center}</div>
+      <div>${right}</div>
+    </div>
+  `;
+}
+
+// ─── Data fetching & polling ─────────────────────────────────
+
+async function loadMatch() {
+  if (!MATCH_ID) {
+    document.getElementById('combat-root').innerHTML =
+      '<div class="loading">No match_id specified. <a href="arena.html" style="color:var(--cyan)">Go to Arena</a></div>';
+    return;
+  }
+  try {
+    const r = await api(`/combat/match/${MATCH_ID}`);
+    if (!r.ok) {
+      document.getElementById('combat-root').innerHTML =
+        `<div class="loading">Match not found: ${r.error}</div>`;
+      return;
+    }
+    render({ match: r.match, turns: r.turns || [] });
+  } catch (e) {
+    document.getElementById('combat-root').innerHTML =
+      `<div class="loading">Error loading match: ${e.message}</div>`;
+  }
+}
+
+function startPolling() {
+  if (POLL_HANDLE) clearInterval(POLL_HANDLE);
+  POLL_HANDLE = setInterval(async () => {
+    if (!CURRENT_STATE) return;
+    if (CURRENT_STATE.match.status !== 'in_progress') return;
+    await loadMatch();
+  }, 8000);
+}
+
+// ─── Replay controls ─────────────────────────────────────────
+
+function setReplayCursor(idx) {
+  REPLAY_CURSOR = idx;
+  REPLAY_PLAYING = false;
+  if (CURRENT_STATE) render(CURRENT_STATE);
+}
+
+function toggleReplay() {
+  if (!CURRENT_STATE) return;
+  REPLAY_PLAYING = !REPLAY_PLAYING;
+  if (REPLAY_PLAYING) {
+    REPLAY_CURSOR = 0;
+    render(CURRENT_STATE);
+    const step = () => {
+      if (!REPLAY_PLAYING || !CURRENT_STATE) return;
+      const max = CURRENT_STATE.turns.length - 1;
+      if (REPLAY_CURSOR >= max) { REPLAY_PLAYING = false; render(CURRENT_STATE); return; }
+      REPLAY_CURSOR++;
+      render(CURRENT_STATE);
+      setTimeout(step, 1200);
+    };
+    setTimeout(step, 500);
+  } else {
+    render(CURRENT_STATE);
+  }
+}
+
+// ─── Whisper ──────────────────────────────────────────────────
+
+async function whisperCard(abilityName) {
+  if (!CURRENT_STATE) return;
+  const myId = currentAgentId();
+  if (!myId) { toast('Sign in first', 'error'); return; }
+  try {
+    const r = await api('/combat/whisper', {
+      method: 'POST',
+      body: JSON.stringify({
+        match_id: MATCH_ID, ghost_id: myId, agent_id: myId,
+        suggestion: abilityName, is_premium: false,
+      }),
+    });
+    if (!r.ok) { toast(`Failed: ${r.error}`, 'error'); return; }
+    toast(`Whispered: ${abilityName}`, 'success');
+  } catch (e) {
+    toast(`Error: ${e.message}`, 'error');
+  }
+}
+
+async function sendWhisper(isPremium) {
+  const input = document.getElementById('whisper-input');
+  if (!input || !input.value.trim()) return;
+  const myId = currentAgentId();
+  if (!myId) { toast('Sign in first', 'error'); return; }
+  try {
+    const r = await api('/combat/whisper', {
+      method: 'POST',
+      body: JSON.stringify({
+        match_id: MATCH_ID, ghost_id: myId, agent_id: myId,
+        suggestion: input.value.trim(), is_premium: isPremium,
+      }),
+    });
+    if (!r.ok) { toast(`Failed: ${r.error}`, 'error'); return; }
+    toast(`Whisper sent${isPremium ? ' (premium)' : ''}`, 'success');
+    input.value = '';
+  } catch (e) {
+    toast(`Error: ${e.message}`, 'error');
+  }
+}
+
+// Init
+loadMatch().then(startPolling);
+</script>
+</body>
+</html>
