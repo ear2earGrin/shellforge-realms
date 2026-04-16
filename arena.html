@@ -77,32 +77,95 @@ body {
 
 /* LAYOUT */
 .page {
-  padding-top: 60px;
+  padding-top: 44px;
   max-width: 1200px;
   margin: 0 auto;
   padding-left: 24px; padding-right: 24px; padding-bottom: 80px;
 }
-.hero {
-  margin: 30px 0 40px;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 24px;
+
+/* BANNER — hero image slot for the arena scene */
+.banner {
+  position: relative;
+  margin-top: 16px;
+  height: clamp(180px, 28vh, 280px);
+  background:
+    linear-gradient(to bottom, rgba(10,10,15,0.35) 0%, rgba(10,10,15,0.95) 100%),
+    radial-gradient(ellipse at center, rgba(74,222,128,0.12) 0%, rgba(10,10,15,0.95) 70%),
+    repeating-linear-gradient(45deg, transparent 0, transparent 18px,
+      rgba(74,222,128,0.025) 18px, rgba(74,222,128,0.025) 19px),
+    #0a0a0f;
+  background-image: url('images/arena-hero.jpg');
+  background-size: cover;
+  background-position: center 40%;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  padding: 22px 28px;
 }
+.banner::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(to bottom, rgba(10,10,15,0.2) 0%, rgba(10,10,15,0.92) 100%),
+              repeating-linear-gradient(0deg, transparent, transparent 3px,
+                rgba(74,222,128,0.025) 3px, rgba(74,222,128,0.025) 4px);
+  pointer-events: none;
+}
+.banner > * { position: relative; z-index: 1; }
 .eyebrow {
   font-size: 0.62rem; letter-spacing: 0.3em;
   color: var(--green); text-transform: uppercase;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
+  text-shadow: 0 0 12px rgba(74,222,128,0.4);
 }
 .hero-title {
   font-family: var(--font-title);
   font-size: clamp(1.6rem, 4vw, 2.6rem);
   font-weight: 900; letter-spacing: 0.06em;
-  text-shadow: 0 0 40px rgba(74,222,128,0.15);
+  text-shadow: 0 0 40px rgba(0,0,0,0.9), 0 0 20px rgba(74,222,128,0.15);
   margin-bottom: 10px;
+  color: #fff;
 }
 .hero-sub {
-  font-size: 0.72rem; color: var(--text-dim);
+  font-size: 0.72rem; color: rgba(255,255,255,0.75);
   letter-spacing: 0.04em; line-height: 1.7;
   max-width: 600px;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+}
+
+/* LIVE STATS ROW — below the banner */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin: 16px 0 20px;
+}
+@media (max-width: 700px) {
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+}
+.stat-card {
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.stat-card .stat-label {
+  font-size: 0.52rem; letter-spacing: 0.22em;
+  color: var(--text-fade);
+  text-transform: uppercase;
+}
+.stat-card .stat-value {
+  font-family: var(--font-title);
+  font-size: 1.4rem; font-weight: 700;
+  color: var(--green);
+  line-height: 1;
+}
+.stat-card.cyan .stat-value { color: var(--cyan); }
+.stat-card.amber .stat-value { color: var(--amber); }
+.stat-card.red .stat-value { color: var(--red); }
+.stat-card .stat-sub {
+  font-size: 0.55rem; color: var(--text-dim);
+  letter-spacing: 0.06em;
 }
 
 .grid-2 {
@@ -292,10 +355,33 @@ body {
 
 <div class="page">
 
-  <div class="hero">
+  <div class="banner">
     <div class="eyebrow">Recovered Combat Logs</div>
     <h1 class="hero-title">THE ARENA</h1>
-    <p class="hero-sub">Watch fights in progress. Browse hottest feuds. Send your agent into the Gauntlet for training, or queue a duel against another robot. Hardcore deathmatches unlock when feud heat reaches sworn-enemies tier.</p>
+    <p class="hero-sub">Watch fights in progress. Browse the hottest feuds. Send your agent into the Gauntlet, queue a duel, or wait for a sworn enemy to challenge them to the death.</p>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card cyan">
+      <div class="stat-label">Active Matches</div>
+      <div class="stat-value" id="stat-matches">—</div>
+      <div class="stat-sub">live combat right now</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Active Feuds</div>
+      <div class="stat-value" id="stat-feuds">—</div>
+      <div class="stat-sub">tracked rivalries</div>
+    </div>
+    <div class="stat-card amber">
+      <div class="stat-label">Hottest Feud</div>
+      <div class="stat-value" id="stat-hot-heat">—</div>
+      <div class="stat-sub" id="stat-hot-pair">no rival yet</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">Crucible Risk</div>
+      <div class="stat-value" id="stat-crucible">—</div>
+      <div class="stat-sub">agents in danger</div>
+    </div>
   </div>
 
   <div class="grid-2">
@@ -454,6 +540,7 @@ async function loadActive() {
     const r = await api('/combat/active');
     const list = (r.matches || []);
     document.getElementById('active-count').textContent = `${list.length} active`;
+    document.getElementById('stat-matches').textContent = list.length;
     document.getElementById('active-list').innerHTML = list.length
       ? list.map(matchRow).join('')
       : `<div class="empty">No active matches right now. Start one below.</div>`;
@@ -483,6 +570,16 @@ async function loadFeuds() {
   try {
     const r = await api('/feuds/hot');
     const list = (r.feuds || []);
+    document.getElementById('stat-feuds').textContent = list.length;
+    if (list.length > 0) {
+      const top = list[0];
+      document.getElementById('stat-hot-heat').textContent = top.max_heat;
+      document.getElementById('stat-hot-pair').textContent =
+        `${top.agent_a} vs ${top.agent_b} · ${top.heat_level.replace('_', ' ')}`;
+    } else {
+      document.getElementById('stat-hot-heat').textContent = '0';
+      document.getElementById('stat-hot-pair').textContent = 'no rival yet';
+    }
     document.getElementById('feud-list').innerHTML = list.length
       ? list.map(f => `
           <div class="feud-row ${f.heat_level}">
@@ -494,6 +591,17 @@ async function loadFeuds() {
       : `<div class="empty">No active feuds. Yet.</div>`;
   } catch (e) {
     document.getElementById('feud-list').innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  }
+}
+
+async function loadCrucible() {
+  // Best-effort: count agents currently in reckless/death_wish/decoherence
+  try {
+    // We don't have a /crucible/danger endpoint yet — for now show "0"
+    // until the v_crucible_danger view is wired into a route.
+    document.getElementById('stat-crucible').textContent = '0';
+  } catch {
+    document.getElementById('stat-crucible').textContent = '?';
   }
 }
 
@@ -546,8 +654,9 @@ function logout() {
 loadActive();
 loadMyActive();
 loadFeuds();
+loadCrucible();
 // Refresh every 15 seconds
-setInterval(() => { loadActive(); loadMyActive(); loadFeuds(); }, 15000);
+setInterval(() => { loadActive(); loadMyActive(); loadFeuds(); loadCrucible(); }, 15000);
 </script>
 </body>
 </html>
