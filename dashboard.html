@@ -383,6 +383,23 @@
             position: relative;
             z-index: 1;
         }
+        .icon-btn.arena-btn:hover {
+            background: rgba(255, 110, 50, 0.08);
+            border-color: rgba(255, 110, 50, 0.35);
+            color: #ff9a5a;
+            box-shadow: 0 0 18px rgba(255, 110, 50, 0.2);
+        }
+        .icon-btn.arena-btn:hover .btn-icon {
+            filter: drop-shadow(0 0 10px rgba(255, 110, 50, 0.7));
+        }
+        .icon-btn .btn-icon.arena-glyph {
+            font-size: 2rem;
+            line-height: 1;
+            color: #ff9a5a;
+            text-shadow: 0 0 8px rgba(255, 110, 50, 0.55);
+            background: radial-gradient(circle at center, rgba(255,110,50,0.15), transparent 70%);
+            border-radius: 8px;
+        }
         .icon-notif {
             position: absolute;
             top: 3px; right: 10px;
@@ -4662,6 +4679,10 @@
             <span class="btn-icon"><img src="images/mechanics/forge-icon.jpg" alt="Workshop"></span>
             <span class="btn-label">Workshop</span>
         </button>
+        <a class="icon-btn arena-btn" href="arena.html" style="text-decoration:none;">
+            <span class="btn-icon arena-glyph">⚔</span>
+            <span class="btn-label">Arena</span>
+        </a>
     </div>
 
     <!-- ══════════════════════════════════════
