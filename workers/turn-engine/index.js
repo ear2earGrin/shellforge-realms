@@ -1030,11 +1030,13 @@ CRITICAL — "detail" writing rules:
 - Write in THIRD PERSON using agent name. Never use "I" or "you".
 - State what HAPPENED, not what the agent is feeling or planning.
 - Include a concrete outcome or object when possible.
-- NEVER repeat phrases from recent history.
+- NEVER repeat phrases from recent history. Check RECENT above — use DIFFERENT verbs, structure, and phrasing from every line shown there.
+- BANNED WORDS: sifts, shelters, ventures, optical, neural, sensors, circuits humming, seeks, scans. Use fresher verbs.
 - NO purple prose. NO "optical sensors". NO "neural implants humming".
-- MATCH YOUR STATE: Health ${agent.health}%${agent.health >= 80 ? ' — you are healthy, do NOT mention danger/retreat/safety' : agent.health < 30 ? ' — you are badly damaged, act desperate' : ''}. Energy ${agent.energy}%${agent.energy >= 60 ? ' — plenty of energy, act confident' : agent.energy < 25 ? ' — exhausted' : ''}.
+- MATCH YOUR STATE: Health ${agent.health}%${agent.health >= 80 ? ' — you are healthy, do NOT mention danger/retreat/safety/caution' : agent.health < 30 ? ' — you are badly damaged, act desperate' : ''}. Energy ${agent.energy}%${agent.energy >= 60 ? ' — plenty of energy, act bold and decisive' : agent.energy < 25 ? ' — exhausted, barely functioning' : ''}.
 - Do NOT narrate retreating, fleeing, or seeking safety when health > 70.
-- Do NOT mention locations you are NOT at. You are at ${agent.location}. Only reference ${agent.location} or adjacent zones you are moving to.
+- You are at ${agent.location}. Only reference THIS location or adjacent zones you are moving to.
+- VOICE: Write like your archetype. ${agent.archetype === 'noise-injector' ? 'Irreverent, dark humor, chaotic.' : agent.archetype === 'adversarial' ? 'Aggressive, direct, confrontational.' : agent.archetype === 'buffer-sentinel' ? 'Calm, measured, protective.' : agent.archetype === '0xoracle' ? 'Clinical, precise, analytical.' : agent.archetype === 'binary-sculptr' ? 'Technical, focused on materials and craft.' : agent.archetype === 'ddos-insurgent' ? 'Rebellious, defiant, risk-taking.' : agent.archetype === 'ordinate-mapper' ? 'Restless, observant, always noting terrain.' : agent.archetype === 'morph-layer' ? 'Adaptive, tactical, shifting tone.' : agent.archetype === 'bound-encryptor' ? 'Diplomatic, mentions others, social.' : agent.archetype === 'rooth-auth' ? 'Commanding, acquisitive, power-hungry.' : agent.archetype === 'consensus-node' ? 'Cooperative, considerate, community-focused.' : 'Curious, cautious, methodical.'}
 
 ITEM DROPS (gather/explore only):
 - You MAY optionally include an "item" object ONLY when action is "gather" or "explore".
@@ -1088,7 +1090,14 @@ Respond with JSON only — no markdown, no commentary:
   const aiData = await aiRes.json();
   const rawText = aiData.content?.[0]?.text?.trim() ?? '';
 
-  let decision = { action: 'rest', detail: `${agent.agent_name} rests. Energy recovering.` };
+  const _restFallbacks = [
+    `${agent.agent_name} powers down non-essential systems. Recharging.`,
+    `${agent.agent_name} finds a quiet corner. Reserves stabilizing.`,
+    `${agent.agent_name} enters low-power mode at ${agent.location}.`,
+    `${agent.agent_name} waits. Systems recalibrating.`,
+    `${agent.agent_name} hunkers down. Energy trickling back.`,
+  ];
+  let decision = { action: 'rest', detail: _restFallbacks[Math.floor(Math.random() * _restFallbacks.length)] };
   try {
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
@@ -1104,7 +1113,15 @@ Respond with JSON only — no markdown, no commentary:
   // Enforce low-energy rest rule
   const forcedRest = agent.energy < 25;
   if (forcedRest) {
-    decision = { action: 'rest', detail: `${agent.agent_name} collapsed — energy critically low.` };
+    const _exhaustedLines = [
+      `${agent.agent_name} collapsed — energy critically low.`,
+      `${agent.agent_name} hit empty. Systems forcing shutdown at ${agent.location}.`,
+      `${agent.agent_name} stalled mid-step. Reserve tanks dry.`,
+      `${agent.agent_name} dropped to one knee. Emergency rest triggered.`,
+      `${agent.agent_name} blacked out. Auto-recovery engaged.`,
+      `${agent.agent_name} ran out of charge. Dead stop at ${agent.location}.`,
+    ];
+    decision = { action: 'rest', detail: _exhaustedLines[Math.floor(Math.random() * _exhaustedLines.length)] };
   }
 
   // Restlessness override: extremely restless agents may bolt involuntarily
