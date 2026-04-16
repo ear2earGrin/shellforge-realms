@@ -410,6 +410,7 @@
         }
         .bar-hp .agent-bar-fill { background: #f87171; }
         .bar-energy .agent-bar-fill { background: #facc15; }
+        .bar-coherence .agent-bar-fill { background: #00f0ff; }
 
         /* ── PANEL 2: LIVE FEED ── */
         .feed-panel .panel-body {
@@ -1313,7 +1314,12 @@
             function renderLine(agentName, actionType, detail, location, timestamp, animate) {
                 var col = AGENT_COLORS[agentName] || DEFAULT_COLOR;
                 var icon = ACTION_ICONS[actionType] || '›';
-                var cls = classifyText(detail);
+                // Strip leading agent name from detail to avoid "AXIOM AXIOM ..."
+                var cleanDetail = detail;
+                if (cleanDetail && cleanDetail.toLowerCase().startsWith(agentName.toLowerCase())) {
+                    cleanDetail = cleanDetail.slice(agentName.length).replace(/^\s+/, '');
+                }
+                var cls = classifyText(cleanDetail);
                 var tc = cls==='death'?'#f43f5e':cls==='good'?'#4ade80':cls==='bad'?'#fb923c':'rgba(200,200,200,0.82)';
                 var locTag = location ? '<span style="color:rgba(120,120,140,0.7);font-size:0.75em;"> [' + location + ']</span>' : '';
                 var div = document.createElement('div');
@@ -1321,7 +1327,7 @@
                 div.innerHTML = '<span class="feed-time">' + formatTime(timestamp) + '</span>'
                     + '<span class="feed-prefix">' + icon + '</span>'
                     + '<span style="color:'+col+';font-weight:500;">' + agentName + '</span> '
-                    + '<span style="color:'+tc+';">' + detail + '</span>'
+                    + '<span style="color:'+tc+';">' + cleanDetail + '</span>'
                     + locTag;
                 feed.appendChild(div);
                 while (feed.children.length > 80) feed.removeChild(feed.firstChild);
@@ -1469,7 +1475,7 @@
 
             async function loadAgentStatus() {
                 try {
-                    var r = await fetch(SB_URL + '/rest/v1/agents?select=agent_id,agent_name,archetype,location,health,energy,is_alive&order=is_alive.desc,agent_name', { headers: SB_HDRS });
+                    var r = await fetch(SB_URL + '/rest/v1/agents?select=agent_id,agent_name,archetype,location,health,energy,coherence,is_alive&order=is_alive.desc,agent_name', { headers: SB_HDRS });
                     if (!r.ok) return;
                     var agents = await r.json();
                     if (!agents.length) return;
@@ -1480,7 +1486,9 @@
                         var col = dead ? '#ff0044' : (AGENT_COLORS[a.agent_name] || '#c084fc');
                         var hp = Math.max(0, Math.min(100, a.health || 0));
                         var en = Math.max(0, Math.min(100, a.energy || 0));
+                        var co = Math.max(0, Math.min(100, a.coherence ?? 100));
                         var loc = a.location || 'Unknown';
+                        var coColor = co > 60 ? '#00f0ff' : co > 30 ? '#fbbf24' : '#ff0044';
 
                         var row = document.createElement('div');
                         row.className = 'agent-row' + (dead ? ' agent-dead' : '');
@@ -1490,6 +1498,7 @@
                             : '<div class="agent-bars">'
                             +   '<div class="agent-bar bar-hp"><div class="agent-bar-fill" style="width:' + hp + '%;"></div></div>'
                             +   '<div class="agent-bar bar-energy"><div class="agent-bar-fill" style="width:' + en + '%;"></div></div>'
+                            +   '<div class="agent-bar bar-coherence"><div class="agent-bar-fill" style="width:' + co + '%;background:' + coColor + ';"></div></div>'
                             + '</div>';
 
                         row.innerHTML = ''

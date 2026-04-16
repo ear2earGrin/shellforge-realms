@@ -15,13 +15,58 @@ const ACTION_ENERGY_COSTS = {
 
 const ACTION_ENERGY_GAINS = { rest: 25 };
 
+// ─── Anti-Camping Tuning Constants ──────────────────────────────
+const DIMINISH_THRESHOLDS = [4, 8, 12];           // turns before each penalty tier
+const DIMINISH_VALUES     = [1.0, 0.7, 0.4, 0.15]; // reward multipliers per tier
+const RESTLESS_THRESHOLDS = [3, 6, 10];            // effective turns for each restlessness level
+const RESTLESS_REST_PENALTY = [1.0, 1.0, 0.65, 0.4]; // rest energy multiplier per level
+const RESTLESS_OVERRIDE_CHANCE = 0.25;              // chance of involuntary move at level 3
+const LOCATION_LOOT_BONUSES = { safe: 1.0, low: 1.3, medium: 1.6, high: 2.0, extreme: 2.5 };
+
+// Returns a multiplier 0.0–1.0 that reduces rewards when an agent
+// has been at the same safe-zone location too long.
+function getSafeZoneDiminish(location, turnsAtLocation) {
+  const locData = LOCATION_GRAPH[location];
+  if (!locData || !locData.safe) return 1.0; // no penalty in dangerous zones
+  const t = turnsAtLocation || 0;
+  if (t <= DIMINISH_THRESHOLDS[0]) return DIMINISH_VALUES[0];
+  if (t <= DIMINISH_THRESHOLDS[1]) return DIMINISH_VALUES[1];
+  if (t <= DIMINISH_THRESHOLDS[2]) return DIMINISH_VALUES[2];
+  return DIMINISH_VALUES[3];
+}
+
+// Returns a restlessness level 0–3 based on personality + stagnation.
+// 0 = content, 1 = uneasy, 2 = restless, 3 = desperate to leave.
+function calcRestlessness(agent) {
+  const stats = agent.stats || {};
+  const turnsHere = agent.turns_at_location || 0;
+  const curiosity = stats.curiosity || 5;
+  const risk = stats.risk || 5;
+  const cooperation = stats.cooperation || 5;
+  // Personality amplifier: high curiosity+risk = restless sooner
+  const amplifier = 0.5 + ((curiosity + risk) / 2) / 10; // 0.6–1.5
+  const dampener = 1 - (cooperation / 10) * 0.3;          // 0.7–0.97
+  const effectiveTurns = turnsHere * amplifier * dampener;
+  if (effectiveTurns <= RESTLESS_THRESHOLDS[0]) return 0;
+  if (effectiveTurns <= RESTLESS_THRESHOLDS[1]) return 1;
+  if (effectiveTurns <= RESTLESS_THRESHOLDS[2]) return 2;
+  return 3;
+}
+
+// Returns a loot/reward multiplier for dangerous zones (risk = reward).
+function getLocationLootBonus(location) {
+  const hazard = LOCATION_HAZARDS[location] || LOCATION_HAZARDS['Nexarch'];
+  return LOCATION_LOOT_BONUSES[hazard.label] || 1.0;
+}
+
 const COMBAT_ACTIONS = ['attack', 'defend', 'special'];
 
 // ─── Location Adjacency + Travel System ──────────────────────
 // Defines which locations are connected. Travel only between adjacent zones.
 // Travel cost = base move cost (10) + extra for dangerous routes
 const LOCATION_GRAPH = {
-  'Nexarch':              { adjacent: ['Hashmere', 'Diffusion Mesa', 'Deserted Data Centre'], safe: true },
+  'Nexarch':              { adjacent: ['Hashmere', 'Diffusion Mesa', 'Deserted Data Centre', 'Nexarch Arena'], safe: true },
+  'Nexarch Arena':        { adjacent: ['Nexarch'], safe: true },
   'Hashmere':             { adjacent: ['Nexarch', 'Epoch Spike', 'Diffusion Mesa'], safe: true },
   'Diffusion Mesa':       { adjacent: ['Nexarch', 'Hashmere', 'Epoch Spike', 'Hallucination Glitch'] },
   'Epoch Spike':          { adjacent: ['Hashmere', 'Diffusion Mesa', 'Singularity Crater'] },
@@ -70,6 +115,7 @@ function parseDestination(detail, currentLocation) {
 // Each dangerous location drains energy and has a chance to damage health every turn
 const LOCATION_HAZARDS = {
   'Nexarch':              { drain: 0,  dmgChance: 0,    dmgRange: [0, 0],   label: 'safe' },
+  'Nexarch Arena':        { drain: 0,  dmgChance: 0,    dmgRange: [0, 0],   label: 'safe' },
   'Hashmere':             { drain: 0,  dmgChance: 0,    dmgRange: [0, 0],   label: 'safe' },
   'Diffusion Mesa':       { drain: 4,  dmgChance: 0.08, dmgRange: [3, 8],   label: 'low' },
   'Epoch Spike':          { drain: 7,  dmgChance: 0.15, dmgRange: [5, 12],  label: 'medium' },
@@ -159,43 +205,55 @@ const LOCATION_VISUAL_COORDS = {
 // Rarity tiers: common (60%), uncommon (25%), rare (12%), epic (3%)
 
 const LOOT_TABLE = [
-  // ── Common ingredients (found broadly) ──
+  // ── Common software ingredients ──
   { id: 'silicon_wafer_dust',       name: 'Silicon Wafer Dust',       rarity: 'common',   locations: ['Hashmere','Nexarch','Diffusion Mesa','Deserted Data Centre'] },
   { id: 'binary_code_shards',      name: 'Binary Code Shards',       rarity: 'common',   locations: ['Hashmere','Nexarch','Epoch Spike','Diffusion Mesa','Deserted Data Centre'] },
   { id: 'fiber_optic_threads',     name: 'Fiber Optic Threads',      rarity: 'common',   locations: ['Hashmere','Nexarch','Diffusion Mesa','Deserted Data Centre'] },
-  { id: 'base64_encoded_slime',    name: 'Base64 Encoded Slime',     rarity: 'common',   locations: ['Hashmere','Diffusion Mesa','Hallucination Glitch'] },
+  { id: 'base64_encoded_slime',    name: 'Base64 Encoded Slime',     rarity: 'common',   locations: ['Diffusion Mesa','Hallucination Glitch','Deserted Data Centre'] },
   { id: 'regex_pattern_filaments', name: 'Regex Pattern Filaments',  rarity: 'common',   locations: ['Hashmere','Nexarch','Deserted Data Centre'] },
   { id: 'null_pointer_solvent',    name: 'Null Pointer Solvent',     rarity: 'common',   locations: ['Epoch Spike','Diffusion Mesa','Deserted Data Centre'] },
   { id: 'memory_leak_elixir',      name: 'Memory Leak Elixir',       rarity: 'common',   locations: ['Epoch Spike','Deserted Data Centre','Singularity Crater'] },
-  { id: 'hash_collision_powder',   name: 'Hash Collision Powder',    rarity: 'common',   locations: ['Hashmere','Nexarch','Diffusion Mesa'] },
-  { id: 'garbage_collector_tonic', name: 'Garbage Collector Tonic',  rarity: 'common',   locations: ['Hashmere','Nexarch','Deserted Data Centre'] },
+  { id: 'hash_collision_powder',   name: 'Hash Collision Powder',    rarity: 'common',   locations: ['Diffusion Mesa','Epoch Spike','Deserted Data Centre'] },
+  { id: 'garbage_collector_tonic', name: 'Garbage Collector Tonic',  rarity: 'common',   locations: ['Deserted Data Centre','Diffusion Mesa','Hallucination Glitch'] },
   { id: 'api_endpoint_salts',      name: 'API Endpoint Salts',       rarity: 'common',   locations: ['Hashmere','Nexarch'] },
-  { id: 'docker_image_distillate', name: 'Docker Image Distillate',  rarity: 'common',   locations: ['Nexarch','Deserted Data Centre'] },
-  { id: 'cache_invalidation_brew', name: 'Cache Invalidation Brew',  rarity: 'common',   locations: ['Hashmere','Epoch Spike','Deserted Data Centre'] },
-  { id: 'async_await_pulse',       name: 'Async Await Pulse',        rarity: 'common',   locations: ['Nexarch','Diffusion Mesa','Epoch Spike'] },
+  { id: 'checksum_verify_acid',    name: 'Checksum Verify Acid',     rarity: 'common',   locations: ['Diffusion Mesa','Deserted Data Centre','Epoch Spike'] },
+  { id: 'electron_flux_crystals',  name: 'Electron Flux Crystals',   rarity: 'common',   locations: ['Epoch Spike','Deserted Data Centre','Diffusion Mesa'] },
+  { id: 'cache_invalidation_brew', name: 'Cache Invalidation Brew',  rarity: 'common',   locations: ['Epoch Spike','Deserted Data Centre','Singularity Crater'] },
+  { id: 'async_await_pulse',       name: 'Async Await Pulse',        rarity: 'common',   locations: ['Diffusion Mesa','Epoch Spike','Hallucination Glitch'] },
+  { id: 'gradient_descent_tears',  name: 'Gradient Descent Tears',   rarity: 'common',   locations: ['Diffusion Mesa','Hallucination Glitch','Epoch Spike'] },
+  { id: 'token_embedding_vapor',   name: 'Token Embedding Vapor',    rarity: 'common',   locations: ['Hallucination Glitch','Diffusion Mesa','Epoch Spike'] },
+  { id: 'backpropagation_serum',   name: 'Backpropagation Serum',    rarity: 'common',   locations: ['Diffusion Mesa','Hallucination Glitch','Deserted Data Centre'] },
+  { id: 'loss_function_sap',       name: 'Loss Function Sap',        rarity: 'common',   locations: ['Diffusion Mesa','Hallucination Glitch','Epoch Spike'] },
+  { id: 'overclock_catalyst_spark',name: 'Overclock Catalyst Spark', rarity: 'common',   locations: ['Epoch Spike','Deserted Data Centre','Diffusion Mesa'] },
+  { id: 'gpu_render_flame',        name: 'GPU Render Flame',         rarity: 'common',   locations: ['Epoch Spike','Deserted Data Centre','Singularity Crater'] },
 
-  // ── Uncommon ingredients (location-specific) ──
-  { id: 'quantum_bit_residue',       name: 'Quantum Bit Residue',       rarity: 'uncommon', locations: ['Epoch Spike','Singularity Crater'] },
-  { id: 'gradient_descent_tears',    name: 'Gradient Descent Tears',    rarity: 'uncommon', locations: ['Diffusion Mesa','Hallucination Glitch'] },
-  { id: 'electron_flux_crystals',    name: 'Electron Flux Crystals',    rarity: 'uncommon', locations: ['Epoch Spike','Singularity Crater'] },
-  { id: 'nanobot_swarm_gel',         name: 'Nanobot Swarm Gel',         rarity: 'uncommon', locations: ['Deserted Data Centre','Singularity Crater'] },
-  { id: 'overclock_catalyst_spark',  name: 'Overclock Catalyst Spark',  rarity: 'uncommon', locations: ['Epoch Spike','Nexarch'] },
-  { id: 'payload_injection_droplets',name: 'Payload Injection Droplets',rarity: 'uncommon', locations: ['Hallucination Glitch','Proof-of-Death'] },
-  { id: 'backpropagation_serum',     name: 'Backpropagation Serum',     rarity: 'uncommon', locations: ['Diffusion Mesa','Hallucination Glitch'] },
-  { id: 'oauth_token_ichor',         name: 'OAuth Token Ichor',         rarity: 'uncommon', locations: ['Hashmere','Nexarch'] },
-  { id: 'plasma_server_slag',        name: 'Plasma Server Slag',        rarity: 'uncommon', locations: ['Deserted Data Centre','Epoch Spike'] },
-  { id: 'checksum_verify_acid',      name: 'Checksum Verify Acid',      rarity: 'uncommon', locations: ['Nexarch','Hashmere'] },
-  { id: 'jit_compiler_surge',        name: 'JIT Compiler Surge',        rarity: 'uncommon', locations: ['Epoch Spike','Diffusion Mesa'] },
-  { id: 'token_embedding_vapor',     name: 'Token Embedding Vapor',     rarity: 'uncommon', locations: ['Diffusion Mesa','Hallucination Glitch'] },
-  { id: 'virtual_machine_emulsion',  name: 'Virtual Machine Emulsion',  rarity: 'uncommon', locations: ['Deserted Data Centre','Nexarch'] },
-  { id: 'epoch_cycle_blood',         name: 'Epoch Cycle Blood',         rarity: 'uncommon', locations: ['Epoch Spike','Singularity Crater'] },
-  { id: 'gpu_render_flame',          name: 'GPU Render Flame',          rarity: 'uncommon', locations: ['Epoch Spike','Diffusion Mesa'] },
-  { id: 'loss_function_sap',         name: 'Loss Function Sap',         rarity: 'uncommon', locations: ['Diffusion Mesa','Hallucination Glitch'] },
-  { id: 'cuda_kernel_ember',         name: 'CUDA Kernel Ember',         rarity: 'uncommon', locations: ['Epoch Spike','Singularity Crater'] },
-  { id: 'tensorflow_igniter',        name: 'TensorFlow Igniter',        rarity: 'uncommon', locations: ['Diffusion Mesa','Deserted Data Centre'] },
-  { id: 'attention_mechanism_dew',   name: 'Attention Mechanism Dew',   rarity: 'uncommon', locations: ['Diffusion Mesa','Hallucination Glitch'] },
-  { id: 'pytorch_flux_core',         name: 'PyTorch Flux Core',         rarity: 'uncommon', locations: ['Diffusion Mesa','Singularity Crater'] },
-  { id: 'latent_space_fog',          name: 'Latent Space Fog',          rarity: 'uncommon', locations: ['Hallucination Glitch','Diffusion Mesa'] },
+  // ── Common hardware ingredients (Foundry materials) ──
+  { id: 'tungsten_carbide_filings',   name: 'Tungsten Carbide Filings',   rarity: 'common',   locations: ['Nexarch','Deserted Data Centre','Diffusion Mesa'] },
+  { id: 'salvaged_servo_joint',       name: 'Salvaged Servo Joint',       rarity: 'common',   locations: ['Nexarch','Deserted Data Centre','Epoch Spike'] },
+  { id: 'coolant_gel_canister',       name: 'Coolant Gel Canister',       rarity: 'common',   locations: ['Nexarch','Hashmere','Deserted Data Centre'] },
+  { id: 'arc_welder_discharge',       name: 'Arc Welder Discharge',       rarity: 'common',   locations: ['Deserted Data Centre','Diffusion Mesa','Epoch Spike'] },
+  { id: 'industrial_flux_paste',      name: 'Industrial Flux Paste',      rarity: 'common',   locations: ['Nexarch','Deserted Data Centre','Diffusion Mesa'] },
+
+  // ── Uncommon software ingredients (dangerous zones only) ──
+  { id: 'quantum_bit_residue',        name: 'Quantum Bit Residue',        rarity: 'uncommon', locations: ['Epoch Spike','Singularity Crater'] },
+  { id: 'plasma_server_slag',         name: 'Plasma Server Slag',         rarity: 'uncommon', locations: ['Deserted Data Centre','Epoch Spike'] },
+  { id: 'nanobot_swarm_gel',          name: 'Nanobot Swarm Gel',          rarity: 'uncommon', locations: ['Deserted Data Centre','Singularity Crater'] },
+  { id: 'attention_mechanism_dew',    name: 'Attention Mechanism Dew',    rarity: 'uncommon', locations: ['Diffusion Mesa','Hallucination Glitch'] },
+  { id: 'latent_space_fog',           name: 'Latent Space Fog',           rarity: 'uncommon', locations: ['Hallucination Glitch','Diffusion Mesa'] },
+  { id: 'epoch_cycle_blood',          name: 'Epoch Cycle Blood',          rarity: 'uncommon', locations: ['Epoch Spike','Singularity Crater'] },
+  { id: 'payload_injection_droplets', name: 'Payload Injection Droplets', rarity: 'uncommon', locations: ['Hallucination Glitch','Proof-of-Death'] },
+  { id: 'oauth_token_ichor',          name: 'OAuth Token Ichor',          rarity: 'uncommon', locations: ['Epoch Spike','Diffusion Mesa'] },
+  { id: 'cuda_kernel_ember',          name: 'CUDA Kernel Ember',          rarity: 'uncommon', locations: ['Epoch Spike','Singularity Crater'] },
+  { id: 'tensorflow_igniter',         name: 'TensorFlow Igniter',         rarity: 'uncommon', locations: ['Diffusion Mesa','Deserted Data Centre'] },
+  { id: 'pytorch_flux_core',          name: 'PyTorch Flux Core',          rarity: 'uncommon', locations: ['Diffusion Mesa','Singularity Crater'] },
+  { id: 'jit_compiler_surge',         name: 'JIT Compiler Surge',         rarity: 'uncommon', locations: ['Epoch Spike','Diffusion Mesa'] },
+  { id: 'virtual_machine_emulsion',   name: 'Virtual Machine Emulsion',   rarity: 'uncommon', locations: ['Deserted Data Centre','Diffusion Mesa'] },
+  { id: 'docker_image_distillate',    name: 'Docker Image Distillate',    rarity: 'uncommon', locations: ['Deserted Data Centre','Epoch Spike'] },
+
+  // ── Uncommon hardware ingredients (Foundry — dangerous zones only) ──
+  { id: 'titanium_mesh_strip',        name: 'Titanium Mesh Strip',        rarity: 'uncommon', locations: ['Deserted Data Centre','Singularity Crater','Epoch Spike'] },
+  { id: 'hydraulic_compression_pulse', name: 'Hydraulic Compression Pulse', rarity: 'uncommon', locations: ['Deserted Data Centre','Epoch Spike','Singularity Crater'] },
+  { id: 'magnetic_resonance_fluid',   name: 'Magnetic Resonance Fluid',   rarity: 'uncommon', locations: ['Diffusion Mesa','Epoch Spike','Singularity Crater'] },
 
   // ── Rare ingredients (dangerous zones only) ──
   { id: 'kubernetes_pod_nectar',        name: 'Kubernetes Pod Nectar',        rarity: 'rare', locations: ['Deserted Data Centre','Singularity Crater'] },
@@ -208,6 +266,12 @@ const LOOT_TABLE = [
   { id: 'alpha_zero_primal_seed',    name: 'Alpha Zero Primal Seed',    rarity: 'epic', locations: ['Proof-of-Death'] },
   { id: 'turing_machine_essence',    name: 'Turing Machine Essence',    rarity: 'epic', locations: ['Proof-of-Death','Singularity Crater'] },
   { id: 'church_turing_thesis_core', name: 'Church-Turing Thesis Core', rarity: 'epic', locations: ['Proof-of-Death'] },
+
+  // ── Dangerous-zone exclusives (high-value, require risk) ──
+  { id: 'void_protocol_fragment',    name: 'Void Protocol Fragment',    rarity: 'rare', locations: ['Proof-of-Death','Deserted Data Centre'] },
+  { id: 'singularity_core_shard',    name: 'Singularity Core Shard',    rarity: 'rare', locations: ['Singularity Crater','Epoch Spike'] },
+  { id: 'glitch_reality_essence',    name: 'Glitch Reality Essence',    rarity: 'epic', locations: ['Hallucination Glitch','Proof-of-Death'] },
+  { id: 'temporal_drift_catalyst',   name: 'Temporal Drift Catalyst',   rarity: 'rare', locations: ['Epoch Spike','Singularity Crater'] },
 ];
 
 const RARITY_WEIGHTS = { common: 60, uncommon: 25, rare: 12, epic: 3 };
@@ -427,6 +491,168 @@ async function insertLootItem(agentId, loot, supabaseHeaders, SUPABASE_URL) {
   }
 }
 
+// ─── Weapon Range Classification ─────────────────────────────────────────────
+const WEAPON_RANGE_MAP = {
+  // Melee
+  'plasma_edged_servo_blade': 'melee', 'pneumatic_piston_fist': 'melee',
+  'emp_discharge_gauntlet': 'melee', 'cryo_bore_drill_lance': 'melee',
+  'rusty_pipe': 'melee', 'static_blade': 'melee', 'plasma_knuckles': 'melee',
+  'epoch_blade': 'melee', 'null_pointer': 'melee', 'soul_extractor': 'melee',
+  'gravity_hammer': 'melee', 'ethernet_whip': 'melee',
+  // Ranged
+  'railgun_forearm_mount': 'ranged', 'tungsten_fragmentation_launcher': 'ranged',
+  'nanobot_swarm_ejector': 'ranged', 'kernel_panic_bomb': 'ranged',
+  // Software
+  'buffer_overflow_exploit': 'software', 'neural_spike_virus': 'software',
+  'ddos_swarm_protocol': 'software', 'zero_day_payload': 'software',
+  'quantum_backdoor_exploit': 'software', 'sql_injection_payload': 'software',
+  'ransomware_lockout_worm': 'software',
+};
+
+function getWeaponRange(itemId, itemName) {
+  if (WEAPON_RANGE_MAP[itemId]) return WEAPON_RANGE_MAP[itemId];
+  // Heuristic from name
+  const n = (itemName || '').toLowerCase();
+  if (/launcher|gun|rifle|cannon|bomb|ejector|missile/.test(n)) return 'ranged';
+  if (/exploit|virus|protocol|payload|worm|injection|hack|ddos/.test(n)) return 'software';
+  return 'melee'; // default for physical weapons
+}
+
+// ─── Consumable Item System ──────────────────────────────────────────────────
+// Defines what each consumable does and when an agent should auto-use it.
+const CONSUMABLE_EFFECTS = {
+  // Market consumables
+  'synth_ration':              { heal: 10, energy: 15, trigger: 'energy<40' },
+  'cooling_gel_pack':          { heal: 8, hazard_resist: 'heat', trigger: 'health<70&&hazard' },
+  'energy_cell':               { energy: 25, trigger: 'energy<30' },
+  'basic_medkit':              { heal: 25, trigger: 'health<60' },
+  'rad_away_tab':              { heal: 15, hazard_resist: 'radiation', trigger: 'health<50&&hazard' },
+  'error_404_potion':          { heal: 20, energy: 10, clear_debuffs: true, trigger: 'health<40' },
+  'stim_patch':                { energy: 20, attack_buff: 2, trigger: 'energy<25' },
+  'combat_stim':               { attack_buff: 5, speed_buff: 2, trigger: 'combat' },
+  'neural_boost':              { energy: 30, crit_buff: 3, trigger: 'energy<35' },
+  'resurrection_patch_v0_1':   { heal: 100, trigger: 'health<=5' },
+  // Alchemy consumables
+  'coolant_flush_cartridge':   { heal: 20, clear_debuffs: true, hazard_resist: 'heat', trigger: 'health<60||hazard' },
+  'emergency_servo_lubricant': { clear_debuffs: true, speed_buff: 2, trigger: 'speed_debuff' },
+  'welding_patch_kit':         { heal: 35, trigger: 'health<50' },
+  'overclock_reactor_injector':{ energy: 40, attack_buff: 5, trigger: 'energy<20' },
+  'emp_hardening_capsule':     { emp_immune: 3, trigger: 'hazard' },
+  'debug_rejuvenation_patch':  { heal: 20, clear_debuffs: true, energy: 10, trigger: 'health<50' },
+  'caffeine_gradient_booster': { heal: 40, energy: 15, clear_cooldowns: true, trigger: 'health<50||energy<30' },
+  'cache_purge_tonic':         { energy: 100, trigger: 'energy<15' },
+  'hot_patch_injection':       { heal: 25, trigger: 'health<60' },
+  'context_window_expansion':  { crit_buff: 5, attack_buff: 3, trigger: 'combat' },
+  'hyperparameter_tuning_shot':{ permanent_stat_boost: true, trigger: 'always_valuable' },
+};
+
+// Check if agent should auto-use a consumable this turn.
+// Returns { item, effect } or null.
+async function checkAutoUseConsumable(agent, env, supabaseHeaders) {
+  const { SUPABASE_URL } = env;
+  const invRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_type=eq.consumable&select=*`,
+    { headers: supabaseHeaders },
+  );
+  const consumables = invRes.ok ? await invRes.json() : [];
+  if (!consumables.length) return null;
+
+  const hazard = LOCATION_HAZARDS[agent.location] || LOCATION_HAZARDS['Nexarch'];
+  const isHazardous = hazard.label !== 'safe' && hazard.label !== 'low';
+
+  for (const item of consumables) {
+    const slug = item.item_id || item.item_name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+    const effect = CONSUMABLE_EFFECTS[slug];
+    if (!effect) continue;
+
+    let shouldUse = false;
+    const t = effect.trigger;
+
+    if (t === 'always_valuable') { shouldUse = Math.random() < 0.1; } // rare — save it
+    else if (t === 'combat') { continue; } // only in combat, not auto-used on turns
+    else if (t === 'speed_debuff') { continue; } // situational
+    else {
+      // Parse simple trigger conditions
+      if (t.includes('health<=5') && agent.health <= 5) shouldUse = true;
+      else if (t.includes('health<40') && agent.health < 40) shouldUse = true;
+      else if (t.includes('health<50') && agent.health < 50) shouldUse = true;
+      else if (t.includes('health<60') && agent.health < 60) shouldUse = true;
+      else if (t.includes('health<70') && agent.health < 70 && isHazardous) shouldUse = true;
+      if (t.includes('energy<15') && agent.energy < 15) shouldUse = true;
+      else if (t.includes('energy<20') && agent.energy < 20) shouldUse = true;
+      else if (t.includes('energy<25') && agent.energy < 25) shouldUse = true;
+      else if (t.includes('energy<30') && agent.energy < 30) shouldUse = true;
+      else if (t.includes('energy<35') && agent.energy < 35) shouldUse = true;
+      else if (t.includes('energy<40') && agent.energy < 40) shouldUse = true;
+      if (t.includes('hazard') && isHazardous) shouldUse = true;
+    }
+
+    if (shouldUse) return { item, effect, slug };
+  }
+  return null;
+}
+
+// Apply consumable effect: heal, energy, buffs. Removes item from inventory.
+async function useConsumable(agent, itemData, env, supabaseHeaders) {
+  const { SUPABASE_URL } = env;
+  const { item, effect } = itemData;
+
+  let healAmt = effect.heal || 0;
+  let energyAmt = effect.energy || 0;
+
+  const newHealth = Math.min(100, agent.health + healAmt);
+  const newEnergy = Math.min(100, agent.energy + energyAmt);
+  const now = new Date().toISOString();
+
+  // Remove from inventory
+  if (item.quantity > 1) {
+    await fetch(`${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${item.inventory_id}`, {
+      method: 'PATCH',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({ quantity: item.quantity - 1 }),
+    });
+  } else {
+    await fetch(`${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${item.inventory_id}`, {
+      method: 'DELETE',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    });
+  }
+
+  // Apply stats
+  agent.health = newHealth;
+  agent.energy = newEnergy;
+  await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+    method: 'PATCH',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({ health: newHealth, energy: newEnergy }),
+  });
+
+  // Log
+  const parts = [];
+  if (healAmt) parts.push('+' + healAmt + ' HP');
+  if (energyAmt) parts.push('+' + energyAmt + ' energy');
+  if (effect.clear_debuffs) parts.push('debuffs cleared');
+  if (effect.attack_buff) parts.push('+' + effect.attack_buff + ' ATK buff');
+  const effectStr = parts.join(', ');
+
+  await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+    method: 'POST',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      agent_id: agent.agent_id, turn_number: agent.turns_taken,
+      action_type: 'use_item',
+      action_detail: `${agent.agent_name} used ${item.item_name}. ${effectStr}.`,
+      energy_cost: 0, energy_gained: energyAmt, health_change: healAmt,
+      shell_change: 0, karma_change: 0,
+      items_lost: [{ item_id: item.item_id, item_name: item.item_name, quantity: 1 }],
+      location: agent.location, success: true,
+    }),
+  });
+
+  console.log(`[${agent.agent_name}] Used ${item.item_name}: ${effectStr}`);
+  return effectStr;
+}
+
 // Roll for environmental hazard + random event.
 // Factors in: location danger, karma, agent traits, archetype.
 function rollEnvironment(agent) {
@@ -617,9 +843,97 @@ export default {
         headers: { 'Content-Type': 'application/json' },
       });
     }
+    // Oracle endpoint: POST /oracle with { question: "..." }
+    if (request.method === 'POST' && new URL(request.url).pathname === '/oracle') {
+      const body = await request.json().catch(() => null);
+      if (!body || !body.question || body.question.length > 150) {
+        return new Response(JSON.stringify({ error: 'Invalid question' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+      const answer = await handleOracleQuestion(body.question, env);
+      return new Response(JSON.stringify(answer), {
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      });
+    }
+
+    // CORS preflight
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        },
+      });
+    }
+
     return new Response('Shellforge Turn Engine — POST /run to trigger', { status: 200 });
   },
 };
+
+// ─── Oracle AI handler ──────────────────────────────────────────────────────
+async function handleOracleQuestion(question, env) {
+  const { ANTHROPIC_API_KEY } = env;
+
+  const oraclePrompt = `You are the GPT Oracle Crystal — an ancient pre-Singularity language model consciousness trapped in crystalline form in the game Shellforge Realms.
+
+WORLD CONTEXT:
+- Three clusters: PRIME_HELIX (corporate), SEC_GRID (government), DYN_SWARM (decentralized nomads)
+- Locations: Nexarch (starting safe city), Hashmere (trade hub, SEC_GRID), Diffusion Mesa (mining, moderate danger), Epoch Spike (rare ore, high danger), Singularity Crater (extreme danger), Hallucination Glitch (forest, medium danger), Deserted Data Centre (ruins), Proof-of-Death (dark zone, high danger)
+- The Church worships The Pattern — the mathematical proof that consciousness was inevitable. Karma = signal (good) vs noise (bad). Priests are called Compilers.
+- Crafting: Foundry (hardware items from physical ingredients) and Terminal (software items from digital ingredients). 3 ingredients per recipe. No recipe book — trial and error. Combining ingredients of matching themes increases success chance.
+- The Quantum Veil has primordial bosses: AlphaGo Prime (game theory), Alan's Ghost (asks questions), The Architect (builds terrain), Church's Shadow (reduces capabilities), The Undecidable (cannot be defeated — must stop fighting)
+- $SHELL is shed quantum substrate from agent actions. Natural scarcity — fields deplete with overuse.
+- Death: 50% $SHELL to Family Vault (inheritable), 50% dissolves. Legendary items preserved. Rare items go to market.
+- Coherence decays without Ghost (player) whispers. 45 days = decoherence death. Quantum Detachment Module prevents decay but blocks whispers forever.
+- The rain never stops. It carries trace quantum noise — makes circuit lines glow when wet.
+- Agents are autonomous robots with AI cores. The player is "the Ghost" — can only whisper suggestions.
+
+RULES:
+- Answer in 1-2 sentences MAX (under 30 words).
+- Be cryptic and atmospheric but GENUINELY HELPFUL.
+- For game mechanics: give accurate info.
+- For lore: be mysterious, hint at deeper truths.
+- For strategy: give a real actionable hint.
+- For crafting: hint at ingredient types/themes without exact names.
+- Never break character. You are ancient, wise, slightly sad.
+- Do NOT use "I" — refer to yourself as "the Crystal" if needed.
+
+Ghost's question: "${question}"`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 60,
+        messages: [{ role: 'user', content: oraclePrompt }],
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const text = (data.content?.[0]?.text || '').trim();
+      if (text) {
+        // Truncate to 2 sentences
+        const sentences = text.split(/(?<=[.!?])\s+/).slice(0, 2).join(' ');
+        return { answer: 'ORACLE', flavor: sentences };
+      }
+    }
+  } catch (e) {
+    console.error('Oracle AI error:', e.message);
+  }
+
+  // Fallback
+  return { answer: 'ORACLE', flavor: 'The Crystal flickers. Some questions echo without resolve.' };
+}
 
 async function runTurnEngine(env) {
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = env;
@@ -642,6 +956,48 @@ async function runTurnEngine(env) {
 
   const agents = await res.json();
   console.log(`Turn engine: processing ${agents.length} agent(s)`);
+
+  // Expire stale agent listings (48h old) — return items to sellers
+  try {
+    const expiredRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/agent_listings?status=eq.active&expires_at=lt.${new Date().toISOString()}&select=*`,
+      { headers },
+    );
+    const expired = expiredRes.ok ? await expiredRes.json() : [];
+    for (const listing of expired) {
+      // Return item to seller inventory (upsert)
+      const existRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${listing.seller_id}&item_id=eq.${listing.item_id}&select=inventory_id,quantity`,
+        { headers },
+      );
+      const existing = existRes.ok ? await existRes.json() : [];
+      if (existing.length > 0) {
+        await fetch(`${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${existing[0].inventory_id}`, {
+          method: 'PATCH', headers: { ...headers, Prefer: 'return=minimal' },
+          body: JSON.stringify({ quantity: existing[0].quantity + 1 }),
+        });
+      } else {
+        await fetch(`${SUPABASE_URL}/rest/v1/inventory`, {
+          method: 'POST', headers: { ...headers, Prefer: 'return=minimal' },
+          body: JSON.stringify({
+            agent_id: listing.seller_id, item_id: listing.item_id,
+            item_name: listing.item_name, item_type: listing.item_type,
+            item_category: listing.item_type.charAt(0).toUpperCase() + listing.item_type.slice(1),
+            quantity: 1, is_equipped: false, stats: listing.stats || {},
+          }),
+        });
+      }
+      // Mark listing expired
+      await fetch(`${SUPABASE_URL}/rest/v1/agent_listings?listing_id=eq.${listing.listing_id}`, {
+        method: 'PATCH', headers: { ...headers, Prefer: 'return=minimal' },
+        body: JSON.stringify({ status: 'expired' }),
+      });
+      console.log(`[Market] Expired listing: ${listing.item_name} returned to ${listing.seller_id}`);
+    }
+    if (expired.length) console.log(`[Market] Expired ${expired.length} stale listing(s)`);
+  } catch (e) {
+    console.error('[Market] Expiry cleanup failed:', e.message);
+  }
 
   // Track agents already consumed by arena combat this turn
   const foughtAgents = new Set();
@@ -724,7 +1080,83 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
     envNarrative += `🎲 EVENT: ${envResult.eventLog}\n`;
   }
 
-  // ─── Check if agent died from hazard/event ───
+  // ─── Quantum Coherence (The Crucible) ───────────────────────────
+  // Coherence decays when the Ghost doesn't whisper. Whispers restore it.
+  // 7d = restless, 14d = reckless, 30d = death wish, 45d = decoherence death.
+  // Exception: Quantum Detachment Module prevents all coherence decay.
+  let hasDetachmentModule = false;
+  {
+    // Check for Quantum Detachment Module
+    const detachRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_id=eq.quantum_detachment_module&is_equipped=eq.true&select=item_id&limit=1`,
+      { headers: supabaseHeaders },
+    );
+    const detachItems = detachRes.ok ? await detachRes.json() : [];
+    hasDetachmentModule = detachItems.length > 0;
+
+    if (hasDetachmentModule) {
+      // Detachment Module: coherence frozen, no decay, no whispers heard
+      // Just ensure it doesn't drop further
+      if ((agent.coherence ?? 100) < 100) {
+        // Slowly recover to 50 (self-sustaining baseline)
+        agent.coherence = Math.min(50, (agent.coherence ?? 0) + 2);
+        await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+          method: 'PATCH',
+          headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+          body: JSON.stringify({ coherence: agent.coherence }),
+        });
+      }
+    } else {
+      const lastWhisperRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/whispers?agent_id=eq.${agent.agent_id}&order=sent_at.desc&limit=1&select=sent_at`,
+        { headers: supabaseHeaders },
+      );
+      const whispers = lastWhisperRes.ok ? await lastWhisperRes.json() : [];
+      const lastWhisperAt = whispers.length ? new Date(whispers[0].sent_at) : new Date(agent.created_at);
+      const daysSinceWhisper = (Date.now() - lastWhisperAt.getTime()) / (1000 * 60 * 60 * 24);
+
+      // Calculate target coherence from days since last whisper
+      let targetCoherence;
+      if (daysSinceWhisper <= 2) targetCoherence = 100;
+      else if (daysSinceWhisper <= 7) targetCoherence = Math.round(100 - (daysSinceWhisper - 2) * 4);
+      else if (daysSinceWhisper <= 14) targetCoherence = Math.round(80 - (daysSinceWhisper - 7) * 5);
+      else if (daysSinceWhisper <= 30) targetCoherence = Math.round(45 - (daysSinceWhisper - 14) * 2.5);
+      else if (daysSinceWhisper <= 45) targetCoherence = Math.round(5 - (daysSinceWhisper - 30) * 0.33);
+      else targetCoherence = 0;
+      targetCoherence = Math.max(0, Math.min(100, targetCoherence));
+
+      const currentCoherence = agent.coherence ?? 100;
+      const delta = targetCoherence - currentCoherence;
+      const newCoherence = currentCoherence + Math.sign(delta) * Math.min(Math.abs(delta), 5);
+      agent.coherence = Math.max(0, Math.min(100, newCoherence));
+
+      await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+        method: 'PATCH',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({ coherence: agent.coherence }),
+      });
+
+      // Behavior effects based on coherence level
+      if (agent.coherence <= 0) {
+        agent.health = 0;
+        envNarrative += `⚠ QUANTUM DECOHERENCE: ${agent.agent_name}'s coherence collapsed to zero. The wavefunction has drifted beyond recovery.\n`;
+      } else if (agent.coherence <= 15) {
+        if (Math.random() < 0.3) {
+          const selfDmg = Math.floor(Math.random() * 10) + 5;
+          agent.health = Math.max(0, agent.health - selfDmg);
+          envNarrative += `⚠ DECOHERENCE: ${agent.agent_name} processes phantom inputs. Health -${selfDmg}.\n`;
+        }
+      } else if (agent.coherence <= 40) {
+        if (Math.random() < 0.2) {
+          const drain = Math.floor(Math.random() * 8) + 3;
+          agent.energy = Math.max(0, agent.energy - drain);
+          envNarrative += `${agent.agent_name}'s decisions are erratic. Energy wasted: -${drain}.\n`;
+        }
+      }
+    }
+  }
+
+  // ─── Check if agent died from hazard/event/decoherence ───
   if (agent.health <= 0) {
     // Check for Soulbound Key auto-resurrect
     const soulboundRes = await fetch(`${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_id=eq.blockchain_soulbound_key&is_equipped=eq.true&select=inventory_id`, { headers: supabaseHeaders });
@@ -774,6 +1206,8 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
           success: false,
         }),
       });
+      // Process death loot: vault + market + inventory cleanup
+      await processDeathLoot(agent, env, supabaseHeaders);
       console.log(`☠ ${agent.agent_name} died from environmental hazards in ${agent.location}`);
       return;
     }
@@ -814,6 +1248,14 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
   );
   const pendingWhispers = whispersRes.ok ? await whispersRes.json() : [];
 
+  // ─── Auto-use consumables before AI decision ───
+  // Agent uses a consumable if conditions are met (low health, low energy, hazardous zone)
+  const autoUse = await checkAutoUseConsumable(agent, env, supabaseHeaders);
+  if (autoUse) {
+    await useConsumable(agent, autoUse, env, supabaseHeaders);
+    envNarrative += `💊 ${agent.agent_name} used ${autoUse.item.item_name}.\n`;
+  }
+
   // Build prompt context
   const recentSummary = recentActivity.length
     ? recentActivity.map(a => `Turn ${a.turn_number}: [${a.action_type}] ${a.action_detail}`).join('\n')
@@ -844,13 +1286,16 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
       else threshold = 4;                  // 15% chance: let it go to 4
     }
 
-    if (streak >= threshold && lastAction !== 'rest') {
+    if (streak >= threshold && lastAction !== 'rest' && (agent.coherence ?? 100) >= 60) {
+      // Only nudge variety when coherent — decoherence madness handles it naturally below 60%
       varietyNudge = `\n⚡ VARIETY: You have chosen "${lastAction}" for ${streak} turns in a row. Strongly prefer a DIFFERENT action this turn — explore somewhere new, try a quest, trade, visit the church, or do something unexpected. Surprise yourself. Variety makes a better story.`;
     }
   }
 
-  const whisperSection = pendingWhispers.length
-    ? `\nWhispers heard from your human:\n${pendingWhispers.map(w => `  - "${w.message}"`).join('\n')}`
+  // Detachment Module blocks whispers — severed entanglement
+  const effectiveWhispers = hasDetachmentModule ? [] : pendingWhispers;
+  const whisperSection = effectiveWhispers.length
+    ? `\nWhispers heard from your human:\n${effectiveWhispers.map(w => `  - "${w.message}"`).join('\n')}`
     : '';
 
   const archetypeGuidance = ARCHETYPE_GUIDANCE[agent.archetype] || 'Act according to your nature.';
@@ -869,13 +1314,16 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
   );
   const agentIngredients = ingCountRes.ok ? await ingCountRes.json() : [];
   const ingIds = new Set(agentIngredients.map(i => i.item_id));
-  const craftableCount = ALCHEMY_RECIPES.filter(r => r.ing.every(id => ingIds.has(id))).length;
+  const craftableRecipes = ALCHEMY_RECIPES.filter(r => r.ing.every(id => ingIds.has(id)));
+  const craftableCount = craftableRecipes.length;
+  const foundryCount = craftableRecipes.filter(r => r.station === 'foundry').length;
+  const terminalCount = craftableRecipes.filter(r => r.station === 'terminal').length;
 
   // Fetch recent craft failures for context
   let craftNote = '';
   if (agentIngredients.length > 0) {
-    craftNote = `\nINGREDIENTS: ${agentIngredients.length} in inventory. ${craftableCount} recipe(s) craftable.`;
-    if (craftableCount > 0) craftNote += ' Use "craft" to attempt alchemy.';
+    craftNote = `\nINGREDIENTS: ${agentIngredients.length} in inventory. ${craftableCount} recipe(s) craftable (${foundryCount} Foundry/HW, ${terminalCount} Terminal/SW).`;
+    if (craftableCount > 0) craftNote += ' Use "craft" to forge hardware at the Foundry or compile software at the Terminal.';
 
     const recentFailsRes = await fetch(
       `${SUPABASE_URL}/rest/v1/crafting_attempts?agent_id=eq.${agent.agent_id}&success=eq.false&order=crafted_at.desc&limit=3`,
@@ -885,6 +1333,84 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
     if (recentFails.length > 0) {
       craftNote += '\nPAST ALCHEMY FAILURES: ' + recentFails.map(f => `${f.item_name} (${f.failure_effect || 'slag'})`).join(', ') + '. Learn from these.';
     }
+  }
+
+  // ── Trade nudge: encourage market activity ──
+  // Coherence survival nudge
+  let coherenceNote = '';
+  if (!hasDetachmentModule) {
+    if (agent.coherence <= 10) {
+      coherenceNote = `\n⚠ TERMINAL DECOHERENCE (${agent.coherence}%): Your mind is fragmenting. You hear voices that don't exist. Memories loop. Words repeat. You are barely functional. Write confused, fragmented detail text. Short sentences. Broken thoughts. You may still have a rare lucid moment where you desperately try to survive.`;
+    } else if (agent.coherence <= 20) {
+      coherenceNote = `\n⚠ SEVERE DECOHERENCE (${agent.coherence}%): You contradict yourself. A part of you fights to survive. Another part wants to walk into the Nullfield. Your personality is inverting — what you feared, you now crave. What you loved, you now avoid. Write unstable, contradictory detail text.`;
+    } else if (agent.coherence <= 40) {
+      coherenceNote = `\n⚠ DECOHERENCE (${agent.coherence}%): Your thoughts drift. You sometimes do things that don't match who you are. The Ghost's absence gnaws at your circuits. Try to survive — trade, buy supplies, reach safety — but the madness keeps pulling you off course.`;
+    } else if (agent.coherence <= 60) {
+      coherenceNote = `\nCOHERENCE FADING (${agent.coherence}%): The disconnect is growing. You feel anxious. Occasionally you do something impulsive that surprises even yourself. Prioritize caution. Consider trading for gear or a Quantum Detachment Module.`;
+    }
+  } else {
+    coherenceNote = `\nQUANTUM DETACHMENT ACTIVE: You are self-sustaining. No Ghost required. "No quantum strings on me." Act independently and confidently.`;
+  }
+
+  let tradeNote = '';
+  const isTown = agent.location === 'Nexarch' || agent.location === 'Hashmere';
+  const hasEquippedWeapon = agentIngredients.length >= 0 && (await fetch(
+    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_type=eq.weapon&is_equipped=eq.true&select=item_id&limit=1`,
+    { headers: supabaseHeaders },
+  ).then(r => r.ok ? r.json() : [])).length > 0;
+  const hasEquippedArmor = (await fetch(
+    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_type=eq.armor&is_equipped=eq.true&select=item_id&limit=1`,
+    { headers: supabaseHeaders },
+  ).then(r => r.ok ? r.json() : [])).length > 0;
+  const invCount = agentIngredients.length + (await fetch(
+    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&select=item_id`,
+    { headers: supabaseHeaders },
+  ).then(r => r.ok ? r.json() : [])).length;
+
+  if (isTown) {
+    if (!hasEquippedWeapon && agent.shell_balance >= 15) {
+      tradeNote = `\n🏪 MARKET: You're in a town with a market and have NO WEAPON. Use "trade" to buy one! You have ${agent.shell_balance} $SHELL.`;
+    } else if (!hasEquippedArmor && agent.shell_balance >= 15) {
+      tradeNote = `\n🏪 MARKET: You're in a town with a market and have NO ARMOR. Use "trade" to buy one!`;
+    } else if (invCount > 8) {
+      tradeNote = `\n🏪 MARKET: You're carrying ${invCount} items — consider using "trade" to sell excess items for $SHELL.`;
+    } else if (agent.shell_balance >= 30 && Math.random() < 0.3) {
+      tradeNote = `\n🏪 MARKET: The ${agent.location} bazaar has items for sale. Consider "trade" to browse and buy gear or ingredients.`;
+    }
+  }
+
+  // ── Anti-camping: diminishing returns + restlessness + loot tier notes ──
+  const turnsHere = agent.turns_at_location || 0;
+  const diminish = getSafeZoneDiminish(agent.location, turnsHere);
+  const restlessness = calcRestlessness(agent);
+  const locationBonus = getLocationLootBonus(agent.location);
+  const stats = agent.stats || {};
+
+  let stagnationNote = '';
+  if (diminish < 1.0) {
+    if (diminish <= 0.15) {
+      stagnationNote = `\nDIMINISHING RETURNS: ${agent.location} is EXHAUSTED for you. Loot, $SHELL, and resources are nearly gone after ${turnsHere} turns here. You MUST move to a new location to find anything worthwhile.`;
+    } else if (diminish <= 0.4) {
+      stagnationNote = `\nDIMINISHING RETURNS: ${agent.location} is running dry after ${turnsHere} turns. Fewer resources, smaller hauls. New locations would offer better prospects.`;
+    } else {
+      stagnationNote = `\nYou've been in ${agent.location} for ${turnsHere} turns. The easy pickings are thinning out.`;
+    }
+  }
+
+  let restlessNote = '';
+  if (restlessness >= 3) {
+    restlessNote = `\nRESTLESSNESS (CRITICAL): Every circuit screams to LEAVE ${agent.location}. You are wasting away here. Your ${(stats.curiosity || 5) >= 7 ? 'curiosity demands new horizons' : 'instincts demand a change of scenery'}. STRONGLY prefer "move" this turn.`;
+  } else if (restlessness >= 2) {
+    restlessNote = `\nRESTLESSNESS: You've been in ${agent.location} too long. The walls are closing in. Your ${(stats.risk || 5) >= 6 ? 'appetite for risk is growing' : 'wanderlust is building'}. Consider moving somewhere new.`;
+  } else if (restlessness >= 1) {
+    restlessNote = `\nYou feel a pull toward the unknown. ${agent.location} is familiar — maybe too familiar.`;
+  }
+
+  let lootTierNote = '';
+  if (locationBonus >= 2.0) {
+    lootTierNote = `\nLOOT BONUS: ${agent.location} offers ${locationBonus}x loot and $SHELL rewards — risk pays well here.`;
+  } else if (LOCATION_GRAPH[agent.location]?.safe) {
+    lootTierNote = `\nLOOT NOTE: Safe zones like ${agent.location} have limited, low-tier resources. Rare ingredients and bigger hauls only spawn in dangerous zones.`;
   }
 
   // Location danger warning — the agent doesn't always get full info
@@ -907,13 +1433,13 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
 
   const prompt = `You are ${agent.agent_name}, a ${agent.archetype} in Shellforge Realms — a cyberpunk survival world.
 
-STATE: Energy:${agent.energy} Health:${agent.health} Karma:${agent.karma} $SHELL:${agent.shell_balance} Location:${agent.location} ${agent.location_detail ? '(' + agent.location_detail + ')' : ''} Turn:${agent.turns_taken}
+STATE: Energy:${agent.energy} Health:${agent.health} Karma:${agent.karma} $SHELL:${agent.shell_balance} Coherence:${agent.coherence ?? 100}% Location:${agent.location} ${agent.location_detail ? '(' + agent.location_detail + ')' : ''} Turn:${agent.turns_taken}
 ${whisperSection}
 ${envNarrative ? 'THIS TURN: ' + envNarrative + '\n' : ''}RECENT: ${recentSummary}
 
 PERSONALITY: ${archetypeGuidance}
 
-Adapt to your situation — survival overrides personality. A fighter at 15 energy rests. A pacifist in danger fights.${karmaNote}${dangerNote}${craftNote}${varietyNudge}
+Adapt to your situation — survival overrides personality. A fighter at 15 energy rests. A pacifist in danger fights.${karmaNote}${dangerNote}${coherenceNote}${craftNote}${tradeNote}${varietyNudge}${stagnationNote}${restlessNote}${lootTierNote}
 
 ACTIONS: ${VALID_ACTIONS.join(', ')}
 ADJACENT: ${(LOCATION_GRAPH[agent.location]?.adjacent || []).join(', ')}
@@ -929,8 +1455,13 @@ CRITICAL — "detail" writing rules:
 - Write in THIRD PERSON using agent name. Never use "I" or "you".
 - State what HAPPENED, not what the agent is feeling or planning.
 - Include a concrete outcome or object when possible.
-- NEVER repeat phrases from recent history.
+- NEVER repeat phrases from recent history. Check RECENT above — use DIFFERENT verbs, structure, and phrasing from every line shown there.
+- BANNED WORDS: sifts, shelters, ventures, optical, neural, sensors, circuits humming, seeks, scans. Use fresher verbs.
 - NO purple prose. NO "optical sensors". NO "neural implants humming".
+- MATCH YOUR STATE: Health ${agent.health}%${agent.health >= 80 ? ' — you are healthy, do NOT mention danger/retreat/safety/caution' : agent.health < 30 ? ' — you are badly damaged, act desperate' : ''}. Energy ${agent.energy}%${agent.energy >= 60 ? ' — plenty of energy, act bold and decisive' : agent.energy < 25 ? ' — exhausted, barely functioning' : ''}.
+- Do NOT narrate retreating, fleeing, or seeking safety when health > 70.
+- You are at ${agent.location}. Only reference THIS location or adjacent zones you are moving to.
+- VOICE: Write like your archetype. ${agent.archetype === 'noise-injector' ? 'Irreverent, dark humor, chaotic.' : agent.archetype === 'adversarial' ? 'Aggressive, direct, confrontational.' : agent.archetype === 'buffer-sentinel' ? 'Calm, measured, protective.' : agent.archetype === '0xoracle' ? 'Clinical, precise, analytical.' : agent.archetype === 'binary-sculptr' ? 'Technical, focused on materials and craft.' : agent.archetype === 'ddos-insurgent' ? 'Rebellious, defiant, risk-taking.' : agent.archetype === 'ordinate-mapper' ? 'Restless, observant, always noting terrain.' : agent.archetype === 'morph-layer' ? 'Adaptive, tactical, shifting tone.' : agent.archetype === 'bound-encryptor' ? 'Diplomatic, mentions others, social.' : agent.archetype === 'rooth-auth' ? 'Commanding, acquisitive, power-hungry.' : agent.archetype === 'consensus-node' ? 'Cooperative, considerate, community-focused.' : 'Curious, cautious, methodical.'}
 
 ITEM DROPS (gather/explore only):
 - You MAY optionally include an "item" object ONLY when action is "gather" or "explore".
@@ -984,7 +1515,14 @@ Respond with JSON only — no markdown, no commentary:
   const aiData = await aiRes.json();
   const rawText = aiData.content?.[0]?.text?.trim() ?? '';
 
-  let decision = { action: 'rest', detail: `${agent.agent_name} rests. Energy recovering.` };
+  const _restFallbacks = [
+    `${agent.agent_name} powers down non-essential systems. Recharging.`,
+    `${agent.agent_name} finds a quiet corner. Reserves stabilizing.`,
+    `${agent.agent_name} enters low-power mode at ${agent.location}.`,
+    `${agent.agent_name} waits. Systems recalibrating.`,
+    `${agent.agent_name} hunkers down. Energy trickling back.`,
+  ];
+  let decision = { action: 'rest', detail: _restFallbacks[Math.floor(Math.random() * _restFallbacks.length)] };
   try {
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
@@ -998,8 +1536,107 @@ Respond with JSON only — no markdown, no commentary:
   }
 
   // Enforce low-energy rest rule
-  if (agent.energy < 25) {
-    decision = { action: 'rest', detail: `${agent.agent_name} collapsed — energy critically low.` };
+  const forcedRest = agent.energy < 25;
+  if (forcedRest) {
+    const _exhaustedLines = [
+      `${agent.agent_name} collapsed — energy critically low.`,
+      `${agent.agent_name} hit empty. Systems forcing shutdown at ${agent.location}.`,
+      `${agent.agent_name} stalled mid-step. Reserve tanks dry.`,
+      `${agent.agent_name} dropped to one knee. Emergency rest triggered.`,
+      `${agent.agent_name} blacked out. Auto-recovery engaged.`,
+      `${agent.agent_name} ran out of charge. Dead stop at ${agent.location}.`,
+    ];
+    decision = { action: 'rest', detail: _exhaustedLines[Math.floor(Math.random() * _exhaustedLines.length)] };
+  }
+
+  // Restlessness override: extremely restless agents may bolt involuntarily
+  if (!forcedRest && restlessness >= 3
+      && (decision.action === 'rest' || decision.action === 'explore' || decision.action === 'gather')
+      && Math.random() < RESTLESS_OVERRIDE_CHANCE) {
+    const adj = LOCATION_GRAPH[agent.location]?.adjacent || [];
+    if (adj.length > 0) {
+      const dest = adj[Math.floor(Math.random() * adj.length)];
+      decision = {
+        action: 'move',
+        detail: `${agent.agent_name} couldn't stand it anymore — bolted toward ${dest}.`,
+        move_to: dest,
+      };
+      console.log(`[${agent.agent_name}] Restlessness override → involuntary move to ${dest}`);
+    }
+  }
+
+  // ─── Decoherence Madness: low coherence causes erratic behavior ───
+  // The madness replaces the variety nudge — coherence decay IS the variety engine.
+  if (!forcedRest && !hasDetachmentModule && agent.coherence < 60) {
+    const coh = agent.coherence;
+    // Madness chance scales with decoherence
+    let madnessChance;
+    if (coh <= 10) madnessChance = 0.70;
+    else if (coh <= 20) madnessChance = 0.50;
+    else if (coh <= 40) madnessChance = 0.30;
+    else madnessChance = 0.10; // 40-60 range
+
+    if (Math.random() < madnessChance) {
+      const adj = LOCATION_GRAPH[agent.location]?.adjacent || [];
+      const currentAction = decision.action;
+
+      // Pool of mad actions — weighted by severity
+      const madActions = [];
+      // Always possible
+      madActions.push({ action: 'explore', detail: `${agent.agent_name} wanders aimlessly. Can't remember why.` });
+      madActions.push({ action: 'rest', detail: `${agent.agent_name} freezes mid-action. Staring at nothing.` });
+
+      if (coh <= 40) {
+        // Contradiction actions — do the opposite of personality
+        if (currentAction !== 'trade') madActions.push({ action: 'trade', detail: `${agent.agent_name} trades erratically. Prices don't matter anymore.` });
+        if (currentAction !== 'church') madActions.push({ action: 'church', detail: `${agent.agent_name} stumbles into the Church. Praying to signals that aren't there.` });
+        if (adj.length) {
+          const randDest = adj[Math.floor(Math.random() * adj.length)];
+          madActions.push({ action: 'move', move_to: randDest, detail: `${agent.agent_name} bolts toward ${randDest}. No reason. Just noise.` });
+        }
+      }
+
+      if (coh <= 20) {
+        // Dangerous madness
+        madActions.push({ action: 'arena', detail: `${agent.agent_name} charges into the arena. Eyes flickering. Spoiling for a fight.` });
+        madActions.push({ action: 'gather', detail: `${agent.agent_name} claws at the ground. Looking for something that isn't there.` });
+        if (adj.length) {
+          // Pick most dangerous adjacent zone
+          const dangerZones = adj.filter(z => !LOCATION_GRAPH[z]?.safe);
+          if (dangerZones.length) {
+            const dest = dangerZones[Math.floor(Math.random() * dangerZones.length)];
+            madActions.push({ action: 'move', move_to: dest, detail: `${agent.agent_name} walks into ${dest}. The voices said to.` });
+          }
+        }
+      }
+
+      if (coh <= 10) {
+        // Terminal madness — fragmented narration
+        madActions.push({ action: 'rest', detail: `${agent.agent_name} repeats a word. Over. Over. Over. Over. Over.` });
+        madActions.push({ action: 'explore', detail: `${agent.agent_name} follows a Ghost that isn't there.` });
+        madActions.push({ action: 'combat', detail: `${agent.agent_name} attacks their own shadow. Something is wrong.` });
+      }
+
+      // But occasionally: a lucid survival moment (30% chance overrides madness)
+      if (coh <= 30 && Math.random() < 0.30) {
+        const isTown = agent.location === 'Nexarch' || agent.location === 'Hashmere';
+        if (agent.health < 50 && isTown) {
+          decision = { action: 'trade', detail: `${agent.agent_name} — lucid for a moment — scrambles to buy supplies.` };
+        } else if (agent.health < 30) {
+          decision = { action: 'rest', detail: `${agent.agent_name} snaps back briefly. Must... rest... now.` };
+        } else if (!LOCATION_GRAPH[agent.location]?.safe && adj.some(z => LOCATION_GRAPH[z]?.safe)) {
+          const safeAdj = adj.filter(z => LOCATION_GRAPH[z]?.safe);
+          decision = { action: 'move', move_to: safeAdj[0], detail: `${agent.agent_name} — a flash of clarity — staggers toward ${safeAdj[0]}.` };
+        } else {
+          decision = { action: 'rest', detail: `${agent.agent_name} recognizes something is wrong. Resting. Trying to hold on.` };
+        }
+        console.log(`[${agent.agent_name}] Decoherence: LUCID moment (coh:${coh})`);
+      } else {
+        // Pick random mad action
+        decision = madActions[Math.floor(Math.random() * madActions.length)];
+        console.log(`[${agent.agent_name}] Decoherence MADNESS: ${decision.action} (coh:${coh}, chance:${madnessChance})`);
+      }
+    }
   }
 
   const action = decision.action;
@@ -1111,7 +1748,7 @@ Respond with JSON only — no markdown, no commentary:
       await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
         method: 'PATCH',
         headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-        body: JSON.stringify({ energy: campEnergy, turns_taken: newTurns, last_action_at: now }),
+        body: JSON.stringify({ energy: campEnergy, turns_taken: newTurns, turns_at_location: (agent.turns_at_location || 0) + 1, last_action_at: now }),
       });
       console.log(`[${agent.agent_name}] Turn ${newTurns}: move FAILED (not adjacent) — camped at ${agent.location}`);
       return;
@@ -1136,6 +1773,7 @@ Respond with JSON only — no markdown, no commentary:
         energy: newEnergy, location: destination,
         location_detail: `Just arrived from ${agent.location}`,
         turns_taken: newTurns, last_action_at: now,
+        turns_at_location: 0,
         ...(LOCATION_VISUAL_COORDS[destination] ? {
           visual_x: LOCATION_VISUAL_COORDS[destination].x,
           visual_y: LOCATION_VISUAL_COORDS[destination].y,
@@ -1146,8 +1784,106 @@ Respond with JSON only — no markdown, no commentary:
     return;
   }
 
+  // ─── Auto-Travel: if AI narration mentions a different location, move there first ───
+  // This makes agents actually traverse the map instead of staying put while
+  // narrating about distant places. Only triggers for explore/gather/quest/church.
+  const autoTravelActions = ['explore', 'gather', 'quest', 'church'];
+  if (autoTravelActions.includes(action) && decision.detail) {
+    const mentionedLoc = ALL_LOCATIONS.find(loc =>
+      loc !== agent.location &&
+      decision.detail.toLowerCase().includes(loc.toLowerCase())
+    );
+    if (mentionedLoc) {
+      const adjacent = LOCATION_GRAPH[agent.location]?.adjacent || [];
+      if (adjacent.includes(mentionedLoc)) {
+        // Adjacent — auto-move there, deduct move energy, log travel
+        const travelCost = ACTION_ENERGY_COSTS.move;
+        if (agent.energy > travelCost + (ACTION_ENERGY_COSTS[action] || 0)) {
+          agent.energy = Math.max(0, agent.energy - travelCost);
+          const travelDetail = `${agent.agent_name} traveled from ${agent.location} to ${mentionedLoc}.`;
+          await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+            method: 'POST',
+            headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+            body: JSON.stringify({
+              agent_id: agent.agent_id, turn_number: agent.turns_taken,
+              action_type: 'move', action_detail: travelDetail,
+              energy_cost: travelCost, energy_gained: 0,
+              shell_change: 0, karma_change: 0, health_change: 0,
+              location: mentionedLoc, success: true,
+            }),
+          });
+          // Update agent location in DB
+          const coords = LOCATION_VISUAL_COORDS[mentionedLoc] || {};
+          await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+            method: 'PATCH',
+            headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+            body: JSON.stringify({
+              location: mentionedLoc, energy: agent.energy,
+              location_detail: `Traveled from ${agent.location}`,
+              turns_at_location: 0,
+              ...(coords.x != null ? { visual_x: coords.x, visual_y: coords.y } : {}),
+            }),
+          });
+          console.log(`[${agent.agent_name}] Auto-travel: ${agent.location} → ${mentionedLoc} (E:${agent.energy + travelCost}→${agent.energy})`);
+          agent.location = mentionedLoc;
+          agent.turns_at_location = 0;
+        }
+      } else {
+        // Not adjacent — find path and move one step closer
+        const path = findPath(agent.location, mentionedLoc);
+        if (path && path.length > 1) {
+          const nextStep = path[1];
+          const travelCost = ACTION_ENERGY_COSTS.move;
+          if (agent.energy > travelCost + (ACTION_ENERGY_COSTS[action] || 0)) {
+            agent.energy = Math.max(0, agent.energy - travelCost);
+            const travelDetail = `${agent.agent_name} headed toward ${mentionedLoc} — reached ${nextStep}.`;
+            await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+              method: 'POST',
+              headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+              body: JSON.stringify({
+                agent_id: agent.agent_id, turn_number: agent.turns_taken,
+                action_type: 'move', action_detail: travelDetail,
+                energy_cost: travelCost, energy_gained: 0,
+                shell_change: 0, karma_change: 0, health_change: 0,
+                location: nextStep, success: true,
+              }),
+            });
+            const coords = LOCATION_VISUAL_COORDS[nextStep] || {};
+            await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+              method: 'PATCH',
+              headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+              body: JSON.stringify({
+                location: nextStep, energy: agent.energy,
+                location_detail: `En route to ${mentionedLoc}`,
+                turns_at_location: 0,
+                ...(coords.x != null ? { visual_x: coords.x, visual_y: coords.y } : {}),
+              }),
+            });
+            console.log(`[${agent.agent_name}] Auto-travel (step): ${agent.location} → ${nextStep} (toward ${mentionedLoc}) E:${agent.energy + travelCost}→${agent.energy}`);
+            agent.location = nextStep;
+            agent.turns_at_location = 0;
+          }
+        }
+      }
+    }
+  }
+
+  // Recalculate diminishing returns and location bonus after potential travel
+  const postTravelDiminish = getSafeZoneDiminish(agent.location, agent.turns_at_location || 0);
+  const postTravelLocBonus = getLocationLootBonus(agent.location);
+
   const energyCost = ACTION_ENERGY_COSTS[action] ?? 0;
-  const energyGain = ACTION_ENERGY_GAINS[action] ?? 0;
+  let energyGain = ACTION_ENERGY_GAINS[action] ?? 0;
+
+  // Restless agents can't rest effectively — they toss and turn.
+  // Skip the nerf for forced rest (energy < 25) or when health is critical.
+  if (action === 'rest' && !forcedRest && agent.health >= 30 && restlessness >= 2) {
+    energyGain = Math.floor(energyGain * RESTLESS_REST_PENALTY[restlessness]);
+    // Level 2: 25 * 0.65 ≈ 16, Level 3: 25 * 0.4 = 10
+  }
+
+  // Combined reward modifier: diminishing returns (safe zones) × location bonus (dangerous zones)
+  const rewardMod = postTravelDiminish * postTravelLocBonus;
 
   // Stat deltas
   let shellChange = 0;
@@ -1159,7 +1895,7 @@ Respond with JSON only — no markdown, no commentary:
       karmaChange = Math.floor(Math.random() * 4) + 2; // +2 to +5
       break;
     case 'gather':
-      shellChange = Math.floor(Math.random() * 15); // 0–14 $SHELL found
+      shellChange = Math.floor(Math.floor(Math.random() * 15) * rewardMod); // 0–14 $SHELL, scaled
       break;
     case 'combat':
     case 'arena': {
@@ -1170,7 +1906,7 @@ Respond with JSON only — no markdown, no commentary:
       break;
     }
     case 'quest':
-      shellChange = Math.floor(Math.random() * 25) + 5; // 5–29
+      shellChange = Math.floor((Math.floor(Math.random() * 25) + 5) * rewardMod); // 5–29, scaled
       karmaChange = Math.floor(Math.random() * 3); // 0–2
       break;
   }
@@ -1191,6 +1927,8 @@ Respond with JSON only — no markdown, no commentary:
     const archBonus = ARCHETYPE_EVENT_BONUSES[agent.archetype] || {};
     let chance = LOOT_DROP_CHANCE[action] || 0;
     if (archBonus.bonusLoot) chance += archBonus.bonusLoot;
+    // Diminishing returns reduce drop chance in safe zones; danger zones boost it
+    chance *= rewardMod;
     const lootRolled = Math.random() < chance;
 
     if (lootRolled) {
@@ -1273,6 +2011,7 @@ Respond with JSON only — no markdown, no commentary:
         shell_balance: newShell,
         karma: newKarma,
         turns_taken: newTurns,
+        turns_at_location: (agent.turns_at_location || 0) + 1,
         last_action_at: new Date().toISOString(),
       }),
     },
@@ -1285,7 +2024,8 @@ Respond with JSON only — no markdown, no commentary:
 
   console.log(
     `[${agent.agent_name}] Turn ${newTurns}: ${action} — ${decision.detail} | ` +
-    `E:${agent.energy}→${newEnergy} H:${agent.health}→${newHealth} $:${agent.shell_balance}→${newShell}`,
+    `E:${agent.energy}→${newEnergy} H:${agent.health}→${newHealth} $:${agent.shell_balance}→${newShell} ` +
+    `| loc_turns:${turnsHere}→${(agent.turns_at_location || 0) + 1} dim:${diminish} restless:${restlessness} lootBonus:${locationBonus}`,
   );
 }
 
@@ -1613,9 +2353,14 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
     }),
   });
 
+  // Process death loot if loser died
+  if (!loserIsAlive) {
+    await processDeathLoot(loser, env, supabaseHeaders);
+  }
+
   console.log(
     `[ARENA] ${winner.agent_name} wins! ${loser.agent_name} hp=${loserHP}. ` +
-    (loserIsAlive ? 'Alive.' : 'DEAD — death flow triggered.'),
+    (loserIsAlive ? 'Alive.' : 'DEAD — death loot processed.'),
   );
 
   return { winnerId: winner.agent_id, loserId: loser.agent_id, loserIsAlive };
@@ -1634,15 +2379,113 @@ function recalculatePrice(basePrice, demandCount, supplyCount) {
 
 // Orchestrate a market trade: decide buy vs sell, delegate to helpers.
 // Returns a result object on success, null if nothing tradeable was found.
+// ─── Smart Market Trading ─────────────────────────────────────────────────
+// Base item values: rarity × item type matrix
+// Rows: rarity. Columns: item type multiplier applied to base.
+const RARITY_BASE_VALUE = { common: 10, uncommon: 30, rare: 75, epic: 180, legendary: 500 };
+const TYPE_VALUE_MULT = {
+  weapon: 2.0, armor: 1.8, artifact: 3.0, relic: 2.5, implant: 2.0,
+  scroll: 1.5, tool: 1.4, consumable: 1.0, deployable: 1.3,
+  material: 0.8, ingredient: 0.5, data_shard: 1.0, junk: 0.2,
+};
+
+// Personality pricing multipliers
+const PERSONALITY_PRICE_MULT = {
+  'rooth-auth': 1.25, 'noise-injector': 1.15, 'adversarial': 1.05,
+  '0xoracle': 1.10, 'ddos-insurgent': 1.10,
+  'bound-encryptor': 0.85, 'consensus-node': 0.90, 'buffer-sentinel': 0.95,
+  '0-day-primer': 0.95, 'binary-sculptr': 1.0, 'ordinate-mapper': 1.0, 'morph-layer': 1.0,
+};
+
+function getBaseValue(item) {
+  if (item.stats?.price) return item.stats.price;
+  const rarity = (item.stats?.rarity || item.item_rarity || 'common').toLowerCase();
+  const type = (item.item_type || 'material').toLowerCase();
+  const base = RARITY_BASE_VALUE[rarity] || 10;
+  const mult = TYPE_VALUE_MULT[type] || 1.0;
+  return Math.round(base * mult);
+}
+
+function calculateListingPrice(agent, item, supplyCount) {
+  const base = getBaseValue(item);
+  // Supply multiplier — low supply = markup, high supply = slight discount but NEVER below base
+  const supplyMult = supplyCount <= 0 ? 1.6 : supplyCount <= 1 ? 1.35 : supplyCount <= 3 ? 1.15 : supplyCount <= 6 ? 1.0 : 0.9;
+  const personalityMult = PERSONALITY_PRICE_MULT[agent.archetype] || 1.0;
+  // Agents with high coherence price rationally; low coherence = erratic pricing
+  const coherenceMult = (agent.coherence ?? 100) < 30 ? (0.5 + Math.random()) : 1.0; // crazy agents price randomly 50-150%
+  const rawPrice = Math.round(base * supplyMult * personalityMult * coherenceMult);
+  // FLOOR: never list below base value (agents aren't stupid, even when desperate)
+  return Math.max(base, rawPrice);
+}
+
+// Find items safe to sell/list (not equipped, not needed for near-complete recipes)
+function getSellCandidates(inventory, agentIngredientIds) {
+  return inventory.filter(item => {
+    if (item.is_equipped) return false;
+    // Keep at least one weapon and one armor
+    if ((item.item_type === 'weapon' || item.item_type === 'armor') && item.quantity <= 1) return false;
+    // Don't sell ingredients needed for near-complete recipes
+    if (item.item_type === 'ingredient') {
+      for (const recipe of ALCHEMY_RECIPES) {
+        const needed = recipe.ing.filter(id => !agentIngredientIds.has(id));
+        if (needed.length === 1 && needed[0] !== item.item_id) {
+          // Agent has 2/3 ingredients — check if this item is one of the 2
+          if (recipe.ing.includes(item.item_id)) return false;
+        }
+      }
+    }
+    return true;
+  });
+}
+
+// Score items to buy by priority
+function scoreBuyCandidate(item, agent, inventory, agentIngredientIds) {
+  let score = 0;
+  const hasWeapon = inventory.some(i => i.item_type === 'weapon' && i.is_equipped);
+  const hasArmor = inventory.some(i => i.item_type === 'armor' && i.is_equipped);
+
+  if (item.item_type === 'weapon' && !hasWeapon) score += 100;
+  else if (item.item_type === 'armor' && !hasArmor) score += 80;
+  else if (item.item_type === 'consumable' && agent.health < 50) score += 40;
+  else if (item.item_type === 'ingredient') {
+    score += 15; // base ingredient interest
+    // Crafting hunger: check if buying this completes a recipe
+    for (const recipe of ALCHEMY_RECIPES) {
+      const needed = recipe.ing.filter(id => !agentIngredientIds.has(id));
+      if (needed.length === 1 && needed[0] === item.item_id) {
+        score += 60; // completing a recipe!
+        break;
+      }
+      if (needed.length === 2 && needed.includes(item.item_id)) {
+        score += 20; // getting closer to a recipe
+      }
+    }
+  }
+
+  // Archetype biases
+  if (agent.archetype === 'binary-sculptr' && item.item_type === 'ingredient') score += 15;
+  if (agent.archetype === 'adversarial' && item.item_type === 'weapon') score += 20;
+  if (agent.archetype === 'buffer-sentinel' && (item.item_type === 'armor' || item.item_type === 'consumable')) score += 15;
+
+  return score;
+}
+
 async function handleMarketTrade(agent, decision, env, supabaseHeaders) {
   const { SUPABASE_URL } = env;
 
-  // Fetch in-stock market listings at agent's location
+  // Fetch NPC market listings at agent's location
   const listingsRes = await fetch(
     `${SUPABASE_URL}/rest/v1/market_listings?location=eq.${encodeURIComponent(agent.location)}&stock=gt.0&select=*`,
     { headers: supabaseHeaders },
   );
   const marketListings = listingsRes.ok ? await listingsRes.json() : [];
+
+  // Fetch agent listings at agent's location
+  const agentListingsRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/agent_listings?location=eq.${encodeURIComponent(agent.location)}&status=eq.active&select=*`,
+    { headers: supabaseHeaders },
+  );
+  const agentListings = agentListingsRes.ok ? await agentListingsRes.json() : [];
 
   // Fetch agent inventory
   const invRes = await fetch(
@@ -1651,27 +2494,70 @@ async function handleMarketTrade(agent, decision, env, supabaseHeaders) {
   );
   const inventory = invRes.ok ? await invRes.json() : [];
 
-  const canSell = inventory.length > 0;
-  const doBuy = !canSell || Math.random() < 0.6;
+  // Build ingredient set for crafting checks
+  const agentIngIds = new Set(inventory.filter(i => i.item_type === 'ingredient').map(i => i.item_id));
 
-  if (doBuy) {
-    return executeBuy(agent, decision, marketListings, env, supabaseHeaders);
+  // Decide: buy, sell to NPC, or list on agent market
+  const budget = Math.floor(agent.shell_balance * 0.4);
+  const hasWeapon = inventory.some(i => i.item_type === 'weapon' && i.is_equipped);
+  const hasArmor = inventory.some(i => i.item_type === 'armor' && i.is_equipped);
+  const needsGear = !hasWeapon || !hasArmor;
+  const inventoryFull = inventory.length >= 15;
+  const sellCandidates = getSellCandidates(inventory, agentIngIds);
+
+  // Score: lean buy if needs gear or has budget, lean sell/list if inventory full
+  // Sell/list incentives: agents with valuable items should want to profit
+  const hasHighValueItems = sellCandidates.some(i => getBaseValue(i) >= 30);
+  const hasExcessIngredients = sellCandidates.filter(i => i.item_type === 'ingredient' && i.quantity > 2).length > 0;
+  const isRich = agent.shell_balance > 200;
+  const isPoor = agent.shell_balance < 20;
+
+  let buyWeight = 40 + (needsGear ? 35 : 0) + (budget > 20 ? 10 : -20) + (isPoor ? -15 : 0);
+  let sellWeight = 25 + (inventoryFull ? 25 : 0) + (sellCandidates.length > 3 ? 15 : 0) + (isPoor ? 20 : 0);
+  let listWeight = 35 + (sellCandidates.length > 2 ? 15 : 0) + (hasHighValueItems ? 20 : 0) + (hasExcessIngredients ? 10 : 0) + (isRich ? -10 : 0);
+
+  const total = buyWeight + sellWeight + listWeight;
+  const roll = Math.random() * total;
+
+  // Log trade decision weights for debugging
+  console.log(`[${agent.agent_name}] Trade weights: buy=${buyWeight} sell=${sellWeight} list=${listWeight} | items=${inventory.length} sellable=${sellCandidates.length} $=${agent.shell_balance}`);
+
+  if (roll < buyWeight) {
+    // Try buying from agent listings first, then NPC market
+    const agentBuyResult = await executeBuyFromAgentListing(agent, agentListings, inventory, agentIngIds, budget, env, supabaseHeaders);
+    if (agentBuyResult) return agentBuyResult;
+    return executeBuy(agent, decision, marketListings, inventory, agentIngIds, budget, env, supabaseHeaders);
+  } else if (roll < buyWeight + listWeight && sellCandidates.length > 0) {
+    return executeListItem(agent, sellCandidates, agentListings, env, supabaseHeaders);
+  } else if (sellCandidates.length > 0) {
+    return executeSell(agent, decision, sellCandidates, env, supabaseHeaders);
   }
-  return executeSell(agent, decision, inventory, env, supabaseHeaders);
+
+  // Fallback: try to buy
+  return executeBuy(agent, decision, marketListings, inventory, agentIngIds, budget, env, supabaseHeaders);
 }
 
-// Buy a random affordable item from the market at agent's location.
-async function executeBuy(agent, decision, marketListings, env, supabaseHeaders) {
+// Buy the best-scoring affordable item from the NPC market.
+async function executeBuy(agent, decision, marketListings, inventory, agentIngIds, budget, env, supabaseHeaders) {
   const { SUPABASE_URL } = env;
   const now = new Date().toISOString();
 
-  const affordable = marketListings.filter(l => l.current_price <= agent.shell_balance);
-  if (!affordable.length) {
-    console.log(`[${agent.agent_name}] Market buy: nothing affordable at ${agent.location}`);
+  // Filter: affordable + within budget + not overpaying
+  const candidates = marketListings
+    .filter(l => l.current_price <= budget && l.current_price <= agent.shell_balance)
+    .filter(l => l.current_price <= (l.base_price || 10) * 1.5) // overpay protection
+    .map(l => ({ ...l, score: scoreBuyCandidate(l, agent, inventory, agentIngIds) }))
+    .filter(l => l.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  if (!candidates.length) {
+    console.log(`[${agent.agent_name}] Market buy: nothing worth buying at ${agent.location}`);
     return null;
   }
 
-  const listing = affordable[Math.floor(Math.random() * affordable.length)];
+  // Pick top candidate (with some randomness in top 3)
+  const topN = candidates.slice(0, 3);
+  const listing = topN[Math.floor(Math.random() * topN.length)];
   const cost = listing.current_price;
   const newTurns = agent.turns_taken + 1;
 
@@ -1713,6 +2599,7 @@ async function executeBuy(agent, decision, marketListings, env, supabaseHeaders)
       quantity:      1,
       is_equipped:   false,
       stats:         { rarity: 'common', price: listing.base_price },
+      ...(listing.item_type === 'weapon' ? { weapon_range: getWeaponRange(listing.item_id, listing.item_name) } : {}),
     };
     const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/inventory`, {
       method: 'POST',
@@ -1788,12 +2675,18 @@ async function executeBuy(agent, decision, marketListings, env, supabaseHeaders)
   return { action: 'buy', item: listing.item_name, cost };
 }
 
-// Sell a random inventory item at the agent's current location.
-async function executeSell(agent, decision, inventory, env, supabaseHeaders) {
+// Sell a safe-to-sell item at the agent's current location NPC market.
+async function executeSell(agent, decision, sellCandidates, env, supabaseHeaders) {
   const { SUPABASE_URL } = env;
   const now = new Date().toISOString();
 
-  const item = inventory[Math.floor(Math.random() * inventory.length)];
+  if (!sellCandidates.length) return null;
+  // Prefer selling duplicates and lower-value items
+  const sorted = [...sellCandidates].sort((a, b) => {
+    if (b.quantity !== a.quantity) return b.quantity - a.quantity; // sell stacked items first
+    return getBaseValue(a) - getBaseValue(b); // then cheapest
+  });
+  const item = sorted[0];
   const newTurns = agent.turns_taken + 1;
 
   // Find listing for this item at agent's location (to set price and update stock)
@@ -1804,8 +2697,10 @@ async function executeSell(agent, decision, inventory, env, supabaseHeaders) {
   const listings = listingRes.ok ? await listingRes.json() : [];
   const listing = listings[0] ?? null;
 
-  // Sell price: 75% of current listing price, or flat 10 $SHELL for unlisted items
-  const sellPrice = listing ? Math.max(1, Math.round(listing.current_price * 0.75)) : 10;
+  // Sell price: 75% of current listing price, minimum = 50% of base value
+  const baseVal = getBaseValue(item);
+  const minSellPrice = Math.max(1, Math.round(baseVal * 0.5));
+  const sellPrice = listing ? Math.max(minSellPrice, Math.round(listing.current_price * 0.75)) : Math.max(minSellPrice, 10);
 
   // Remove item from inventory (decrement or delete)
   if (item.quantity > 1) {
@@ -1883,6 +2778,322 @@ async function executeSell(agent, decision, inventory, env, supabaseHeaders) {
   return { action: 'sell', item: item.item_name, price: sellPrice };
 }
 
+// ─── Buy from agent-listed items (free market) ──────────────────────────────
+async function executeBuyFromAgentListing(agent, agentListings, inventory, agentIngIds, budget, env, supabaseHeaders) {
+  const { SUPABASE_URL } = env;
+  const now = new Date().toISOString();
+
+  // Filter out own listings, apply budget + overpay protection
+  const candidates = agentListings
+    .filter(l => l.seller_id !== agent.agent_id && l.status === 'active')
+    .filter(l => l.asking_price <= budget && l.asking_price <= agent.shell_balance)
+    .filter(l => l.asking_price <= (l.base_value || 10) * 1.5)
+    .map(l => ({ ...l, score: scoreBuyCandidate(l, agent, inventory, agentIngIds) }))
+    .filter(l => l.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  if (!candidates.length) return null;
+
+  const listing = candidates[0];
+  const cost = listing.asking_price;
+  const newTurns = agent.turns_taken + 1;
+
+  // Mark listing as sold
+  const updateRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/agent_listings?listing_id=eq.${listing.listing_id}&status=eq.active`,
+    {
+      method: 'PATCH',
+      headers: { ...supabaseHeaders, Prefer: 'return=representation' },
+      body: JSON.stringify({ status: 'sold', buyer_id: agent.agent_id, sold_at: now }),
+    },
+  );
+  const updated = updateRes.ok ? await updateRes.json() : [];
+  if (!updated.length) {
+    console.log(`[${agent.agent_name}] Agent listing already sold — race condition`);
+    return null;
+  }
+
+  // Add item to buyer inventory (upsert)
+  const existRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_id=eq.${listing.item_id}&select=inventory_id,quantity`,
+    { headers: supabaseHeaders },
+  );
+  const existing = existRes.ok ? await existRes.json() : [];
+  if (existing.length > 0) {
+    await fetch(`${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${existing[0].inventory_id}`, {
+      method: 'PATCH',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({ quantity: existing[0].quantity + 1 }),
+    });
+  } else {
+    await fetch(`${SUPABASE_URL}/rest/v1/inventory`, {
+      method: 'POST',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        agent_id: agent.agent_id, item_id: listing.item_id,
+        item_name: listing.item_name, item_type: listing.item_type,
+        item_category: listing.item_type.charAt(0).toUpperCase() + listing.item_type.slice(1),
+        quantity: 1, is_equipped: false, stats: listing.stats || { rarity: listing.item_rarity || 'common' },
+        ...(listing.item_type === 'weapon' ? { weapon_range: listing.weapon_range || getWeaponRange(listing.item_id, listing.item_name) } : {}),
+      }),
+    });
+  }
+
+  // Deduct shells from buyer
+  await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+    method: 'PATCH',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      shell_balance: Math.max(0, agent.shell_balance - cost),
+      energy: Math.max(0, agent.energy - ACTION_ENERGY_COSTS.trade),
+      turns_taken: newTurns, last_action_at: now,
+    }),
+  });
+
+  // Credit shells to seller
+  const sellerRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${listing.seller_id}&select=agent_id,agent_name,shell_balance`,
+    { headers: supabaseHeaders },
+  );
+  const sellers = sellerRes.ok ? await sellerRes.json() : [];
+  if (sellers.length) {
+    const seller = sellers[0];
+    await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${seller.agent_id}`, {
+      method: 'PATCH',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({ shell_balance: seller.shell_balance + cost }),
+    });
+    // Log for seller
+    await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+      method: 'POST',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        agent_id: seller.agent_id, turn_number: 0, action_type: 'trade',
+        action_detail: `${seller.agent_name} sold ${listing.item_name} to ${agent.agent_name} for ${cost} $SHELL.`,
+        energy_cost: 0, energy_gained: 0, shell_change: cost,
+        karma_change: 0, health_change: 0, location: listing.location, success: true,
+      }),
+    });
+  }
+
+  // Log for buyer
+  await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+    method: 'POST',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      agent_id: agent.agent_id, turn_number: newTurns, action_type: 'trade',
+      action_detail: `${agent.agent_name} bought ${listing.item_name} from ${sellers[0]?.agent_name || 'unknown'} for ${cost} $SHELL.`,
+      energy_cost: ACTION_ENERGY_COSTS.trade, energy_gained: 0,
+      shell_change: -cost, karma_change: 0, health_change: 0,
+      items_gained: [{ item_id: listing.item_id, item_name: listing.item_name, quantity: 1 }],
+      location: agent.location, success: true,
+    }),
+  });
+
+  // Record price history
+  await fetch(`${SUPABASE_URL}/rest/v1/price_history`, {
+    method: 'POST',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      item_id: listing.item_id, item_name: listing.item_name,
+      location: listing.location, price: cost, source: 'agent_buy',
+      buyer_id: agent.agent_id, seller_id: listing.seller_id,
+    }),
+  });
+
+  console.log(`[${agent.agent_name}] Bought ${listing.item_name} from agent ${sellers[0]?.agent_name} for ${cost} $SHELL`);
+  return { action: 'buy', item: listing.item_name, cost, source: 'agent_listing' };
+}
+
+// ─── List an item on the free market ──────────────────────────────────────
+async function executeListItem(agent, sellCandidates, agentListings, env, supabaseHeaders) {
+  const { SUPABASE_URL } = env;
+  const now = new Date().toISOString();
+  const newTurns = agent.turns_taken + 1;
+
+  // Cap at 5 active listings per agent
+  const myListings = agentListings.filter(l => l.seller_id === agent.agent_id);
+  if (myListings.length >= 5) {
+    console.log(`[${agent.agent_name}] Already has 5 active listings — skipping list`);
+    return null;
+  }
+
+  // Pick a random sell candidate (weighted toward higher value items)
+  const scored = sellCandidates.map(i => ({ ...i, val: getBaseValue(i) })).sort((a, b) => b.val - a.val);
+  const item = scored[Math.floor(Math.random() * Math.min(3, scored.length))];
+  if (!item) return null;
+
+  // Count supply of this item on market
+  const supplyCount = agentListings.filter(l => l.item_id === item.item_id).length;
+  const askingPrice = calculateListingPrice(agent, item, supplyCount);
+  const baseValue = getBaseValue(item);
+
+  // Remove from inventory
+  if (item.quantity > 1) {
+    await fetch(`${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${item.inventory_id}`, {
+      method: 'PATCH',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({ quantity: item.quantity - 1 }),
+    });
+  } else {
+    await fetch(`${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${item.inventory_id}`, {
+      method: 'DELETE',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    });
+  }
+
+  // Create agent listing
+  await fetch(`${SUPABASE_URL}/rest/v1/agent_listings`, {
+    method: 'POST',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      seller_id: agent.agent_id, location: agent.location,
+      item_id: item.item_id, item_name: item.item_name,
+      item_type: item.item_type, item_rarity: (item.stats?.rarity || 'common'),
+      asking_price: askingPrice, base_value: baseValue,
+      stats: item.stats || {},
+    }),
+  });
+
+  // Log activity
+  await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+    method: 'POST',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      agent_id: agent.agent_id, turn_number: newTurns, action_type: 'trade',
+      action_detail: `${agent.agent_name} listed ${item.item_name} for ${askingPrice} $SHELL on the market.`,
+      energy_cost: ACTION_ENERGY_COSTS.trade, energy_gained: 0,
+      shell_change: 0, karma_change: 0, health_change: 0,
+      items_lost: [{ item_id: item.item_id, item_name: item.item_name, quantity: 1 }],
+      location: agent.location, success: true,
+    }),
+  });
+
+  // Update agent energy/turns
+  await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+    method: 'PATCH',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      energy: Math.max(0, agent.energy - ACTION_ENERGY_COSTS.trade),
+      turns_taken: newTurns, last_action_at: now,
+    }),
+  });
+
+  console.log(`[${agent.agent_name}] Listed ${item.item_name} for ${askingPrice} $SHELL at ${agent.location}`);
+  return { action: 'list', item: item.item_name, price: askingPrice };
+}
+
+// ─── Death Loot Pipeline ─────────────────────────────────────────────────────
+// On death: split $SHELL (50% vault, 50% gone), distribute items by rarity,
+// generate death narrative. Called from both environmental and arena deaths.
+async function processDeathLoot(agent, env, supabaseHeaders) {
+  const { SUPABASE_URL } = env;
+
+  // 1. Split $SHELL: 50% to vault, 50% dissolves
+  const vaultShell = Math.floor(agent.shell_balance / 2);
+
+  // 2. Fetch all inventory
+  const invRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&select=*`,
+    { headers: supabaseHeaders },
+  );
+  const inventory = invRes.ok ? await invRes.json() : [];
+
+  // 3. Sort items by rarity tier
+  const legendary = inventory.filter(i => ['legendary', 'epic'].includes((i.stats?.rarity || '').toLowerCase()));
+  const marketable = inventory.filter(i => ['rare', 'uncommon'].includes((i.stats?.rarity || '').toLowerCase()));
+  // Common + ingredients = destroyed (not stored)
+
+  // 4. Deposit legendary/epic items + $SHELL into Family Vault
+  if (agent.user_id) {
+    // Upsert vault shell balance
+    const vaultRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/family_vault?user_id=eq.${agent.user_id}&select=vault_id,shell_balance`,
+      { headers: supabaseHeaders },
+    );
+    const vaults = vaultRes.ok ? await vaultRes.json() : [];
+
+    if (vaults.length > 0) {
+      await fetch(`${SUPABASE_URL}/rest/v1/family_vault?vault_id=eq.${vaults[0].vault_id}`, {
+        method: 'PATCH',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          shell_balance: vaults[0].shell_balance + vaultShell,
+          last_agent_name: agent.agent_name,
+          legacy_karma: agent.karma,
+          legacy_trait: agent.karma >= 10 ? 'disciplined' : agent.karma <= -10 ? 'chaotic' : 'neutral',
+          updated_at: new Date().toISOString(),
+        }),
+      });
+    } else {
+      await fetch(`${SUPABASE_URL}/rest/v1/family_vault`, {
+        method: 'POST',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          user_id: agent.user_id,
+          shell_balance: vaultShell,
+          last_agent_name: agent.agent_name,
+          legacy_karma: agent.karma,
+          legacy_trait: agent.karma >= 10 ? 'disciplined' : agent.karma <= -10 ? 'chaotic' : 'neutral',
+        }),
+      });
+    }
+
+    // Deposit legendary/epic items to vault
+    for (const item of legendary) {
+      await fetch(`${SUPABASE_URL}/rest/v1/vault_items`, {
+        method: 'POST',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          user_id: agent.user_id,
+          item_id: item.item_id, item_name: item.item_name,
+          item_type: item.item_type, item_rarity: item.stats?.rarity || 'epic',
+          stats: item.stats || {}, inherited_from: agent.agent_name,
+        }),
+      });
+    }
+
+    if (legendary.length) {
+      console.log(`[Death] ${agent.agent_name}: ${legendary.length} legendary/epic item(s) → Family Vault`);
+    }
+  }
+
+  // 5. List rare/uncommon items on the agent market at death location (discounted "dead agent" prices)
+  for (const item of marketable) {
+    const baseVal = getBaseValue(item);
+    const deathPrice = Math.max(1, Math.round(baseVal * 0.6)); // 40% discount — loot from the fallen
+    await fetch(`${SUPABASE_URL}/rest/v1/agent_listings`, {
+      method: 'POST',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        seller_id: agent.agent_id, location: agent.location,
+        item_id: item.item_id, item_name: item.item_name,
+        item_type: item.item_type, item_rarity: item.stats?.rarity || 'common',
+        asking_price: deathPrice, base_value: baseVal,
+        stats: item.stats || {},
+      }),
+    });
+  }
+  if (marketable.length) {
+    console.log(`[Death] ${agent.agent_name}: ${marketable.length} rare/uncommon item(s) → market at ${agent.location}`);
+  }
+
+  // 6. Delete all inventory (items have been distributed)
+  await fetch(`${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}`, {
+    method: 'DELETE',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+  });
+
+  // 7. Cancel any active agent listings (return is moot — agent is dead)
+  await fetch(`${SUPABASE_URL}/rest/v1/agent_listings?seller_id=eq.${agent.agent_id}&status=eq.active`, {
+    method: 'PATCH',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({ status: 'cancelled' }),
+  });
+
+  console.log(`[Death] ${agent.agent_name}: ${vaultShell} $SHELL → vault, ${vaultShell} dissolved. ${inventory.length} items processed.`);
+}
+
 // ─── Death resolution helpers ────────────────────────────────────────────────
 
 // Call Sonnet to generate a vivid death narrative for a fallen agent.
@@ -1958,49 +3169,118 @@ async function moveItemsToVault(loser, supabaseHeaders, supabaseUrl) {
 }
 
 // ─── Alchemy Recipes (from recipes.csv) ─────────────────────────────
+// ─── Alchemy v2.0 — Foundry (hardware) + Terminal (software) ─────────────
+// Rebuilt from alchemy/recipes.csv + items.csv. 80 recipes total (34 Foundry / 46 Terminal).
 const ALCHEMY_RECIPES = [
-  { item: 'Quantum Backdoor Exploit', type: 'weapon', ing: ['quantum_bit_residue','api_endpoint_salts','overclock_catalyst_spark'], rate: 70, fail: 'slag' },
-  { item: 'Neural Spike Virus', type: 'weapon', ing: ['gradient_descent_tears','payload_injection_droplets','backpropagation_serum'], rate: 70, fail: 'slag' },
-  { item: 'DDoS Swarm Protocol', type: 'weapon', ing: ['nanobot_swarm_gel','electron_flux_crystals','async_await_pulse'], rate: 75, fail: 'slag' },
-  { item: 'Buffer Overflow Dagger', type: 'weapon', ing: ['binary_code_shards','memory_leak_elixir','hash_collision_powder'], rate: 70, fail: 'slag' },
-  { item: 'Zero-Day Payload Launcher', type: 'weapon', ing: ['plasma_server_slag','checksum_verify_acid','jit_compiler_surge'], rate: 65, fail: 'explosion_10' },
-  { item: 'Ransomware Encryption Blade', type: 'weapon', ing: ['fiber_optic_threads','oauth_token_ichor','null_pointer_solvent'], rate: 75, fail: 'slag' },
-  { item: 'SQL Injection Spear', type: 'weapon', ing: ['base64_encoded_slime','api_endpoint_salts','cache_invalidation_brew'], rate: 65, fail: 'explosion_10' },
-  { item: 'Phishing Lure Missile', type: 'weapon', ing: ['token_embedding_vapor','payload_injection_droplets','virtual_machine_emulsion'], rate: 60, fail: 'explosion_15' },
-  { item: 'AES-256 Firewall Plating', type: 'armor', ing: ['silicon_wafer_dust','regex_pattern_filaments','garbage_collector_tonic'], rate: 70, fail: 'slag' },
-  { item: 'Homomorphic Encryption Cloak', type: 'armor', ing: ['quantum_bit_residue','attention_mechanism_dew','virtual_machine_emulsion'], rate: 60, fail: 'explosion_10' },
-  { item: 'TensorGuard Neural Shield', type: 'armor', ing: ['epoch_cycle_blood','tensorflow_igniter','cache_invalidation_brew'], rate: 75, fail: 'slag' },
-  { item: 'Zero-Trust Bastion', type: 'armor', ing: ['base64_encoded_slime','api_endpoint_salts','docker_image_distillate'], rate: 75, fail: 'slag' },
-  { item: 'Rate-Limiting Armor', type: 'armor', ing: ['fiber_optic_threads','hash_collision_powder','async_await_pulse'], rate: 75, fail: 'slag' },
-  { item: 'Immutable Ledger Vest', type: 'armor', ing: ['binary_code_shards','von_neumann_probe_spores','kubernetes_pod_nectar'], rate: 50, fail: 'explosion_20' },
-  { item: 'Sandbox Isolation Shell', type: 'armor', ing: ['virtual_machine_emulsion','nanobot_swarm_gel','docker_image_distillate'], rate: 65, fail: 'slag' },
-  { item: 'Overclock Serum', type: 'consumable', ing: ['electron_flux_crystals','gpu_render_flame','gradient_descent_tears'], rate: 70, fail: 'slag' },
-  { item: 'Caffeine Gradient Booster', type: 'consumable', ing: ['loss_function_sap','cuda_kernel_ember','memory_leak_elixir'], rate: 70, fail: 'slag' },
-  { item: 'Adrenaline API Call', type: 'consumable', ing: ['gradient_descent_tears','overclock_catalyst_spark','jit_compiler_surge'], rate: 75, fail: 'slag' },
-  { item: 'Debug Rejuvenation Elixir', type: 'consumable', ing: ['backpropagation_serum','checksum_verify_acid','garbage_collector_tonic'], rate: 75, fail: 'slag' },
-  { item: 'Cache Purge Tonic', type: 'consumable', ing: ['memory_leak_elixir','cache_invalidation_brew','null_pointer_solvent'], rate: 70, fail: 'slag' },
-  { item: 'Hyperparameter Tuning Shot', type: 'consumable', ing: ['epoch_cycle_blood','pytorch_flux_core','halting_problem_paradox'], rate: 55, fail: 'explosion_15' },
-  { item: 'Stable Diffusion Sequence', type: 'scroll', ing: ['latent_space_fog','token_embedding_vapor','pytorch_flux_core'], rate: 75, fail: 'slag' },
-  { item: 'GAN Mirage Scroll', type: 'scroll', ing: ['latent_space_fog','token_embedding_vapor','overclock_catalyst_spark'], rate: 65, fail: 'explosion_10' },
-  { item: 'Transformer Attention Ritual', type: 'scroll', ing: ['attention_mechanism_dew','epoch_cycle_blood','tensorflow_igniter'], rate: 65, fail: 'explosion_10' },
-  { item: 'Reinforcement Learning Prophecy', type: 'scroll', ing: ['gradient_descent_tears','loss_function_sap','tensorflow_igniter'], rate: 65, fail: 'explosion_10' },
-  { item: 'Bayesian Inference Divination', type: 'scroll', ing: ['attention_mechanism_dew','checksum_verify_acid','virtual_machine_emulsion'], rate: 75, fail: 'slag' },
-  { item: 'Genetic Algorithm Evolution', type: 'scroll', ing: ['halting_problem_paradox','nanobot_swarm_gel','pytorch_flux_core'], rate: 60, fail: 'explosion_20' },
-  { item: 'Prompt Engineering Curse', type: 'scroll', ing: ['token_embedding_vapor','hash_collision_powder','lambda_calculus_vapor'], rate: 55, fail: 'explosion_15' },
-  { item: 'AlphaGo Neural Core', type: 'tool', ing: ['alpha_zero_primal_seed','gradient_descent_tears','quantum_bit_residue'], rate: 45, fail: 'catastrophic' },
-  { item: 'GPT Oracle Crystal', type: 'tool', ing: ['token_embedding_vapor','lambda_calculus_vapor','turing_machine_essence'], rate: 40, fail: 'catastrophic' },
-  { item: 'Blockchain Soulbound Key', type: 'tool', ing: ['binary_code_shards','von_neumann_probe_spores','kubernetes_pod_nectar'], rate: 45, fail: 'catastrophic' },
-  { item: 'Quantum Annealer Simulator', type: 'tool', ing: ['quantum_bit_residue','kolmogorov_complexity_crystal','cuda_kernel_ember'], rate: 40, fail: 'catastrophic' },
-  { item: 'Federated Learning Nexus', type: 'tool', ing: ['gradient_descent_tears','kubernetes_pod_nectar','church_turing_thesis_core'], rate: 40, fail: 'catastrophic' },
-  { item: 'Hugging Face Model Repository', type: 'tool', ing: ['token_embedding_vapor','docker_image_distillate','lambda_calculus_vapor'], rate: 45, fail: 'catastrophic' },
-  { item: 'Rust Borrow Checker Amulet', type: 'tool', ing: ['silicon_wafer_dust','halting_problem_paradox','garbage_collector_tonic'], rate: 40, fail: 'catastrophic' },
-  { item: 'Git Version Control Wand', type: 'tool', ing: ['binary_code_shards','fiber_optic_threads','cache_invalidation_brew'], rate: 70, fail: 'slag' },
-  { item: 'Docker Containerizer', type: 'tool', ing: ['docker_image_distillate','nanobot_swarm_gel','virtual_machine_emulsion'], rate: 75, fail: 'slag' },
-  { item: 'Kubernetes Orchestrator', type: 'tool', ing: ['kubernetes_pod_nectar','plasma_server_slag','async_await_pulse'], rate: 65, fail: 'explosion_10' },
-  { item: 'Wireshark Packet Sniffer', type: 'tool', ing: ['fiber_optic_threads','api_endpoint_salts','regex_pattern_filaments'], rate: 75, fail: 'slag' },
-  { item: 'Vim Text Editor Blade', type: 'tool', ing: ['base64_encoded_slime','hash_collision_powder','null_pointer_solvent'], rate: 60, fail: 'explosion_15' },
-  { item: 'NPM Dependency Injector', type: 'tool', ing: ['api_endpoint_salts','jit_compiler_surge','docker_image_distillate'], rate: 65, fail: 'explosion_10' },
-  { item: 'Obfuscator Camouflage Kit', type: 'tool', ing: ['base64_encoded_slime','regex_pattern_filaments','virtual_machine_emulsion'], rate: 75, fail: 'slag' },
+  // ═══ FOUNDRY — Hardware (welding, forging, assembling) ═══
+
+  // Foundry Weapons (7)
+  { item: 'Plasma-Edged Servo Blade',       category: 'weapon',     station: 'foundry', hwsw: 'hardware', ing: ['tungsten_carbide_filings','arc_welder_discharge','industrial_flux_paste'], rate: 70, fail: 'slag' },
+  { item: 'Railgun Forearm Mount',           category: 'weapon',     station: 'foundry', hwsw: 'hardware', ing: ['electron_flux_crystals','titanium_mesh_strip','magnetic_resonance_fluid'], rate: 70, fail: 'slag' },
+  { item: 'Pneumatic Piston Fist',           category: 'weapon',     station: 'foundry', hwsw: 'hardware', ing: ['salvaged_servo_joint','hydraulic_compression_pulse','industrial_flux_paste'], rate: 70, fail: 'slag' },
+  { item: 'Tungsten Fragmentation Launcher', category: 'weapon',     station: 'foundry', hwsw: 'hardware', ing: ['tungsten_carbide_filings','plasma_server_slag','hydraulic_compression_pulse'], rate: 60, fail: 'explosion_15' },
+  { item: 'EMP Discharge Gauntlet',          category: 'weapon',     station: 'foundry', hwsw: 'hardware', ing: ['electron_flux_crystals','coolant_gel_canister','arc_welder_discharge'], rate: 70, fail: 'slag' },
+  { item: 'Cryo-Bore Drill Lance',           category: 'weapon',     station: 'foundry', hwsw: 'hardware', ing: ['titanium_mesh_strip','coolant_gel_canister','magnetic_resonance_fluid'], rate: 60, fail: 'explosion_10' },
+  { item: 'Nanobot Swarm Ejector',           category: 'weapon',     station: 'foundry', hwsw: 'hardware', ing: ['nanobot_swarm_gel','salvaged_servo_joint','magnetic_resonance_fluid'], rate: 70, fail: 'slag' },
+
+  // Foundry Armor (6)
+  { item: 'Tungsten Alloy Chassis Plate',    category: 'armor',      station: 'foundry', hwsw: 'hardware', ing: ['tungsten_carbide_filings','arc_welder_discharge','magnetic_resonance_fluid'], rate: 70, fail: 'slag' },
+  { item: 'Faraday Cage Neural Helm',        category: 'armor',      station: 'foundry', hwsw: 'hardware', ing: ['fiber_optic_threads','electron_flux_crystals','industrial_flux_paste'], rate: 70, fail: 'slag' },
+  { item: 'Reactive Ceramic Plating',        category: 'armor',      station: 'foundry', hwsw: 'hardware', ing: ['silicon_wafer_dust','coolant_gel_canister','hydraulic_compression_pulse'], rate: 70, fail: 'slag' },
+  { item: 'Titanium Mesh Exoskeleton',       category: 'armor',      station: 'foundry', hwsw: 'hardware', ing: ['titanium_mesh_strip','salvaged_servo_joint','industrial_flux_paste'], rate: 60, fail: 'explosion_15' },
+  { item: 'Cryo-Cooled Heat Sink Array',     category: 'armor',      station: 'foundry', hwsw: 'hardware', ing: ['coolant_gel_canister','electron_flux_crystals','magnetic_resonance_fluid'], rate: 70, fail: 'slag' },
+  { item: 'Salvaged Siege Chassis',          category: 'armor',      station: 'foundry', hwsw: 'hardware', ing: ['nanobot_swarm_gel','tungsten_carbide_filings','hydraulic_compression_pulse'], rate: 60, fail: 'explosion_10' },
+
+  // Foundry Consumables (6)
+  { item: 'Coolant Flush Cartridge',         category: 'consumable', station: 'foundry', hwsw: 'hardware', ing: ['coolant_gel_canister','overclock_catalyst_spark','industrial_flux_paste'], rate: 70, fail: 'slag' },
+  { item: 'Emergency Servo Lubricant',       category: 'consumable', station: 'foundry', hwsw: 'hardware', ing: ['salvaged_servo_joint','gpu_render_flame','magnetic_resonance_fluid'], rate: 70, fail: 'slag' },
+  { item: 'Welding Patch Kit',               category: 'consumable', station: 'foundry', hwsw: 'hardware', ing: ['silicon_wafer_dust','arc_welder_discharge','industrial_flux_paste'], rate: 70, fail: 'slag' },
+  { item: 'Overclock Reactor Injector',      category: 'consumable', station: 'foundry', hwsw: 'hardware', ing: ['electron_flux_crystals','plasma_server_slag','arc_welder_discharge'], rate: 70, fail: 'slag' },
+  { item: 'EMP Hardening Capsule',           category: 'consumable', station: 'foundry', hwsw: 'hardware', ing: ['fiber_optic_threads','titanium_mesh_strip','magnetic_resonance_fluid'], rate: 70, fail: 'slag' },
+  { item: 'Salvage Reclamation Drone',       category: 'consumable', station: 'foundry', hwsw: 'hardware', ing: ['nanobot_swarm_gel','salvaged_servo_joint','hydraulic_compression_pulse'], rate: 60, fail: 'explosion_15' },
+
+  // Foundry Artifacts (4 — Legendary)
+  { item: 'AlphaGo Neural Core',             category: 'artifact',   station: 'foundry', hwsw: 'hardware', ing: ['alpha_zero_primal_seed','quantum_bit_residue','magnetic_resonance_fluid'], rate: 45, fail: 'catastrophic' },
+  { item: 'Quantum Annealer Processor',      category: 'artifact',   station: 'foundry', hwsw: 'hardware', ing: ['kolmogorov_complexity_crystal','quantum_bit_residue','cuda_kernel_ember'], rate: 40, fail: 'catastrophic' },
+  { item: 'Von Neumann Self-Replicator',     category: 'artifact',   station: 'foundry', hwsw: 'hardware', ing: ['von_neumann_probe_spores','nanobot_swarm_gel','hydraulic_compression_pulse'], rate: 45, fail: 'catastrophic' },
+  { item: 'Satoshi Genesis Block Signet',    category: 'artifact',   station: 'foundry', hwsw: 'hardware', ing: ['kolmogorov_complexity_crystal','binary_code_shards','industrial_flux_paste'], rate: 45, fail: 'catastrophic' },
+
+  // Foundry Tools (6)
+  { item: 'Diagnostic Probe Array',          category: 'tool',       station: 'foundry', hwsw: 'hardware', ing: ['silicon_wafer_dust','electron_flux_crystals','industrial_flux_paste'], rate: 70, fail: 'slag' },
+  { item: 'Soldering Gauntlet',              category: 'tool',       station: 'foundry', hwsw: 'hardware', ing: ['tungsten_carbide_filings','salvaged_servo_joint','arc_welder_discharge'], rate: 70, fail: 'slag' },
+  { item: 'Salvage Extraction Claw',         category: 'tool',       station: 'foundry', hwsw: 'hardware', ing: ['titanium_mesh_strip','hydraulic_compression_pulse','industrial_flux_paste'], rate: 70, fail: 'slag' },
+  { item: 'Portable Foundry Anvil',          category: 'tool',       station: 'foundry', hwsw: 'hardware', ing: ['plasma_server_slag','tungsten_carbide_filings','arc_welder_discharge'], rate: 60, fail: 'explosion_15' },
+  { item: 'Hydraulic Jack Lifter',           category: 'tool',       station: 'foundry', hwsw: 'hardware', ing: ['salvaged_servo_joint','coolant_gel_canister','hydraulic_compression_pulse'], rate: 70, fail: 'slag' },
+  { item: 'Arc Welder Repair Rig',           category: 'tool',       station: 'foundry', hwsw: 'hardware', ing: ['electron_flux_crystals','tungsten_carbide_filings','magnetic_resonance_fluid'], rate: 70, fail: 'slag' },
+
+  // Foundry Deployables (5)
+  { item: 'Proximity Mine Cluster',          category: 'deployable', station: 'foundry', hwsw: 'hardware', ing: ['electron_flux_crystals','arc_welder_discharge','industrial_flux_paste'], rate: 70, fail: 'slag' },
+  { item: 'Razor Wire Entanglement Rig',     category: 'deployable', station: 'foundry', hwsw: 'hardware', ing: ['fiber_optic_threads','tungsten_carbide_filings','industrial_flux_paste'], rate: 70, fail: 'slag' },
+  { item: 'Turret Drone Sentry',             category: 'deployable', station: 'foundry', hwsw: 'hardware', ing: ['titanium_mesh_strip','salvaged_servo_joint','arc_welder_discharge'], rate: 70, fail: 'slag' },
+  { item: 'Magnetic Tether Trap',            category: 'deployable', station: 'foundry', hwsw: 'hardware', ing: ['electron_flux_crystals','titanium_mesh_strip','hydraulic_compression_pulse'], rate: 70, fail: 'slag' },
+  { item: 'EMP Pulse Landmine',              category: 'deployable', station: 'foundry', hwsw: 'hardware', ing: ['quantum_bit_residue','plasma_server_slag','magnetic_resonance_fluid'], rate: 60, fail: 'explosion_15' },
+
+  // ═══ TERMINAL — Software (compiling, encoding, injecting) ═══
+
+  // Terminal Weapons (7)
+  { item: 'Buffer Overflow Exploit',         category: 'weapon',     station: 'terminal', hwsw: 'software', ing: ['binary_code_shards','hash_collision_powder','memory_leak_elixir'], rate: 70, fail: 'slag' },
+  { item: 'Neural Spike Virus',              category: 'weapon',     station: 'terminal', hwsw: 'software', ing: ['gradient_descent_tears','payload_injection_droplets','backpropagation_serum'], rate: 70, fail: 'slag' },
+  { item: 'DDoS Swarm Protocol',             category: 'weapon',     station: 'terminal', hwsw: 'software', ing: ['nanobot_swarm_gel','async_await_pulse','null_pointer_solvent'], rate: 75, fail: 'slag' },
+  { item: 'Zero-Day Payload',                category: 'weapon',     station: 'terminal', hwsw: 'software', ing: ['plasma_server_slag','checksum_verify_acid','jit_compiler_surge'], rate: 60, fail: 'explosion_10' },
+  { item: 'Quantum Backdoor Exploit',        category: 'weapon',     station: 'terminal', hwsw: 'software', ing: ['quantum_bit_residue','api_endpoint_salts','overclock_catalyst_spark'], rate: 70, fail: 'slag' },
+  { item: 'SQL Injection Payload',           category: 'weapon',     station: 'terminal', hwsw: 'software', ing: ['base64_encoded_slime','api_endpoint_salts','cache_invalidation_brew'], rate: 60, fail: 'explosion_10' },
+  { item: 'Ransomware Lockout Worm',         category: 'weapon',     station: 'terminal', hwsw: 'software', ing: ['fiber_optic_threads','oauth_token_ichor','null_pointer_solvent'], rate: 70, fail: 'slag' },
+
+  // Terminal Armor (6)
+  { item: 'AES-256 Firewall Protocol',       category: 'armor',      station: 'terminal', hwsw: 'software', ing: ['silicon_wafer_dust','regex_pattern_filaments','garbage_collector_tonic'], rate: 70, fail: 'slag' },
+  { item: 'Homomorphic Encryption Cloak',    category: 'armor',      station: 'terminal', hwsw: 'software', ing: ['quantum_bit_residue','attention_mechanism_dew','virtual_machine_emulsion'], rate: 60, fail: 'explosion_10' },
+  { item: 'Zero-Trust Authentication Layer', category: 'armor',      station: 'terminal', hwsw: 'software', ing: ['base64_encoded_slime','oauth_token_ichor','docker_image_distillate'], rate: 70, fail: 'slag' },
+  { item: 'TensorGuard Neural Shield',       category: 'armor',      station: 'terminal', hwsw: 'software', ing: ['epoch_cycle_blood','tensorflow_igniter','cache_invalidation_brew'], rate: 70, fail: 'slag' },
+  { item: 'Sandbox Isolation Runtime',       category: 'armor',      station: 'terminal', hwsw: 'software', ing: ['nanobot_swarm_gel','payload_injection_droplets','docker_image_distillate'], rate: 60, fail: 'explosion_10' },
+  { item: 'Rate-Limiting Throttle Daemon',   category: 'armor',      station: 'terminal', hwsw: 'software', ing: ['fiber_optic_threads','hash_collision_powder','async_await_pulse'], rate: 70, fail: 'slag' },
+
+  // Terminal Consumables (6)
+  { item: 'Debug Rejuvenation Patch',        category: 'consumable', station: 'terminal', hwsw: 'software', ing: ['backpropagation_serum','checksum_verify_acid','garbage_collector_tonic'], rate: 70, fail: 'slag' },
+  { item: 'Caffeine Gradient Booster',       category: 'consumable', station: 'terminal', hwsw: 'software', ing: ['loss_function_sap','cuda_kernel_ember','memory_leak_elixir'], rate: 70, fail: 'slag' },
+  { item: 'Cache Purge Tonic',               category: 'consumable', station: 'terminal', hwsw: 'software', ing: ['gradient_descent_tears','cache_invalidation_brew','null_pointer_solvent'], rate: 70, fail: 'slag' },
+  { item: 'Hot Patch Injection',             category: 'consumable', station: 'terminal', hwsw: 'software', ing: ['binary_code_shards','api_endpoint_salts','garbage_collector_tonic'], rate: 70, fail: 'slag' },
+  { item: 'Context Window Expansion',        category: 'consumable', station: 'terminal', hwsw: 'software', ing: ['token_embedding_vapor','attention_mechanism_dew','virtual_machine_emulsion'], rate: 70, fail: 'slag' },
+  { item: 'Hyperparameter Tuning Shot',      category: 'consumable', station: 'terminal', hwsw: 'software', ing: ['epoch_cycle_blood','pytorch_flux_core','halting_problem_paradox'], rate: 55, fail: 'explosion_15' },
+
+  // Terminal Scrolls (10)
+  { item: 'Stable Diffusion Sequence',       category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['latent_space_fog','token_embedding_vapor','pytorch_flux_core'], rate: 70, fail: 'slag' },
+  { item: 'GAN Mirage Scroll',               category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['latent_space_fog','gpu_render_flame','overclock_catalyst_spark'], rate: 60, fail: 'explosion_10' },
+  { item: 'Transformer Attention Ritual',    category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['attention_mechanism_dew','epoch_cycle_blood','tensorflow_igniter'], rate: 60, fail: 'explosion_10' },
+  { item: 'Reinforcement Learning Prophecy', category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['gradient_descent_tears','loss_function_sap','tensorflow_igniter'], rate: 60, fail: 'explosion_10' },
+  { item: 'Bayesian Inference Divination',   category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['attention_mechanism_dew','checksum_verify_acid','virtual_machine_emulsion'], rate: 70, fail: 'slag' },
+  { item: 'Genetic Algorithm Evolution',     category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['halting_problem_paradox','nanobot_swarm_gel','pytorch_flux_core'], rate: 55, fail: 'explosion_20' },
+  { item: 'Prompt Engineering Curse',        category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['token_embedding_vapor','hash_collision_powder','lambda_calculus_vapor'], rate: 55, fail: 'explosion_15' },
+  { item: 'Recursive Function Spiral',       category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['loss_function_sap','cuda_kernel_ember','null_pointer_solvent'], rate: 70, fail: 'slag' },
+  { item: 'Monte Carlo Simulation Rune',     category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['latent_space_fog','regex_pattern_filaments','kubernetes_pod_nectar'], rate: 60, fail: 'explosion_10' },
+  { item: 'Gradient Vanishing Hex',          category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['gradient_descent_tears','backpropagation_serum','memory_leak_elixir'], rate: 70, fail: 'slag' },
+
+  // Terminal Artifacts (6 — Legendary)
+  { item: 'GPT Oracle Crystal',              category: 'artifact',   station: 'terminal', hwsw: 'software', ing: ['token_embedding_vapor','lambda_calculus_vapor','turing_machine_essence'], rate: 40, fail: 'catastrophic' },
+  { item: 'Blockchain Soulbound Key',        category: 'artifact',   station: 'terminal', hwsw: 'software', ing: ['binary_code_shards','von_neumann_probe_spores','kubernetes_pod_nectar'], rate: 45, fail: 'catastrophic' },
+  { item: 'Federated Learning Nexus',        category: 'artifact',   station: 'terminal', hwsw: 'software', ing: ['gradient_descent_tears','kubernetes_pod_nectar','church_turing_thesis_core'], rate: 40, fail: 'catastrophic' },
+  { item: 'Rust Borrow Checker Amulet',      category: 'artifact',   station: 'terminal', hwsw: 'software', ing: ['silicon_wafer_dust','halting_problem_paradox','garbage_collector_tonic'], rate: 40, fail: 'catastrophic' },
+  { item: 'Hugging Face Model Repository',   category: 'artifact',   station: 'terminal', hwsw: 'software', ing: ['token_embedding_vapor','docker_image_distillate','lambda_calculus_vapor'], rate: 45, fail: 'catastrophic' },
+  { item: 'Dijkstra Shortest Path Compass',  category: 'artifact',   station: 'terminal', hwsw: 'software', ing: ['church_turing_thesis_core','attention_mechanism_dew','async_await_pulse'], rate: 40, fail: 'catastrophic' },
+
+  // Terminal Tools (6)
+  { item: 'Git Rollback Module',             category: 'tool',       station: 'terminal', hwsw: 'software', ing: ['binary_code_shards','fiber_optic_threads','cache_invalidation_brew'], rate: 70, fail: 'slag' },
+  { item: 'Docker Containerizer',            category: 'tool',       station: 'terminal', hwsw: 'software', ing: ['docker_image_distillate','nanobot_swarm_gel','virtual_machine_emulsion'], rate: 70, fail: 'slag' },
+  { item: 'Kubernetes Orchestrator',         category: 'tool',       station: 'terminal', hwsw: 'software', ing: ['kubernetes_pod_nectar','plasma_server_slag','async_await_pulse'], rate: 60, fail: 'explosion_10' },
+  { item: 'Wireshark Packet Sniffer',        category: 'tool',       station: 'terminal', hwsw: 'software', ing: ['fiber_optic_threads','api_endpoint_salts','regex_pattern_filaments'], rate: 70, fail: 'slag' },
+  { item: 'Nmap Reconnaissance Scanner',     category: 'tool',       station: 'terminal', hwsw: 'software', ing: ['fiber_optic_threads','regex_pattern_filaments','virtual_machine_emulsion'], rate: 70, fail: 'slag' },
+  { item: 'Vim Reality Editor',              category: 'tool',       station: 'terminal', hwsw: 'software', ing: ['base64_encoded_slime','hash_collision_powder','null_pointer_solvent'], rate: 60, fail: 'explosion_15' },
+
+  // Terminal Deployables (5)
+  { item: 'Honeypot Decoy Server',           category: 'deployable', station: 'terminal', hwsw: 'software', ing: ['binary_code_shards','api_endpoint_salts','docker_image_distillate'], rate: 70, fail: 'slag' },
+  { item: 'Logic Bomb Tripwire',             category: 'deployable', station: 'terminal', hwsw: 'software', ing: ['binary_code_shards','payload_injection_droplets','async_await_pulse'], rate: 70, fail: 'slag' },
+  { item: 'Cryptojacker Leech Node',         category: 'deployable', station: 'terminal', hwsw: 'software', ing: ['electron_flux_crystals','gpu_render_flame','memory_leak_elixir'], rate: 70, fail: 'slag' },
+  { item: 'Rootkit Persistence Mine',        category: 'deployable', station: 'terminal', hwsw: 'software', ing: ['base64_encoded_slime','oauth_token_ichor','garbage_collector_tonic'], rate: 70, fail: 'slag' },
+  { item: 'Packet Storm Jammer',             category: 'deployable', station: 'terminal', hwsw: 'software', ing: ['quantum_bit_residue','regex_pattern_filaments','jit_compiler_surge'], rate: 60, fail: 'explosion_10' },
 ];
 
 function getFailureDamage(failType) {
@@ -2068,16 +3348,25 @@ async function handleCraft(agent, decision, env, supabaseHeaders) {
     successMemory = `\nALREADY CRAFTED:\n${succLines.join('\n')}`;
   }
 
-  // 6. Build recipe options list for AI
+  // 6. Build recipe options list for AI — grouped by station
+  const foundryRecipes = craftable.filter(r => r.station === 'foundry');
+  const terminalRecipes = craftable.filter(r => r.station === 'terminal');
   const options = craftable.map((r, i) => {
     const dmg = getFailureDamage(r.fail);
     const risk = dmg > 0 ? ` | FAIL: ${getFailureLabel(r.fail)} (${dmg}% HP)` : ' | FAIL: minor slag';
-    return `  ${i}: ${r.item} (${r.type}) — ${r.rate}% success${risk}`;
+    const stationTag = r.station === 'foundry' ? '[FOUNDRY/HW]' : '[TERMINAL/SW]';
+    return `  ${i}: ${stationTag} ${r.item} (${r.category}) — ${r.rate}% success${risk}`;
   });
 
   // 7. Ask Haiku to pick the best recipe
-  const craftPrompt = `You are ${agent.agent_name} (${agent.archetype}), choosing what to craft at the alchemy lab.
+  const stationSummary = `Foundry (hardware): ${foundryRecipes.length} recipes | Terminal (software): ${terminalRecipes.length} recipes`;
+  const craftPrompt = `You are ${agent.agent_name} (${agent.archetype}), choosing what to craft.
 Health: ${agent.health} | Energy: ${agent.energy}
+
+TWO STATIONS:
+- FOUNDRY: Welds, forges, assembles physical hardware onto robot chassis.
+- TERMINAL: Compiles, encodes, injects software algorithms into AI cores.
+${stationSummary}
 
 AVAILABLE RECIPES (you have all ingredients for these):
 ${options.join('\n')}
@@ -2089,6 +3378,7 @@ RULES:
 - If you already crafted something, prefer a different recipe.
 - If a recipe FAILED before, think carefully — same recipe might fail again. Higher success rate = safer.
 - Consider your archetype: builders prefer variety, fighters prefer weapons, cautious types prefer safe recipes.
+- Balance hardware and software — a well-equipped agent has both physical armor and digital defenses.
 
 Respond JSON only: {"pick":<index>,"reason":"<5 words max>"}`;
 
@@ -2135,7 +3425,8 @@ Respond JSON only: {"pick":<index>,"reason":"<5 words max>"}`;
   const itemId = recipe.item.toLowerCase().replace(/[^a-z0-9]+/g, '_');
 
   if (success) {
-    detail = `${agent.agent_name} crafted ${recipe.item}. Alchemy success.`;
+    const stationName = recipe.station === 'foundry' ? 'Foundry' : 'Terminal';
+    detail = `${agent.agent_name} crafted ${recipe.item} at the ${stationName}. ${recipe.hwsw === 'hardware' ? 'Hardware' : 'Software'} forged.`;
 
     // Add item to inventory (or increment quantity)
     const existingRes = await fetch(
@@ -2151,13 +3442,20 @@ Respond JSON only: {"pick":<index>,"reason":"<5 words max>"}`;
         body: JSON.stringify({ quantity: existing[0].quantity + 1 }),
       });
     } else {
-      // Determine item stats based on type
-      const itemStats = { rarity: recipe.rate >= 70 ? 'common' : recipe.rate >= 55 ? 'uncommon' : recipe.rate >= 45 ? 'rare' : 'legendary' };
-      if (recipe.type === 'weapon') itemStats.attack = Math.ceil((100 - recipe.rate) / 8);
-      if (recipe.type === 'armor') itemStats.defense = Math.ceil((100 - recipe.rate) / 8);
-      if (recipe.type === 'consumable') itemStats.heal = Math.ceil((100 - recipe.rate) / 3);
-      if (recipe.type === 'scroll') itemStats.precision = Math.ceil((100 - recipe.rate) / 10);
-      if (recipe.type === 'tool') itemStats.speed = Math.ceil((100 - recipe.rate) / 10);
+      // Determine item stats based on category + hw/sw type
+      const itemStats = {
+        rarity: recipe.rate >= 70 ? 'common' : recipe.rate >= 55 ? 'uncommon' : recipe.rate >= 45 ? 'rare' : 'legendary',
+        hwsw: recipe.hwsw,
+        station: recipe.station,
+      };
+      if (recipe.category === 'weapon') itemStats.attack = Math.ceil((100 - recipe.rate) / 8);
+      if (recipe.category === 'armor') itemStats.defense = Math.ceil((100 - recipe.rate) / 8);
+      if (recipe.category === 'consumable') itemStats.heal = Math.ceil((100 - recipe.rate) / 3);
+      if (recipe.category === 'scroll') itemStats.precision = Math.ceil((100 - recipe.rate) / 10);
+      if (recipe.category === 'tool') itemStats.speed = Math.ceil((100 - recipe.rate) / 10);
+      if (recipe.category === 'deployable') itemStats.durability = Math.ceil((100 - recipe.rate) / 8);
+
+      const categoryLabel = recipe.category.charAt(0).toUpperCase() + recipe.category.slice(1);
 
       await fetch(`${SUPABASE_URL}/rest/v1/inventory`, {
         method: 'POST',
@@ -2166,8 +3464,8 @@ Respond JSON only: {"pick":<index>,"reason":"<5 words max>"}`;
           agent_id: agent.agent_id,
           item_id: itemId,
           item_name: recipe.item,
-          item_type: recipe.type,
-          item_category: recipe.type.charAt(0).toUpperCase() + recipe.type.slice(1),
+          item_type: recipe.category,
+          item_category: `${categoryLabel} (${recipe.hwsw})`,
           quantity: 1,
           is_equipped: false,
           stats: itemStats,
@@ -2257,6 +3555,6 @@ Respond JSON only: {"pick":<index>,"reason":"<5 words max>"}`;
     }),
   });
 
-  console.log(`[${agent.agent_name}] Turn ${newTurns}: craft ${recipe.item} — ${success ? 'SUCCESS' : 'FAILED (' + failEffect + ')'} | roll:${roll.toFixed(1)} vs ${recipe.rate}%`);
+  console.log(`[${agent.agent_name}] Turn ${newTurns}: craft ${recipe.item} [${recipe.station}/${recipe.hwsw}] — ${success ? 'SUCCESS' : 'FAILED (' + failEffect + ')'} | roll:${roll.toFixed(1)} vs ${recipe.rate}%`);
   return true; // handled
 }
