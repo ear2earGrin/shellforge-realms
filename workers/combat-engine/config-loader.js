@@ -52,7 +52,8 @@ const DEFAULT_CONFIG = {
     deathmatch_loser_shell_share: 0.5,   // winner takes half loser's $SHELL
     deathmatch_winner_takes_gear: true,
     // Accept/decline flow
-    pvp_accept_window_hours: 24,          // defender has 24h to accept/decline
+    pvp_accept_window_hours: 1,           // Ghost has 1h to manually respond
+    pvp_auto_decide_after_minutes: 10,    // AI auto-decides after this long with no Ghost action
     decline_karma_penalty: 5,             // karma lost when declining (rivals+ heat)
     decline_shell_forfeit_pct: 0.1,       // % of wager forfeited to challenger (rivals+ heat)
     decline_min_forfeit: 5,               // minimum $SHELL forfeit

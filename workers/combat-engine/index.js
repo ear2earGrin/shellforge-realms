@@ -32,6 +32,7 @@ import {
   createPvpMatch, createGauntletMatch, createWildEncounter, createDeathmatch,
   processPendingMatches, processActiveMatches,
   acceptPvpChallenge, declinePvpChallenge, expirePendingAccepts,
+  processAutoDecideChallenges,
 } from './matchmaking.js';
 import { initializeMatch, resolveTurn } from './turn-resolver.js';
 import {
@@ -433,10 +434,11 @@ async function handleScheduled(controller, env) {
     return;
   }
 
-  // Default cron: */1 — expire unanswered challenges + process pending + advance active + check decoherence
-  const exp = await expirePendingAccepts(env);
+  // Default cron: */1 — auto-decide stale PvP + expire timeouts + init pending + advance active + decoherence
+  const auto = await processAutoDecideChallenges(env);
+  const exp  = await expirePendingAccepts(env);
   const init = await processPendingMatches(env, initializeMatch);
-  const adv = await processActiveMatches(env, async (env, matchId) => {
+  const adv  = await processActiveMatches(env, async (env, matchId) => {
     const r = await resolveTurn(env, matchId);
     if (r.ok && r.status === 'resolved') {
       await postMatchHooks(env, matchId, r);
@@ -445,7 +447,7 @@ async function handleScheduled(controller, env) {
   });
   const collapses = await checkCollapses(env);
 
-  console.log(`[cron] expired challenges: ${exp.expired} | pending init: ${init.initialized} | turns advanced: ${adv.advanced} | collapses: ${collapses.collapsed}`);
+  console.log(`[cron] ai-decide: ${auto.decided} (acc:${auto.accepted} dec:${auto.declined}) | expired: ${exp.expired} | init: ${init.initialized} | turns: ${adv.advanced} | collapses: ${collapses.collapsed}`);
 }
 
 // ─── Main fetch handler ─────────────────────────────────────

@@ -14,6 +14,25 @@
 import { sb, getOne } from './supabase.js';
 import { syncConfig } from './config-loader.js';
 
+// ──────────────────────────────────────────────────────────
+//  Auto-accept base chances per archetype (aggression-driven).
+//  Used when no Ghost responds within the grace window.
+// ──────────────────────────────────────────────────────────
+const ARCHETYPE_ACCEPT_BASE = {
+  '0-Day Primer':        0.75,
+  'Consensus Node':      0.35,
+  '0xOracle':            0.30,
+  'Binary Sculptr':      0.55,
+  '0xAdversarial':       0.85,
+  'Root Auth':           0.60,
+  'Buffer Sentinel':     0.50,
+  'Noise Injector':      0.80,
+  'Ordinate Mapper':     0.45,
+  'DDoS Insurgent':      0.80,
+  'Bound Encryptor':     0.40,
+  'Morph Layer':         0.55,
+};
+
 /**
  * Create a standard PvP duel.
  */
@@ -256,6 +275,101 @@ export async function declinePvpChallenge(env, matchId, agentBId, reason = 'decl
  * Refunds challenger, no penalty to defender (passive timeout).
  * Called from cron.
  */
+/**
+ * AI auto-decide for a single pending_accept challenge.
+ * Used when the Ghost has gone silent past the auto-decide grace window.
+ * Pure deterministic weighting — no Haiku call (cheap, safe under load).
+ *
+ * Factors:
+ *   base archetype accept %
+ *   + karma / 200 (−0.5 to +0.5)
+ *   − (1 − hp_pct) * 0.6          (low HP → defensive)
+ *   + (heat / 100) * 0.4           (high heat → spoiling for a fight)
+ *   forced accept at sworn+ heat
+ *   forced decline if shell < wager OR hp < 20%
+ */
+export async function autoDecideChallenge(env, match) {
+  const defender = await getOne(env, 'agents',
+    `agent_id=eq.${match.agent_b}&select=archetype,karma,shell_balance,health`);
+  if (!defender) return { decision: 'decline', reason: 'defender missing' };
+
+  // Hard gates
+  const hp = defender.health ?? 100;
+  if (hp < 20) return { decision: 'decline', reason: 'low HP — strategic retreat' };
+  if (match.shell_pot > 0 && (defender.shell_balance || 0) < match.shell_pot) {
+    return { decision: 'decline', reason: 'insufficient $SHELL' };
+  }
+
+  // Feud heat check — forced accept at sworn+
+  try {
+    const { heatLevel } = await import('./feuds.js');
+    const { normalizeFeudPair } = await import('./supabase.js');
+    const pair = normalizeFeudPair(match.agent_a, match.agent_b);
+    const feud = await getOne(env, 'agent_feuds', `agent_a=eq.${pair.agent_a}&agent_b=eq.${pair.agent_b}`);
+    const maxHeat = feud ? Math.max(feud.heat_a || 0, feud.heat_b || 0) : 0;
+    const level = heatLevel(maxHeat);
+    if (level === 'sworn_enemies' || level === 'blood_feud') {
+      return { decision: 'accept', reason: `forced by ${level.replace('_',' ')}` };
+    }
+
+    // Weighted chance
+    const base = ARCHETYPE_ACCEPT_BASE[defender.archetype] ?? 0.5;
+    const karmaMod = (defender.karma || 0) / 200;      // −0.5..+0.5
+    const hpMod = -(1 - (hp / 100)) * 0.6;              // hurt = less brave
+    const heatMod = (maxHeat / 100) * 0.4;
+    const chance = Math.max(0.05, Math.min(0.95, base + karmaMod + hpMod + heatMod));
+    const roll = Math.random();
+    return {
+      decision: roll < chance ? 'accept' : 'decline',
+      reason: `archetype ${defender.archetype || 'unknown'} · chance ${Math.round(chance*100)}% · roll ${Math.round(roll*100)}%`,
+    };
+  } catch (e) {
+    // On any error, decline safely
+    return { decision: 'decline', reason: 'decide-error: ' + e.message };
+  }
+}
+
+/**
+ * Cron pass: for any pending_accept challenge older than
+ * cfg.pvp_auto_decide_after_minutes, run AI auto-decide.
+ * If decision is accept → call acceptPvpChallenge(); if decline →
+ * declinePvpChallenge() with a 'no-ghost' reason (no karma penalty).
+ */
+export async function processAutoDecideChallenges(env) {
+  const cfg = syncConfig().arena;
+  const graceMin = cfg.pvp_auto_decide_after_minutes || 10;
+  const cutoff = new Date(Date.now() - graceMin * 60 * 1000).toISOString();
+  const rows = await sb.get(env,
+    `combat_matches?status=eq.pending_accept&created_at=lt.${cutoff}&select=id,agent_a,agent_b,shell_pot,escrow_a`);
+  if (!rows || rows.length === 0) return { decided: 0 };
+
+  let accepted = 0, declined = 0;
+  for (const m of rows) {
+    const verdict = await autoDecideChallenge(env, m);
+    if (verdict.decision === 'accept') {
+      const r = await acceptPvpChallenge(env, m.id, m.agent_b);
+      if (r.ok) accepted++;
+      else {
+        // Accept failed (e.g., balance slipped) — decline cleanly
+        await declinePvpChallenge(env, m.id, m.agent_b, 'ai-auto-decline:' + (r.error || 'unknown'));
+        declined++;
+      }
+    } else {
+      // AI decided to decline — don't apply feud penalties (Ghost was absent)
+      if (m.escrow_a > 0) await refundShell(env, m.agent_a, m.escrow_a);
+      await sb.patch(env, `combat_matches?id=eq.${m.id}`, {
+        status: 'declined',
+        declined_by: m.agent_b,
+        decline_reason: 'ai-auto:' + verdict.reason,
+        resolved_at: new Date().toISOString(),
+        escrow_a: 0,
+      });
+      declined++;
+    }
+  }
+  return { decided: accepted + declined, accepted, declined };
+}
+
 export async function expirePendingAccepts(env) {
   const now = new Date().toISOString();
   const expired = await sb.get(env, `combat_matches?status=eq.pending_accept&expires_at=lt.${now}&select=id,agent_a,agent_b,escrow_a`);
