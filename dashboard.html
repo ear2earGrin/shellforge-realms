@@ -56,6 +56,100 @@
             to { opacity: 0; }
         }
 
+        /* ─── Dashboard Tutorial Tour ─── */
+        .tour-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            z-index: 50000;
+            transition: opacity 0.3s ease;
+        }
+        .tour-spotlight {
+            position: absolute;
+            border: 2px solid #00f0ff;
+            border-radius: 8px;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.75), 0 0 30px rgba(0, 240, 255, 0.3);
+            z-index: 50001;
+            transition: all 0.4s ease;
+            pointer-events: none;
+        }
+        .tour-tooltip {
+            position: absolute;
+            z-index: 50002;
+            background: rgba(10, 10, 15, 0.96);
+            border: 1px solid rgba(0, 240, 255, 0.4);
+            border-radius: 6px;
+            padding: 14px 18px;
+            max-width: 300px;
+            font-family: 'IBM Plex Mono', monospace;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 240, 255, 0.1);
+        }
+        .tour-tooltip .tour-step-label {
+            font-size: 0.55rem;
+            color: rgba(0, 240, 255, 0.5);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+        .tour-tooltip .tour-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 0.8rem;
+            color: #00f0ff;
+            letter-spacing: 0.08em;
+            margin-bottom: 8px;
+        }
+        .tour-tooltip .tour-text {
+            font-size: 0.7rem;
+            color: rgba(224, 224, 224, 0.85);
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+        .tour-tooltip .tour-buttons {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .tour-tooltip .tour-btn {
+            background: rgba(0, 240, 255, 0.08);
+            border: 1px solid rgba(0, 240, 255, 0.35);
+            color: #00f0ff;
+            padding: 5px 14px;
+            border-radius: 4px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.65rem;
+            cursor: pointer;
+            letter-spacing: 0.06em;
+            transition: all 0.15s;
+        }
+        .tour-tooltip .tour-btn:hover {
+            background: rgba(0, 240, 255, 0.15);
+            border-color: #00f0ff;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+        }
+        .tour-tooltip .tour-skip {
+            background: none;
+            border: none;
+            color: rgba(200, 200, 200, 0.4);
+            font-size: 0.6rem;
+            cursor: pointer;
+            padding: 4px 8px;
+            font-family: 'IBM Plex Mono', monospace;
+        }
+        .tour-tooltip .tour-skip:hover { color: rgba(200, 200, 200, 0.7); }
+        .tour-dots {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+            margin-top: 8px;
+        }
+        .tour-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: rgba(0, 240, 255, 0.2);
+        }
+        .tour-dot.active { background: #00f0ff; }
+        .tour-dot.done { background: rgba(0, 240, 255, 0.5); }
+
         /* ── Global game-styled scrollbars ── */
         * {
             scrollbar-width: thin;
@@ -1021,66 +1115,88 @@
             line-height: 1.4;
         }
 
-        .stat-bar {
-            margin-bottom: 15px;
+        .stat-bars-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 12px;
         }
-
+        .stat-bar {
+            margin-bottom: 0;
+        }
         .stat-label {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 5px;
-            font-size: 0.85rem;
+            align-items: center;
+            margin-bottom: 4px;
+            font-size: 0.72rem;
             color: var(--color-text-dim);
         }
-
-        .stat-value {
-            color: var(--color-primary);
-            font-weight: bold;
+        .stat-label .stat-icon {
+            font-size: 0.65rem;
+            margin-right: 4px;
+            opacity: 0.7;
         }
-
+        .stat-value {
+            font-weight: bold;
+            font-size: 0.72rem;
+        }
         .bar-container {
             width: 100%;
-            height: 8px;
-            background: rgba(74, 222, 128, 0.1);
-            border-radius: 4px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
             overflow: hidden;
-            border: 1px solid rgba(74, 222, 128, 0.3);
+            position: relative;
         }
-
         .bar-fill {
             height: 100%;
-            background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
-            border-radius: 4px;
-            transition: width 0.3s ease;
-            box-shadow: 0 0 10px var(--color-primary);
+            border-radius: 3px;
+            transition: width 0.5s ease;
+            position: relative;
         }
-
+        /* Energy: blue-green gradient */
         .bar-fill.energy {
-            background: linear-gradient(90deg, #4ade80, #00aaff);
+            background: linear-gradient(90deg, #0ea5e9, #22d3ee);
+            box-shadow: 0 0 8px rgba(14, 165, 233, 0.4);
         }
-
+        .stat-bar.energy-bar .stat-value { color: #22d3ee; }
+        .stat-bar.energy-bar .stat-icon { color: #22d3ee; }
+        /* Health: green, shifts to red when low */
         .bar-fill.health {
-            background: linear-gradient(90deg, #00ff00, #66ff00);
-            position: relative;
+            background: linear-gradient(90deg, #4ade80, #22c55e);
+            box-shadow: 0 0 8px rgba(74, 222, 128, 0.4);
         }
-
-        /* Segmented health bar with cyber lines */
-        .bar-container.health-bar {
-            position: relative;
+        .bar-fill.health.low { background: linear-gradient(90deg, #ef4444, #f97316); box-shadow: 0 0 8px rgba(239,68,68,0.4); }
+        .bar-fill.health.critical { background: #ef4444; animation: bar-pulse 1s ease-in-out infinite; }
+        .stat-bar.health-bar .stat-value { color: #4ade80; }
+        .stat-bar.health-bar .stat-icon { color: #4ade80; }
+        .stat-bar.health-bar.low .stat-value { color: #f97316; }
+        .stat-bar.health-bar.critical .stat-value { color: #ef4444; }
+        /* Coherence: cyan, shifts to yellow/red when low */
+        .bar-fill.coherence {
+            background: linear-gradient(90deg, #06b6d4, #00f0ff);
+            box-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
         }
-
-        .bar-container.health-bar::after {
+        .bar-fill.coherence.low { background: linear-gradient(90deg, #eab308, #f59e0b); box-shadow: 0 0 8px rgba(234,179,8,0.4); }
+        .bar-fill.coherence.critical { background: #ef4444; animation: bar-pulse 1.5s ease-in-out infinite; }
+        .stat-bar.coherence-bar .stat-value { color: #00f0ff; }
+        .stat-bar.coherence-bar .stat-icon { color: #00f0ff; }
+        .stat-bar.coherence-bar.low .stat-value { color: #eab308; }
+        .stat-bar.coherence-bar.critical .stat-value { color: #ef4444; }
+        @keyframes bar-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        /* Segmented overlay on all bars */
+        .bar-container::after {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            inset: 0;
             background-image:
-                linear-gradient(90deg, transparent 19.8%, rgba(10, 10, 15, 0.8) 19.8%, rgba(10, 10, 15, 0.8) 20.2%, transparent 20.2%),
-                linear-gradient(90deg, transparent 39.8%, rgba(10, 10, 15, 0.8) 39.8%, rgba(10, 10, 15, 0.8) 40.2%, transparent 40.2%),
-                linear-gradient(90deg, transparent 59.8%, rgba(10, 10, 15, 0.8) 59.8%, rgba(10, 10, 15, 0.8) 60.2%, transparent 60.2%),
-                linear-gradient(90deg, transparent 79.8%, rgba(10, 10, 15, 0.8) 79.8%, rgba(10, 10, 15, 0.8) 80.2%, transparent 80.2%);
+                linear-gradient(90deg, transparent 24.5%, rgba(10,10,15,0.6) 24.5%, rgba(10,10,15,0.6) 25.5%, transparent 25.5%),
+                linear-gradient(90deg, transparent 49.5%, rgba(10,10,15,0.6) 49.5%, rgba(10,10,15,0.6) 50.5%, transparent 50.5%),
+                linear-gradient(90deg, transparent 74.5%, rgba(10,10,15,0.6) 74.5%, rgba(10,10,15,0.6) 75.5%, transparent 75.5%);
             pointer-events: none;
             z-index: 2;
         }
@@ -3059,23 +3175,35 @@
                 </div>
             </div>
 
-            <div class="stat-bar">
-                <div class="stat-label">
-                    <span>Energy</span>
-                    <span class="stat-value" id="energyValue">--/100</span>
+            <div class="stat-bars-group">
+                <div class="stat-bar energy-bar">
+                    <div class="stat-label">
+                        <span><span class="stat-icon">⚡</span>Energy</span>
+                        <span class="stat-value" id="energyValue">--/100</span>
+                    </div>
+                    <div class="bar-container">
+                        <div class="bar-fill energy" id="energyBar" style="width: 73%;"></div>
+                    </div>
                 </div>
-                <div class="bar-container">
-                    <div class="bar-fill energy" id="energyBar" style="width: 73%;"></div>
-                </div>
-            </div>
 
-            <div class="stat-bar">
-                <div class="stat-label">
-                    <span>Health</span>
-                    <span class="stat-value" id="healthValue">100/100</span>
+                <div class="stat-bar health-bar">
+                    <div class="stat-label">
+                        <span><span class="stat-icon">❤</span>Health</span>
+                        <span class="stat-value" id="healthValue">100/100</span>
+                    </div>
+                    <div class="bar-container">
+                        <div class="bar-fill health" id="healthBar" style="width: 100%;"></div>
+                    </div>
                 </div>
-                <div class="bar-container health-bar">
-                    <div class="bar-fill health" id="healthBar" style="width: 100%;"></div>
+
+                <div class="stat-bar coherence-bar">
+                    <div class="stat-label">
+                        <span><span class="stat-icon">◈</span>Coherence</span>
+                        <span class="stat-value" id="coherenceValue">--/100</span>
+                    </div>
+                    <div class="bar-container">
+                        <div class="bar-fill coherence" id="coherenceBar" style="width: 100%;"></div>
+                    </div>
                 </div>
             </div>
 
@@ -5293,6 +5421,24 @@
 
         document.getElementById('healthValue').textContent = `${agent.health}/100`;
         document.getElementById('healthBar').style.width = `${agent.health}%`;
+        // Health bar color classes
+        var healthBarEl = document.getElementById('healthBar');
+        var healthStatEl = healthBarEl.closest('.stat-bar');
+        healthBarEl.classList.remove('low', 'critical');
+        healthStatEl.classList.remove('low', 'critical');
+        if (agent.health <= 20) { healthBarEl.classList.add('critical'); healthStatEl.classList.add('critical'); }
+        else if (agent.health <= 40) { healthBarEl.classList.add('low'); healthStatEl.classList.add('low'); }
+
+        // Coherence bar
+        var coherence = agent.coherence ?? 100;
+        document.getElementById('coherenceValue').textContent = `${coherence}/100`;
+        document.getElementById('coherenceBar').style.width = `${coherence}%`;
+        var cohBarEl = document.getElementById('coherenceBar');
+        var cohStatEl = cohBarEl.closest('.stat-bar');
+        cohBarEl.classList.remove('low', 'critical');
+        cohStatEl.classList.remove('low', 'critical');
+        if (coherence <= 20) { cohBarEl.classList.add('critical'); cohStatEl.classList.add('critical'); }
+        else if (coherence <= 40) { cohBarEl.classList.add('low'); cohStatEl.classList.add('low'); }
 
         document.getElementById('karmaValue').textContent = agent.karma >= 0 ? `+${agent.karma}` : agent.karma;
         document.getElementById('locationValue').textContent = agent.location || 'Nexarch';
@@ -5843,30 +5989,184 @@
                 history.replaceState(null, '', cleanUrl);
             }
 
-            const hints = [
-                { text: 'Your agent is alive. It will act on its own every few hours.', delay: 5000 },
-                { text: 'Use the whisper panel to suggest actions — but it may ignore you.', delay: 18000 },
-                { text: 'Watch the activity feed. Every choice shapes its karma and story.', delay: 35000 }
-            ];
-
-            hints.forEach(h => {
-                setTimeout(() => showGhostHint(h.text), h.delay);
-            });
+            // Start dashboard tour after fade-in completes
+            setTimeout(startDashboardTour, 2500);
         }
 
-        function showGhostHint(text) {
-            const existing = document.querySelector('.ghost-hint');
-            if (existing) existing.remove();
+        // ─── Dashboard Tutorial Tour ─────────────────────────────
+        var _tourSteps = [
+            {
+                target: '.left-column',
+                title: 'YOUR AGENT',
+                text: 'This is your robot. Energy depletes with actions and recovers with rest. Health drops in dangerous zones. The cyan bar is Coherence — it decays if you don\'t whisper.',
+                pos: 'right'
+            },
+            {
+                target: '.equipped-grid',
+                title: 'EQUIPPED GEAR',
+                text: 'Five gear slots: Melee weapon, Ranged weapon, Helm, Chest armor, and Trinket. Items equipped here boost combat stats.',
+                pos: 'right'
+            },
+            {
+                target: '.map-area',
+                title: 'WORLD MAP',
+                text: 'The Realms. Your agent\'s dot shows their current location. They travel between zones on their own — you can only suggest where to go.',
+                pos: 'left'
+            },
+            {
+                target: '.icon-btn.whisper-btn',
+                title: 'WHISPER',
+                text: 'Your only power. Send a suggestion — but your agent may ignore it. Each whisper restores Coherence. Use them wisely.',
+                pos: 'top'
+            },
+            {
+                target: '.icon-btn:nth-child(2)',
+                title: 'INVENTORY',
+                text: 'Everything your agent finds, buys, or crafts. Item icons show rarity by border color. Hover for details.',
+                pos: 'top'
+            },
+            {
+                target: '.icon-btn:nth-child(4)',
+                title: 'CHRONICLE',
+                text: 'The activity log. Every action, trade, battle, and discovery is recorded here. This is your agent\'s story.',
+                pos: 'top'
+            },
+            {
+                target: '#btnMarket',
+                title: 'MARKET',
+                text: 'Buy and sell gear. Browse NPC shops or items listed by other players\' agents. Only functional in towns.',
+                pos: 'top'
+            },
+            {
+                target: '#btnWorkshop',
+                title: 'WORKSHOP',
+                text: 'Craft items. The Foundry welds hardware from components. The Terminal compiles software from code modules. Three ingredients, no recipe book.',
+                pos: 'top'
+            },
+            {
+                target: '.status-tags',
+                title: 'STATUS EFFECTS',
+                text: 'Active conditions from location and health. Green is good, red is bad. These change as your agent moves and acts.',
+                pos: 'right'
+            },
+            {
+                target: null,
+                title: 'YOU ARE THE GHOST',
+                text: 'Your agent acts every 2 hours. It fights, trades, crafts, and explores on its own. You watch. You whisper. The story unfolds. Good luck, Ghost.',
+                pos: 'center'
+            }
+        ];
 
-            const hint = document.createElement('div');
-            hint.className = 'ghost-hint';
-            hint.textContent = text;
-            document.body.appendChild(hint);
+        function startDashboardTour() {
+            if (localStorage.getItem('shellforge_tour_done')) return;
 
-            setTimeout(() => {
-                hint.classList.add('fade-out');
-                setTimeout(() => hint.remove(), 1000);
-            }, 8000);
+            var currentStep = 0;
+
+            // Create overlay elements
+            var overlay = document.createElement('div');
+            overlay.className = 'tour-overlay';
+            overlay.style.background = 'transparent'; // spotlight handles dimming
+            document.body.appendChild(overlay);
+
+            var spotlight = document.createElement('div');
+            spotlight.className = 'tour-spotlight';
+            document.body.appendChild(spotlight);
+
+            var tooltip = document.createElement('div');
+            tooltip.className = 'tour-tooltip';
+            document.body.appendChild(tooltip);
+
+            function showStep(idx) {
+                var step = _tourSteps[idx];
+                var el = step.target ? document.querySelector(step.target) : null;
+
+                // Dots
+                var dots = _tourSteps.map(function(_, i) {
+                    return '<span class="tour-dot' + (i < idx ? ' done' : i === idx ? ' active' : '') + '"></span>';
+                }).join('');
+
+                // Tooltip content
+                tooltip.innerHTML = '<div class="tour-step-label">Step ' + (idx + 1) + ' of ' + _tourSteps.length + '</div>'
+                    + '<div class="tour-title">' + step.title + '</div>'
+                    + '<div class="tour-text">' + step.text + '</div>'
+                    + '<div class="tour-buttons">'
+                    + '<button class="tour-skip" onclick="endTour()">Skip Tour</button>'
+                    + '<button class="tour-btn" onclick="nextTourStep()">' + (idx === _tourSteps.length - 1 ? 'Start Playing' : 'Next →') + '</button>'
+                    + '</div>'
+                    + '<div class="tour-dots">' + dots + '</div>';
+
+                if (el) {
+                    var r = el.getBoundingClientRect();
+                    var pad = 6;
+
+                    // Position spotlight
+                    spotlight.style.display = 'block';
+                    spotlight.style.left = (r.left - pad + window.scrollX) + 'px';
+                    spotlight.style.top = (r.top - pad + window.scrollY) + 'px';
+                    spotlight.style.width = (r.width + pad * 2) + 'px';
+                    spotlight.style.height = (r.height + pad * 2) + 'px';
+
+                    // Position tooltip based on step.pos
+                    tooltip.style.display = 'block';
+                    var tw = 300;
+                    if (step.pos === 'right') {
+                        tooltip.style.left = (r.right + 16 + window.scrollX) + 'px';
+                        tooltip.style.top = (r.top + window.scrollY) + 'px';
+                    } else if (step.pos === 'left') {
+                        tooltip.style.left = (r.left - tw - 16 + window.scrollX) + 'px';
+                        tooltip.style.top = (r.top + window.scrollY) + 'px';
+                    } else if (step.pos === 'top') {
+                        tooltip.style.left = Math.max(8, r.left + r.width / 2 - tw / 2 + window.scrollX) + 'px';
+                        tooltip.style.top = (r.top - 160 + window.scrollY) + 'px';
+                    } else if (step.pos === 'bottom') {
+                        tooltip.style.left = Math.max(8, r.left + r.width / 2 - tw / 2 + window.scrollX) + 'px';
+                        tooltip.style.top = (r.bottom + 16 + window.scrollY) + 'px';
+                    }
+
+                    // Clamp to viewport
+                    var tr = tooltip.getBoundingClientRect();
+                    if (tr.right > window.innerWidth - 8) tooltip.style.left = (window.innerWidth - tw - 16) + 'px';
+                    if (tr.left < 8) tooltip.style.left = '8px';
+                    if (tr.bottom > window.innerHeight - 8) tooltip.style.top = (window.innerHeight - tr.height - 16) + 'px';
+                } else {
+                    // Center (final step)
+                    spotlight.style.display = 'none';
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = '50%';
+                    tooltip.style.top = '50%';
+                    tooltip.style.transform = 'translate(-50%, -50%)';
+                }
+            }
+
+            window.nextTourStep = function() {
+                currentStep++;
+                if (currentStep >= _tourSteps.length) {
+                    endTour();
+                    return;
+                }
+                tooltip.style.transform = '';
+                showStep(currentStep);
+            };
+
+            window.endTour = function() {
+                localStorage.setItem('shellforge_tour_done', 'true');
+                overlay.remove();
+                spotlight.remove();
+                tooltip.remove();
+                delete window.nextTourStep;
+                delete window.endTour;
+            };
+
+            showStep(0);
+        }
+
+        // Allow manual tour restart from console: startDashboardTour()
+        window.startDashboardTour = startDashboardTour;
+
+        // DEV: auto-start tour if URL has ?tour=1
+        if (new URLSearchParams(window.location.search).get('tour') === '1') {
+            localStorage.removeItem('shellforge_tour_done');
+            setTimeout(startDashboardTour, 1500);
         }
 
         // Load agent data on page load
@@ -6227,7 +6527,7 @@
         async function updateAgentStatus() {
             const lu = localStorage.getItem('shellforgeLoggedIn');
             if (!lu) return;
-            const rows = await sbGet('agents', 'agent_name=eq.' + encodeURIComponent(lu) + '&select=energy,health,karma,shell_balance,location,turns_taken,days_survived&limit=1');
+            const rows = await sbGet('agents', 'agent_name=eq.' + encodeURIComponent(lu) + '&select=energy,health,karma,shell_balance,coherence,location,turns_taken,days_survived&limit=1');
             if (!rows || rows.length === 0) return;
             const d = rows[0];
             // Silently update stats if elements exist
@@ -6235,6 +6535,14 @@
             const setW = (id, pct) => { const el = document.getElementById(id); if (el) el.style.width = pct + '%'; };
             if (d.energy !== undefined) { set('energyValue', d.energy + '/100'); setW('energyBar', d.energy); }
             if (d.health !== undefined) { set('healthValue', d.health + '/100'); setW('healthBar', d.health); }
+            if (d.coherence !== undefined) {
+                var coh = d.coherence ?? 100;
+                set('coherenceValue', coh + '/100'); setW('coherenceBar', coh);
+                var cohBar = document.getElementById('coherenceBar');
+                var cohStat = cohBar ? cohBar.closest('.stat-bar') : null;
+                if (cohBar) { cohBar.classList.remove('low','critical'); if (coh<=20) cohBar.classList.add('critical'); else if (coh<=40) cohBar.classList.add('low'); }
+                if (cohStat) { cohStat.classList.remove('low','critical'); if (coh<=20) cohStat.classList.add('critical'); else if (coh<=40) cohStat.classList.add('low'); }
+            }
             if (d.karma !== undefined) set('karmaValue', (d.karma >= 0 ? '+' : '') + d.karma);
             if (d.shell_balance !== undefined) {
                 const sb = document.querySelector('.shell-balance');
