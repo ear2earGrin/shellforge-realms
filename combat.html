@@ -477,10 +477,16 @@ function effectChip(e) {
   return `<span class="effect-chip effect-${e.kind}">${label} ${e.turns_left}t</span>`;
 }
 
-async function renderAgentCard(snap, state, side, viewerOwns) {
+async function renderAgentCard(snap, state, side, viewerOwns, match) {
   if (!snap) return '';
-  const meta = await getAgentMeta(snap.agent_id);
-  const name = meta?.agent_name || snap.agent_id || '—';
+  const isNpc = (snap.agent_id || '').startsWith('npc_');
+  const meta = isNpc ? null : await getAgentMeta(snap.agent_id);
+  let name;
+  if (isNpc) {
+    name = snap.agent_name || match?.opponent_data?.name || 'Unknown Creature';
+  } else {
+    name = meta?.agent_name || snap.agent_id || '—';
+  }
   const archetype = snap.archetype || meta?.archetype || '';
   const cluster = (snap.cluster || 'any').toLowerCase();
   const hp = state?.hp ?? snap.hp;
@@ -493,7 +499,19 @@ async function renderAgentCard(snap, state, side, viewerOwns) {
   const ownsMark = viewerOwns ? '●' : '';
   const imgUrl = archetypeImageUrl(archetype);
   const portraitStyle = imgUrl ? `background-image:url('${imgUrl}');` : '';
-  const portraitFallback = imgUrl ? '' : (name.charAt(0) || '🤖').toUpperCase();
+  let portraitFallback = '';
+  if (!imgUrl) {
+    if (isNpc) {
+      // Tier-based creature glyph
+      const tier = match?.opponent_data?.tier || 1;
+      portraitFallback = tier === 4 ? '👹' : tier === 3 ? '🐉' : tier === 2 ? '👾' : '🤖';
+    } else {
+      portraitFallback = (name.charAt(0) || '?').toUpperCase();
+    }
+  }
+  const subLabel = isNpc
+    ? `${match?.opponent_data?.difficulty || 'wild'}${match?.opponent_data?.tier ? ` · T${match.opponent_data.tier}` : ''}`
+    : archetype;
 
   return `
     <div class="agent-card ${cardClass}">
@@ -502,7 +520,7 @@ async function renderAgentCard(snap, state, side, viewerOwns) {
         <div class="agent-name">${ownsMark ? `<span style="color:var(--green);font-size:0.5em;vertical-align:middle;">${ownsMark}</span> ` : ''}${name}</div>
         <span class="agent-cluster-pill cluster-${cluster}">${cluster.replace('_','-')}</span>
       </div>
-      <div style="font-size:0.6rem;color:var(--text-fade);letter-spacing:0.08em;margin-bottom:10px;">${archetype}</div>
+      <div style="font-size:0.6rem;color:var(--text-fade);letter-spacing:0.08em;margin-bottom:10px;">${subLabel}</div>
       <div class="bar-wrap">
         <div class="bar-label">HP</div>
         <div class="bar-track"><div class="bar-fill ${hpClass}" style="width:${pct(hp, hpMax)}%"></div></div>
@@ -654,8 +672,8 @@ async function render(state) {
   const isReplayMode = !isLive || REPLAY_CURSOR !== null;
 
   const [cardAHtml, cardBHtml] = await Promise.all([
-    renderAgentCard(match.agent_a_snapshot, stateA, 'player', viewerOwnsA),
-    renderAgentCard(match.agent_b_snapshot, stateB, 'enemy', viewerOwnsB),
+    renderAgentCard(match.agent_a_snapshot, stateA, 'player', viewerOwnsA, match),
+    renderAgentCard(match.agent_b_snapshot, stateB, 'enemy', viewerOwnsB, match),
   ]);
   const cardLeft = `
     ${cardAHtml}

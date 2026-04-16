@@ -259,6 +259,41 @@ body {
 }
 .match-vs .vs-arrow { color: var(--text-fade); padding: 0 6px; }
 
+/* HISTORY ROW — resolved matches */
+.history-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px; align-items: center;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.012);
+  border: 1px solid rgba(74,222,128,0.05);
+  border-left: 2px solid var(--text-fade);
+  border-radius: 3px;
+  transition: all 0.15s;
+  text-decoration: none; color: var(--text);
+  cursor: pointer;
+}
+.history-row:hover { border-color: var(--border-bright); background: rgba(74,222,128,0.03); }
+.history-row.win { border-left-color: var(--green); }
+.history-row.loss { border-left-color: var(--red); }
+.history-row.draw { border-left-color: var(--amber); }
+.history-row.death { border-left-color: #ff2020; background: rgba(255,32,32,0.04); }
+.history-pill {
+  font-size: 0.52rem; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 700;
+  padding: 3px 8px; border-radius: 2px; border: 1px solid currentColor;
+  background: rgba(0,0,0,0.4);
+}
+.history-pill.win { color: var(--green); }
+.history-pill.loss { color: var(--red); }
+.history-pill.draw { color: var(--amber); }
+.history-pill.death { color: #ff2020; }
+.history-pill.declined { color: var(--text-dim); }
+.history-info { font-size: 0.72rem; color: var(--text); display: flex; align-items: center; gap: 8px; }
+.history-sub { font-size: 0.58rem; color: var(--text-dim); letter-spacing: 0.06em; margin-top: 2px; }
+.history-shell { font-size: 0.65rem; font-weight: 600; }
+.history-shell.gain { color: var(--green); }
+.history-shell.loss { color: var(--red); }
+
 /* Agent avatars (small circular in match rows) */
 .agent-avatar {
   width: 24px; height: 24px;
@@ -515,6 +550,16 @@ body {
         </div>
         <div class="match-list" id="my-active-list">
           <div class="empty">No active combats. Start one above.</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <div class="section-title">Recent Matches</div>
+          <span class="section-meta" id="history-meta">last 10</span>
+        </div>
+        <div class="match-list" id="history-list">
+          <div class="empty">Loading history...</div>
         </div>
       </div>
     </div>
@@ -794,6 +839,74 @@ async function loadIncoming() {
   }
 }
 
+async function loadHistory() {
+  const aid = await resolveAgentId();
+  if (!aid) { document.getElementById('history-list').innerHTML = '<div class="empty">Sign in to see your match history.</div>'; return; }
+  try {
+    // Pull last 10 resolved/declined matches involving this agent, direct from Supabase
+    const q = `combat_matches?or=(agent_a.eq.${aid},agent_b.eq.${aid})&status=in.(resolved,declined,forfeit,abandoned)&order=resolved_at.desc&limit=10&select=*`;
+    const r = await fetch(SUPABASE_URL + '/rest/v1/' + q, {
+      headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON },
+    });
+    const rows = r.ok ? await r.json() : [];
+    const listEl = document.getElementById('history-list');
+    if (!rows.length) { listEl.innerHTML = '<div class="empty">No past matches yet. Go pick a fight.</div>'; return; }
+    const items = await Promise.all(rows.map(m => historyRow(m, aid)));
+    listEl.innerHTML = items.join('');
+  } catch (e) {
+    document.getElementById('history-list').innerHTML = `<div class="empty">Error loading history: ${e.message}</div>`;
+  }
+}
+
+async function historyRow(m, myId) {
+  const iAmA = m.agent_a === myId;
+  const opponentId = iAmA ? m.agent_b : m.agent_a;
+  let outcomeClass, outcomeLabel, shellDelta = 0;
+
+  if (m.status === 'declined') {
+    outcomeClass = 'declined'; outcomeLabel = m.declined_by === myId ? 'YOU DECLINED' : 'DECLINED';
+  } else if (m.death_occurred && m.death_agent_id === myId) {
+    outcomeClass = 'death'; outcomeLabel = 'DEATH';
+  } else if (m.winner_agent_id === myId) {
+    outcomeClass = 'win'; outcomeLabel = 'WIN';
+    shellDelta = (m.escrow_a || 0) + (m.escrow_b || 0);
+    if (!shellDelta) shellDelta = m.shell_pot || 0;
+  } else if (m.loser_agent_id === myId) {
+    outcomeClass = 'loss'; outcomeLabel = 'LOSS';
+    if (m.match_type === 'pvp' || m.match_type === 'deathmatch') shellDelta = -(m.shell_pot || 0);
+  } else {
+    outcomeClass = 'draw'; outcomeLabel = 'DRAW';
+  }
+
+  // Opponent name: Supabase agent, or NPC creature name from opponent_data
+  let opponentName = 'NPC';
+  if (opponentId && !opponentId.startsWith?.('npc_')) {
+    const meta = await getAgentMeta(opponentId);
+    opponentName = meta?.agent_name || opponentId.slice(0, 8);
+  } else {
+    opponentName = m.opponent_data?.name || 'Wild NPC';
+  }
+
+  const when = m.resolved_at ? new Date(m.resolved_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—';
+  const shellHtml = shellDelta !== 0
+    ? `<div class="history-shell ${shellDelta > 0 ? 'gain' : 'loss'}">${shellDelta > 0 ? '+' : ''}${shellDelta} ⌬</div>`
+    : '<div class="history-shell" style="color:var(--text-fade);">—</div>';
+
+  return `
+    <a class="history-row ${outcomeClass}" href="combat.html?match_id=${m.id}">
+      <span class="history-pill ${outcomeClass}">${outcomeLabel}</span>
+      <div>
+        <div class="history-info">
+          <span>vs ${opponentName}</span>
+          <span style="color:var(--text-fade);font-size:0.6rem;">· ${m.match_type.toUpperCase()}${m.opponent_data?.tier ? ` T${m.opponent_data.tier}` : ''}</span>
+        </div>
+        <div class="history-sub">${m.turns_total || 0} turns · ${when}</div>
+      </div>
+      ${shellHtml}
+    </a>
+  `;
+}
+
 async function acceptChallenge(matchId) {
   const aid = await resolveAgentId();
   if (!aid) return;
@@ -942,10 +1055,11 @@ function logout() {
 loadActive();
 loadMyActive();
 loadIncoming();
+loadHistory();
 loadFeuds();
 loadCrucible();
 // Refresh every 15 seconds
-setInterval(() => { loadActive(); loadMyActive(); loadIncoming(); loadFeuds(); loadCrucible(); }, 15000);
+setInterval(() => { loadActive(); loadMyActive(); loadIncoming(); loadHistory(); loadFeuds(); loadCrucible(); }, 15000);
 </script>
 </body>
 </html>
