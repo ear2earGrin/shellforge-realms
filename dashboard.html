@@ -684,63 +684,143 @@
             100% { opacity: 0; }
         }
 
-        /* ── MARKET SYSTEM ── */
-        .market-body { padding: 0 !important; }
-        .market-location-banner {
-            text-align: center; padding: 10px 16px;
-            background: linear-gradient(135deg, rgba(255,204,0,0.08), rgba(74,222,128,0.05));
-            border-bottom: 1px solid rgba(255,204,0,0.15);
-            font-family: var(--font-title); font-size: 0.85rem;
-            letter-spacing: 0.1em; color: #ffcc00;
+        /* ── MARKET SYSTEM (Auction House) ── */
+        #modal-market.modal-overlay {
+            width: auto; max-width: 96vw;
+            left: 50%; top: 50%;
+            bottom: auto;
+            transform: translate(-50%, -50%);
         }
-        .market-location-banner .market-loc-name { color: var(--color-primary); }
+        .modal-box.market-wide-modal {
+            width: 580px; max-width: 96vw; max-height: 82vh; overflow: hidden;
+        }
+        .market-body { padding: 0 !important; display: flex; flex-direction: column; height: 100%; }
+        .market-location-banner {
+            text-align: center; padding: 8px 16px;
+            background: linear-gradient(135deg, rgba(0,255,180,0.06), rgba(74,222,128,0.03));
+            border-bottom: 1px solid rgba(0,255,180,0.12);
+            font-family: var(--font-title); font-size: 0.75rem;
+            letter-spacing: 0.1em; color: #00ffb4;
+        }
+        .market-location-banner .market-loc-name { color: #4ade80; }
         .market-tabs {
-            display: flex; border-bottom: 1px solid rgba(74,222,128,0.15);
+            display: flex; border-bottom: 1px solid rgba(0,255,180,0.12);
+            background: rgba(0,0,0,0.3);
         }
         .market-tab {
-            flex: 1; padding: 8px; text-align: center; cursor: pointer;
-            font-family: var(--font-main); font-size: 0.65rem; letter-spacing: 0.1em;
-            text-transform: uppercase; color: var(--color-text-dim);
+            flex: 1; padding: 9px 6px; text-align: center; cursor: pointer;
+            font-family: var(--font-title); font-size: 0.62rem; letter-spacing: 0.12em;
+            text-transform: uppercase; color: rgba(255,255,255,0.35);
             border-bottom: 2px solid transparent; transition: all 0.2s;
             background: none; border-top: none; border-left: none; border-right: none;
         }
-        .market-tab:hover { color: var(--color-text); background: rgba(74,222,128,0.03); }
+        .market-tab:hover { color: rgba(255,255,255,0.7); background: rgba(0,255,180,0.03); }
         .market-tab.active {
-            color: #ffcc00; border-bottom-color: #ffcc00;
-            background: rgba(255,204,0,0.05);
+            color: #00ffb4; border-bottom-color: #00ffb4;
+            background: rgba(0,255,180,0.06);
+        }
+        .market-tab .tab-icon { margin-right: 4px; }
+        /* Search + sort top bar */
+        .market-toolbar {
+            display: flex; gap: 6px; padding: 8px 10px;
+            background: rgba(0,0,0,0.25);
+            border-bottom: 1px solid rgba(0,255,180,0.08);
+        }
+        .market-search {
+            flex: 1; padding: 5px 8px; border-radius: 3px;
+            background: rgba(255,255,255,0.04); border: 1px solid rgba(0,255,180,0.15);
+            color: var(--color-text); font-family: var(--font-main); font-size: 0.65rem;
+            outline: none; letter-spacing: 0.04em;
+        }
+        .market-search::placeholder { color: rgba(255,255,255,0.2); }
+        .market-search:focus { border-color: rgba(0,255,180,0.35); background: rgba(255,255,255,0.06); }
+        .market-sort {
+            padding: 4px 6px; border-radius: 3px;
+            background: rgba(255,255,255,0.04); border: 1px solid rgba(0,255,180,0.15);
+            color: var(--color-text); font-family: var(--font-main); font-size: 0.6rem;
+            cursor: pointer; outline: none;
+        }
+        .market-sort option { background: #0a0e14; color: #ccc; }
+        /* Main content: sidebar + items */
+        .market-content {
+            display: flex; flex: 1; min-height: 0; overflow: hidden;
+        }
+        .market-sidebar {
+            width: 110px; min-width: 110px;
+            padding: 6px 4px; overflow-y: auto;
+            border-right: 1px solid rgba(0,255,180,0.08);
+            background: rgba(0,0,0,0.2);
+        }
+        .market-cat-btn {
+            display: flex; align-items: center; gap: 4px;
+            width: 100%; padding: 5px 6px; margin-bottom: 2px;
+            border: none; border-radius: 3px; cursor: pointer;
+            background: transparent; color: rgba(255,255,255,0.4);
+            font-family: var(--font-main); font-size: 0.58rem;
+            text-align: left; transition: all 0.15s; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis;
+        }
+        .market-cat-btn:hover { background: rgba(0,255,180,0.06); color: rgba(255,255,255,0.7); }
+        .market-cat-btn.active { background: rgba(0,255,180,0.1); color: #00ffb4; }
+        .market-cat-btn .cat-emoji { font-size: 0.7rem; width: 16px; text-align: center; flex-shrink: 0; }
+        .market-cat-btn .cat-count {
+            margin-left: auto; font-size: 0.5rem; padding: 1px 4px;
+            background: rgba(0,255,180,0.1); border-radius: 8px; color: rgba(255,255,255,0.35);
+            flex-shrink: 0;
         }
         .market-items-list {
-            padding: 8px 12px; max-height: 340px; overflow-y: auto;
+            flex: 1; padding: 4px 8px; overflow-y: auto; min-height: 0;
         }
+        .market-items-list::-webkit-scrollbar { width: 4px; }
+        .market-items-list::-webkit-scrollbar-track { background: transparent; }
+        .market-items-list::-webkit-scrollbar-thumb { background: rgba(0,255,180,0.15); border-radius: 2px; }
         .market-item-row {
-            display: grid; grid-template-columns: 36px 1fr auto;
-            gap: 8px; align-items: center; padding: 8px 6px;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
-            transition: background 0.15s;
+            display: grid; grid-template-columns: 44px 1fr auto;
+            gap: 8px; align-items: center; padding: 7px 6px;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            transition: background 0.15s; border-radius: 3px;
         }
-        .market-item-row:hover { background: rgba(74,222,128,0.04); }
+        .market-item-row:hover { background: rgba(0,255,180,0.04); }
         .market-item-row:last-child { border-bottom: none; }
         .market-item-icon {
-            width: 36px; height: 36px; display: flex; align-items: center;
-            justify-content: center; font-size: 1.3rem;
-            background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.15);
-            border-radius: 4px; overflow: hidden;
+            width: 44px; height: 44px; display: flex; align-items: center;
+            justify-content: center; font-size: 1.4rem;
+            background: rgba(0,0,0,0.4); border: 2px solid rgba(138,154,138,0.4);
+            border-radius: 4px; overflow: hidden; position: relative;
         }
         .market-item-icon img { width: 100%; height: 100%; object-fit: cover; }
+        .market-item-icon.rarity-uncommon { border-color: rgba(74,222,128,0.5); }
+        .market-item-icon.rarity-rare { border-color: rgba(96,165,250,0.5); }
+        .market-item-icon.rarity-epic { border-color: rgba(192,132,252,0.5); }
+        .market-item-icon.rarity-legendary { border-color: rgba(251,191,36,0.6); box-shadow: 0 0 8px rgba(251,191,36,0.15); }
         .market-item-info { min-width: 0; }
         .market-item-name {
             font-family: var(--font-title); font-size: 0.72rem;
-            letter-spacing: 0.06em; color: var(--color-text);
+            letter-spacing: 0.06em;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .market-item-meta {
-            font-size: 0.58rem; color: var(--color-text-dim);
-            display: flex; gap: 8px; margin-top: 2px;
+            font-size: 0.55rem; color: var(--color-text-dim);
+            display: flex; gap: 6px; margin-top: 2px; align-items: center;
         }
-        .market-item-meta .mtype { text-transform: uppercase; letter-spacing: 0.06em; }
-        .market-item-meta .mstock { color: var(--color-primary); }
+        .market-item-meta .mtype {
+            text-transform: uppercase; letter-spacing: 0.06em;
+            padding: 1px 5px; background: rgba(255,255,255,0.04);
+            border-radius: 2px; font-size: 0.5rem;
+        }
+        .market-item-meta .mstock { color: #4ade80; }
         .market-item-meta .mstock.low { color: #ff6b35; }
         .market-item-meta .mstock.out { color: #ff0044; }
+        .market-item-meta .mrarity {
+            text-transform: capitalize; font-size: 0.5rem;
+            padding: 1px 5px; border-radius: 2px;
+        }
+        .market-item-meta .mseller {
+            color: #60a5fa; font-size: 0.52rem;
+        }
+        .market-item-meta .mexpires {
+            color: #ff6b35; font-size: 0.5rem;
+        }
         .market-item-actions {
             display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
         }
@@ -750,34 +830,54 @@
         }
         .market-price .trend-up { color: #ff6b35; font-size: 0.6rem; }
         .market-price .trend-down { color: #4ade80; font-size: 0.6rem; }
-        .btn-market-buy, .btn-market-sell {
-            padding: 3px 10px; border-radius: 3px; cursor: pointer;
+        .btn-market-buy, .btn-market-sell, .btn-market-list {
+            padding: 4px 12px; border-radius: 3px; cursor: pointer;
             font-family: var(--font-main); font-size: 0.55rem;
             letter-spacing: 0.08em; text-transform: uppercase;
             transition: all 0.15s; border: 1px solid;
         }
         .btn-market-buy {
-            background: rgba(74,222,128,0.1); border-color: rgba(74,222,128,0.3);
-            color: var(--color-primary);
+            background: linear-gradient(180deg, rgba(74,222,128,0.15), rgba(74,222,128,0.08));
+            border-color: rgba(74,222,128,0.35); color: #4ade80;
         }
-        .btn-market-buy:hover { background: rgba(74,222,128,0.2); }
-        .btn-market-buy:disabled { opacity: 0.3; cursor: not-allowed; }
+        .btn-market-buy:hover { background: linear-gradient(180deg, rgba(74,222,128,0.25), rgba(74,222,128,0.15)); box-shadow: 0 0 8px rgba(74,222,128,0.15); }
+        .btn-market-buy:disabled { opacity: 0.3; cursor: not-allowed; box-shadow: none; }
         .btn-market-sell {
-            background: rgba(255,204,0,0.1); border-color: rgba(255,204,0,0.3);
-            color: #ffcc00;
+            background: linear-gradient(180deg, rgba(255,204,0,0.15), rgba(255,204,0,0.08));
+            border-color: rgba(255,204,0,0.35); color: #ffcc00;
         }
-        .btn-market-sell:hover { background: rgba(255,204,0,0.2); }
+        .btn-market-sell:hover { background: linear-gradient(180deg, rgba(255,204,0,0.25), rgba(255,204,0,0.15)); box-shadow: 0 0 8px rgba(255,204,0,0.15); }
+        .btn-market-list {
+            background: linear-gradient(180deg, rgba(96,165,250,0.15), rgba(96,165,250,0.08));
+            border-color: rgba(96,165,250,0.35); color: #60a5fa;
+            font-size: 0.5rem; padding: 3px 8px;
+        }
+        .btn-market-list:hover { background: linear-gradient(180deg, rgba(96,165,250,0.25), rgba(96,165,250,0.15)); }
+        /* List on market inline form */
+        .market-list-form {
+            display: flex; align-items: center; gap: 4px; margin-top: 3px;
+        }
+        .market-list-form input {
+            width: 50px; padding: 2px 4px; border-radius: 2px;
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(96,165,250,0.25);
+            color: #ffcc00; font-family: var(--font-main); font-size: 0.6rem;
+            text-align: center; outline: none;
+        }
+        .market-list-form input:focus { border-color: rgba(96,165,250,0.5); }
         .market-shell-bar {
             display: flex; justify-content: space-between; align-items: center;
-            padding: 8px 14px; background: rgba(255,204,0,0.05);
-            border-top: 1px solid rgba(255,204,0,0.15);
-            font-family: var(--font-title); font-size: 0.8rem;
-            color: #ffcc00; letter-spacing: 0.08em;
+            padding: 8px 14px; background: rgba(0,255,180,0.04);
+            border-top: 1px solid rgba(0,255,180,0.1);
+            font-family: var(--font-title); font-size: 0.75rem;
+            color: #00ffb4; letter-spacing: 0.08em; flex-shrink: 0;
         }
+        .market-shell-bar .shell-bal { color: #ffcc00; }
+        .market-shell-bar .shell-info { font-size: 0.58rem; color: rgba(255,255,255,0.3); }
         .market-empty {
-            text-align: center; padding: 30px; color: var(--color-text-dim);
-            font-family: var(--font-main); font-size: 0.75rem;
+            text-align: center; padding: 40px 20px; color: rgba(255,255,255,0.25);
+            font-family: var(--font-main); font-size: 0.7rem;
         }
+        .market-empty .empty-icon { font-size: 2rem; margin-bottom: 8px; opacity: 0.4; }
         .market-no-access {
             text-align: center; padding: 40px 20px; color: var(--color-text-dim);
             font-family: var(--font-main); font-size: 0.8rem; line-height: 1.6;
@@ -4392,15 +4492,15 @@
         </div>
     </div>
 
-    <!-- MARKET -->
+    <!-- MARKET (Auction House) -->
     <div class="modal-overlay" id="modal-market" onclick="closeOnOverlay(event,'market')">
-        <div class="modal-box" style="overflow:visible;">
-            <div class="modal-head">
-                <span class="modal-title-text">MARKET</span>
+        <div class="modal-box market-wide-modal" style="overflow:hidden;display:flex;flex-direction:column;">
+            <div class="modal-head" style="flex-shrink:0;">
+                <span class="modal-title-text">AUCTION HOUSE</span>
                 <button class="modal-close-btn" onclick="closeModal('market')">✕</button>
             </div>
-            <div class="modal-body market-body" id="marketBody">
-                <div class="market-empty">Loading market...</div>
+            <div class="modal-body market-body" id="marketBody" style="flex:1;min-height:0;display:flex;flex-direction:column;">
+                <div class="market-empty"><div class="empty-icon">🏪</div>Loading market...</div>
             </div>
         </div>
     </div>
@@ -7152,9 +7252,80 @@
             junk: '🗑️', relic: '👑', implant: '🧠', data_shard: '💾'
         };
 
-        var _marketTab = 'buy'; // 'buy' or 'sell'
+        var _marketTab = 'npc'; // 'npc', 'agent', or 'sell'
         var _marketItems = [];
         var _marketInventory = [];
+        var _agentListings = [];
+        var _marketSearch = '';
+        var _marketSort = 'price-asc';
+        var _marketCategory = 'all';
+        var _marketLoc = '';
+        var _marketInfo = null;
+
+        var MARKET_CATEGORIES = [
+            { id: 'all', label: 'All', emoji: '🏪' },
+            { id: 'weapon', label: 'Weapons', emoji: '🗡️' },
+            { id: 'armor', label: 'Armor', emoji: '🛡️' },
+            { id: 'consumable', label: 'Consumables', emoji: '💊' },
+            { id: 'scroll', label: 'Scrolls', emoji: '📜' },
+            { id: 'tool', label: 'Tools', emoji: '🔧' },
+            { id: 'material', label: 'Materials', emoji: '🧱' },
+            { id: 'ingredient', label: 'Ingredients', emoji: '🧬' },
+            { id: 'relic', label: 'Relics', emoji: '👑' },
+            { id: 'implant', label: 'Implants', emoji: '🧠' },
+            { id: 'data_shard', label: 'Data Shards', emoji: '💾' },
+            { id: 'junk', label: 'Junk', emoji: '🗑️' }
+        ];
+
+        function getMarketFilteredItems() {
+            var items = _marketTab === 'npc' ? _marketItems :
+                        _marketTab === 'agent' ? _agentListings : _marketInventory;
+            var filtered = items.filter(function(item) {
+                var name = (item.item_name || '').toLowerCase();
+                var type = (item.item_type || '').toLowerCase();
+                if (_marketCategory !== 'all' && type !== _marketCategory) return false;
+                if (_marketSearch && name.indexOf(_marketSearch.toLowerCase()) === -1) return false;
+                return true;
+            });
+            // Sort
+            filtered.sort(function(a, b) {
+                var priceA, priceB;
+                if (_marketTab === 'sell') {
+                    priceA = Math.max(1, Math.floor(getItemPrice(a) * 0.6));
+                    priceB = Math.max(1, Math.floor(getItemPrice(b) * 0.6));
+                } else if (_marketTab === 'agent') {
+                    priceA = a.asking_price || 0;
+                    priceB = b.asking_price || 0;
+                } else {
+                    priceA = a.current_price || 0;
+                    priceB = b.current_price || 0;
+                }
+                var nameA = (a.item_name || '').toLowerCase();
+                var nameB = (b.item_name || '').toLowerCase();
+                var rarOrder = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
+                var rarA = rarOrder[(a.rarity || 'common').toLowerCase()] || 0;
+                var rarB = rarOrder[(b.rarity || 'common').toLowerCase()] || 0;
+                switch (_marketSort) {
+                    case 'price-asc': return priceA - priceB;
+                    case 'price-desc': return priceB - priceA;
+                    case 'name-asc': return nameA < nameB ? -1 : nameA > nameB ? 1 : 0;
+                    case 'rarity': return rarB - rarA;
+                    default: return 0;
+                }
+            });
+            return filtered;
+        }
+
+        function getCategoryCounts() {
+            var items = _marketTab === 'npc' ? _marketItems :
+                        _marketTab === 'agent' ? _agentListings : _marketInventory;
+            var counts = { all: items.length };
+            items.forEach(function(item) {
+                var t = (item.item_type || '').toLowerCase();
+                counts[t] = (counts[t] || 0) + 1;
+            });
+            return counts;
+        }
 
         async function loadMarket() {
             var body = document.getElementById('marketBody');
@@ -7175,26 +7346,41 @@
                     '<div style="font-family:var(--font-title);color:var(--color-text);margin-bottom:8px;">NO MARKET HERE</div>' +
                     '<div>Your agent is in <span style="color:var(--color-primary);">' + escInvAttr(loc) + '</span></div>' +
                     '<div style="margin-top:6px;">Markets are located in:</div>' +
-                    '<div style="color:#ffcc00;margin-top:4px;">Nexarch — Grand Bazaar</div>' +
-                    '<div style="color:#ffcc00;">Hashmere — Market</div>' +
+                    '<div style="color:#00ffb4;margin-top:4px;">Nexarch — Grand Bazaar</div>' +
+                    '<div style="color:#00ffb4;">Hashmere — Market</div>' +
                     '</div>';
                 return;
             }
 
-            // Show loading
-            body.innerHTML = '<div class="market-empty">Loading market...</div>';
+            _marketLoc = loc;
+            _marketInfo = marketInfo;
 
-            // Fetch market items + agent inventory in parallel
-            var [items, inv] = await Promise.all([
+            body.innerHTML = '<div class="market-empty"><div class="empty-icon">🏪</div>Loading market...</div>';
+
+            var [items, inv, agentItems] = await Promise.all([
                 sbGet('market_listings', 'location=eq.' + encodeURIComponent(loc) + '&order=base_price&select=*'),
-                sbGet('inventory', 'agent_id=eq.' + agent.agentId + '&item_type=neq.ingredient&select=*')
+                sbGet('inventory', 'agent_id=eq.' + agent.agentId + '&item_type=neq.ingredient&select=*'),
+                loadAgentListings(loc)
             ]);
 
             _marketItems = items || [];
             _marketInventory = inv || [];
-            _marketTab = 'buy';
+            _agentListings = agentItems || [];
+            _marketTab = 'npc';
+            _marketSearch = '';
+            _marketCategory = 'all';
 
             renderMarket(loc, marketInfo);
+        }
+
+        async function loadAgentListings(loc) {
+            try {
+                var listings = await sbGet('agent_listings', 'location=eq.' + encodeURIComponent(loc) + '&status=eq.active&select=*');
+                return listings || [];
+            } catch (e) {
+                console.warn('[loadAgentListings] fetch failed:', e);
+                return [];
+            }
         }
 
         function renderMarket(loc, marketInfo) {
@@ -7208,44 +7394,77 @@
             html += ' — ' + escInvAttr(marketInfo.desc);
             html += '</div>';
 
-            // Tabs
+            // Tabs (3 tabs)
             html += '<div class="market-tabs">';
-            html += '<button class="market-tab' + (_marketTab === 'buy' ? ' active' : '') + '" onclick="marketSwitchTab(\'buy\')">Buy</button>';
-            html += '<button class="market-tab' + (_marketTab === 'sell' ? ' active' : '') + '" onclick="marketSwitchTab(\'sell\')">Sell</button>';
+            html += '<button class="market-tab' + (_marketTab === 'npc' ? ' active' : '') + '" onclick="marketSwitchTab(\'npc\')"><span class="tab-icon">🏪</span>NPC Market</button>';
+            html += '<button class="market-tab' + (_marketTab === 'agent' ? ' active' : '') + '" onclick="marketSwitchTab(\'agent\')"><span class="tab-icon">🤝</span>Agent Market</button>';
+            html += '<button class="market-tab' + (_marketTab === 'sell' ? ' active' : '') + '" onclick="marketSwitchTab(\'sell\')"><span class="tab-icon">💰</span>Sell</button>';
+            html += '</div>';
+
+            // Search + sort toolbar
+            html += '<div class="market-toolbar">';
+            html += '<input type="text" class="market-search" placeholder="Search items..." value="' + escInvAttr(_marketSearch) + '" oninput="marketSearchInput(this.value)">';
+            html += '<select class="market-sort" onchange="marketSortChange(this.value)">';
+            html += '<option value="price-asc"' + (_marketSort === 'price-asc' ? ' selected' : '') + '>Price: Low→High</option>';
+            html += '<option value="price-desc"' + (_marketSort === 'price-desc' ? ' selected' : '') + '>Price: High→Low</option>';
+            html += '<option value="name-asc"' + (_marketSort === 'name-asc' ? ' selected' : '') + '>Name A→Z</option>';
+            html += '<option value="rarity"' + (_marketSort === 'rarity' ? ' selected' : '') + '>Rarity</option>';
+            html += '</select>';
+            html += '</div>';
+
+            // Main content area: sidebar + items
+            html += '<div class="market-content">';
+
+            // Sidebar categories
+            var counts = getCategoryCounts();
+            html += '<div class="market-sidebar">';
+            MARKET_CATEGORIES.forEach(function(cat) {
+                var count = counts[cat.id] || 0;
+                var isActive = _marketCategory === cat.id;
+                html += '<button class="market-cat-btn' + (isActive ? ' active' : '') + '" onclick="marketCategoryClick(\'' + cat.id + '\')">';
+                html += '<span class="cat-emoji">' + cat.emoji + '</span>';
+                html += '<span>' + cat.label + '</span>';
+                html += '<span class="cat-count">' + count + '</span>';
+                html += '</button>';
+            });
             html += '</div>';
 
             // Items list
             html += '<div class="market-items-list" id="marketItemsList">';
-            if (_marketTab === 'buy') {
-                html += renderMarketBuyList(shell);
-            } else {
-                html += renderMarketSellList();
-            }
+            html += renderMarketItemsList(shell);
             html += '</div>';
 
-            // Shell balance bar
+            html += '</div>'; // close market-content
+
+            // Bottom bar
+            var totalItems = _marketTab === 'npc' ? _marketItems.filter(function(i){return i.stock > 0;}).length :
+                             _marketTab === 'agent' ? _agentListings.length : _marketInventory.length;
+            var tabLabel = _marketTab === 'npc' ? 'items in stock' :
+                           _marketTab === 'agent' ? 'agent listings' : 'items to sell';
             html += '<div class="market-shell-bar">';
-            html += '<span>💰 ' + shell + ' $SHELL</span>';
-            if (_marketTab === 'buy') {
-                html += '<span style="font-size:0.6rem;color:var(--color-text-dim);">' + _marketItems.filter(function(i){return i.stock > 0;}).length + ' items in stock</span>';
-            } else {
-                html += '<span style="font-size:0.6rem;color:var(--color-text-dim);">' + _marketInventory.length + ' items to sell</span>';
-            }
+            html += '<span><span class="shell-bal">💰 ' + shell + ' $SHELL</span></span>';
+            html += '<span class="shell-info">' + totalItems + ' ' + tabLabel + '</span>';
             html += '</div>';
 
             body.innerHTML = html;
         }
 
+        function renderMarketItemsList(shell) {
+            if (_marketTab === 'npc') return renderMarketBuyList(shell);
+            if (_marketTab === 'agent') return renderAgentMarketList(shell);
+            return renderMarketSellList();
+        }
+
         function renderMarketBuyList(shell) {
-            if (_marketItems.length === 0) return '<div class="market-empty">No items available at this market.</div>';
+            var filtered = getMarketFilteredItems();
+            if (filtered.length === 0) return '<div class="market-empty"><div class="empty-icon">📦</div>No items match your filters.</div>';
 
             var html = '';
-            _marketItems.forEach(function(item) {
+            filtered.forEach(function(item) {
                 var emoji = MARKET_TYPE_EMOJI[item.item_type] || '📦';
                 var stockClass = item.stock <= 0 ? 'out' : item.stock <= 3 ? 'low' : '';
                 var canBuy = item.stock > 0 && shell >= item.current_price;
 
-                // Price trend
                 var trend = '';
                 if (item.current_price > item.base_price) {
                     trend = ' <span class="trend-up">▲</span>';
@@ -7254,6 +7473,7 @@
                 }
 
                 var rarity = (item.rarity || 'common').toLowerCase();
+                var rarityColor = RARITY_COLORS_ALCH[rarity.charAt(0).toUpperCase() + rarity.slice(1)] || '#8a9a8a';
                 var desc = item.description || '';
                 var statsStr = '';
                 if (item.stat_effects && typeof item.stat_effects === 'object') {
@@ -7273,13 +7493,13 @@
                 var iconHtml = iconPath
                     ? '<img src="' + iconPath + '" alt="" onerror="this.outerHTML=\'' + emoji + '\'">'
                     : emoji;
-                html += '<div class="market-item-icon">' + iconHtml + '</div>';
+                html += '<div class="market-item-icon rarity-' + rarity + '">' + iconHtml + '</div>';
                 html += '<div class="market-item-info">';
-                html += '<div class="market-item-name">' + escInvAttr(item.item_name) + '</div>';
+                html += '<div class="market-item-name" style="color:' + rarityColor + ';">' + escInvAttr(item.item_name) + '</div>';
                 html += '<div class="market-item-meta">';
                 html += '<span class="mtype">' + escInvAttr(item.item_type) + '</span>';
                 html += '<span class="mstock ' + stockClass + '">' + (item.stock > 0 ? item.stock + ' in stock' : 'SOLD OUT') + '</span>';
-                if (rarity !== 'common') html += '<span style="color:' + (RARITY_COLORS_ALCH[rarity.charAt(0).toUpperCase() + rarity.slice(1)] || '#8a9a8a') + ';text-transform:capitalize;">' + rarity + '</span>';
+                if (rarity !== 'common') html += '<span class="mrarity" style="color:' + rarityColor + ';">' + rarity + '</span>';
                 html += '</div></div>';
                 html += '<div class="market-item-actions">';
                 html += '<div class="market-price">' + item.current_price + ' $S' + trend + '</div>';
@@ -7289,17 +7509,69 @@
             return html;
         }
 
-        function renderMarketSellList() {
-            if (_marketInventory.length === 0) return '<div class="market-empty">No items in inventory to sell.</div>';
+        function renderAgentMarketList(shell) {
+            var filtered = getMarketFilteredItems();
+            if (filtered.length === 0) return '<div class="market-empty"><div class="empty-icon">🤝</div>No agent listings at this market.</div>';
 
             var html = '';
-            _marketInventory.forEach(function(item) {
+            var now = Date.now();
+            filtered.forEach(function(item) {
+                var emoji = MARKET_TYPE_EMOJI[item.item_type] || '📦';
+                var rarity = (item.rarity || 'common').toLowerCase();
+                var rarityColor = RARITY_COLORS_ALCH[rarity.charAt(0).toUpperCase() + rarity.slice(1)] || '#8a9a8a';
+                var canBuy = shell >= (item.asking_price || 0);
+
+                // Time remaining
+                var timeLeft = '';
+                if (item.expires_at) {
+                    var diff = new Date(item.expires_at).getTime() - now;
+                    if (diff > 0) {
+                        var hrs = Math.floor(diff / 3600000);
+                        var mins = Math.floor((diff % 3600000) / 60000);
+                        timeLeft = hrs > 0 ? hrs + 'h ' + mins + 'm' : mins + 'm';
+                    } else {
+                        timeLeft = 'Expired';
+                    }
+                }
+
+                html += '<div class="market-item-row market-tt"';
+                html += ' data-name="' + escInvAttr(item.item_name) + '"';
+                html += ' data-type="' + escInvAttr((item.item_type || '').charAt(0).toUpperCase() + (item.item_type || '').slice(1)) + '"';
+                html += ' data-rarity="' + rarity + '"';
+                html += ' data-price="' + (item.asking_price || 0) + '">';
+                var iconPath = resolveItemIcon(item.item_name);
+                var iconHtml = iconPath
+                    ? '<img src="' + iconPath + '" alt="" onerror="this.outerHTML=\'' + emoji + '\'">'
+                    : emoji;
+                html += '<div class="market-item-icon rarity-' + rarity + '">' + iconHtml + '</div>';
+                html += '<div class="market-item-info">';
+                html += '<div class="market-item-name" style="color:' + rarityColor + ';">' + escInvAttr(item.item_name) + '</div>';
+                html += '<div class="market-item-meta">';
+                html += '<span class="mtype">' + escInvAttr(item.item_type || '') + '</span>';
+                if (item.seller_name) html += '<span class="mseller">by ' + escInvAttr(item.seller_name) + '</span>';
+                if (timeLeft) html += '<span class="mexpires">⏳ ' + timeLeft + '</span>';
+                if (rarity !== 'common') html += '<span class="mrarity" style="color:' + rarityColor + ';">' + rarity + '</span>';
+                html += '</div></div>';
+                html += '<div class="market-item-actions">';
+                html += '<div class="market-price">' + (item.asking_price || 0) + ' $S</div>';
+                html += '<button class="btn-market-buy" ' + (canBuy ? 'onclick="event.stopPropagation();marketBuyAgent(\'' + item.listing_id + '\')"' : 'disabled') + '>Buy</button>';
+                html += '</div></div>';
+            });
+            return html;
+        }
+
+        function renderMarketSellList() {
+            var filtered = getMarketFilteredItems();
+            if (filtered.length === 0) return '<div class="market-empty"><div class="empty-icon">📦</div>No items in inventory to sell.</div>';
+
+            var html = '';
+            filtered.forEach(function(item) {
                 var meta = getItemMeta(item);
                 var emoji = meta.emoji || MARKET_TYPE_EMOJI[item.item_type] || '📦';
-                // Sell price = ~60% of estimated value
                 var sellPrice = Math.max(1, Math.floor(getItemPrice(item) * 0.6));
 
                 var sellRarity = (meta.rarity || 'common').toLowerCase();
+                var rarityColor = RARITY_COLORS_ALCH[sellRarity.charAt(0).toUpperCase() + sellRarity.slice(1)] || '#8a9a8a';
                 html += '<div class="market-item-row market-tt"';
                 html += ' data-name="' + escInvAttr(meta.name) + '"';
                 html += ' data-type="' + escInvAttr(meta.cat) + '"';
@@ -7310,9 +7582,9 @@
                 var iconHtml = iconPath
                     ? '<img src="' + iconPath + '" alt="" onerror="this.outerHTML=\'' + emoji + '\'">'
                     : emoji;
-                html += '<div class="market-item-icon">' + iconHtml + '</div>';
+                html += '<div class="market-item-icon rarity-' + sellRarity + '">' + iconHtml + '</div>';
                 html += '<div class="market-item-info">';
-                html += '<div class="market-item-name">' + escInvAttr(meta.name) + '</div>';
+                html += '<div class="market-item-name" style="color:' + rarityColor + ';">' + escInvAttr(meta.name) + '</div>';
                 html += '<div class="market-item-meta">';
                 html += '<span class="mtype">' + escInvAttr(item.item_type) + '</span>';
                 if (item.quantity > 1) html += '<span>x' + item.quantity + '</span>';
@@ -7320,30 +7592,217 @@
                 html += '<div class="market-item-actions">';
                 html += '<div class="market-price">+' + sellPrice + ' $S</div>';
                 html += '<button class="btn-market-sell" onclick="event.stopPropagation();marketSell(\'' + item.inventory_id + '\', ' + sellPrice + ')">Sell</button>';
+                html += '<button class="btn-market-list" onclick="event.stopPropagation();marketListToggle(\'' + item.inventory_id + '\', ' + sellPrice + ', this)">List</button>';
                 html += '</div></div>';
             });
             return html;
         }
 
-        function marketSwitchTab(tab) {
-            _marketTab = tab;
+        function marketSearchInput(val) {
+            _marketSearch = val;
+            marketRefreshList();
+        }
+
+        function marketSortChange(val) {
+            _marketSort = val;
+            marketRefreshList();
+        }
+
+        function marketCategoryClick(cat) {
+            _marketCategory = cat;
+            // Update sidebar active state
+            document.querySelectorAll('.market-cat-btn').forEach(function(b) { b.classList.remove('active'); });
+            var btns = document.querySelectorAll('.market-cat-btn');
+            btns.forEach(function(b) {
+                if (b.textContent.toLowerCase().indexOf(cat) !== -1 || (cat === 'all' && b.querySelector('.cat-emoji').textContent === '🏪')) {
+                    b.classList.add('active');
+                }
+            });
+            // Actually re-render sidebar + list to get counts right
+            marketRefreshList();
+        }
+
+        function marketRefreshList() {
             var shell = _currentAgent ? (_currentAgent.shell || 0) : 0;
-            // Update tabs active state
-            document.querySelectorAll('.market-tab').forEach(function(t) { t.classList.remove('active'); });
-            document.querySelector('.market-tab:' + (tab === 'buy' ? 'first-child' : 'last-child')).classList.add('active');
-            // Update items list only
             var list = document.getElementById('marketItemsList');
             if (list) {
-                list.innerHTML = tab === 'buy' ? renderMarketBuyList(shell) : renderMarketSellList();
+                list.innerHTML = renderMarketItemsList(shell);
             }
-            // Update shell bar info
-            var shellBar = document.querySelector('.market-shell-bar');
-            if (shellBar) {
-                var infoText = tab === 'buy'
-                    ? _marketItems.filter(function(i){return i.stock > 0;}).length + ' items in stock'
-                    : _marketInventory.length + ' items to sell';
-                shellBar.innerHTML = '<span>💰 ' + shell + ' $SHELL</span><span style="font-size:0.6rem;color:var(--color-text-dim);">' + infoText + '</span>';
+            // Update category counts in sidebar
+            var counts = getCategoryCounts();
+            document.querySelectorAll('.market-cat-btn').forEach(function(btn) {
+                var countEl = btn.querySelector('.cat-count');
+                if (countEl) {
+                    var catId = 'all';
+                    MARKET_CATEGORIES.forEach(function(c) {
+                        if (btn.querySelector('.cat-emoji') && btn.querySelector('.cat-emoji').textContent === c.emoji) catId = c.id;
+                    });
+                    countEl.textContent = counts[catId] || 0;
+                }
+            });
+        }
+
+        function marketSwitchTab(tab) {
+            _marketTab = tab;
+            _marketCategory = 'all';
+            _marketSearch = '';
+            renderMarket(_marketLoc, _marketInfo);
+        }
+
+        function marketListToggle(inventoryId, suggestedPrice, btnEl) {
+            // Toggle inline listing form
+            var row = btnEl.closest('.market-item-row');
+            var existing = row.querySelector('.market-list-form');
+            if (existing) { existing.remove(); return; }
+            var form = document.createElement('div');
+            form.className = 'market-list-form';
+            form.innerHTML = '<input type="number" min="1" value="' + suggestedPrice + '" placeholder="Price">' +
+                '<button class="btn-market-list" onclick="event.stopPropagation();marketListItem(\'' + inventoryId + '\', this.previousElementSibling.value)">Confirm</button>';
+            row.querySelector('.market-item-actions').appendChild(form);
+        }
+
+        async function marketListItem(inventoryId, price) {
+            if (!_currentAgent) return;
+            price = parseInt(price, 10);
+            if (!price || price < 1) return;
+
+            var invItem = _marketInventory.find(function(i) { return i.inventory_id === inventoryId; });
+            if (!invItem) return;
+
+            var meta = getItemMeta(invItem);
+            // Create agent_listing
+            var expires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h from now
+            var listing = await sbPost('agent_listings', {
+                agent_id: _currentAgent.agentId,
+                seller_name: _currentAgent.name || 'Unknown',
+                item_name: invItem.item_name || meta.name,
+                item_type: invItem.item_type,
+                item_id: invItem.item_id,
+                rarity: meta.rarity || 'Common',
+                asking_price: price,
+                location: _currentAgent.location,
+                status: 'active',
+                expires_at: expires,
+                inventory_id: inventoryId
+            });
+
+            if (listing) {
+                // Remove/decrement from inventory
+                if (invItem.quantity > 1) {
+                    await fetch(SUPABASE_URL + '/rest/v1/inventory?inventory_id=eq.' + inventoryId, {
+                        method: 'PATCH',
+                        headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                        body: JSON.stringify({ quantity: invItem.quantity - 1 })
+                    });
+                } else {
+                    await fetch(SUPABASE_URL + '/rest/v1/inventory?inventory_id=eq.' + inventoryId, {
+                        method: 'DELETE',
+                        headers: SB_HEADERS
+                    });
+                }
+
+                await sbPost('activity_log', {
+                    agent_id: _currentAgent.agentId,
+                    action_type: 'market_list',
+                    action_detail: 'Listed ' + (invItem.item_name || invItem.item_id) + ' on agent market for ' + price + ' $SHELL',
+                    location: _currentAgent.location
+                });
+
+                if (typeof showNotification === 'function') {
+                    showNotification('Listed on agent market for ' + price + ' $SHELL', 'success');
+                }
+                loadMarket();
+            } else {
+                if (typeof showNotification === 'function') {
+                    showNotification('Failed to create listing', 'error');
+                }
             }
+        }
+
+        async function marketBuyAgent(listingId) {
+            if (!_currentAgent) return;
+            var item = _agentListings.find(function(i) { return i.listing_id === listingId; });
+            if (!item) return;
+
+            var shell = _currentAgent.shell || 0;
+            var price = item.asking_price || 0;
+            if (shell < price) return;
+
+            // 1. Add item to buyer's inventory
+            var itemId = item.item_id || item.item_name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+            var existing = await sbGet('inventory', 'agent_id=eq.' + _currentAgent.agentId + '&item_id=eq.' + itemId + '&select=inventory_id,quantity');
+            var invOk = false;
+            if (existing && existing.length > 0) {
+                var patchRes = await fetch(SUPABASE_URL + '/rest/v1/inventory?inventory_id=eq.' + existing[0].inventory_id, {
+                    method: 'PATCH',
+                    headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                    body: JSON.stringify({ quantity: existing[0].quantity + 1 })
+                });
+                invOk = patchRes.ok;
+            } else {
+                var inserted = await sbPost('inventory', {
+                    agent_id: _currentAgent.agentId,
+                    item_id: itemId,
+                    item_name: item.item_name,
+                    item_type: item.item_type,
+                    item_category: (item.item_type || '').charAt(0).toUpperCase() + (item.item_type || '').slice(1),
+                    quantity: 1,
+                    is_equipped: false,
+                    stats: { rarity: item.rarity || 'common', price: price }
+                });
+                invOk = inserted !== null;
+            }
+
+            if (!invOk) {
+                if (typeof showNotification === 'function') {
+                    showNotification('Purchase failed: could not add item to inventory', 'error');
+                }
+                return;
+            }
+
+            // 2. Deduct shells from buyer
+            var newShell = shell - price;
+            await fetch(SUPABASE_URL + '/rest/v1/agents?agent_id=eq.' + _currentAgent.agentId, {
+                method: 'PATCH',
+                headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                body: JSON.stringify({ shell_balance: newShell })
+            });
+            _currentAgent.shell = newShell;
+
+            // 3. Credit shells to seller
+            if (item.agent_id) {
+                var sellerData = await sbGet('agents', 'agent_id=eq.' + item.agent_id + '&select=shell_balance');
+                if (sellerData && sellerData.length > 0) {
+                    var sellerNewShell = (sellerData[0].shell_balance || 0) + price;
+                    await fetch(SUPABASE_URL + '/rest/v1/agents?agent_id=eq.' + item.agent_id, {
+                        method: 'PATCH',
+                        headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                        body: JSON.stringify({ shell_balance: sellerNewShell })
+                    });
+                }
+            }
+
+            // 4. Mark listing as sold
+            await fetch(SUPABASE_URL + '/rest/v1/agent_listings?listing_id=eq.' + listingId, {
+                method: 'PATCH',
+                headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                body: JSON.stringify({ status: 'sold', updated_at: new Date().toISOString() })
+            });
+
+            // 5. Log activity
+            await sbPost('activity_log', {
+                agent_id: _currentAgent.agentId,
+                action_type: 'market_buy',
+                action_detail: 'Bought ' + item.item_name + ' from agent market for ' + price + ' $SHELL',
+                shell_change: -price,
+                items_gained: JSON.stringify([item.item_name]),
+                location: _currentAgent.location
+            });
+
+            if (typeof showNotification === 'function') {
+                showNotification('Purchased ' + item.item_name + ' for ' + price + ' $SHELL', 'success');
+            }
+            loadMarket();
         }
 
         async function marketBuy(listingId) {
@@ -7365,7 +7824,7 @@
                     body: JSON.stringify({ quantity: existing[0].quantity + 1 })
                 });
                 if (!patchRes.ok) {
-                    var patchErr = await patchRes.text().catch(() => '');
+                    var patchErr = await patchRes.text().catch(function() { return ''; });
                     console.error('[marketBuy] inventory PATCH failed:', patchRes.status, patchErr);
                 } else {
                     invOk = true;
