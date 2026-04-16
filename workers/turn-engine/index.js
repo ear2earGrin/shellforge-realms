@@ -2292,8 +2292,14 @@ function recalculatePrice(basePrice, demandCount, supplyCount) {
 // Orchestrate a market trade: decide buy vs sell, delegate to helpers.
 // Returns a result object on success, null if nothing tradeable was found.
 // ─── Smart Market Trading ─────────────────────────────────────────────────
-// Base item values by rarity
-const RARITY_BASE_VALUE = { common: 10, uncommon: 25, rare: 60, epic: 120, legendary: 250 };
+// Base item values: rarity × item type matrix
+// Rows: rarity. Columns: item type multiplier applied to base.
+const RARITY_BASE_VALUE = { common: 10, uncommon: 30, rare: 75, epic: 180, legendary: 500 };
+const TYPE_VALUE_MULT = {
+  weapon: 2.0, armor: 1.8, artifact: 3.0, relic: 2.5, implant: 2.0,
+  scroll: 1.5, tool: 1.4, consumable: 1.0, deployable: 1.3,
+  material: 0.8, ingredient: 0.5, data_shard: 1.0, junk: 0.2,
+};
 
 // Personality pricing multipliers
 const PERSONALITY_PRICE_MULT = {
@@ -2306,7 +2312,10 @@ const PERSONALITY_PRICE_MULT = {
 function getBaseValue(item) {
   if (item.stats?.price) return item.stats.price;
   const rarity = (item.stats?.rarity || item.item_rarity || 'common').toLowerCase();
-  return RARITY_BASE_VALUE[rarity] || 10;
+  const type = (item.item_type || 'material').toLowerCase();
+  const base = RARITY_BASE_VALUE[rarity] || 10;
+  const mult = TYPE_VALUE_MULT[type] || 1.0;
+  return Math.round(base * mult);
 }
 
 function calculateListingPrice(agent, item, supplyCount) {
