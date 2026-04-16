@@ -1329,29 +1329,29 @@
         }
         .equipped-grid {
             display: flex;
-            gap: 6px;
+            gap: 4px;
         }
         .equipped-slot {
             flex: 1;
             background: rgba(74,222,128,0.04);
             border: 1px solid rgba(74,222,128,0.15);
-            border-radius: 5px;
-            padding: 4px;
+            border-radius: 4px;
+            padding: 3px;
             text-align: center;
-            font-size: 0.58rem;
+            font-size: 0.5rem;
             color: rgba(200,200,200,0.5);
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 2px;
-            min-height: 44px;
+            gap: 1px;
+            min-height: 36px;
             justify-content: center;
             position: relative;
             cursor: default;
         }
-        .equipped-slot .slot-icon { font-size: 0.9rem; opacity: 0.3; }
-        .equipped-slot .slot-icon-sm { width: 32px; height: 32px; border-radius: 3px; object-fit: cover; }
-        .equipped-slot .slot-label { font-size: 0.45rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.5; }
+        .equipped-slot .slot-icon { font-size: 0.75rem; opacity: 0.3; }
+        .equipped-slot .slot-icon-sm { width: 28px; height: 28px; border-radius: 3px; object-fit: cover; }
+        .equipped-slot .slot-label { font-size: 0.38rem; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.4; }
         .equipped-slot.filled {
             border-color: rgba(74,222,128,0.35);
             background: rgba(74,222,128,0.08);
@@ -3051,9 +3051,11 @@
             <div class="equipped-items" id="equippedItems">
                 <div style="font-size:0.65rem;color:rgba(74,222,128,0.5);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:6px;">Equipped</div>
                 <div class="equipped-grid" id="equippedGrid">
-                    <div class="equipped-slot empty" data-slot="weapon"><span class="slot-icon">⚔</span><span class="slot-label">Weapon</span></div>
-                    <div class="equipped-slot empty" data-slot="armor"><span class="slot-icon">🛡</span><span class="slot-label">Armor</span></div>
-                    <div class="equipped-slot empty" data-slot="tool"><span class="slot-icon">🔧</span><span class="slot-label">Tool</span></div>
+                    <div class="equipped-slot empty" data-slot="weapon"><span class="slot-icon">⚔</span><span class="slot-label">Melee</span></div>
+                    <div class="equipped-slot empty" data-slot="ranged"><span class="slot-icon">🔫</span><span class="slot-label">Ranged</span></div>
+                    <div class="equipped-slot empty" data-slot="helm"><span class="slot-icon">🪖</span><span class="slot-label">Helm</span></div>
+                    <div class="equipped-slot empty" data-slot="armor"><span class="slot-icon">🛡</span><span class="slot-label">Chest</span></div>
+                    <div class="equipped-slot empty" data-slot="trinket"><span class="slot-icon">💎</span><span class="slot-label">Trinket</span></div>
                 </div>
             </div>
 
@@ -5478,17 +5480,39 @@
                 var grid = document.getElementById('equippedGrid');
                 if (!grid) return;
                 // Reset slots
+                var slotIcons = { weapon: '⚔', ranged: '🔫', helm: '🪖', armor: '🛡', trinket: '💎' };
+                var slotLabels = { weapon: 'Melee', ranged: 'Ranged', helm: 'Helm', armor: 'Chest', trinket: 'Trinket' };
                 grid.querySelectorAll('.equipped-slot').forEach(function(slot) {
                     slot.className = 'equipped-slot empty';
                     var type = slot.getAttribute('data-slot');
-                    var icons = { weapon: '⚔', armor: '🛡', tool: '🔧' };
-                    slot.innerHTML = '<span class="slot-icon">' + (icons[type] || '?') + '</span><span class="slot-label">' + type + '</span>';
+                    slot.innerHTML = '<span class="slot-icon">' + (slotIcons[type] || '?') + '</span><span class="slot-label">' + (slotLabels[type] || type) + '</span>';
                 });
-                // Fill equipped
+                // Fill equipped — use equip_slot from DB if set, otherwise infer from item_type
                 items.forEach(function(item) {
-                    var slotType = item.item_type;
-                    if (slotType === 'scroll') slotType = 'tool';
+                    var slotType = item.equip_slot; // DB slot assignment
+                    if (!slotType) {
+                        // Infer from item type
+                        if (item.item_type === 'weapon') {
+                            // Check if melee slot taken, use ranged
+                            var meleeSlot = grid.querySelector('[data-slot="weapon"]');
+                            if (meleeSlot && meleeSlot.classList.contains('filled')) slotType = 'ranged';
+                            else slotType = 'weapon';
+                        } else if (item.item_type === 'armor') {
+                            // Check if chest slot taken, use helm
+                            var chestSlot = grid.querySelector('[data-slot="armor"]');
+                            if (chestSlot && chestSlot.classList.contains('filled')) slotType = 'helm';
+                            else slotType = 'armor';
+                        } else if (item.item_type === 'artifact' || item.item_type === 'implant' || item.item_type === 'relic') {
+                            slotType = 'trinket';
+                        } else if (item.item_type === 'scroll') slotType = 'trinket';
+                        else if (item.item_type === 'tool') slotType = 'trinket';
+                        else slotType = 'trinket';
+                    }
                     var slot = grid.querySelector('[data-slot="' + slotType + '"]');
+                    if (!slot || slot.classList.contains('filled')) {
+                        // Try any empty slot
+                        slot = grid.querySelector('.equipped-slot.empty');
+                    }
                     if (!slot) return;
                     slot.className = 'equipped-slot filled';
                     slot.setAttribute('data-inv-id', item.inventory_id || '');
@@ -5503,11 +5527,10 @@
                         if (item.stats.critical) statsArr.push('+' + item.stats.critical + ' CRT');
                         if (item.stats.heal) statsArr.push('+' + item.stats.heal + ' HP');
                     }
-                    var icons = { weapon: '⚔', armor: '🛡', tool: '🔧' };
                     var iconPath = resolveItemIcon(item.item_name);
                     var iconHtml = iconPath
-                        ? '<img class="slot-icon-sm" src="' + iconPath + '" alt="" onerror="this.outerHTML=\'<span class=slot-icon>' + (icons[slotType] || '?') + '</span>\'">'
-                        : '<span class="slot-icon">' + (icons[slotType] || '?') + '</span>';
+                        ? '<img class="slot-icon-sm" src="' + iconPath + '" alt="" onerror="this.outerHTML=\'<span class=slot-icon>' + (slotIcons[slotType] || '?') + '</span>\'">'
+                        : '<span class="slot-icon">' + (slotIcons[slotType] || '?') + '</span>';
                     var tooltipHtml = '<div class="equip-tooltip"><div class="eq-name">' + item.item_name + '</div>' +
                         (statsArr.length ? '<div class="eq-stats">' + statsArr.join(' ') + '</div>' : '') + '</div>';
                     slot.innerHTML = iconHtml + tooltipHtml;
