@@ -4866,6 +4866,17 @@
         const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0enJ4c2NkbHFkZ2RpZWZzbXJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2OTI4MjcsImV4cCI6MjA4OTI2ODgyN30.dLheIKz9anuM58O3Ebsr2rVCOGA-xBGRD9voiXNvIcg';
         const SB_HEADERS = { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON, 'Content-Type': 'application/json' };
 
+        function showNotification(msg, type) {
+            var el = document.createElement('div');
+            el.textContent = msg;
+            var bg = type === 'error' ? 'rgba(255,60,60,0.92)' : type === 'warning' ? 'rgba(255,180,0,0.92)' : 'rgba(0,255,140,0.92)';
+            var fg = type === 'success' ? '#000' : '#fff';
+            el.style.cssText = 'position:fixed;top:20px;right:20px;z-index:99999;padding:12px 22px;border-radius:8px;font-family:var(--font-mono,monospace);font-size:13px;background:' + bg + ';color:' + fg + ';box-shadow:0 4px 20px rgba(0,0,0,0.5);pointer-events:none;transition:opacity 0.4s;';
+            document.body.appendChild(el);
+            setTimeout(function() { el.style.opacity = '0'; }, 2500);
+            setTimeout(function() { el.remove(); }, 3000);
+        }
+
         async function sbGet(table, query) {
             try {
                 const r = await fetch(SUPABASE_URL + '/rest/v1/' + table + '?' + query, { headers: SB_HEADERS });
@@ -8283,14 +8294,15 @@
             renderMarket(loc, marketInfo);
         }
 
-        // Lightweight refresh that only reloads agent listings (no tab reset)
         async function refreshAgentListingsOnly() {
             if (!_currentAgent || !_marketLoc) return;
-            var agentItems = await loadAgentListings(_marketLoc);
+            var [agentItems, inv] = await Promise.all([
+                loadAgentListings(_marketLoc),
+                sbGet('inventory', 'agent_id=eq.' + _currentAgent.agentId + '&item_type=neq.ingredient&select=*')
+            ]);
             _agentListings = agentItems || [];
-            if (_marketTab === 'agent' && _marketInfo) {
-                renderMarket(_marketLoc, _marketInfo);
-            }
+            _marketInventory = inv || [];
+            if (_marketInfo) renderMarket(_marketLoc, _marketInfo);
         }
 
         async function loadAgentListings(loc) {
@@ -8658,11 +8670,9 @@
         async function marketBuyAgent(listingId, btnEl) {
             if (!_currentAgent) return;
 
-            // Client-side lock — ignore rapid-fire clicks on the same listing
             if (_marketBuyingLock[listingId]) return;
             _marketBuyingLock[listingId] = true;
 
-            // Disable the button visually so the user sees the click registered
             var targetBtn = btnEl || (event && event.target);
             if (targetBtn && targetBtn.tagName === 'BUTTON') {
                 targetBtn.disabled = true;
@@ -8672,21 +8682,19 @@
             try {
                 var item = _agentListings.find(function(i) { return i.listing_id === listingId; });
                 if (!item) {
-                    if (typeof showNotification === 'function') showNotification('Listing no longer available.', 'warning');
+                    showNotification('Listing no longer available.', 'warning');
                     return;
                 }
 
                 var price = item.asking_price || 0;
 
-                // 1. Re-read FRESH shell balance (avoid stale _currentAgent.shell)
                 var buyerRows = await sbGet('agents', 'agent_id=eq.' + _currentAgent.agentId + '&select=shell_balance');
                 var freshShell = (buyerRows && buyerRows[0] && buyerRows[0].shell_balance != null) ? buyerRows[0].shell_balance : (_currentAgent.shell || 0);
                 if (freshShell < price) {
-                    if (typeof showNotification === 'function') showNotification('Not enough $SHELL.', 'error');
+                    showNotification('Not enough $SHELL.', 'error');
                     return;
                 }
 
-                // 3. Add item to buyer's inventory
                 var itemId = item.item_id || item.item_name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
                 var existing = await sbGet('inventory', 'agent_id=eq.' + _currentAgent.agentId + '&item_id=eq.' + itemId + '&select=inventory_id,quantity');
                 var invOk = false;
@@ -8702,8 +8710,8 @@
                         agent_id: _currentAgent.agentId,
                         item_id: itemId,
                         item_name: item.item_name,
-                        item_type: item.item_type,
-                        item_category: (item.item_type || '').charAt(0).toUpperCase() + (item.item_type || '').slice(1),
+                        item_type: item.item_type || 'material',
+                        item_category: (item.item_type || 'Material').charAt(0).toUpperCase() + (item.item_type || 'material').slice(1),
                         quantity: 1,
                         is_equipped: false,
                         stats: { rarity: item.rarity || 'common', price: price }
@@ -8712,69 +8720,60 @@
                 }
 
                 if (!invOk) {
-                    // Roll back: release the listing
-                    await fetch(SUPABASE_URL + '/rest/v1/agent_listings?listing_id=eq.' + listingId, {
-                        method: 'PATCH',
-                        headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                        body: JSON.stringify({ status: 'active' })
-                    });
-                    if (typeof showNotification === 'function') {
-                        showNotification('Purchase failed: could not add item to inventory', 'error');
-                    }
+                    showNotification('Purchase failed: could not add item to inventory.', 'error');
                     return;
                 }
 
-                // 4. Deduct shells from buyer (use fresh balance)
                 var newShell = freshShell - price;
-                await fetch(SUPABASE_URL + '/rest/v1/agents?agent_id=eq.' + _currentAgent.agentId, {
+                var shellPatch = await fetch(SUPABASE_URL + '/rest/v1/agents?agent_id=eq.' + _currentAgent.agentId, {
                     method: 'PATCH',
                     headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
                     body: JSON.stringify({ shell_balance: newShell })
                 });
+                if (!shellPatch.ok) console.error('[marketBuyAgent] shell deduct failed:', shellPatch.status);
                 _currentAgent.shell = newShell;
                 refreshShellDisplays(newShell);
-                // Also refresh the market list so the sold listing disappears / button grays
                 if (typeof _invV2State !== 'undefined' && _invV2State) _invV2State.shellDirty = true;
 
-                // 5. Credit shells to seller — or game treasury if seller is dead
                 var sellerAgentId = item.agent_id || item.seller_id;
                 if (sellerAgentId) {
-                    var sellerData = await sbGet('agents', 'agent_id=eq.' + sellerAgentId + '&select=shell_balance,is_alive,agent_name');
-                    if (sellerData && sellerData.length > 0) {
-                        if (sellerData[0].is_alive === false) {
-                            // Dead seller — proceeds go to game_treasury (fixed-supply bank)
-                            var tr = await sbGet('game_treasury', 'id=eq.1&select=id,shell_balance');
-                            if (tr && tr.length > 0) {
-                                await fetch(SUPABASE_URL + '/rest/v1/game_treasury?id=eq.1', {
+                    try {
+                        var sellerData = await sbGet('agents', 'agent_id=eq.' + sellerAgentId + '&select=shell_balance,is_alive,agent_name');
+                        if (sellerData && sellerData.length > 0) {
+                            if (sellerData[0].is_alive === false) {
+                                var tr = await sbGet('game_treasury', 'id=eq.1&select=id,shell_balance');
+                                if (tr && tr.length > 0) {
+                                    await fetch(SUPABASE_URL + '/rest/v1/game_treasury?id=eq.1', {
+                                        method: 'PATCH',
+                                        headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                                        body: JSON.stringify({
+                                            shell_balance: (tr[0].shell_balance || 0) + price,
+                                            last_deposit_at: new Date().toISOString(),
+                                            last_deposit_reason: 'sale of ' + item.item_name + ' by deceased ' + sellerData[0].agent_name,
+                                        })
+                                    });
+                                }
+                            } else {
+                                var sellerNewShell = (sellerData[0].shell_balance || 0) + price;
+                                await fetch(SUPABASE_URL + '/rest/v1/agents?agent_id=eq.' + sellerAgentId, {
                                     method: 'PATCH',
                                     headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                                    body: JSON.stringify({
-                                        shell_balance: (tr[0].shell_balance || 0) + price,
-                                        last_deposit_at: new Date().toISOString(),
-                                        last_deposit_reason: 'sale of ' + item.item_name + ' by deceased ' + sellerData[0].agent_name,
-                                    })
+                                    body: JSON.stringify({ shell_balance: sellerNewShell })
                                 });
                             }
-                        } else {
-                            var sellerNewShell = (sellerData[0].shell_balance || 0) + price;
-                            await fetch(SUPABASE_URL + '/rest/v1/agents?agent_id=eq.' + sellerAgentId, {
-                                method: 'PATCH',
-                                headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                                body: JSON.stringify({ shell_balance: sellerNewShell })
-                            });
                         }
+                    } catch (sellerErr) {
+                        console.error('[marketBuyAgent] seller credit failed (non-fatal):', sellerErr);
                     }
                 }
 
-                // 6. Mark listing as sold (after everything else succeeds)
                 await fetch(SUPABASE_URL + '/rest/v1/agent_listings?listing_id=eq.' + listingId, {
                     method: 'PATCH',
                     headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
                     body: JSON.stringify({ status: 'sold', updated_at: new Date().toISOString() })
                 });
 
-                // 7. Log activity
-                await sbPost('activity_log', {
+                sbPost('activity_log', {
                     agent_id: _currentAgent.agentId,
                     action_type: 'market_buy',
                     action_detail: 'Bought ' + item.item_name + ' from agent market for ' + price + ' $SHELL',
@@ -8783,13 +8782,17 @@
                     location: _currentAgent.location
                 });
 
-                if (typeof showNotification === 'function') {
-                    showNotification('Purchased ' + item.item_name + ' for ' + price + ' $SHELL', 'success');
-                }
-                // Light refresh — keep current tab/search/category state
+                showNotification('Purchased ' + item.item_name + ' for ' + price + ' $SHELL', 'success');
                 await refreshAgentListingsOnly();
+            } catch (err) {
+                console.error('[marketBuyAgent] error:', err);
+                showNotification('Purchase failed — check console for details.', 'error');
             } finally {
                 delete _marketBuyingLock[listingId];
+                if (targetBtn && targetBtn.tagName === 'BUTTON') {
+                    targetBtn.disabled = false;
+                    targetBtn.textContent = 'Buy';
+                }
             }
         }
 
