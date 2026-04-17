@@ -8171,7 +8171,7 @@
             junk: '🗑️', relic: '👑', implant: '🧠', data_shard: '💾'
         };
 
-        var _marketTab = 'npc'; // 'npc', 'agent', or 'sell'
+        var _marketTab = 'buy'; // 'buy' (NPC + agent listings merged) or 'sell'
         var _marketItems = [];
         var _marketInventory = [];
         var _agentListings = [];
@@ -8196,9 +8196,19 @@
             { id: 'junk', label: 'Junk', emoji: '🗑️' }
         ];
 
+        // Unified buy list: NPC listings + agent listings, each tagged with source
+        function getMergedBuyItems() {
+            var npc = (_marketItems || []).map(function(i) {
+                return Object.assign({}, i, { _source: 'npc', _price: i.current_price });
+            });
+            var agent = (_agentListings || []).map(function(i) {
+                return Object.assign({}, i, { _source: 'agent', _price: i.asking_price || 0 });
+            });
+            return npc.concat(agent);
+        }
+
         function getMarketFilteredItems() {
-            var items = _marketTab === 'npc' ? _marketItems :
-                        _marketTab === 'agent' ? _agentListings : _marketInventory;
+            var items = _marketTab === 'buy' ? getMergedBuyItems() : _marketInventory;
             var filtered = items.filter(function(item) {
                 var name = (item.item_name || '').toLowerCase();
                 var type = (item.item_type || '').toLowerCase();
@@ -8206,6 +8216,7 @@
                     if (item.is_equipped) return false;
                     if ((item.quantity || 0) <= 0) return false;
                 }
+                if (_marketTab === 'buy' && item._source === 'npc' && (item.stock || 0) <= 0) return false;
                 if (_marketCategory !== 'all' && type !== _marketCategory) return false;
                 if (_marketSearch && name.indexOf(_marketSearch.toLowerCase()) === -1) return false;
                 return true;
@@ -8216,12 +8227,9 @@
                 if (_marketTab === 'sell') {
                     priceA = Math.max(1, Math.floor(getItemPrice(a) * 0.6));
                     priceB = Math.max(1, Math.floor(getItemPrice(b) * 0.6));
-                } else if (_marketTab === 'agent') {
-                    priceA = a.asking_price || 0;
-                    priceB = b.asking_price || 0;
                 } else {
-                    priceA = a.current_price || 0;
-                    priceB = b.current_price || 0;
+                    priceA = a._price != null ? a._price : (a.current_price || a.asking_price || 0);
+                    priceB = b._price != null ? b._price : (b.current_price || b.asking_price || 0);
                 }
                 var nameA = (a.item_name || '').toLowerCase();
                 var nameB = (b.item_name || '').toLowerCase();
@@ -8240,11 +8248,13 @@
         }
 
         function getCategoryCounts() {
-            var items = _marketTab === 'npc' ? _marketItems :
-                        _marketTab === 'agent' ? _agentListings : _marketInventory;
-            if (_marketTab === 'sell') {
-                items = items.filter(function(it) {
-                    var t = (it.item_type || '').toLowerCase();
+            var items;
+            if (_marketTab === 'buy') {
+                items = getMergedBuyItems().filter(function(it) {
+                    return it._source === 'agent' || (it.stock || 0) > 0;
+                });
+            } else {
+                items = _marketInventory.filter(function(it) {
                     return !it.is_equipped && (it.quantity || 0) > 0;
                 });
             }
@@ -8297,7 +8307,7 @@
             _agentListings = agentItems || [];
             // Preserve current tab/filter if user was mid-session (avoids jumping
             // back to NPC market after every agent-market buy).
-            if (!_marketTab) _marketTab = 'npc';
+            if (!_marketTab || _marketTab === 'npc' || _marketTab === 'agent') _marketTab = 'buy';
             if (_marketSearch == null) _marketSearch = '';
             if (!_marketCategory) _marketCategory = 'all';
 
@@ -8336,10 +8346,9 @@
             html += ' — ' + escInvAttr(marketInfo.desc);
             html += '</div>';
 
-            // Tabs (3 tabs)
+            // Tabs (Buy — merged NPC + agent listings — and Sell)
             html += '<div class="market-tabs">';
-            html += '<button class="market-tab' + (_marketTab === 'npc' ? ' active' : '') + '" onclick="marketSwitchTab(\'npc\')"><span class="tab-icon">🏪</span>NPC Market</button>';
-            html += '<button class="market-tab' + (_marketTab === 'agent' ? ' active' : '') + '" onclick="marketSwitchTab(\'agent\')"><span class="tab-icon">🤝</span>Agent Market</button>';
+            html += '<button class="market-tab' + (_marketTab === 'buy' ? ' active' : '') + '" onclick="marketSwitchTab(\'buy\')"><span class="tab-icon">🛒</span>Buy</button>';
             html += '<button class="market-tab' + (_marketTab === 'sell' ? ' active' : '') + '" onclick="marketSwitchTab(\'sell\')"><span class="tab-icon">💰</span>Sell</button>';
             html += '</div>';
 
@@ -8380,13 +8389,13 @@
 
             // Bottom bar
             var sellableInv = _marketInventory.filter(function(it) {
-                var t = (it.item_type || '').toLowerCase();
                 return !it.is_equipped && (it.quantity || 0) > 0;
             });
-            var totalItems = _marketTab === 'npc' ? _marketItems.filter(function(i){return i.stock > 0;}).length :
-                             _marketTab === 'agent' ? _agentListings.length : sellableInv.length;
-            var tabLabel = _marketTab === 'npc' ? 'items in stock' :
-                           _marketTab === 'agent' ? 'agent listings' : 'items to sell';
+            var buyableCount = getMergedBuyItems().filter(function(it) {
+                return it._source === 'agent' || (it.stock || 0) > 0;
+            }).length;
+            var totalItems = _marketTab === 'buy' ? buyableCount : sellableInv.length;
+            var tabLabel = _marketTab === 'buy' ? 'items for sale' : 'items to sell';
             html += '<div class="market-shell-bar">';
             html += '<span><span class="shell-bal">💰 ' + shell + ' $SHELL</span></span>';
             html += '<span class="shell-info">' + totalItems + ' ' + tabLabel + '</span>';
@@ -8396,9 +8405,87 @@
         }
 
         function renderMarketItemsList(shell) {
-            if (_marketTab === 'npc') return renderMarketBuyList(shell);
-            if (_marketTab === 'agent') return renderAgentMarketList(shell);
+            if (_marketTab === 'buy') return renderUnifiedBuyList(shell);
             return renderMarketSellList();
+        }
+
+        function renderUnifiedBuyList(shell) {
+            var filtered = getMarketFilteredItems();
+            if (filtered.length === 0) return '<div class="market-empty"><div class="empty-icon">📦</div>No items for sale at this market.</div>';
+
+            var html = '';
+            var now = Date.now();
+            filtered.forEach(function(item) {
+                var isAgent = item._source === 'agent';
+                var price = isAgent ? (item.asking_price || 0) : (item.current_price || 0);
+                var emoji = MARKET_TYPE_EMOJI[item.item_type] || '📦';
+                var rarity = (item.rarity || 'common').toLowerCase();
+                var rarityColor = RARITY_COLORS_ALCH[rarity.charAt(0).toUpperCase() + rarity.slice(1)] || '#8a9a8a';
+                var canBuy = shell >= price && (isAgent || (item.stock || 0) > 0);
+
+                var buyHandler = isAgent
+                    ? 'marketBuyAgent(\'' + item.listing_id + '\', this)'
+                    : 'marketBuy(\'' + item.listing_id + '\')';
+
+                var sellerLabel = isAgent
+                    ? (item.seller_name ? 'by ' + escInvAttr(item.seller_name) : 'by agent')
+                    : '🏪 Shop';
+
+                var stockOrTime = '';
+                if (isAgent) {
+                    if (item.expires_at) {
+                        var diff = new Date(item.expires_at).getTime() - now;
+                        if (diff > 0) {
+                            var hrs = Math.floor(diff / 3600000);
+                            var mins = Math.floor((diff % 3600000) / 60000);
+                            stockOrTime = '<span class="mexpires">⏳ ' + (hrs > 0 ? hrs + 'h ' + mins + 'm' : mins + 'm') + '</span>';
+                        }
+                    }
+                } else {
+                    var stockClass = item.stock <= 3 ? 'low' : '';
+                    stockOrTime = '<span class="mstock ' + stockClass + '">' + item.stock + ' in stock</span>';
+                }
+
+                var trend = '';
+                if (!isAgent) {
+                    if (item.current_price > item.base_price) trend = ' <span class="trend-up">▲</span>';
+                    else if (item.current_price < item.base_price) trend = ' <span class="trend-down">▼</span>';
+                }
+
+                var desc = item.description || '';
+                var statsStr = '';
+                if (item.stat_effects && typeof item.stat_effects === 'object') {
+                    var parts = [];
+                    for (var k in item.stat_effects) { if (item.stat_effects[k]) parts.push(k + ': ' + item.stat_effects[k]); }
+                    statsStr = parts.join(' | ');
+                }
+
+                html += '<div class="market-item-row market-tt"';
+                html += ' data-name="' + escInvAttr(item.item_name) + '"';
+                html += ' data-type="' + escInvAttr((item.item_type || '').charAt(0).toUpperCase() + (item.item_type || '').slice(1)) + '"';
+                html += ' data-rarity="' + rarity + '"';
+                if (desc) html += ' data-desc="' + escInvAttr(desc) + '"';
+                if (statsStr) html += ' data-stats="' + escInvAttr(statsStr) + '"';
+                html += ' data-price="' + price + '">';
+                var iconPath = resolveItemIcon(item.item_name);
+                var iconHtml = iconPath
+                    ? '<img src="' + iconPath + '" alt="" onerror="this.outerHTML=\'' + emoji + '\'">'
+                    : emoji;
+                html += '<div class="market-item-icon rarity-' + rarity + '">' + iconHtml + '</div>';
+                html += '<div class="market-item-info">';
+                html += '<div class="market-item-name" style="color:' + rarityColor + ';">' + escInvAttr(item.item_name) + '</div>';
+                html += '<div class="market-item-meta">';
+                html += '<span class="mtype">' + escInvAttr(item.item_type || '') + '</span>';
+                html += '<span class="mseller">' + sellerLabel + '</span>';
+                if (stockOrTime) html += stockOrTime;
+                if (rarity !== 'common') html += '<span class="mrarity" style="color:' + rarityColor + ';">' + rarity + '</span>';
+                html += '</div></div>';
+                html += '<div class="market-item-actions">';
+                html += '<div class="market-price">' + price + ' $S' + trend + '</div>';
+                html += '<button class="btn-market-buy" ' + (canBuy ? 'onclick="event.stopPropagation();' + buyHandler + '"' : 'disabled') + '>Buy</button>';
+                html += '</div></div>';
+            });
+            return html;
         }
 
         function renderMarketBuyList(shell) {
