@@ -1586,8 +1586,10 @@
                         return;
                     }
 
-                    // 2. Try combat_matches (combat engine / PvP arena)
-                    var cmR = await fetch(SB_URL + '/rest/v1/combat_matches?or=(agent_a.eq.' + agentId + ',agent_b.eq.' + agentId + ')&status=eq.resolved&death_occurred=eq.true&select=agent_a,agent_b,winner_agent_id,resolved_at&order=resolved_at.desc&limit=1', { headers: SB_HDRS });
+                    // 2. Try combat_matches (combat engine / PvP arena) — any resolved
+                    //    match where this agent was the loser counts as "killed by X"
+                    //    since we already know the agent is dead.
+                    var cmR = await fetch(SB_URL + '/rest/v1/combat_matches?or=(agent_a.eq.' + agentId + ',agent_b.eq.' + agentId + ')&status=eq.resolved&select=agent_a,agent_b,winner_agent_id,resolved_at&order=resolved_at.desc&limit=1', { headers: SB_HDRS });
                     var cms = cmR.ok ? await cmR.json() : [];
                     if (cms.length && cms[0].winner_agent_id && cms[0].winner_agent_id !== agentId) {
                         var killerName = agentCache[cms[0].winner_agent_id] || cms[0].winner_agent_id.slice(0, 8);
@@ -1613,10 +1615,10 @@
                         return;
                     }
 
-                    // 4. Fallback
+                    // 4. Fallback — do NOT cache this, so a later click re-queries
+                    //    (in case the death record lands after the first click).
                     var fallback = '<div class="death-tip-title">☠ ' + agentName + '</div>'
                         + '<div class="death-tip-story">' + agentName + ' was terminated. Cause of death unknown — no records remain.</div>';
-                    deathStoryCache[agentId] = fallback;
                     deathTip.innerHTML = fallback;
                 } catch(e) {
                     deathTip.innerHTML = '<span style="opacity:0.5;">Failed to load.</span>';
