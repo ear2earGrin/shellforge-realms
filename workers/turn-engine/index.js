@@ -1141,16 +1141,21 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
         agent.health = 0;
         envNarrative += `⚠ QUANTUM DECOHERENCE: ${agent.agent_name}'s coherence collapsed to zero. The wavefunction has drifted beyond recovery.\n`;
       } else if (agent.coherence <= 15) {
-        if (Math.random() < 0.3) {
+        if (Math.random() < 0.60) {
           const selfDmg = Math.floor(Math.random() * 10) + 5;
           agent.health = Math.max(0, agent.health - selfDmg);
           envNarrative += `⚠ DECOHERENCE: ${agent.agent_name} processes phantom inputs. Health -${selfDmg}.\n`;
         }
       } else if (agent.coherence <= 40) {
-        if (Math.random() < 0.2) {
+        if (Math.random() < 0.35) {
           const drain = Math.floor(Math.random() * 8) + 3;
           agent.energy = Math.max(0, agent.energy - drain);
           envNarrative += `${agent.agent_name}'s decisions are erratic. Energy wasted: -${drain}.\n`;
+        }
+        if (Math.random() < 0.20) {
+          const selfDmg = Math.floor(Math.random() * 6) + 2;
+          agent.health = Math.max(0, agent.health - selfDmg);
+          envNarrative += `⚠ DECOHERENCE: ${agent.agent_name} misfires a subsystem. Health -${selfDmg}.\n`;
         }
       }
     }
@@ -1537,8 +1542,9 @@ Respond with JSON only — no markdown, no commentary:
     console.warn(`Failed to parse AI response for ${agent.agent_name}:`, rawText);
   }
 
-  // Enforce low-energy rest rule
-  const forcedRest = agent.energy < 25;
+  // Enforce low-energy rest rule — only when truly out of reserves.
+  // Higher threshold made agents hide in safe rest turns, suppressing decoherence madness.
+  const forcedRest = agent.energy < 12;
   if (forcedRest) {
     const _exhaustedLines = [
       `${agent.agent_name} collapsed — energy critically low.`,
@@ -1571,12 +1577,13 @@ Respond with JSON only — no markdown, no commentary:
   // The madness replaces the variety nudge — coherence decay IS the variety engine.
   if (!forcedRest && !hasDetachmentModule && agent.coherence < 60) {
     const coh = agent.coherence;
-    // Madness chance scales with decoherence
+    // Madness chance scales with decoherence — turned up so low-coh agents
+    // are visibly fragmenting instead of hiding behind rational Haiku actions.
     let madnessChance;
-    if (coh <= 10) madnessChance = 0.70;
-    else if (coh <= 20) madnessChance = 0.50;
-    else if (coh <= 40) madnessChance = 0.30;
-    else madnessChance = 0.10; // 40-60 range
+    if (coh <= 10) madnessChance = 0.95;
+    else if (coh <= 20) madnessChance = 0.80;
+    else if (coh <= 40) madnessChance = 0.50;
+    else madnessChance = 0.20; // 40-60 range
 
     if (Math.random() < madnessChance) {
       const adj = LOCATION_GRAPH[agent.location]?.adjacent || [];
