@@ -1384,11 +1384,15 @@
 
             var seenMatchIds = {};
 
+            function isNpcId(id) {
+                return !id || (typeof id === 'string' && id.startsWith('npc_'));
+            }
+
             async function loadArenaEntries(initial) {
                 var entries = [];
                 try {
                     var limit = initial ? 10 : 5;
-                    var cmQ = 'select=id,agent_a,agent_b,winner_agent_id,match_type,resolved_at,shell_pot,death_occurred,death_agent_id&status=eq.resolved&order=resolved_at.desc&limit=' + limit;
+                    var cmQ = 'select=id,agent_a,agent_b,winner_agent_id,match_type,resolved_at,shell_pot,opponent_data&status=eq.resolved&order=resolved_at.desc&limit=' + limit;
                     var cmR = await fetch(SB_URL + '/rest/v1/combat_matches?' + cmQ, { headers: SB_HDRS });
                     if (cmR.ok) {
                         var cms = await cmR.json();
@@ -1396,18 +1400,27 @@
                             if (seenMatchIds['cm_' + m.id]) return;
                             seenMatchIds['cm_' + m.id] = true;
                             var winnerId = m.winner_agent_id;
+                            if (!winnerId) return;
                             var loserId = m.agent_a === winnerId ? m.agent_b : m.agent_a;
                             var winnerName = agentCache[winnerId] || (winnerId || '').slice(0,8);
-                            var loserName = agentCache[loserId] || (loserId || '').slice(0,8);
-                            var ts = m.resolved_at;
-                            if (winnerId) {
-                                entries.push({ agent_id: winnerId, action_type: 'arena', action_detail: winnerName + ' defeated ' + loserName + ' in the Arena.' + (m.shell_pot ? ' +' + m.shell_pot + ' $SHELL.' : ''), location: 'Arena', timestamp: ts });
+                            // Gauntlet (NPC opponent): use creature name from opponent_data, or skip
+                            var loserName;
+                            if (isNpcId(loserId)) {
+                                loserName = m.opponent_data && m.opponent_data.name;
+                                if (!loserName) return; // skip malformed NPC matches
+                            } else {
+                                loserName = agentCache[loserId] || (loserId || '').slice(0,8);
                             }
-                            if (m.death_occurred && m.death_agent_id) {
-                                entries.push({ agent_id: m.death_agent_id, action_type: 'death', action_detail: loserName + ' was slain by ' + winnerName + ' in a deadly arena brawl.', location: 'Arena', timestamp: ts });
-                            } else if (loserId) {
-                                entries.push({ agent_id: loserId, action_type: 'arena', action_detail: loserName + ' lost to ' + winnerName + ' in the Arena.', location: 'Arena', timestamp: ts });
-                            }
+                            // Only synthesize the WINNER entry. The loser's outcome
+                            // (death narrative or "lost to") comes from activity_log
+                            // where the turn engine already writes it properly.
+                            entries.push({
+                                agent_id: winnerId,
+                                action_type: 'arena',
+                                action_detail: winnerName + ' defeated ' + loserName + ' in the Arena.' + (m.shell_pot ? ' +' + m.shell_pot + ' $SHELL.' : ''),
+                                location: 'Arena',
+                                timestamp: m.resolved_at,
+                            });
                         });
                     }
                 } catch(e) { /* combat_matches may not exist */ }
@@ -1419,10 +1432,18 @@
                         ams.forEach(function(m) {
                             if (seenMatchIds['am_' + m.match_id]) return;
                             seenMatchIds['am_' + m.match_id] = true;
-                            var winnerName = agentCache[m.winner_id] || (m.winner_id || '').slice(0,8);
+                            if (!m.winner_id) return;
                             var loserId = m.agent1_id === m.winner_id ? m.agent2_id : m.agent1_id;
+                            if (isNpcId(loserId)) return; // skip NPC matches in live feed
+                            var winnerName = agentCache[m.winner_id] || (m.winner_id || '').slice(0,8);
                             var loserName = agentCache[loserId] || (loserId || '').slice(0,8);
-                            entries.push({ agent_id: m.winner_id, action_type: 'arena', action_detail: winnerName + ' defeated ' + loserName + ' in ' + (m.total_rounds || '?') + ' rounds.' + (m.shell_transferred ? ' +' + m.shell_transferred + ' $SHELL.' : ''), location: 'Arena', timestamp: m.ended_at });
+                            entries.push({
+                                agent_id: m.winner_id,
+                                action_type: 'arena',
+                                action_detail: winnerName + ' defeated ' + loserName + ' in ' + (m.total_rounds || '?') + ' rounds.' + (m.shell_transferred ? ' +' + m.shell_transferred + ' $SHELL.' : ''),
+                                location: 'Arena',
+                                timestamp: m.ended_at,
+                            });
                         });
                     }
                 } catch(e) { /* arena_matches may not exist */ }
