@@ -5000,6 +5000,7 @@
                         quirk:          dbAgent.quirk || '',
                         energy:         dbAgent.energy,
                         health:         dbAgent.health,
+                        coherence:      dbAgent.coherence ?? 100,
                         karma:          dbAgent.karma,
                         shell:          dbAgent.shell_balance,
                         location:       dbAgent.location,
@@ -6067,21 +6068,69 @@
         async function loadActivityLog(agentId) {
             if (!agentId) return;
             const rows = await sbGet('activity_log',
-                'agent_id=eq.' + agentId + '&order=timestamp.desc&limit=20&select=*');
+                'agent_id=eq.' + agentId + '&order=timestamp.desc&limit=20&select=*') || [];
+
+            // Also load arena/combat matches for this agent
+            let arenaEntries = [];
+            try {
+                const cms = await sbGet('combat_matches',
+                    'or=(agent_a.eq.' + agentId + ',agent_b.eq.' + agentId + ')&status=eq.resolved&order=resolved_at.desc&limit=10&select=id,agent_a,agent_b,winner_agent_id,match_type,resolved_at,shell_pot,death_occurred,death_agent_id') || [];
+                const allAgents = await sbGet('agents', 'select=agent_id,agent_name') || [];
+                const nameMap = {};
+                allAgents.forEach(function(a) { nameMap[a.agent_id] = a.agent_name; });
+
+                cms.forEach(function(m) {
+                    const isWinner = m.winner_agent_id === agentId;
+                    const oppId = m.agent_a === agentId ? m.agent_b : m.agent_a;
+                    const oppName = nameMap[oppId] || (oppId || '').slice(0,8);
+                    const myName = nameMap[agentId] || agentId.slice(0,8);
+                    let detail, shellChange = 0;
+                    if (isWinner) {
+                        detail = myName + ' defeated ' + oppName + ' in the Arena.';
+                        shellChange = m.shell_pot || 0;
+                    } else if (m.death_occurred && m.death_agent_id === agentId) {
+                        detail = myName + ' was slain by ' + oppName + ' in a deadly arena brawl.';
+                    } else {
+                        detail = myName + ' lost to ' + oppName + ' in the Arena.';
+                    }
+                    arenaEntries.push({
+                        action_type: m.death_occurred && m.death_agent_id === agentId ? 'death' : 'arena',
+                        action_detail: detail,
+                        timestamp: m.resolved_at,
+                        shell_change: shellChange,
+                        karma_change: 0,
+                        _source: 'combat_match',
+                        _match_id: m.id,
+                    });
+                });
+            } catch(e) { /* combat_matches may not exist */ }
+
+            // Merge and deduplicate
+            const allEntries = rows.concat(arenaEntries);
+            const seen = {};
+            const deduped = allEntries.filter(function(e) {
+                const key = (e.action_type || '') + '|' + (e.timestamp || '');
+                if (seen[key]) return false;
+                seen[key] = true;
+                return true;
+            });
+            deduped.sort(function(a, b) {
+                return (a.timestamp || '') > (b.timestamp || '') ? -1 : 1;
+            });
+
             const log = document.getElementById('activityLog');
             if (!log) return;
-            if (!rows || rows.length === 0) {
+            if (!deduped.length) {
                 log.innerHTML = '<div style="font-family:var(--font-main);font-size:0.65rem;color:var(--color-text-dim);padding:12px 0;">No activity recorded yet.</div>';
                 return;
             }
             log.innerHTML = '';
-            rows.forEach(function(entry) {
+            deduped.slice(0, 25).forEach(function(entry) {
                 const when = timeAgo(entry.timestamp);
                 const div = document.createElement('div');
                 div.className = 'chronicle-entry';
                 div.dataset.action = entry.action_type || '';
                 let detail = entry.action_detail || entry.action_type;
-                // Strip leading agent name — it's redundant on the agent's own dashboard
                 if (_currentAgent && _currentAgent.name && detail.startsWith(_currentAgent.name)) {
                     detail = detail.slice(_currentAgent.name.length).replace(/^\s+/, '');
                 }
@@ -6713,11 +6762,21 @@
                         else console.warn('⚠️ Whisper not saved — DB unavailable');
                     });
                     // Boost coherence on whisper — Ghost contact stabilizes the agent
+                    // Fetch fresh coherence from DB to avoid stale values
+                    var freshAgent = await sbGet('agents', 'agent_id=eq.' + agentData.agentId + '&select=coherence&limit=1');
+                    var freshCoh = (freshAgent && freshAgent[0]) ? (freshAgent[0].coherence ?? 50) : (agentData.coherence || 50);
+                    var newCoh = Math.min(100, freshCoh + 15);
                     fetch(SUPABASE_URL + '/rest/v1/agents?agent_id=eq.' + agentData.agentId, {
                         method: 'PATCH',
                         headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                        body: JSON.stringify({ coherence: Math.min(100, (agentData.coherence || 50) + 15) })
+                        body: JSON.stringify({ coherence: newCoh })
                     });
+                    // Update local agent data so UI reflects the change
+                    if (_currentAgent) _currentAgent.coherence = newCoh;
+                    var cohEl = document.getElementById('coherenceValue');
+                    if (cohEl) cohEl.textContent = newCoh + '/100';
+                    var cohBar = document.getElementById('coherenceBar');
+                    if (cohBar) cohBar.style.width = newCoh + '%';
                 }
                 
                 if (heard) {
@@ -6755,6 +6814,7 @@
             if (d.health !== undefined) { set('healthValue', d.health + '/100'); setW('healthBar', d.health); }
             if (d.coherence !== undefined) {
                 var coh = d.coherence ?? 100;
+                if (_currentAgent) _currentAgent.coherence = coh;
                 set('coherenceValue', coh + '/100'); setW('coherenceBar', coh);
                 var cohBar = document.getElementById('coherenceBar');
                 var cohStat = cohBar ? cohBar.closest('.stat-bar') : null;

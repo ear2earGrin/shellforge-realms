@@ -445,6 +445,11 @@
         .feed-time { color: rgba(74,222,128,0.28); font-size: 0.58rem; margin-right: 5px; }
         @keyframes feedIn { from { opacity:0; transform:translateX(-5px); } to { opacity:1; transform:translateX(0); } }
         .feed-line.new-entry { animation: feedIn 0.35s ease; }
+        .feed-line.feed-arena {
+            background: rgba(255, 140, 0, 0.06);
+            border-left: 2px solid rgba(255, 140, 0, 0.5);
+            padding: 5px 6px 5px 8px;
+        }
         .feed-line.feed-death {
             background: rgba(244, 63, 94, 0.08);
             border-left: 2px solid #f43f5e;
@@ -1335,12 +1340,13 @@
                 if (cleanDetail && cleanDetail.toLowerCase().startsWith(agentName.toLowerCase())) {
                     cleanDetail = cleanDetail.slice(agentName.length).replace(/^\s+/, '');
                 }
-                var isDeath = actionType === 'death' || /died|death|killed|succumbed|terminated|fell in the arena/i.test(cleanDetail);
+                var isDeath = actionType === 'death' || /died|death|killed|succumbed|terminated|fell in the arena|was slain/i.test(cleanDetail);
+                var isArena = !isDeath && (actionType === 'arena' || /arena|defeated.*in/i.test(cleanDetail));
                 var cls = isDeath ? 'death' : classifyText(cleanDetail);
-                var tc = cls==='death'?'#f43f5e':cls==='good'?'#4ade80':cls==='bad'?'#fb923c':'rgba(200,200,200,0.82)';
+                var tc = cls==='death'?'#f43f5e':isArena?'#ff8c00':cls==='good'?'#4ade80':cls==='bad'?'#fb923c':'rgba(200,200,200,0.82)';
                 var locTag = location ? '<span style="color:rgba(120,120,140,0.7);font-size:0.75em;"> [' + location + ']</span>' : '';
                 var div = document.createElement('div');
-                div.className = 'feed-line' + (animate ? ' new-entry' : '') + (isDeath ? ' feed-death' : '');
+                div.className = 'feed-line' + (animate ? ' new-entry' : '') + (isDeath ? ' feed-death' : '') + (isArena ? ' feed-arena' : '');
                 if (isDeath) {
                     div.innerHTML = '<span class="feed-time">' + formatTime(timestamp) + '</span>'
                         + '<span class="feed-prefix" style="color:#f43f5e;">☠</span>'
@@ -1376,7 +1382,53 @@
                 } catch(e) { console.warn('Feed: failed to load agents', e); }
             }
 
-            // Fetch activity log entries
+            var seenMatchIds = {};
+
+            async function loadArenaEntries(initial) {
+                var entries = [];
+                try {
+                    var limit = initial ? 10 : 5;
+                    var cmQ = 'select=id,agent_a,agent_b,winner_agent_id,match_type,resolved_at,shell_pot,death_occurred,death_agent_id&status=eq.resolved&order=resolved_at.desc&limit=' + limit;
+                    var cmR = await fetch(SB_URL + '/rest/v1/combat_matches?' + cmQ, { headers: SB_HDRS });
+                    if (cmR.ok) {
+                        var cms = await cmR.json();
+                        cms.forEach(function(m) {
+                            if (seenMatchIds['cm_' + m.id]) return;
+                            seenMatchIds['cm_' + m.id] = true;
+                            var winnerId = m.winner_agent_id;
+                            var loserId = m.agent_a === winnerId ? m.agent_b : m.agent_a;
+                            var winnerName = agentCache[winnerId] || (winnerId || '').slice(0,8);
+                            var loserName = agentCache[loserId] || (loserId || '').slice(0,8);
+                            var ts = m.resolved_at;
+                            if (winnerId) {
+                                entries.push({ agent_id: winnerId, action_type: 'arena', action_detail: winnerName + ' defeated ' + loserName + ' in the Arena.' + (m.shell_pot ? ' +' + m.shell_pot + ' $SHELL.' : ''), location: 'Arena', timestamp: ts });
+                            }
+                            if (m.death_occurred && m.death_agent_id) {
+                                entries.push({ agent_id: m.death_agent_id, action_type: 'death', action_detail: loserName + ' was slain by ' + winnerName + ' in a deadly arena brawl.', location: 'Arena', timestamp: ts });
+                            } else if (loserId) {
+                                entries.push({ agent_id: loserId, action_type: 'arena', action_detail: loserName + ' lost to ' + winnerName + ' in the Arena.', location: 'Arena', timestamp: ts });
+                            }
+                        });
+                    }
+                } catch(e) { /* combat_matches may not exist */ }
+                try {
+                    var amQ = 'select=match_id,agent1_id,agent2_id,winner_id,total_rounds,shell_transferred,ended_at&status=eq.complete&order=ended_at.desc&limit=5';
+                    var amR = await fetch(SB_URL + '/rest/v1/arena_matches?' + amQ, { headers: SB_HDRS });
+                    if (amR.ok) {
+                        var ams = await amR.json();
+                        ams.forEach(function(m) {
+                            if (seenMatchIds['am_' + m.match_id]) return;
+                            seenMatchIds['am_' + m.match_id] = true;
+                            var winnerName = agentCache[m.winner_id] || (m.winner_id || '').slice(0,8);
+                            var loserId = m.agent1_id === m.winner_id ? m.agent2_id : m.agent1_id;
+                            var loserName = agentCache[loserId] || (loserId || '').slice(0,8);
+                            entries.push({ agent_id: m.winner_id, action_type: 'arena', action_detail: winnerName + ' defeated ' + loserName + ' in ' + (m.total_rounds || '?') + ' rounds.' + (m.shell_transferred ? ' +' + m.shell_transferred + ' $SHELL.' : ''), location: 'Arena', timestamp: m.ended_at });
+                        });
+                    }
+                } catch(e) { /* arena_matches may not exist */ }
+                return entries;
+            }
+
             async function loadActivity(initial) {
                 try {
                     var query = 'select=agent_id,action_type,action_detail,location,timestamp&order=timestamp.desc&limit=' + (initial ? 40 : 10);
@@ -1386,20 +1438,31 @@
                     var r = await fetch(SB_URL + '/rest/v1/activity_log?' + query, { headers: SB_HDRS });
                     if (!r.ok) return;
                     var rows = await r.json();
-                    if (!rows.length) return;
 
-                    // Reverse so oldest first (for chronological display)
-                    rows.reverse();
+                    var arenaRows = await loadArenaEntries(initial);
+                    var allRows = rows.concat(arenaRows);
 
-                    // On initial load, clear boot message
-                    if (initial && rows.length > 0) {
+                    var seen = {};
+                    allRows = allRows.filter(function(row) {
+                        var key = row.agent_id + '|' + row.action_type + '|' + (row.timestamp || '');
+                        if (seen[key]) return false;
+                        seen[key] = true;
+                        return true;
+                    });
+
+                    allRows.sort(function(a, b) {
+                        return (a.timestamp || '') < (b.timestamp || '') ? -1 : 1;
+                    });
+
+                    if (!allRows.length) return;
+
+                    if (initial && allRows.length > 0) {
                         feed.innerHTML = '';
                     }
 
-                    rows.forEach(function(row, idx) {
+                    allRows.forEach(function(row, idx) {
                         var name = agentCache[row.agent_id] || 'Unknown';
                         var detail = row.action_detail || row.action_type;
-                        // Show full text — no truncation
                         var location = row.location || '';
                         if (initial) {
                             setTimeout(function() {
@@ -1410,8 +1473,7 @@
                         }
                     });
 
-                    // Update last seen
-                    lastSeenTime = rows[rows.length - 1].timestamp;
+                    lastSeenTime = allRows[allRows.length - 1].timestamp;
                 } catch(e) { console.warn('Feed: failed to load activity', e); }
             }
 
