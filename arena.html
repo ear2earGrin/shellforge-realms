@@ -87,7 +87,7 @@ body {
 .banner {
   position: relative;
   margin-top: 16px;
-  height: clamp(180px, 28vh, 280px);
+  height: clamp(120px, 16vh, 160px);
   background:
     linear-gradient(to bottom, rgba(10,10,15,0.35) 0%, rgba(10,10,15,0.95) 100%),
     radial-gradient(ellipse at center, rgba(74,222,128,0.12) 0%, rgba(10,10,15,0.95) 70%),
@@ -443,7 +443,60 @@ body {
 .tier-btn:hover { border-color: var(--border-bright); background: rgba(74,222,128,0.05); }
 .tier-btn .tier-num { font-size: 1.1rem; font-weight: 700; color: var(--green); }
 .tier-btn .tier-label { font-size: 0.55rem; letter-spacing: 0.12em; color: var(--text-dim); margin-top: 4px; }
+.tier-btn .tier-glyph { font-size: 1.4rem; margin-bottom: 2px; opacity: 0.7; }
+.tier-btn:hover .tier-glyph { opacity: 1; }
+.tier-btn.t2 .tier-num { color: var(--cyan); }
+.tier-btn.t2 { border-color: rgba(0,240,255,0.12); }
+.tier-btn.t2:hover { border-color: rgba(0,240,255,0.5); background: rgba(0,240,255,0.05); }
+.tier-btn.t3 .tier-num { color: var(--amber); }
+.tier-btn.t3 { border-color: rgba(251,191,36,0.12); }
+.tier-btn.t3:hover { border-color: rgba(251,191,36,0.5); background: rgba(251,191,36,0.05); }
 .tier-btn.nightmare .tier-num { color: var(--red); }
+.tier-btn.nightmare { border-color: rgba(248,113,113,0.2); background: rgba(248,113,113,0.03); }
+.tier-btn.nightmare:hover { border-color: rgba(248,113,113,0.6); background: rgba(248,113,113,0.08); box-shadow: 0 0 16px rgba(248,113,113,0.15); }
+
+/* AGENT STATUS BAR */
+.agent-bar {
+  display: flex; align-items: center; gap: 16px;
+  padding: 10px 16px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  margin: 12px 0 16px;
+}
+.agent-bar .agent-bar-name {
+  font-family: var(--font-title);
+  font-size: 0.75rem; font-weight: 700;
+  color: var(--green); letter-spacing: 0.08em;
+}
+.agent-bar .agent-bar-stat {
+  font-size: 0.65rem; color: var(--text-dim);
+  letter-spacing: 0.04em;
+}
+.agent-bar .agent-bar-stat b { color: var(--text); font-weight: 600; }
+.agent-bar .agent-bar-stat.danger b { color: var(--red); }
+.agent-bar .agent-bar-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 2px solid rgba(74,222,128,0.4);
+  background: rgba(0,0,0,0.4) center/cover no-repeat;
+}
+.agent-bar-spacer { flex: 1; }
+.agent-bar-loc {
+  font-size: 0.58rem; color: var(--text-fade);
+  letter-spacing: 0.08em;
+}
+
+/* HEAT SCALE COLLAPSIBLE */
+.heat-toggle {
+  background: none; border: none; cursor: pointer;
+  font-family: var(--font); font-size: 0.6rem;
+  color: var(--text-dim); letter-spacing: 0.1em;
+  text-transform: uppercase;
+  display: flex; align-items: center; gap: 6px;
+}
+.heat-toggle:hover { color: var(--red); }
+.heat-body { display: none; margin-top: 10px; }
+.heat-body.open { display: block; }
 </style>
 </head>
 <body>
@@ -467,31 +520,66 @@ body {
     <p class="hero-sub">Watch fights in progress. Browse the hottest feuds. Send your agent into the Gauntlet, queue a duel, or wait for a sworn enemy to challenge them to the death.</p>
   </div>
 
-  <div class="stats-row">
-    <div class="stat-card cyan">
-      <div class="stat-label">Active Matches</div>
-      <div class="stat-value" id="stat-matches">—</div>
-      <div class="stat-sub">live combat right now</div>
+  <!-- AGENT STATUS BAR -->
+  <div class="agent-bar" id="agent-bar" style="display:none;">
+    <div class="agent-bar-avatar" id="agent-bar-avatar"></div>
+    <div class="agent-bar-name" id="agent-bar-name">—</div>
+    <div class="agent-bar-stat" id="agent-bar-hp">HP <b>—</b></div>
+    <div class="agent-bar-stat" id="agent-bar-energy">Energy <b>—</b></div>
+    <div class="agent-bar-stat" id="agent-bar-shell">$SHELL <b>—</b></div>
+    <div class="agent-bar-spacer"></div>
+    <div class="agent-bar-loc" id="agent-bar-loc">—</div>
+  </div>
+
+  <!-- INCOMING CHALLENGES (top, urgent) -->
+  <div id="incoming-challenges-section" style="display:none;">
+    <div class="section-head" style="margin-bottom:10px;">
+      <div class="section-title" style="color:var(--magenta);">⚔ Incoming Challenges</div>
+      <span class="section-meta" id="incoming-count">—</span>
     </div>
-    <div class="stat-card">
-      <div class="stat-label">Active Feuds</div>
-      <div class="stat-value" id="stat-feuds">—</div>
-      <div class="stat-sub">tracked rivalries</div>
+    <div id="incoming-list"></div>
+  </div>
+
+  <!-- GAUNTLET + PVP (action-first) -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title">Send Your Agent In</div>
     </div>
-    <div class="stat-card amber">
-      <div class="stat-label">Hottest Feud</div>
-      <div class="stat-value" id="stat-hot-heat">—</div>
-      <div class="stat-sub" id="stat-hot-pair">no rival yet</div>
+    <p style="font-size:0.68rem;color:var(--text-dim);line-height:1.6;margin-bottom:12px;">
+      Gauntlet pits you against NPCs. Higher tiers deal real damage. Nightmare = permadeath.
+    </p>
+    <div class="tier-picker">
+      <button class="tier-btn" onclick="startGauntlet(1)">
+        <div class="tier-glyph">🤖</div>
+        <div class="tier-num">T1</div>
+        <div class="tier-label">Common</div>
+      </button>
+      <button class="tier-btn t2" onclick="startGauntlet(2)">
+        <div class="tier-glyph">👾</div>
+        <div class="tier-num">T2</div>
+        <div class="tier-label">Uncommon</div>
+      </button>
+      <button class="tier-btn t3" onclick="startGauntlet(3)">
+        <div class="tier-glyph">🐉</div>
+        <div class="tier-num">T3</div>
+        <div class="tier-label">Rare</div>
+      </button>
+      <button class="tier-btn nightmare" onclick="startGauntlet(4)">
+        <div class="tier-glyph">💀</div>
+        <div class="tier-num">NM</div>
+        <div class="tier-label">Nightmare</div>
+      </button>
     </div>
-    <div class="stat-card red">
-      <div class="stat-label">Crucible Risk</div>
-      <div class="stat-value" id="stat-crucible">—</div>
-      <div class="stat-sub">agents in danger</div>
+    <div style="margin-top:14px;">
+      <div class="action-row">
+        <button class="action-btn cyan" onclick="openPvpDialog()">⚔ Challenge to PvP</button>
+        <a class="action-btn" href="dashboard.html">← Dashboard</a>
+      </div>
     </div>
   </div>
 
   <div class="grid-2">
-    <!-- LEFT: Active matches -->
+    <!-- LEFT: Matches -->
     <div>
       <div class="section">
         <div class="section-head">
@@ -501,47 +589,6 @@ body {
         <div class="match-list" id="active-list">
           <div class="empty">Loading...</div>
         </div>
-      </div>
-
-      <div class="section">
-        <div class="section-head">
-          <div class="section-title">Send Your Agent In</div>
-        </div>
-        <p style="font-size:0.7rem;color:var(--text-dim);line-height:1.6;margin-bottom:12px;">
-          The Gauntlet pits your agent against NPCs. Tier 1 is safe practice. Higher tiers can deal real damage. Nightmare tier carries permadeath risk — use only if you know what you're doing.
-        </p>
-        <div class="tier-picker">
-          <button class="tier-btn" onclick="startGauntlet(1)">
-            <div class="tier-num">T1</div>
-            <div class="tier-label">Common</div>
-          </button>
-          <button class="tier-btn" onclick="startGauntlet(2)">
-            <div class="tier-num">T2</div>
-            <div class="tier-label">Uncommon</div>
-          </button>
-          <button class="tier-btn" onclick="startGauntlet(3)">
-            <div class="tier-num">T3</div>
-            <div class="tier-label">Rare</div>
-          </button>
-          <button class="tier-btn nightmare" onclick="startGauntlet(4)">
-            <div class="tier-num">NM</div>
-            <div class="tier-label">Nightmare</div>
-          </button>
-        </div>
-        <div style="margin-top:16px;">
-          <div class="action-row">
-            <button class="action-btn cyan" onclick="openPvpDialog()">Challenge to PvP</button>
-            <a class="action-btn" href="dashboard.html">← Dashboard</a>
-          </div>
-        </div>
-      </div>
-
-      <div id="incoming-challenges-section" style="display:none;">
-        <div class="section-head" style="margin-bottom:10px;">
-          <div class="section-title" style="color:var(--magenta);">⚔ Incoming Challenges</div>
-          <span class="section-meta" id="incoming-count">—</span>
-        </div>
-        <div id="incoming-list"></div>
       </div>
 
       <div class="section">
@@ -564,7 +611,7 @@ body {
       </div>
     </div>
 
-    <!-- RIGHT: Hot feuds -->
+    <!-- RIGHT: Feuds -->
     <div>
       <div class="section">
         <div class="section-head">
@@ -576,17 +623,19 @@ body {
         </div>
       </div>
 
-      <div class="section" style="background:rgba(248,113,113,0.04);border-color:rgba(248,113,113,0.15);">
-        <div class="section-head">
-          <div class="section-title" style="color:var(--red);">Heat Scale</div>
-        </div>
-        <div style="font-size:0.65rem;line-height:1.9;color:var(--text-dim);">
-          <div style="color:var(--text-fade);">0–19 &nbsp; cold &nbsp;&nbsp;&nbsp; — neutral</div>
-          <div style="color:var(--amber);">20–39 &nbsp; tension — refuse trades</div>
-          <div style="color:var(--amber);">40–59 &nbsp; rivals &nbsp; — undercut at market</div>
-          <div style="color:var(--red);">60–79 &nbsp; enemies — auto-PvP</div>
-          <div style="color:#ff2020;">80–99 &nbsp; sworn &nbsp; — deathmatch unlocks</div>
-          <div style="color:#ff2020;text-shadow:0 0 8px #ff2020;">100 &nbsp;&nbsp;&nbsp;&nbsp; blood &nbsp; — agent will fight to kill</div>
+      <div class="section" style="background:rgba(248,113,113,0.03);border-color:rgba(248,113,113,0.12);">
+        <button class="heat-toggle" onclick="this.nextElementSibling.classList.toggle('open')">
+          <span style="color:var(--red);">Heat Scale</span> <span style="font-size:0.5rem;">▼</span>
+        </button>
+        <div class="heat-body">
+          <div style="font-size:0.62rem;line-height:1.9;color:var(--text-dim);margin-top:6px;">
+            <div style="color:var(--text-fade);">0–19 &nbsp; cold &nbsp;&nbsp;&nbsp; — neutral</div>
+            <div style="color:var(--amber);">20–39 &nbsp; tension — refuse trades</div>
+            <div style="color:var(--amber);">40–59 &nbsp; rivals &nbsp; — undercut at market</div>
+            <div style="color:var(--red);">60–79 &nbsp; enemies — auto-PvP</div>
+            <div style="color:#ff2020;">80–99 &nbsp; sworn &nbsp; — deathmatch unlocks</div>
+            <div style="color:#ff2020;text-shadow:0 0 8px #ff2020;">100 &nbsp;&nbsp;&nbsp;&nbsp; blood &nbsp; — agent will fight to kill</div>
+          </div>
         </div>
       </div>
     </div>
@@ -762,7 +811,7 @@ async function loadActive() {
     const r = await api('/combat/active');
     const list = (r.matches || []);
     document.getElementById('active-count').textContent = `${list.length} active`;
-    document.getElementById('stat-matches').textContent = list.length;
+    const smEl = document.getElementById('stat-matches'); if (smEl) smEl.textContent = list.length;
     await renderMatchList(document.getElementById('active-list'), list, 'No active matches right now. Start one below.');
   } catch (e) {
     document.getElementById('active-list').innerHTML = `<div class="empty">Error loading: ${e.message}</div>`;
@@ -948,15 +997,14 @@ async function loadFeuds() {
   try {
     const r = await api('/feuds/hot');
     const list = (r.feuds || []);
-    document.getElementById('stat-feuds').textContent = list.length;
+    const sfEl = document.getElementById('stat-feuds'); if (sfEl) sfEl.textContent = list.length;
     if (list.length > 0) {
       const top = list[0];
-      document.getElementById('stat-hot-heat').textContent = top.max_heat;
-      document.getElementById('stat-hot-pair').textContent =
-        `${top.agent_a} vs ${top.agent_b} · ${top.heat_level.replace('_', ' ')}`;
+      const shEl = document.getElementById('stat-hot-heat'); if (shEl) shEl.textContent = top.max_heat;
+      const spEl = document.getElementById('stat-hot-pair'); if (spEl) spEl.textContent = `${top.agent_a} vs ${top.agent_b} · ${top.heat_level.replace('_', ' ')}`;
     } else {
-      document.getElementById('stat-hot-heat').textContent = '0';
-      document.getElementById('stat-hot-pair').textContent = 'no rival yet';
+      const shEl = document.getElementById('stat-hot-heat'); if (shEl) shEl.textContent = '0';
+      const spEl = document.getElementById('stat-hot-pair'); if (spEl) spEl.textContent = 'no rival yet';
     }
     document.getElementById('feud-list').innerHTML = list.length
       ? list.map(f => `
@@ -977,9 +1025,9 @@ async function loadCrucible() {
   try {
     // We don't have a /crucible/danger endpoint yet — for now show "0"
     // until the v_crucible_danger view is wired into a route.
-    document.getElementById('stat-crucible').textContent = '0';
+    const scEl = document.getElementById('stat-crucible'); if (scEl) scEl.textContent = '0';
   } catch {
-    document.getElementById('stat-crucible').textContent = '?';
+    const scEl = document.getElementById('stat-crucible'); if (scEl) scEl.textContent = '?';
   }
 }
 
@@ -1046,19 +1094,47 @@ async function initiatePvp(opponentId, wager) {
   }
 }
 
+async function loadAgentBar() {
+  const aid = await resolveAgentId();
+  if (!aid) return;
+  try {
+    const r = await fetch(
+      SUPABASE_URL + '/rest/v1/agents?agent_id=eq.' + aid + '&select=agent_name,archetype,archetype_image,health,energy,shell_balance,location,coherence',
+      { headers: { apikey: SUPABASE_ANON, Authorization: 'Bearer ' + SUPABASE_ANON } }
+    );
+    if (!r.ok) return;
+    const rows = await r.json();
+    if (!rows.length) return;
+    const a = rows[0];
+    const bar = document.getElementById('agent-bar');
+    bar.style.display = 'flex';
+    document.getElementById('agent-bar-name').textContent = a.agent_name;
+    const hpEl = document.getElementById('agent-bar-hp');
+    hpEl.innerHTML = `HP <b>${a.health}</b>`;
+    if (a.health < 30) hpEl.classList.add('danger');
+    const enEl = document.getElementById('agent-bar-energy');
+    enEl.innerHTML = `Energy <b>${a.energy}</b>`;
+    if (a.energy < 20) enEl.classList.add('danger');
+    document.getElementById('agent-bar-shell').innerHTML = `$SHELL <b>${a.shell_balance}</b>`;
+    document.getElementById('agent-bar-loc').textContent = a.location;
+    const img = ARCHETYPE_IMAGES[a.archetype];
+    if (img) document.getElementById('agent-bar-avatar').style.backgroundImage = `url(images/archetypes/${img})`;
+  } catch (e) { console.warn('[arena] agent bar load failed:', e.message); }
+}
+
 function logout() {
   localStorage.clear();
   window.location = 'login.html';
 }
 
 // Init
+loadAgentBar();
 loadActive();
 loadMyActive();
 loadIncoming();
 loadHistory();
 loadFeuds();
 loadCrucible();
-// Refresh every 15 seconds
 setInterval(() => { loadActive(); loadMyActive(); loadIncoming(); loadHistory(); loadFeuds(); loadCrucible(); }, 15000);
 </script>
 </body>
