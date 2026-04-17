@@ -6,3 +6,17 @@ wrangler.toml
 *.log
 docs
 scripts
+.env
+.env.*
+.wrangler
+workers
+combat
+alchemy/*.sql
+alchemy/build-*.js
+alchemy/seed.sql
+alchemy/migration.sql
+*.sql
+*.md
+.gitignore
+.assetsignore
+README.md
