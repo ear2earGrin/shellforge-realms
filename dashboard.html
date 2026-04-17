@@ -6082,7 +6082,14 @@
                 cms.forEach(function(m) {
                     const isWinner = m.winner_agent_id === agentId;
                     const oppId = m.agent_a === agentId ? m.agent_b : m.agent_a;
-                    const oppName = nameMap[oppId] || (oppId || '').slice(0,8);
+                    const isNpc = !oppId || (typeof oppId === 'string' && oppId.startsWith('npc_'));
+                    let oppName;
+                    if (isNpc) {
+                        oppName = (m.opponent_data && m.opponent_data.name) || null;
+                        if (!oppName) return; // skip malformed NPC matches
+                    } else {
+                        oppName = nameMap[oppId] || (oppId || '').slice(0,8);
+                    }
                     const myName = nameMap[agentId] || agentId.slice(0,8);
                     let detail, shellChange = 0;
                     if (isWinner) {
