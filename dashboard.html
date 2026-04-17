@@ -8278,7 +8278,7 @@
 
             var [items, inv, agentItems] = await Promise.all([
                 sbGet('market_listings', 'location=eq.' + encodeURIComponent(loc) + '&order=base_price&select=*'),
-                sbGet('inventory', 'agent_id=eq.' + agent.agentId + '&item_type=neq.ingredient&select=*'),
+                sbGet('inventory', 'agent_id=eq.' + agent.agentId + '&or=(item_type.neq.ingredient,item_type.is.null)&select=*'),
                 loadAgentListings(loc)
             ]);
 
@@ -8298,7 +8298,7 @@
             if (!_currentAgent || !_marketLoc) return;
             var [agentItems, inv] = await Promise.all([
                 loadAgentListings(_marketLoc),
-                sbGet('inventory', 'agent_id=eq.' + _currentAgent.agentId + '&item_type=neq.ingredient&select=*')
+                sbGet('inventory', 'agent_id=eq.' + _currentAgent.agentId + '&or=(item_type.neq.ingredient,item_type.is.null)&select=*')
             ]);
             _agentListings = agentItems || [];
             _marketInventory = inv || [];
