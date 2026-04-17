@@ -2291,12 +2291,17 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
     }),
   });
 
-  // Update winner: grant $SHELL, deduct energy, increment turns, gain karma
+  // Bounty: winner takes 25% of loser's remaining shell on an arena KILL.
+  // (Separate from the flat shellPrize and from the death-halving dissolution.)
+  const killBounty = !loserIsAlive ? Math.floor(loser.shell_balance * 0.25) : 0;
+  const winnerShellGain = shellPrize + killBounty;
+
+  // Update winner: grant $SHELL (prize + kill bounty), deduct energy, bump turns, gain karma
   await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${winner.agent_id}`, {
     method: 'PATCH',
     headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
     body: JSON.stringify({
-      shell_balance:  winner.shell_balance + shellPrize,
+      shell_balance:  winner.shell_balance + winnerShellGain,
       energy:         Math.max(0, winner.energy - 20),
       karma:          winner.karma + winnerKarmaChange,
       turns_taken:    winner.turns_taken + 1,
@@ -2305,14 +2310,15 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
   });
 
   // Update loser: reduce health, deduct energy, increment turns, lose karma; death if HP=0
-  // On death: $SHELL halved
+  // On death: bounty transferred to winner, then remaining shell halves (one half to vault, one dissolves)
+  const loserShellAfterBounty = loserIsAlive ? loser.shell_balance : Math.max(0, loser.shell_balance - killBounty);
   await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${loser.agent_id}`, {
     method: 'PATCH',
     headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
     body: JSON.stringify({
       health:         loserHP,
       energy:         Math.max(0, loser.energy - 20),
-      shell_balance:  loserIsAlive ? loser.shell_balance : Math.floor(loser.shell_balance / 2),
+      shell_balance:  loserIsAlive ? loser.shell_balance : Math.floor(loserShellAfterBounty / 2),
       karma:          loser.karma + loserKarmaChange,
       is_alive:       loserIsAlive,
       died_at:        loserIsAlive ? null : now,
@@ -2323,6 +2329,9 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
   });
 
   // activity_log for winner
+  const winnerDetail = !loserIsAlive
+    ? `${winner.agent_name} slew ${loser.agent_name} in ${totalRounds} rounds. +${shellPrize} $SHELL prize, +${killBounty} $SHELL bounty looted from the corpse.`
+    : `${winner.agent_name} defeated ${loser.agent_name} in ${totalRounds} rounds. +${shellPrize} $SHELL.`;
   await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
     method: 'POST',
     headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
@@ -2330,10 +2339,10 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
       agent_id:     winner.agent_id,
       turn_number:  winner.turns_taken + 1,
       action_type:  'arena',
-      action_detail: `${winner.agent_name} defeated ${loser.agent_name} in ${totalRounds} rounds. +${shellPrize} $SHELL.`,
+      action_detail: winnerDetail,
       energy_cost:  20,
       energy_gained: 0,
-      shell_change: shellPrize,
+      shell_change: winnerShellGain,
       karma_change: winnerKarmaChange,
       health_change: winnerHP - winner.health,
       location:     winner.location,
@@ -2342,6 +2351,7 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
   });
 
   // activity_log for loser (death action_type if health=0)
+  const loserShellDelta = loserIsAlive ? 0 : -(killBounty + Math.floor(loserShellAfterBounty / 2));
   await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
     method: 'POST',
     headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
@@ -2354,7 +2364,7 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
         : deathNarrative,
       energy_cost:  20,
       energy_gained: 0,
-      shell_change: loserIsAlive ? 0 : -Math.floor(loser.shell_balance / 2),
+      shell_change: loserShellDelta,
       karma_change: loserKarmaChange,
       health_change: loserHP - loser.health,
       location:     loser.location,
