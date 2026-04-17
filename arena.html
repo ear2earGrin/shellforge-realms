@@ -833,9 +833,14 @@ async function loadMyActive() {
   }
 }
 
+function toUtcDate(isoStr) {
+  if (!isoStr) return new Date(NaN);
+  const iso = (!isoStr.endsWith('Z') && isoStr.indexOf('+') === -1) ? isoStr + 'Z' : isoStr;
+  return new Date(iso);
+}
 function formatTimeLeft(expiresAt) {
   if (!expiresAt) return '';
-  const ms = new Date(expiresAt).getTime() - Date.now();
+  const ms = toUtcDate(expiresAt).getTime() - Date.now();
   if (ms <= 0) return 'expired';
   const h = Math.floor(ms / 3600000);
   const m = Math.floor((ms % 3600000) / 60000);
@@ -936,7 +941,7 @@ async function historyRow(m, myId) {
     opponentName = m.opponent_data?.name || 'Wild NPC';
   }
 
-  const when = m.resolved_at ? new Date(m.resolved_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—';
+  const when = m.resolved_at ? toUtcDate(m.resolved_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—';
   const shellHtml = shellDelta !== 0
     ? `<div class="history-shell ${shellDelta > 0 ? 'gain' : 'loss'}">${shellDelta > 0 ? '+' : ''}${shellDelta} ⌬</div>`
     : '<div class="history-shell" style="color:var(--text-fade);">—</div>';

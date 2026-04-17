@@ -6102,7 +6102,10 @@
 
         function timeAgo(ts) {
             if (!ts) return '';
-            const diff = Math.floor((Date.now() - new Date(ts)) / 1000);
+            // Supabase timestamps are UTC but often lack a timezone suffix.
+            // Append Z so Date() parses them correctly instead of as local time.
+            const iso = (ts && !ts.endsWith('Z') && ts.indexOf('+') === -1) ? ts + 'Z' : ts;
+            const diff = Math.floor((Date.now() - new Date(iso)) / 1000);
             if (diff < 60) return diff + 's ago';
             if (diff < 3600) return Math.floor(diff/60) + 'm ago';
             if (diff < 86400) return Math.floor(diff/3600) + 'h ago';

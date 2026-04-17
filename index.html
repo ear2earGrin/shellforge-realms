@@ -1300,7 +1300,10 @@
             var agentCache = {};
 
             function formatTime(isoStr) {
-                var d = new Date(isoStr);
+                // Supabase stores timestamps as "timestamp without time zone" but values are UTC.
+                // Append Z so the browser parses as UTC, then getHours/getMinutes return local time.
+                var iso = (isoStr && !isoStr.endsWith('Z') && isoStr.indexOf('+') === -1) ? isoStr + 'Z' : isoStr;
+                var d = new Date(iso);
                 return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2);
             }
 
@@ -1458,7 +1461,9 @@
                     var r = await fetch(SB_URL + '/rest/v1/activity_log?agent_id=eq.' + agentId + '&action_type=eq.death&select=action_detail,timestamp&order=timestamp.desc&limit=1', { headers: SB_HDRS });
                     var logs = r.ok ? await r.json() : [];
                     if (logs.length) {
-                        var d = new Date(logs[0].timestamp);
+                        var _ts = logs[0].timestamp;
+                        var _iso = (_ts && !_ts.endsWith('Z') && _ts.indexOf('+') === -1) ? _ts + 'Z' : _ts;
+                        var d = new Date(_iso);
                         var when = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
                         var html = '<div class="death-tip-title">☠ ' + agentName + '</div>'
                             + '<div class="death-tip-story">' + logs[0].action_detail + '</div>'
