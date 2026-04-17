@@ -499,14 +499,14 @@ async function renderAgentCard(snap, state, side, viewerOwns, match) {
   const hpClass = side === 'enemy' ? 'hp-enemy' : '';
   const cardClass = side === 'enemy' ? 'enemy' : 'player';
   const ownsMark = viewerOwns ? '●' : '';
-  const imgUrl = archetypeImageUrl(archetype);
-  const portraitStyle = imgUrl ? `background-image:url('${imgUrl}');` : '';
+  const npcImg = isNpc ? (match?.opponent_data?.image || '') : '';
+  const imgUrl = npcImg || archetypeImageUrl(archetype);
+  const portraitStyle = imgUrl ? `background-image:url('${imgUrl}');background-size:cover;background-position:center;` : '';
   let portraitFallback = '';
   if (!imgUrl) {
     if (isNpc) {
-      // Tier-based creature glyph
       const tier = match?.opponent_data?.tier || 1;
-      portraitFallback = tier === 4 ? '👹' : tier === 3 ? '🐉' : tier === 2 ? '👾' : '🤖';
+      portraitFallback = match?.opponent_data?.glyph || (tier === 4 ? '💀' : tier === 3 ? '🐉' : tier === 2 ? '👾' : '🤖');
     } else {
       portraitFallback = (name.charAt(0) || '?').toUpperCase();
     }

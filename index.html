@@ -445,6 +445,17 @@
         .feed-time { color: rgba(74,222,128,0.28); font-size: 0.58rem; margin-right: 5px; }
         @keyframes feedIn { from { opacity:0; transform:translateX(-5px); } to { opacity:1; transform:translateX(0); } }
         .feed-line.new-entry { animation: feedIn 0.35s ease; }
+        .feed-line.feed-death {
+            background: rgba(244, 63, 94, 0.08);
+            border-left: 2px solid #f43f5e;
+            border-bottom: 1px solid rgba(244, 63, 94, 0.15);
+            padding: 6px 6px 6px 8px;
+            animation: deathFlash 1.5s ease-out;
+        }
+        @keyframes deathFlash {
+            0% { background: rgba(244, 63, 94, 0.25); }
+            100% { background: rgba(244, 63, 94, 0.08); }
+        }
 
         /* ── PANEL 3: MECHANICS ── */
         .mechanics-panel .panel-body { padding: 8px; }
@@ -1279,12 +1290,15 @@
 
             // Agent name → color mapping (archetype-based)
             var AGENT_COLORS = {
-                '0xTrump': '#fb923c',   // rebel orange
-                'AXIOM':   '#60a5fa',   // builder blue
-                'VEX':     '#f87171',   // fighter red
-                'ZEN-7':   '#4ade80',   // healer green
+                '0xTrump':  '#fb923c',   // rebel orange
+                'AXIOM':    '#60a5fa',   // builder blue
+                'VEX':      '#f87171',   // fighter red
+                'ZEN-7':    '#4ade80',   // healer green
+                '0xKallak': '#c084fc',   // mystic purple
+                'pksh01':   '#fbbf24',   // amber
+                '0x11233':  '#38bdf8',   // sky blue
             };
-            var DEFAULT_COLOR = '#c084fc'; // purple fallback for unknown agents
+            var DEFAULT_COLOR = '#c084fc';
 
             // Action type → icon/prefix for visual flair
             var ACTION_ICONS = {
@@ -1317,21 +1331,29 @@
             function renderLine(agentName, actionType, detail, location, timestamp, animate) {
                 var col = AGENT_COLORS[agentName] || DEFAULT_COLOR;
                 var icon = ACTION_ICONS[actionType] || '›';
-                // Strip leading agent name from detail to avoid "AXIOM AXIOM ..."
                 var cleanDetail = detail;
                 if (cleanDetail && cleanDetail.toLowerCase().startsWith(agentName.toLowerCase())) {
                     cleanDetail = cleanDetail.slice(agentName.length).replace(/^\s+/, '');
                 }
-                var cls = classifyText(cleanDetail);
+                var isDeath = actionType === 'death' || /died|death|killed|succumbed|terminated|fell in the arena/i.test(cleanDetail);
+                var cls = isDeath ? 'death' : classifyText(cleanDetail);
                 var tc = cls==='death'?'#f43f5e':cls==='good'?'#4ade80':cls==='bad'?'#fb923c':'rgba(200,200,200,0.82)';
                 var locTag = location ? '<span style="color:rgba(120,120,140,0.7);font-size:0.75em;"> [' + location + ']</span>' : '';
                 var div = document.createElement('div');
-                div.className = 'feed-line' + (animate ? ' new-entry' : '');
-                div.innerHTML = '<span class="feed-time">' + formatTime(timestamp) + '</span>'
-                    + '<span class="feed-prefix">' + icon + '</span>'
-                    + '<span style="color:'+col+';font-weight:500;">' + agentName + '</span> '
-                    + '<span style="color:'+tc+';">' + cleanDetail + '</span>'
-                    + locTag;
+                div.className = 'feed-line' + (animate ? ' new-entry' : '') + (isDeath ? ' feed-death' : '');
+                if (isDeath) {
+                    div.innerHTML = '<span class="feed-time">' + formatTime(timestamp) + '</span>'
+                        + '<span class="feed-prefix" style="color:#f43f5e;">☠</span>'
+                        + '<span style="color:#f43f5e;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;">' + agentName + '</span> '
+                        + '<span style="color:#f43f5e;font-weight:600;">' + cleanDetail + '</span>'
+                        + locTag;
+                } else {
+                    div.innerHTML = '<span class="feed-time">' + formatTime(timestamp) + '</span>'
+                        + '<span class="feed-prefix">' + icon + '</span>'
+                        + '<span style="color:'+col+';font-weight:500;">' + agentName + '</span> '
+                        + '<span style="color:'+tc+';">' + cleanDetail + '</span>'
+                        + locTag;
+                }
                 feed.appendChild(div);
                 while (feed.children.length > 80) feed.removeChild(feed.firstChild);
                 feed.scrollTop = feed.scrollHeight;
@@ -1347,7 +1369,7 @@
             // Fetch agent names (so we can map agent_id → name)
             async function loadAgents() {
                 try {
-                    var r = await fetch(SB_URL + '/rest/v1/agents?select=agent_id,agent_name&is_alive=eq.true', { headers: SB_HDRS });
+                    var r = await fetch(SB_URL + '/rest/v1/agents?select=agent_id,agent_name', { headers: SB_HDRS });
                     if (!r.ok) return;
                     var agents = await r.json();
                     agents.forEach(function(a) { agentCache[a.agent_id] = a.agent_name; });
@@ -1414,10 +1436,13 @@
             var SB_HDRS = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY };
 
             var AGENT_COLORS = {
-                '0xTrump': '#fb923c',
-                'AXIOM':   '#60a5fa',
-                'VEX':     '#f87171',
-                'ZEN-7':   '#4ade80',
+                '0xTrump':  '#fb923c',
+                'AXIOM':    '#60a5fa',
+                'VEX':      '#f87171',
+                'ZEN-7':    '#4ade80',
+                '0xKallak': '#c084fc',
+                'pksh01':   '#fbbf24',
+                '0x11233':  '#38bdf8',
             };
 
             // Death story tooltip
@@ -1471,7 +1496,27 @@
                         deathStoryCache[agentId] = html;
                         deathTip.innerHTML = html;
                     } else {
-                        deathTip.innerHTML = '<span style="opacity:0.5;">No death record found.</span>';
+                        var ar = await fetch(SB_URL + '/rest/v1/arena_matches?or=(agent1_id.eq.' + agentId + ',agent2_id.eq.' + agentId + ')&status=eq.complete&select=agent1_id,agent2_id,winner_id,total_rounds,ended_at&order=ended_at.desc&limit=1', { headers: SB_HDRS });
+                        var matches = ar.ok ? await ar.json() : [];
+                        if (matches.length && matches[0].winner_id && matches[0].winner_id !== agentId) {
+                            var killerId = matches[0].winner_id;
+                            var killerName = agentCache[killerId] || killerId.slice(0, 8);
+                            var rounds = matches[0].total_rounds || '?';
+                            var _ts2 = matches[0].ended_at;
+                            var _iso2 = (_ts2 && !_ts2.endsWith('Z') && _ts2.indexOf('+') === -1) ? _ts2 + 'Z' : _ts2;
+                            var d2 = new Date(_iso2);
+                            var when2 = d2.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' + d2.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                            var html2 = '<div class="death-tip-title">☠ ' + agentName + '</div>'
+                                + '<div class="death-tip-story">' + agentName + ' lost a deadly brawl to ' + killerName + ' in the Arena after ' + rounds + ' round' + (rounds !== 1 ? 's' : '') + '. Systems went dark.</div>'
+                                + '<div class="death-tip-time">' + when2 + '</div>';
+                            deathStoryCache[agentId] = html2;
+                            deathTip.innerHTML = html2;
+                        } else {
+                            var fallback = '<div class="death-tip-title">☠ ' + agentName + '</div>'
+                                + '<div class="death-tip-story">' + agentName + ' was terminated. Cause of death unknown — no records remain.</div>';
+                            deathStoryCache[agentId] = fallback;
+                            deathTip.innerHTML = fallback;
+                        }
                     }
                 } catch(e) {
                     deathTip.innerHTML = '<span style="opacity:0.5;">Failed to load.</span>';
@@ -1487,7 +1532,7 @@
 
                     panel.innerHTML = '';
                     agents.forEach(function(a) {
-                        var dead = a.is_alive === false;
+                        var dead = a.is_alive === false || (a.health !== null && a.health <= 0);
                         var col = dead ? '#ff0044' : (AGENT_COLORS[a.agent_name] || '#c084fc');
                         var hp = Math.max(0, Math.min(100, a.health || 0));
                         var en = Math.max(0, Math.min(100, a.energy || 0));
