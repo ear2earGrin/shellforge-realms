@@ -55,9 +55,11 @@ body {
 }
 .combat-grid {
   display: grid;
-  grid-template-columns: 260px 1fr 300px;
+  grid-template-columns: 260px 1fr 260px;
   gap: 16px; margin-top: 20px;
+  align-items: start;
 }
+.combat-center { display: flex; flex-direction: column; gap: 16px; }
 @media (max-width: 1000px) {
   .combat-grid { grid-template-columns: 1fr; }
 }
@@ -677,8 +679,6 @@ async function render(state) {
   ]);
   const cardLeft = `
     ${cardAHtml}
-    ${cardBHtml}
-
     ${isReplayMode && turns.length > 0 ? `
       <div class="replay-controls">
         <button class="replay-btn" onclick="toggleReplay()">${REPLAY_PLAYING ? '❚❚' : '▶'}</button>
@@ -691,6 +691,7 @@ async function render(state) {
       </div>
     ` : ''}
   `;
+  const cardRight = cardBHtml;
 
   const center = `
     <div class="panel">
@@ -728,8 +729,8 @@ async function render(state) {
   document.getElementById('combat-root').innerHTML = `
     <div class="combat-grid">
       <div>${cardLeft}</div>
-      <div>${center}</div>
-      <div>${right}</div>
+      <div class="combat-center">${center}${right}</div>
+      <div>${cardRight}</div>
     </div>
   `;
 }
