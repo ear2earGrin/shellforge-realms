@@ -3372,12 +3372,6 @@
             <div id="trustBar" style="display:none;"></div>
             <div id="aggressionBar" style="display:none;"></div>
 
-            <!-- $SHELL Balance -->
-            <div class="stat-row">
-                <label>$SHELL</label>
-                <span id="shellBalanceValue" style="color:#facc15;font-weight:600;">0</span>
-            </div>
-
             <!-- Cluster Badge -->
             <div class="cluster-badge" id="clusterBadge">
                 <div class="cluster-name" id="clusterName">---</div>
@@ -5751,14 +5745,7 @@
             });
         });
 
-        var shellBalanceEl = document.querySelector('.shell-balance');
-        if (shellBalanceEl) {
-            shellBalanceEl.textContent = `${agent.shell || 0} $SHELL`;
-        }
-        var shellValEl = document.getElementById('shellBalanceValue');
-        if (shellValEl) {
-            shellValEl.textContent = (agent.shell || 0) + ' $SHELL';
-        }
+        // Shell balance is shown only in inventory header and market footer
 
         // Update cluster badge and populate other cluster members
         var clusterKey = agent.cluster || (agent.clusterName || '').toLowerCase().replace(/\s+/g, '-') || 'prime-helix';
@@ -6841,8 +6828,8 @@
             }
             if (d.karma !== undefined) set('karmaValue', (d.karma >= 0 ? '+' : '') + d.karma);
             if (d.shell_balance !== undefined) {
-                const sb = document.querySelector('.shell-balance');
-                if (sb) sb.textContent = d.shell_balance + ' $SHELL';
+                if (_currentAgent) _currentAgent.shell = d.shell_balance;
+                refreshShellDisplays(d.shell_balance);
             }
             if (d.turns_taken !== undefined) set('turnsTaken', d.turns_taken);
             if (d.days_survived !== undefined) set('daysSurvived', d.days_survived);
@@ -8757,17 +8744,12 @@
         // Update all on-screen shell-balance displays immediately after a buy/sell
         function refreshShellDisplays(newShell) {
             var displayVal = (newShell != null ? newShell : '--');
-            document.querySelectorAll('.shell-balance').forEach(function(el) {
-                el.textContent = displayVal + ' $SHELL';
-            });
             document.querySelectorAll('.inv-stat-shell').forEach(function(el) {
                 el.innerHTML = '💰 ' + displayVal + ' $SHELL';
             });
             document.querySelectorAll('.market-shell-bar .shell-bal').forEach(function(el) {
                 el.innerHTML = '💰 ' + displayVal + ' $SHELL';
             });
-            var statShell = document.getElementById('shellValue');
-            if (statShell) statShell.textContent = displayVal;
         }
 
         async function marketBuyAgent(listingId, btnEl) {
