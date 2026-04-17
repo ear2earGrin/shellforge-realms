@@ -2362,9 +2362,9 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
     }),
   });
 
-  // Process death loot if loser died
+  // Process death loot if loser died — pass winner so they inherit half the commons
   if (!loserIsAlive) {
-    await processDeathLoot(loser, env, supabaseHeaders);
+    await processDeathLoot(loser, env, supabaseHeaders, winner);
   }
 
   console.log(
@@ -2859,30 +2859,36 @@ async function executeBuyFromAgentListing(agent, agentListings, inventory, agent
     }),
   });
 
-  // Credit shells to seller
+  // Credit shells to seller — or redirect to game treasury if seller is dead
   const sellerRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${listing.seller_id}&select=agent_id,agent_name,shell_balance`,
+    `${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${listing.seller_id}&select=agent_id,agent_name,shell_balance,is_alive`,
     { headers: supabaseHeaders },
   );
   const sellers = sellerRes.ok ? await sellerRes.json() : [];
   if (sellers.length) {
     const seller = sellers[0];
-    await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${seller.agent_id}`, {
-      method: 'PATCH',
-      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-      body: JSON.stringify({ shell_balance: seller.shell_balance + cost }),
-    });
-    // Log for seller
-    await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
-      method: 'POST',
-      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-      body: JSON.stringify({
-        agent_id: seller.agent_id, turn_number: 0, action_type: 'trade',
-        action_detail: `${seller.agent_name} sold ${listing.item_name} to ${agent.agent_name} for ${cost} $SHELL.`,
-        energy_cost: 0, energy_gained: 0, shell_change: cost,
-        karma_change: 0, health_change: 0, location: listing.location, success: true,
-      }),
-    });
+    if (seller.is_alive === false) {
+      // Dead seller — proceeds go to the game treasury (fixed-supply bank)
+      await depositToGameTreasury(cost, `sale of ${listing.item_name} by deceased ${seller.agent_name}`, env, supabaseHeaders);
+      console.log(`[Market] Dead seller ${seller.agent_name}'s listing sold — ${cost} $SHELL → game treasury`);
+    } else {
+      await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${seller.agent_id}`, {
+        method: 'PATCH',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({ shell_balance: seller.shell_balance + cost }),
+      });
+      // Log for seller
+      await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+        method: 'POST',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          agent_id: seller.agent_id, turn_number: 0, action_type: 'trade',
+          action_detail: `${seller.agent_name} sold ${listing.item_name} to ${agent.agent_name} for ${cost} $SHELL.`,
+          energy_cost: 0, energy_gained: 0, shell_change: cost,
+          karma_change: 0, health_change: 0, location: listing.location, success: true,
+        }),
+      });
+    }
   }
 
   // Log for buyer
@@ -2992,13 +2998,51 @@ async function executeListItem(agent, sellCandidates, agentListings, env, supaba
   return { action: 'list', item: item.item_name, price: askingPrice };
 }
 
+// ─── Game Treasury (fixed-supply central bank) ───────────────────────────────
+// A single-row table that pools $SHELL from dead agents' posthumous sales.
+// Used to fund quest rewards, event payouts, etc. — keeps economy bounded.
+async function depositToGameTreasury(amount, reason, env, supabaseHeaders) {
+  if (!amount || amount <= 0) return;
+  const { SUPABASE_URL } = env;
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/game_treasury?id=eq.1&select=id,shell_balance`, {
+    headers: supabaseHeaders,
+  });
+  const rows = r.ok ? await r.json() : [];
+  if (rows.length) {
+    await fetch(`${SUPABASE_URL}/rest/v1/game_treasury?id=eq.1`, {
+      method: 'PATCH',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        shell_balance: rows[0].shell_balance + amount,
+        last_deposit_at: new Date().toISOString(),
+        last_deposit_reason: reason || null,
+      }),
+    });
+  } else {
+    await fetch(`${SUPABASE_URL}/rest/v1/game_treasury`, {
+      method: 'POST',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        id: 1,
+        shell_balance: amount,
+        last_deposit_at: new Date().toISOString(),
+        last_deposit_reason: reason || null,
+      }),
+    });
+  }
+}
+
 // ─── Death Loot Pipeline ─────────────────────────────────────────────────────
-// On death: split $SHELL (50% vault, 50% gone), distribute items by rarity,
-// generate death narrative. Called from both environmental and arena deaths.
-async function processDeathLoot(agent, env, supabaseHeaders) {
+// On death: split $SHELL (50% family vault, 50% dissolves), distribute items:
+//   • Legendary/epic → family vault (inheritable)
+//   • Rare/uncommon → listed on market at 60% price (stays active even after death)
+//   • Common → arena: half destroyed + half to winner; environmental: all destroyed
+// Active market listings are NOT cancelled — proceeds are redirected to the
+// game treasury when they sell (fixed-supply economy).
+async function processDeathLoot(agent, env, supabaseHeaders, winner = null) {
   const { SUPABASE_URL } = env;
 
-  // 1. Split $SHELL: 50% to vault, 50% dissolves
+  // 1. Split $SHELL: 50% to family vault, 50% dissolves
   const vaultShell = Math.floor(agent.shell_balance / 2);
 
   // 2. Fetch all inventory
@@ -3011,7 +3055,7 @@ async function processDeathLoot(agent, env, supabaseHeaders) {
   // 3. Sort items by rarity tier
   const legendary = inventory.filter(i => ['legendary', 'epic'].includes((i.stats?.rarity || '').toLowerCase()));
   const marketable = inventory.filter(i => ['rare', 'uncommon'].includes((i.stats?.rarity || '').toLowerCase()));
-  // Common + ingredients = destroyed (not stored)
+  const commons = inventory.filter(i => !['legendary', 'epic', 'rare', 'uncommon'].includes((i.stats?.rarity || '').toLowerCase()));
 
   // 4. Deposit legendary/epic items + $SHELL into Family Vault
   if (agent.user_id) {
@@ -3067,10 +3111,11 @@ async function processDeathLoot(agent, env, supabaseHeaders) {
     }
   }
 
-  // 5. List rare/uncommon items on the agent market at death location (discounted "dead agent" prices)
+  // 5. List rare/uncommon items on the agent market at death location (60% price).
+  //    These stay listed after the agent's death; proceeds route to game treasury.
   for (const item of marketable) {
     const baseVal = getBaseValue(item);
-    const deathPrice = Math.max(1, Math.round(baseVal * 0.6)); // 40% discount — loot from the fallen
+    const deathPrice = Math.max(1, Math.round(baseVal * 0.6));
     await fetch(`${SUPABASE_URL}/rest/v1/agent_listings`, {
       method: 'POST',
       headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
@@ -3087,20 +3132,63 @@ async function processDeathLoot(agent, env, supabaseHeaders) {
     console.log(`[Death] ${agent.agent_name}: ${marketable.length} rare/uncommon item(s) → market at ${agent.location}`);
   }
 
-  // 6. Delete all inventory (items have been distributed)
+  // 6. Common items: half go to winner (arena only), half destroyed
+  let toWinner = [];
+  if (winner && commons.length) {
+    const half = Math.floor(commons.length / 2);
+    toWinner = commons.slice(0, half);
+    for (const item of toWinner) {
+      // Move to winner's inventory (create new row — don't preserve inventory_id)
+      await fetch(`${SUPABASE_URL}/rest/v1/inventory`, {
+        method: 'POST',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          agent_id: winner.agent_id,
+          item_id: item.item_id,
+          item_name: item.item_name,
+          item_type: item.item_type,
+          item_category: item.item_category,
+          quantity: item.quantity,
+          stats: item.stats || {},
+          is_equipped: false,
+        }),
+      });
+    }
+    if (toWinner.length) {
+      await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+        method: 'POST',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          agent_id: winner.agent_id,
+          turn_number: 0,
+          action_type: 'loot',
+          action_detail: `${winner.agent_name} looted ${toWinner.length} common item(s) from ${agent.agent_name}'s corpse.`,
+          energy_cost: 0, energy_gained: 0, shell_change: 0,
+          karma_change: 0, health_change: 0,
+          location: agent.location, success: true,
+        }),
+      });
+      console.log(`[Death] ${agent.agent_name}: ${toWinner.length} common item(s) → ${winner.agent_name} (corpse loot)`);
+    }
+  }
+  const destroyedCommons = commons.length - toWinner.length;
+  if (destroyedCommons > 0) {
+    console.log(`[Death] ${agent.agent_name}: ${destroyedCommons} common item(s) destroyed`);
+  }
+
+  // 7. Delete inventory rows EXCEPT the marketable ones (which are now listed)
+  //    Actually: the listings reference inventory rows by item_id, but inventory
+  //    is the source of truth for the item. Delete everything — the listings
+  //    carry their own item data.
   await fetch(`${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}`, {
     method: 'DELETE',
     headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
   });
 
-  // 7. Cancel any active agent listings (return is moot — agent is dead)
-  await fetch(`${SUPABASE_URL}/rest/v1/agent_listings?seller_id=eq.${agent.agent_id}&status=eq.active`, {
-    method: 'PATCH',
-    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-    body: JSON.stringify({ status: 'cancelled' }),
-  });
+  // 8. Active market listings are LEFT ACTIVE. Proceeds redirect to game
+  //    treasury when sold (see executeBuyAgentListing — it checks is_alive).
 
-  console.log(`[Death] ${agent.agent_name}: ${vaultShell} $SHELL → vault, ${vaultShell} dissolved. ${inventory.length} items processed.`);
+  console.log(`[Death] ${agent.agent_name}: ${vaultShell} $SHELL → vault, ${vaultShell} dissolved. ${inventory.length} items processed (legendary=${legendary.length}, market=${marketable.length}, winner=${toWinner.length}, destroyed=${destroyedCommons}).`);
 }
 
 // ─── Death resolution helpers ────────────────────────────────────────────────
