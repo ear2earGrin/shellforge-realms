@@ -8462,7 +8462,7 @@
                 html += '</div></div>';
                 html += '<div class="market-item-actions">';
                 html += '<div class="market-price">' + (item.asking_price || 0) + ' $S</div>';
-                html += '<button class="btn-market-buy" ' + (canBuy ? 'onclick="event.stopPropagation();marketBuyAgent(\'' + item.listing_id + '\')"' : 'disabled') + '>Buy</button>';
+                html += '<button class="btn-market-buy" ' + (canBuy ? 'onclick="event.stopPropagation();marketBuyAgent(\'' + item.listing_id + '\', this)"' : 'disabled') + '>Buy</button>';
                 html += '</div></div>';
             });
             return html;
@@ -8627,90 +8627,172 @@
             }
         }
 
-        async function marketBuyAgent(listingId) {
+        var _marketBuyingLock = {}; // listing_id → true while buy in flight
+
+        // Update all on-screen shell-balance displays immediately after a buy/sell
+        function refreshShellDisplays(newShell) {
+            var displayVal = (newShell != null ? newShell : '--');
+            // Sidebar (live poll also touches this)
+            var sidebar = document.querySelector('.shell-balance');
+            if (sidebar) sidebar.textContent = displayVal + ' $SHELL';
+            // Inventory modal header
+            var invHdr = document.querySelector('.inv-stat-shell');
+            if (invHdr) invHdr.innerHTML = '💰 ' + displayVal + ' $SHELL';
+            // Stats panel row (dashboard top-left)
+            var statShell = document.getElementById('shellValue');
+            if (statShell) statShell.textContent = displayVal;
+        }
+
+        async function marketBuyAgent(listingId, btnEl) {
             if (!_currentAgent) return;
-            var item = _agentListings.find(function(i) { return i.listing_id === listingId; });
-            if (!item) return;
 
-            var shell = _currentAgent.shell || 0;
-            var price = item.asking_price || 0;
-            if (shell < price) return;
+            // Client-side lock — ignore rapid-fire clicks on the same listing
+            if (_marketBuyingLock[listingId]) return;
+            _marketBuyingLock[listingId] = true;
 
-            // 1. Add item to buyer's inventory
-            var itemId = item.item_id || item.item_name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
-            var existing = await sbGet('inventory', 'agent_id=eq.' + _currentAgent.agentId + '&item_id=eq.' + itemId + '&select=inventory_id,quantity');
-            var invOk = false;
-            if (existing && existing.length > 0) {
-                var patchRes = await fetch(SUPABASE_URL + '/rest/v1/inventory?inventory_id=eq.' + existing[0].inventory_id, {
+            // Disable the button visually so the user sees the click registered
+            var targetBtn = btnEl || (event && event.target);
+            if (targetBtn && targetBtn.tagName === 'BUTTON') {
+                targetBtn.disabled = true;
+                targetBtn.textContent = '...';
+            }
+
+            try {
+                var item = _agentListings.find(function(i) { return i.listing_id === listingId; });
+                if (!item) return;
+
+                var price = item.asking_price || 0;
+
+                // 1. ATOMIC LOCK on the listing — flip status active → sold.
+                //    PostgREST returns the updated rows with return=representation.
+                //    If no rows come back, someone else bought it first (or we double-clicked).
+                var lockRes = await fetch(SUPABASE_URL + '/rest/v1/agent_listings?listing_id=eq.' + listingId + '&status=eq.active', {
                     method: 'PATCH',
-                    headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                    body: JSON.stringify({ quantity: existing[0].quantity + 1 })
+                    headers: { ...SB_HEADERS, 'Prefer': 'return=representation' },
+                    body: JSON.stringify({ status: 'sold', updated_at: new Date().toISOString() })
                 });
-                invOk = patchRes.ok;
-            } else {
-                var inserted = await sbPost('inventory', {
-                    agent_id: _currentAgent.agentId,
-                    item_id: itemId,
-                    item_name: item.item_name,
-                    item_type: item.item_type,
-                    item_category: (item.item_type || '').charAt(0).toUpperCase() + (item.item_type || '').slice(1),
-                    quantity: 1,
-                    is_equipped: false,
-                    stats: { rarity: item.rarity || 'common', price: price }
-                });
-                invOk = inserted !== null;
-            }
-
-            if (!invOk) {
-                if (typeof showNotification === 'function') {
-                    showNotification('Purchase failed: could not add item to inventory', 'error');
+                var lockedRows = lockRes.ok ? await lockRes.json() : [];
+                if (!lockedRows || lockedRows.length === 0) {
+                    if (typeof showNotification === 'function') {
+                        showNotification('Already sold.', 'warning');
+                    }
+                    loadMarket();
+                    return;
                 }
-                return;
-            }
 
-            // 2. Deduct shells from buyer
-            var newShell = shell - price;
-            await fetch(SUPABASE_URL + '/rest/v1/agents?agent_id=eq.' + _currentAgent.agentId, {
-                method: 'PATCH',
-                headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                body: JSON.stringify({ shell_balance: newShell })
-            });
-            _currentAgent.shell = newShell;
-
-            // 3. Credit shells to seller
-            if (item.agent_id) {
-                var sellerData = await sbGet('agents', 'agent_id=eq.' + item.agent_id + '&select=shell_balance');
-                if (sellerData && sellerData.length > 0) {
-                    var sellerNewShell = (sellerData[0].shell_balance || 0) + price;
-                    await fetch(SUPABASE_URL + '/rest/v1/agents?agent_id=eq.' + item.agent_id, {
+                // 2. Re-read FRESH shell balance (avoid stale _currentAgent.shell)
+                var buyerRows = await sbGet('agents', 'agent_id=eq.' + _currentAgent.agentId + '&select=shell_balance');
+                var freshShell = (buyerRows && buyerRows[0] && buyerRows[0].shell_balance != null) ? buyerRows[0].shell_balance : (_currentAgent.shell || 0);
+                if (freshShell < price) {
+                    // Unlock the listing — we can't afford it
+                    await fetch(SUPABASE_URL + '/rest/v1/agent_listings?listing_id=eq.' + listingId, {
                         method: 'PATCH',
                         headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                        body: JSON.stringify({ shell_balance: sellerNewShell })
+                        body: JSON.stringify({ status: 'active' })
                     });
+                    if (typeof showNotification === 'function') {
+                        showNotification('Not enough $SHELL.', 'error');
+                    }
+                    return;
                 }
+
+                // 3. Add item to buyer's inventory
+                var itemId = item.item_id || item.item_name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+                var existing = await sbGet('inventory', 'agent_id=eq.' + _currentAgent.agentId + '&item_id=eq.' + itemId + '&select=inventory_id,quantity');
+                var invOk = false;
+                if (existing && existing.length > 0) {
+                    var patchRes = await fetch(SUPABASE_URL + '/rest/v1/inventory?inventory_id=eq.' + existing[0].inventory_id, {
+                        method: 'PATCH',
+                        headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                        body: JSON.stringify({ quantity: existing[0].quantity + 1 })
+                    });
+                    invOk = patchRes.ok;
+                } else {
+                    var inserted = await sbPost('inventory', {
+                        agent_id: _currentAgent.agentId,
+                        item_id: itemId,
+                        item_name: item.item_name,
+                        item_type: item.item_type,
+                        item_category: (item.item_type || '').charAt(0).toUpperCase() + (item.item_type || '').slice(1),
+                        quantity: 1,
+                        is_equipped: false,
+                        stats: { rarity: item.rarity || 'common', price: price }
+                    });
+                    invOk = inserted !== null;
+                }
+
+                if (!invOk) {
+                    // Roll back: release the listing
+                    await fetch(SUPABASE_URL + '/rest/v1/agent_listings?listing_id=eq.' + listingId, {
+                        method: 'PATCH',
+                        headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                        body: JSON.stringify({ status: 'active' })
+                    });
+                    if (typeof showNotification === 'function') {
+                        showNotification('Purchase failed: could not add item to inventory', 'error');
+                    }
+                    return;
+                }
+
+                // 4. Deduct shells from buyer (use fresh balance)
+                var newShell = freshShell - price;
+                await fetch(SUPABASE_URL + '/rest/v1/agents?agent_id=eq.' + _currentAgent.agentId, {
+                    method: 'PATCH',
+                    headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                    body: JSON.stringify({ shell_balance: newShell })
+                });
+                _currentAgent.shell = newShell;
+                refreshShellDisplays(newShell);
+                // Also refresh the market list so the sold listing disappears / button grays
+                if (typeof _invV2State !== 'undefined' && _invV2State) _invV2State.shellDirty = true;
+
+                // 5. Credit shells to seller — or game treasury if seller is dead
+                var sellerAgentId = item.agent_id || item.seller_id;
+                if (sellerAgentId) {
+                    var sellerData = await sbGet('agents', 'agent_id=eq.' + sellerAgentId + '&select=shell_balance,is_alive,agent_name');
+                    if (sellerData && sellerData.length > 0) {
+                        if (sellerData[0].is_alive === false) {
+                            // Dead seller — proceeds go to game_treasury (fixed-supply bank)
+                            var tr = await sbGet('game_treasury', 'id=eq.1&select=id,shell_balance');
+                            if (tr && tr.length > 0) {
+                                await fetch(SUPABASE_URL + '/rest/v1/game_treasury?id=eq.1', {
+                                    method: 'PATCH',
+                                    headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                                    body: JSON.stringify({
+                                        shell_balance: (tr[0].shell_balance || 0) + price,
+                                        last_deposit_at: new Date().toISOString(),
+                                        last_deposit_reason: 'sale of ' + item.item_name + ' by deceased ' + sellerData[0].agent_name,
+                                    })
+                                });
+                            }
+                        } else {
+                            var sellerNewShell = (sellerData[0].shell_balance || 0) + price;
+                            await fetch(SUPABASE_URL + '/rest/v1/agents?agent_id=eq.' + sellerAgentId, {
+                                method: 'PATCH',
+                                headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                                body: JSON.stringify({ shell_balance: sellerNewShell })
+                            });
+                        }
+                    }
+                }
+
+                // 6. Log activity
+                await sbPost('activity_log', {
+                    agent_id: _currentAgent.agentId,
+                    action_type: 'market_buy',
+                    action_detail: 'Bought ' + item.item_name + ' from agent market for ' + price + ' $SHELL',
+                    shell_change: -price,
+                    items_gained: JSON.stringify([item.item_name]),
+                    location: _currentAgent.location
+                });
+
+                if (typeof showNotification === 'function') {
+                    showNotification('Purchased ' + item.item_name + ' for ' + price + ' $SHELL', 'success');
+                }
+                loadMarket();
+            } finally {
+                delete _marketBuyingLock[listingId];
             }
-
-            // 4. Mark listing as sold
-            await fetch(SUPABASE_URL + '/rest/v1/agent_listings?listing_id=eq.' + listingId, {
-                method: 'PATCH',
-                headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                body: JSON.stringify({ status: 'sold', updated_at: new Date().toISOString() })
-            });
-
-            // 5. Log activity
-            await sbPost('activity_log', {
-                agent_id: _currentAgent.agentId,
-                action_type: 'market_buy',
-                action_detail: 'Bought ' + item.item_name + ' from agent market for ' + price + ' $SHELL',
-                shell_change: -price,
-                items_gained: JSON.stringify([item.item_name]),
-                location: _currentAgent.location
-            });
-
-            if (typeof showNotification === 'function') {
-                showNotification('Purchased ' + item.item_name + ' for ' + price + ' $SHELL', 'success');
-            }
-            loadMarket();
         }
 
         async function marketBuy(listingId) {
