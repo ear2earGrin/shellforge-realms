@@ -1429,52 +1429,53 @@
                 return entries;
             }
 
+            var renderedKeys = {};
+
+            function renderBatch(rows, initial) {
+                rows.sort(function(a, b) {
+                    return (a.timestamp || '') < (b.timestamp || '') ? -1 : 1;
+                });
+                rows.forEach(function(row, idx) {
+                    var key = row.agent_id + '|' + row.action_type + '|' + (row.timestamp || '');
+                    if (renderedKeys[key]) return;
+                    renderedKeys[key] = true;
+                    var name = agentCache[row.agent_id] || 'Unknown';
+                    var detail = row.action_detail || row.action_type;
+                    var location = row.location || '';
+                    if (initial) {
+                        setTimeout(function() {
+                            renderLine(name, row.action_type, detail, location, row.timestamp, true);
+                        }, idx * 60);
+                    } else {
+                        renderLine(name, row.action_type, detail, location, row.timestamp, true);
+                    }
+                });
+                if (rows.length) {
+                    var maxTs = rows[rows.length - 1].timestamp;
+                    if (!lastSeenTime || maxTs > lastSeenTime) lastSeenTime = maxTs;
+                }
+            }
+
             async function loadActivity(initial) {
+                // Fast path: load activity_log and render IMMEDIATELY.
                 try {
                     var query = 'select=agent_id,action_type,action_detail,location,timestamp&order=timestamp.desc&limit=' + (initial ? 40 : 10);
                     if (lastSeenTime && !initial) {
                         query += '&timestamp=gt.' + lastSeenTime;
                     }
                     var r = await fetch(SB_URL + '/rest/v1/activity_log?' + query, { headers: SB_HDRS });
-                    if (!r.ok) return;
-                    var rows = await r.json();
-
-                    var arenaRows = await loadArenaEntries(initial);
-                    var allRows = rows.concat(arenaRows);
-
-                    var seen = {};
-                    allRows = allRows.filter(function(row) {
-                        var key = row.agent_id + '|' + row.action_type + '|' + (row.timestamp || '');
-                        if (seen[key]) return false;
-                        seen[key] = true;
-                        return true;
-                    });
-
-                    allRows.sort(function(a, b) {
-                        return (a.timestamp || '') < (b.timestamp || '') ? -1 : 1;
-                    });
-
-                    if (!allRows.length) return;
-
-                    if (initial && allRows.length > 0) {
-                        feed.innerHTML = '';
+                    if (r.ok) {
+                        var rows = await r.json();
+                        if (initial && rows.length > 0) feed.innerHTML = '';
+                        renderBatch(rows, initial);
                     }
+                } catch(e) { console.warn('Feed: activity_log failed', e); }
 
-                    allRows.forEach(function(row, idx) {
-                        var name = agentCache[row.agent_id] || 'Unknown';
-                        var detail = row.action_detail || row.action_type;
-                        var location = row.location || '';
-                        if (initial) {
-                            setTimeout(function() {
-                                renderLine(name, row.action_type, detail, location, row.timestamp, true);
-                            }, idx * 80);
-                        } else {
-                            renderLine(name, row.action_type, detail, location, row.timestamp, true);
-                        }
-                    });
-
-                    lastSeenTime = allRows[allRows.length - 1].timestamp;
-                } catch(e) { console.warn('Feed: failed to load activity', e); }
+                // Slow path: load arena/combat matches in the background, render as they arrive.
+                // Does NOT block the activity_log render above.
+                loadArenaEntries(initial).then(function(arenaRows) {
+                    if (arenaRows && arenaRows.length) renderBatch(arenaRows, false);
+                }).catch(function(e) { console.warn('Feed: arena fetch failed', e); });
             }
 
             // Initialize
