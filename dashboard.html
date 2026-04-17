@@ -8203,7 +8203,6 @@
                 var name = (item.item_name || '').toLowerCase();
                 var type = (item.item_type || '').toLowerCase();
                 if (_marketTab === 'sell') {
-                    if (type === 'ingredient') return false;
                     if (item.is_equipped) return false;
                     if ((item.quantity || 0) <= 0) return false;
                 }
@@ -8246,7 +8245,7 @@
             if (_marketTab === 'sell') {
                 items = items.filter(function(it) {
                     var t = (it.item_type || '').toLowerCase();
-                    return t !== 'ingredient' && !it.is_equipped && (it.quantity || 0) > 0;
+                    return !it.is_equipped && (it.quantity || 0) > 0;
                 });
             }
             var counts = { all: items.length };
@@ -8382,7 +8381,7 @@
             // Bottom bar
             var sellableInv = _marketInventory.filter(function(it) {
                 var t = (it.item_type || '').toLowerCase();
-                return t !== 'ingredient' && !it.is_equipped && (it.quantity || 0) > 0;
+                return !it.is_equipped && (it.quantity || 0) > 0;
             });
             var totalItems = _marketTab === 'npc' ? _marketItems.filter(function(i){return i.stock > 0;}).length :
                              _marketTab === 'agent' ? _agentListings.length : sellableInv.length;
@@ -9145,14 +9144,21 @@
             }
             var html = '';
             _alchInventory.forEach(function(inv) {
-                var info = ALCHEMY_INGREDIENTS[inv.item_id] || { name: inv.item_name, emoji: '?', rarity: 'Common' };
+                var dictInfo = ALCHEMY_INGREDIENTS[inv.item_id];
+                var name = (dictInfo && dictInfo.name) || inv.item_name || inv.item_id;
+                var emoji = (dictInfo && dictInfo.emoji) || '📦';
+                var rarity = (dictInfo && dictInfo.rarity) || 'Common';
                 var selCount = _alchSelected.filter(function(s) { return s === inv.item_id; }).length;
                 var available = inv.quantity - selCount;
                 var disabled = available <= 0;
                 var cls = 'alchemy-ing-slot' + (disabled ? ' disabled' : '');
-                html += '<div class="' + cls + '" onclick="alchemyPickIngredient(\'' + inv.item_id + '\')" title="' + info.name + ' (' + info.rarity + ') x' + available + '">';
-                html += '<span class="ing-emoji">' + info.emoji + '</span>';
-                html += '<span class="ing-name">' + info.name + '</span>';
+                var iconPath = resolveItemIcon(name);
+                var iconHtml = iconPath
+                    ? '<img src="' + iconPath + '" alt="" style="width:24px;height:24px;object-fit:cover;border-radius:3px;" onerror="this.outerHTML=\'<span class=ing-emoji>' + emoji + '</span>\'">'
+                    : '<span class="ing-emoji">' + emoji + '</span>';
+                html += '<div class="' + cls + '" onclick="alchemyPickIngredient(\'' + inv.item_id + '\')" title="' + escInvAttr(name) + ' (' + rarity + ') x' + available + '">';
+                html += iconHtml;
+                html += '<span class="ing-name">' + escInvAttr(name) + '</span>';
                 html += '<span class="ing-qty">x' + available + '</span>';
                 html += '</div>';
             });
@@ -9177,8 +9183,15 @@
                 var el = document.getElementById('alchSel' + i);
                 var id = _alchSelected[i];
                 if (id) {
-                    var info = ALCHEMY_INGREDIENTS[id] || { emoji: '?', name: '???' };
-                    el.innerHTML = '<span style="font-size:1.3rem;">' + info.emoji + '</span><span class="sel-label" style="font-size:0.42rem;max-width:90%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + info.name + '</span>';
+                    var dictInfo = ALCHEMY_INGREDIENTS[id];
+                    var invRow = _alchInventory.find(function(r) { return r.item_id === id; });
+                    var name = (dictInfo && dictInfo.name) || (invRow && invRow.item_name) || id;
+                    var emoji = (dictInfo && dictInfo.emoji) || '📦';
+                    var iconPath = resolveItemIcon(name);
+                    var iconHtml = iconPath
+                        ? '<img src="' + iconPath + '" alt="" style="width:32px;height:32px;object-fit:cover;border-radius:4px;" onerror="this.outerHTML=\'<span style=font-size:1.3rem>' + emoji + '</span>\'">'
+                        : '<span style="font-size:1.3rem;">' + emoji + '</span>';
+                    el.innerHTML = iconHtml + '<span class="sel-label" style="font-size:0.42rem;max-width:90%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escInvAttr(name) + '</span>';
                     el.classList.add('filled');
                 } else {
                     el.innerHTML = '<span style="color:rgba(192,132,252,0.3);">+</span><span class="sel-label">slot ' + (i+1) + '</span>';
