@@ -8202,6 +8202,11 @@
             var filtered = items.filter(function(item) {
                 var name = (item.item_name || '').toLowerCase();
                 var type = (item.item_type || '').toLowerCase();
+                if (_marketTab === 'sell') {
+                    if (type === 'ingredient') return false;
+                    if (item.is_equipped) return false;
+                    if ((item.quantity || 0) <= 0) return false;
+                }
                 if (_marketCategory !== 'all' && type !== _marketCategory) return false;
                 if (_marketSearch && name.indexOf(_marketSearch.toLowerCase()) === -1) return false;
                 return true;
@@ -8238,6 +8243,12 @@
         function getCategoryCounts() {
             var items = _marketTab === 'npc' ? _marketItems :
                         _marketTab === 'agent' ? _agentListings : _marketInventory;
+            if (_marketTab === 'sell') {
+                items = items.filter(function(it) {
+                    var t = (it.item_type || '').toLowerCase();
+                    return t !== 'ingredient' && !it.is_equipped && (it.quantity || 0) > 0;
+                });
+            }
             var counts = { all: items.length };
             items.forEach(function(item) {
                 var t = (item.item_type || '').toLowerCase();
@@ -8278,7 +8289,7 @@
 
             var [items, inv, agentItems] = await Promise.all([
                 sbGet('market_listings', 'location=eq.' + encodeURIComponent(loc) + '&order=base_price&select=*'),
-                sbGet('inventory', 'agent_id=eq.' + agent.agentId + '&or=(item_type.neq.ingredient,item_type.is.null)&select=*'),
+                sbGet('inventory', 'agent_id=eq.' + agent.agentId + '&select=*'),
                 loadAgentListings(loc)
             ]);
 
@@ -8298,7 +8309,7 @@
             if (!_currentAgent || !_marketLoc) return;
             var [agentItems, inv] = await Promise.all([
                 loadAgentListings(_marketLoc),
-                sbGet('inventory', 'agent_id=eq.' + _currentAgent.agentId + '&or=(item_type.neq.ingredient,item_type.is.null)&select=*')
+                sbGet('inventory', 'agent_id=eq.' + _currentAgent.agentId + '&select=*')
             ]);
             _agentListings = agentItems || [];
             _marketInventory = inv || [];
@@ -8369,8 +8380,12 @@
             html += '</div>'; // close market-content
 
             // Bottom bar
+            var sellableInv = _marketInventory.filter(function(it) {
+                var t = (it.item_type || '').toLowerCase();
+                return t !== 'ingredient' && !it.is_equipped && (it.quantity || 0) > 0;
+            });
             var totalItems = _marketTab === 'npc' ? _marketItems.filter(function(i){return i.stock > 0;}).length :
-                             _marketTab === 'agent' ? _agentListings.length : _marketInventory.length;
+                             _marketTab === 'agent' ? _agentListings.length : sellableInv.length;
             var tabLabel = _marketTab === 'npc' ? 'items in stock' :
                            _marketTab === 'agent' ? 'agent listings' : 'items to sell';
             html += '<div class="market-shell-bar">';
@@ -8656,13 +8671,15 @@
         // Update all on-screen shell-balance displays immediately after a buy/sell
         function refreshShellDisplays(newShell) {
             var displayVal = (newShell != null ? newShell : '--');
-            // Sidebar (live poll also touches this)
-            var sidebar = document.querySelector('.shell-balance');
-            if (sidebar) sidebar.textContent = displayVal + ' $SHELL';
-            // Inventory modal header
-            var invHdr = document.querySelector('.inv-stat-shell');
-            if (invHdr) invHdr.innerHTML = '💰 ' + displayVal + ' $SHELL';
-            // Stats panel row (dashboard top-left)
+            document.querySelectorAll('.shell-balance').forEach(function(el) {
+                el.textContent = displayVal + ' $SHELL';
+            });
+            document.querySelectorAll('.inv-stat-shell').forEach(function(el) {
+                el.innerHTML = '💰 ' + displayVal + ' $SHELL';
+            });
+            document.querySelectorAll('.market-shell-bar .shell-bal').forEach(function(el) {
+                el.innerHTML = '💰 ' + displayVal + ' $SHELL';
+            });
             var statShell = document.getElementById('shellValue');
             if (statShell) statShell.textContent = displayVal;
         }
