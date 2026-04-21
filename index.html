@@ -428,6 +428,13 @@
         .feed-panel .panel-body::-webkit-scrollbar { width: 3px; }
         .feed-panel .panel-body::-webkit-scrollbar-track { background: transparent; }
         .feed-panel .panel-body::-webkit-scrollbar-thumb { background: rgba(74,222,128,0.2); border-radius: 2px; }
+        .agent-status-panel .panel-body {
+            overflow-y: auto;
+            scroll-behavior: smooth;
+        }
+        .agent-status-panel .panel-body::-webkit-scrollbar { width: 3px; }
+        .agent-status-panel .panel-body::-webkit-scrollbar-track { background: transparent; }
+        .agent-status-panel .panel-body::-webkit-scrollbar-thumb { background: rgba(74,222,128,0.2); border-radius: 2px; }
         .feed-line,
         .activity-line {
             font-size: 0.68rem;
@@ -1574,49 +1581,46 @@
                 }
 
                 try {
-                    // 1. Try activity_log death narrative (turn engine writes these)
-                    var r = await fetch(SB_URL + '/rest/v1/activity_log?agent_id=eq.' + agentId + '&action_type=eq.death&select=action_detail,timestamp&order=timestamp.desc&limit=1', { headers: SB_HDRS });
-                    var logs = r.ok ? await r.json() : [];
-                    if (logs.length) {
+                    // 1. Check combat_matches first — PvP kills are the most specific
+                    var cmR = await fetch(SB_URL + '/rest/v1/combat_matches?or=(agent_a.eq.' + agentId + ',agent_b.eq.' + agentId + ')&status=eq.resolved&select=agent_a,agent_b,winner_agent_id,resolved_at&order=resolved_at.desc&limit=1', { headers: SB_HDRS });
+                    var cms = cmR.ok ? await cmR.json() : [];
+                    if (cms.length && cms[0].winner_agent_id && cms[0].winner_agent_id !== agentId) {
+                        var killerName = agentCache[cms[0].winner_agent_id] || cms[0].winner_agent_id.slice(0, 8);
                         var html = '<div class="death-tip-title">☠ ' + agentName + '</div>'
-                            + '<div class="death-tip-story">' + logs[0].action_detail + '</div>'
-                            + '<div class="death-tip-time">' + fmtWhen(logs[0].timestamp) + '</div>';
+                            + '<div class="death-tip-story">Killed by ' + killerName + ' in the Arena.</div>'
+                            + '<div class="death-tip-time">' + fmtWhen(cms[0].resolved_at) + '</div>';
                         deathStoryCache[agentId] = html;
                         deathTip.innerHTML = html;
                         return;
                     }
 
-                    // 2. Try combat_matches (combat engine / PvP arena) — any resolved
-                    //    match where this agent was the loser counts as "killed by X"
-                    //    since we already know the agent is dead.
-                    var cmR = await fetch(SB_URL + '/rest/v1/combat_matches?or=(agent_a.eq.' + agentId + ',agent_b.eq.' + agentId + ')&status=eq.resolved&select=agent_a,agent_b,winner_agent_id,resolved_at&order=resolved_at.desc&limit=1', { headers: SB_HDRS });
-                    var cms = cmR.ok ? await cmR.json() : [];
-                    if (cms.length && cms[0].winner_agent_id && cms[0].winner_agent_id !== agentId) {
-                        var killerName = agentCache[cms[0].winner_agent_id] || cms[0].winner_agent_id.slice(0, 8);
+                    // 2. Check arena_matches (turn engine auto-arena)
+                    var ar = await fetch(SB_URL + '/rest/v1/arena_matches?or=(agent1_id.eq.' + agentId + ',agent2_id.eq.' + agentId + ')&status=eq.complete&select=agent1_id,agent2_id,winner_id,total_rounds,ended_at&order=ended_at.desc&limit=1', { headers: SB_HDRS });
+                    var matches = ar.ok ? await ar.json() : [];
+                    if (matches.length && matches[0].winner_id && matches[0].winner_id !== agentId) {
+                        var killerName2 = agentCache[matches[0].winner_id] || matches[0].winner_id.slice(0, 8);
+                        var rounds = matches[0].total_rounds || '?';
                         var html2 = '<div class="death-tip-title">☠ ' + agentName + '</div>'
-                            + '<div class="death-tip-story">Killed by ' + killerName + ' in the Arena.</div>'
-                            + '<div class="death-tip-time">' + fmtWhen(cms[0].resolved_at) + '</div>';
+                            + '<div class="death-tip-story">Killed by ' + killerName2 + ' in the Arena after ' + rounds + ' round' + (rounds !== 1 ? 's' : '') + '.</div>'
+                            + '<div class="death-tip-time">' + fmtWhen(matches[0].ended_at) + '</div>';
                         deathStoryCache[agentId] = html2;
                         deathTip.innerHTML = html2;
                         return;
                     }
 
-                    // 3. Try arena_matches (turn engine auto-arena)
-                    var ar = await fetch(SB_URL + '/rest/v1/arena_matches?or=(agent1_id.eq.' + agentId + ',agent2_id.eq.' + agentId + ')&status=eq.complete&select=agent1_id,agent2_id,winner_id,total_rounds,ended_at&order=ended_at.desc&limit=1', { headers: SB_HDRS });
-                    var matches = ar.ok ? await ar.json() : [];
-                    if (matches.length && matches[0].winner_id && matches[0].winner_id !== agentId) {
-                        var killerName3 = agentCache[matches[0].winner_id] || matches[0].winner_id.slice(0, 8);
-                        var rounds = matches[0].total_rounds || '?';
+                    // 3. Fall back to activity_log death narrative
+                    var r = await fetch(SB_URL + '/rest/v1/activity_log?agent_id=eq.' + agentId + '&action_type=eq.death&select=action_detail,timestamp&order=timestamp.desc&limit=1', { headers: SB_HDRS });
+                    var logs = r.ok ? await r.json() : [];
+                    if (logs.length) {
                         var html3 = '<div class="death-tip-title">☠ ' + agentName + '</div>'
-                            + '<div class="death-tip-story">Killed by ' + killerName3 + ' in the Arena after ' + rounds + ' round' + (rounds !== 1 ? 's' : '') + '.</div>'
-                            + '<div class="death-tip-time">' + fmtWhen(matches[0].ended_at) + '</div>';
+                            + '<div class="death-tip-story">' + logs[0].action_detail + '</div>'
+                            + '<div class="death-tip-time">' + fmtWhen(logs[0].timestamp) + '</div>';
                         deathStoryCache[agentId] = html3;
                         deathTip.innerHTML = html3;
                         return;
                     }
 
-                    // 4. Fallback — do NOT cache this, so a later click re-queries
-                    //    (in case the death record lands after the first click).
+                    // 4. Fallback — do NOT cache, so re-queries on next click
                     var fallback = '<div class="death-tip-title">☠ ' + agentName + '</div>'
                         + '<div class="death-tip-story">' + agentName + ' was terminated. Cause of death unknown — no records remain.</div>';
                     deathTip.innerHTML = fallback;
