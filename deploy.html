@@ -291,10 +291,6 @@
             if (!emailRegex.test(email)) {
                 terminalNotify.error('Please enter a valid email address.'); return;
             }
-            const disposableDomains = ['tempmail.com', '10minutemail.com', 'guerrillamail.com', 'throwaway.email'];
-            if (disposableDomains.includes(email.split('@')[1])) {
-                terminalNotify.error('Please use a permanent email address.'); return;
-            }
             if (username.length < 3) {
                 terminalNotify.error('Username must be at least 3 characters.'); return;
             }

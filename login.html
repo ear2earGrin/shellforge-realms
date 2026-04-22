@@ -311,58 +311,25 @@
             submitBtn.textContent = 'Logging in...';
             
             try {
-                // Try API login
-                try {
-                    const response = await fetch('/api/auth/login', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ username, password })
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('Invalid credentials');
-                    }
-                    
-                    const data = await response.json();
-                    
-                    // Store auth token
-                    localStorage.setItem('shellforgeToken', data.token);
-                    localStorage.setItem('shellforgeUsername', username);
-                    localStorage.setItem('shellforgeAgentId', data.agentId);
-                    
-                    // Redirect to dashboard
-                    window.location.href = 'dashboard.html';
-                    return;
-                    
-                } catch (apiError) {
-                    // Fallback 1: check Supabase for agent with this username
-                    const SUPABASE_URL = 'https://wtzrxscdlqdgdiefsmru.supabase.co';
-                    const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0enJ4c2NkbHFkZ2RpZWZzbXJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2OTI4MjcsImV4cCI6MjA4OTI2ODgyN30.dLheIKz9anuM58O3Ebsr2rVCOGA-xBGRD9voiXNvIcg';
-                    try {
-                        const r = await fetch(
-                            SUPABASE_URL + '/rest/v1/agents?agent_name=eq.' + encodeURIComponent(username) + '&select=agent_id,agent_name&limit=1',
-                            { headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON } }
-                        );
-                        if (r.ok) {
-                            const rows = await r.json();
-                            if (rows && rows.length > 0) {
-                                localStorage.setItem('shellforgeLoggedIn', username);
-                                localStorage.setItem('shellforgeAgentId', rows[0].agent_id);
-                                window.location.href = 'dashboard.html';
-                                return;
-                            }
-                        }
-                    } catch(sbErr) { /* Supabase unavailable, try localStorage */ }
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
 
-                    // Fallback 2: localStorage
-                    const perUserAgent = localStorage.getItem('shellforgeAgent_' + username);
-                    if (perUserAgent) {
-                        localStorage.setItem('shellforgeLoggedIn', username);
-                        window.location.href = 'dashboard.html';
-                        return;
-                    }
-                    throw new Error('No agent found for that username. Deploy one first.');
+                if (!response.ok) {
+                    throw new Error('Invalid credentials.');
                 }
+
+                const data = await response.json();
+
+                // Store session token issued by the auth backend
+                localStorage.setItem('shellforgeToken', data.token);
+                localStorage.setItem('shellforgeUsername', username);
+                localStorage.setItem('shellforgeAgentId', data.agentId);
+
+                window.location.href = 'dashboard.html';
+                return;
             } catch (error) {
                 console.error('Login error:', error);
                 

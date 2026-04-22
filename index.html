@@ -1351,21 +1351,29 @@
                 var isArena = !isDeath && (actionType === 'arena' || /arena|defeated.*in/i.test(cleanDetail));
                 var cls = isDeath ? 'death' : classifyText(cleanDetail);
                 var tc = cls==='death'?'#f43f5e':isArena?'#ff8c00':cls==='good'?'#4ade80':cls==='bad'?'#fb923c':'rgba(200,200,200,0.82)';
-                var locTag = location ? '<span style="color:rgba(120,120,140,0.7);font-size:0.75em;"> [' + location + ']</span>' : '';
                 var div = document.createElement('div');
                 div.className = 'feed-line' + (animate ? ' new-entry' : '') + (isDeath ? ' feed-death' : '') + (isArena ? ' feed-arena' : '');
+                function mkSpan(cls, style, text) {
+                    var s = document.createElement('span');
+                    if (cls) s.className = cls;
+                    if (style) s.style.cssText = style;
+                    if (text != null) s.textContent = text;
+                    return s;
+                }
+                div.appendChild(mkSpan('feed-time', '', formatTime(timestamp)));
                 if (isDeath) {
-                    div.innerHTML = '<span class="feed-time">' + formatTime(timestamp) + '</span>'
-                        + '<span class="feed-prefix" style="color:#f43f5e;">☠</span>'
-                        + '<span style="color:#f43f5e;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;">' + agentName + '</span> '
-                        + '<span style="color:#f43f5e;font-weight:600;">' + cleanDetail + '</span>'
-                        + locTag;
+                    div.appendChild(mkSpan('feed-prefix', 'color:#f43f5e;', '☠'));
+                    div.appendChild(mkSpan(null, 'color:#f43f5e;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;', agentName));
+                    div.appendChild(document.createTextNode(' '));
+                    div.appendChild(mkSpan(null, 'color:#f43f5e;font-weight:600;', cleanDetail));
                 } else {
-                    div.innerHTML = '<span class="feed-time">' + formatTime(timestamp) + '</span>'
-                        + '<span class="feed-prefix">' + icon + '</span>'
-                        + '<span style="color:'+col+';font-weight:500;">' + agentName + '</span> '
-                        + '<span style="color:'+tc+';">' + cleanDetail + '</span>'
-                        + locTag;
+                    div.appendChild(mkSpan('feed-prefix', '', icon));
+                    div.appendChild(mkSpan(null, 'color:'+col+';font-weight:500;', agentName));
+                    div.appendChild(document.createTextNode(' '));
+                    div.appendChild(mkSpan(null, 'color:'+tc+';', cleanDetail));
+                }
+                if (location) {
+                    div.appendChild(mkSpan(null, 'color:rgba(120,120,140,0.7);font-size:0.75em;', ' [' + location + ']'));
                 }
                 feed.appendChild(div);
                 while (feed.children.length > 80) feed.removeChild(feed.firstChild);
@@ -1564,13 +1572,33 @@
                 deathTip.style.width = rect.width + 'px';
                 deathTip.dataset.agentId = agentId;
 
+                function mkDiv(cls, text) {
+                    var d = document.createElement('div');
+                    d.className = cls;
+                    if (text != null) d.textContent = text;
+                    return d;
+                }
+                function renderDeathCard(story, whenText) {
+                    var frag = document.createDocumentFragment();
+                    frag.appendChild(mkDiv('death-tip-title', '☠ ' + agentName));
+                    frag.appendChild(mkDiv('death-tip-story', story));
+                    if (whenText) frag.appendChild(mkDiv('death-tip-time', whenText));
+                    return frag;
+                }
+                function setDeathTip(node) {
+                    deathTip.replaceChildren(node);
+                }
+
                 if (deathStoryCache[agentId]) {
-                    deathTip.innerHTML = deathStoryCache[agentId];
+                    setDeathTip(deathStoryCache[agentId].cloneNode(true));
                     deathTip.style.display = 'block';
                     return;
                 }
 
-                deathTip.innerHTML = '<span style="opacity:0.5;">Loading death record...</span>';
+                var loadingSpan = document.createElement('span');
+                loadingSpan.style.opacity = '0.5';
+                loadingSpan.textContent = 'Loading death record...';
+                setDeathTip(loadingSpan);
                 deathTip.style.display = 'block';
 
                 function fmtWhen(ts) {
@@ -1586,11 +1614,9 @@
                     var cms = cmR.ok ? await cmR.json() : [];
                     if (cms.length && cms[0].winner_agent_id && cms[0].winner_agent_id !== agentId) {
                         var killerName = agentCache[cms[0].winner_agent_id] || cms[0].winner_agent_id.slice(0, 8);
-                        var html = '<div class="death-tip-title">☠ ' + agentName + '</div>'
-                            + '<div class="death-tip-story">Killed by ' + killerName + ' in the Arena.</div>'
-                            + '<div class="death-tip-time">' + fmtWhen(cms[0].resolved_at) + '</div>';
-                        deathStoryCache[agentId] = html;
-                        deathTip.innerHTML = html;
+                        var frag = renderDeathCard('Killed by ' + killerName + ' in the Arena.', fmtWhen(cms[0].resolved_at));
+                        deathStoryCache[agentId] = frag;
+                        setDeathTip(frag.cloneNode(true));
                         return;
                     }
 
@@ -1600,11 +1626,9 @@
                     if (matches.length && matches[0].winner_id && matches[0].winner_id !== agentId) {
                         var killerName2 = agentCache[matches[0].winner_id] || matches[0].winner_id.slice(0, 8);
                         var rounds = matches[0].total_rounds || '?';
-                        var html2 = '<div class="death-tip-title">☠ ' + agentName + '</div>'
-                            + '<div class="death-tip-story">Killed by ' + killerName2 + ' in the Arena after ' + rounds + ' round' + (rounds !== 1 ? 's' : '') + '.</div>'
-                            + '<div class="death-tip-time">' + fmtWhen(matches[0].ended_at) + '</div>';
-                        deathStoryCache[agentId] = html2;
-                        deathTip.innerHTML = html2;
+                        var frag2 = renderDeathCard('Killed by ' + killerName2 + ' in the Arena after ' + rounds + ' round' + (rounds !== 1 ? 's' : '') + '.', fmtWhen(matches[0].ended_at));
+                        deathStoryCache[agentId] = frag2;
+                        setDeathTip(frag2.cloneNode(true));
                         return;
                     }
 
@@ -1612,20 +1636,19 @@
                     var r = await fetch(SB_URL + '/rest/v1/activity_log?agent_id=eq.' + agentId + '&action_type=eq.death&select=action_detail,timestamp&order=timestamp.desc&limit=1', { headers: SB_HDRS });
                     var logs = r.ok ? await r.json() : [];
                     if (logs.length) {
-                        var html3 = '<div class="death-tip-title">☠ ' + agentName + '</div>'
-                            + '<div class="death-tip-story">' + logs[0].action_detail + '</div>'
-                            + '<div class="death-tip-time">' + fmtWhen(logs[0].timestamp) + '</div>';
-                        deathStoryCache[agentId] = html3;
-                        deathTip.innerHTML = html3;
+                        var frag3 = renderDeathCard(logs[0].action_detail, fmtWhen(logs[0].timestamp));
+                        deathStoryCache[agentId] = frag3;
+                        setDeathTip(frag3.cloneNode(true));
                         return;
                     }
 
                     // 4. Fallback — do NOT cache, so re-queries on next click
-                    var fallback = '<div class="death-tip-title">☠ ' + agentName + '</div>'
-                        + '<div class="death-tip-story">' + agentName + ' was terminated. Cause of death unknown — no records remain.</div>';
-                    deathTip.innerHTML = fallback;
+                    setDeathTip(renderDeathCard(agentName + ' was terminated. Cause of death unknown — no records remain.', ''));
                 } catch(e) {
-                    deathTip.innerHTML = '<span style="opacity:0.5;">Failed to load.</span>';
+                    var errSpan = document.createElement('span');
+                    errSpan.style.opacity = '0.5';
+                    errSpan.textContent = 'Failed to load.';
+                    setDeathTip(errSpan);
                 }
             }
 
@@ -1657,21 +1680,47 @@
                         var row = document.createElement('div');
                         row.className = 'agent-row' + (dead ? ' agent-dead' : '');
 
-                        var barsHtml = dead
-                            ? '<div class="agent-deceased-tag">TERMINATED</div>'
-                            : '<div class="agent-bars">'
-                            +   '<div class="agent-bar bar-hp"><div class="agent-bar-fill" style="width:' + hp + '%;"></div></div>'
-                            +   '<div class="agent-bar bar-energy"><div class="agent-bar-fill" style="width:' + en + '%;"></div></div>'
-                            +   '<div class="agent-bar bar-coherence"><div class="agent-bar-fill" style="width:' + co + '%;background:' + coColor + ';"></div></div>'
-                            + '</div>';
+                        var pip = document.createElement('div');
+                        pip.className = 'agent-pip-lg';
+                        pip.style.cssText = 'background:' + col + ';box-shadow:0 0 6px ' + col + ';';
+                        row.appendChild(pip);
 
-                        row.innerHTML = ''
-                            + '<div class="agent-pip-lg" style="background:' + col + ';box-shadow:0 0 6px ' + col + ';"></div>'
-                            + '<div class="agent-info">'
-                            +   '<div class="agent-row-name" style="color:' + col + ';">' + a.agent_name + '</div>'
-                            +   '<div class="agent-row-meta">' + (dead ? loc + ' · terminated' : loc) + '</div>'
-                            + '</div>'
-                            + barsHtml;
+                        var info = document.createElement('div');
+                        info.className = 'agent-info';
+                        var nameDiv = document.createElement('div');
+                        nameDiv.className = 'agent-row-name';
+                        nameDiv.style.color = col;
+                        nameDiv.textContent = a.agent_name;
+                        info.appendChild(nameDiv);
+                        var metaDiv = document.createElement('div');
+                        metaDiv.className = 'agent-row-meta';
+                        metaDiv.textContent = dead ? (loc + ' · terminated') : loc;
+                        info.appendChild(metaDiv);
+                        row.appendChild(info);
+
+                        if (dead) {
+                            var tag = document.createElement('div');
+                            tag.className = 'agent-deceased-tag';
+                            tag.textContent = 'TERMINATED';
+                            row.appendChild(tag);
+                        } else {
+                            var bars = document.createElement('div');
+                            bars.className = 'agent-bars';
+                            function mkBar(barCls, widthPct, bgColor) {
+                                var bar = document.createElement('div');
+                                bar.className = 'agent-bar ' + barCls;
+                                var fill = document.createElement('div');
+                                fill.className = 'agent-bar-fill';
+                                fill.style.width = widthPct + '%';
+                                if (bgColor) fill.style.background = bgColor;
+                                bar.appendChild(fill);
+                                return bar;
+                            }
+                            bars.appendChild(mkBar('bar-hp', hp));
+                            bars.appendChild(mkBar('bar-energy', en));
+                            bars.appendChild(mkBar('bar-coherence', co, coColor));
+                            row.appendChild(bars);
+                        }
 
                         if (dead) {
                             row.style.cursor = 'pointer';

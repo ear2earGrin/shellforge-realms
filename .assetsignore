@@ -11,12 +11,15 @@ scripts
 .wrangler
 workers
 combat
+backend
 alchemy/*.sql
 alchemy/build-*.js
 alchemy/seed.sql
 alchemy/migration.sql
 *.sql
 *.md
+*.backup
+*.bak
 .gitignore
 .assetsignore
 README.md

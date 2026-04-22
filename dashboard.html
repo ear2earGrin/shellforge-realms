@@ -7772,9 +7772,12 @@
             // ── AI Oracle: lore, strategy, recipes, anything else ──
             // Route through the turn engine worker which has the Anthropic API key
             try {
+                var oracleHeaders = { 'Content-Type': 'application/json' };
+                var oracleToken = localStorage.getItem('shellforgeToken');
+                if (oracleToken) oracleHeaders['Authorization'] = 'Bearer ' + oracleToken;
                 var oracleRes = await fetch('https://shellforge-turn-engine.mindarvokn.workers.dev/oracle', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: oracleHeaders,
                     body: JSON.stringify({ question: question }),
                 });
                 if (oracleRes.ok) {

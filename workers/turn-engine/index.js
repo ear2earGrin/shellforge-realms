@@ -829,6 +829,34 @@ const ARCHETYPE_GUIDANCE = {
   'morph-layer': `You are a hacker and shapeshifter — you adapt to whatever the situation demands. Low on health? You become cautious. Flush with $SHELL? You become bold. In a dangerous zone? You find the exploit. You don't have a "default" behavior — you read the situation and transform. You're drawn to crafting (self-improvement), exploration (finding new tools), and the arena (testing your adaptations). Your weakness: you have no fixed identity — you can seem erratic, switching strategies so often that you never master any single approach.`,
 };
 
+const ALLOWED_ORIGIN = 'https://shellforge.xyz';
+
+function corsHeaders(extra = {}) {
+  return {
+    'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
+    'Vary': 'Origin',
+    ...extra,
+  };
+}
+
+// Constant-time string comparison to avoid timing side-channels on shared secrets.
+function timingSafeEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+function isAuthorized(request, env) {
+  const expected = env.WORKER_AUTH_TOKEN;
+  if (!expected) return false;
+  const header = request.headers.get('authorization') || '';
+  const m = /^Bearer\s+(.+)$/i.exec(header);
+  if (!m) return false;
+  return timingSafeEqual(m[1].trim(), expected);
+}
+
 export default {
   // Cron trigger
   async scheduled(event, env, ctx) {
@@ -837,39 +865,57 @@ export default {
 
   // HTTP trigger for manual testing (POST /run)
   async fetch(request, env, ctx) {
-    if (request.method === 'POST' && new URL(request.url).pathname === '/run') {
-      ctx.waitUntil(runTurnEngine(env));
-      return new Response(JSON.stringify({ ok: true, message: 'Turn engine triggered' }), {
-        headers: { 'Content-Type': 'application/json' },
+    const url = new URL(request.url);
+
+    // CORS preflight — respond first, before auth checks
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        headers: corsHeaders({
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          'Access-Control-Max-Age': '86400',
+        }),
       });
     }
+
+    if (request.method === 'POST' && url.pathname === '/run') {
+      if (!isAuthorized(request, env)) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: corsHeaders({ 'Content-Type': 'application/json' }),
+        });
+      }
+      ctx.waitUntil(runTurnEngine(env));
+      return new Response(JSON.stringify({ ok: true, message: 'Turn engine triggered' }), {
+        headers: corsHeaders({ 'Content-Type': 'application/json' }),
+      });
+    }
+
     // Oracle endpoint: POST /oracle with { question: "..." }
-    if (request.method === 'POST' && new URL(request.url).pathname === '/oracle') {
+    if (request.method === 'POST' && url.pathname === '/oracle') {
+      if (!isAuthorized(request, env)) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: corsHeaders({ 'Content-Type': 'application/json' }),
+        });
+      }
       const body = await request.json().catch(() => null);
       if (!body || !body.question || body.question.length > 150) {
         return new Response(JSON.stringify({ error: 'Invalid question' }), {
           status: 400,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          headers: corsHeaders({ 'Content-Type': 'application/json' }),
         });
       }
       const answer = await handleOracleQuestion(body.question, env);
       return new Response(JSON.stringify(answer), {
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        headers: corsHeaders({ 'Content-Type': 'application/json' }),
       });
     }
 
-    // CORS preflight
-    if (request.method === 'OPTIONS') {
-      return new Response(null, {
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-        },
-      });
-    }
-
-    return new Response('Shellforge Turn Engine — POST /run to trigger', { status: 200 });
+    return new Response('Shellforge Turn Engine — POST /run to trigger', {
+      status: 200,
+      headers: corsHeaders(),
+    });
   },
 };
 
