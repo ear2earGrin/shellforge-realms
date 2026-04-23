@@ -1863,6 +1863,40 @@
             visibility: visible;
         }
 
+        /* Arena map button */
+        .arena-map-btn {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            z-index: 8;
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.3s ease;
+            filter: drop-shadow(0 0 6px rgba(0, 240, 255, 0.3));
+        }
+        .arena-map-btn img {
+            width: 48px;
+            height: auto;
+            transition: all 0.3s ease;
+        }
+        .arena-map-btn:hover img {
+            transform: scale(1.15);
+            filter: brightness(1.3);
+        }
+        .arena-map-btn:hover {
+            filter: drop-shadow(0 0 12px rgba(0, 240, 255, 0.6));
+        }
+        .arena-map-label {
+            font-family: 'Orbitron', monospace;
+            font-size: 0.5rem;
+            color: #ff4466;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-top: 2px;
+            text-shadow: 0 0 6px rgba(255, 68, 102, 0.5);
+        }
+
         .building-tooltip-name {
             color: #ffcc00;
             font-weight: bold;
@@ -4564,6 +4598,11 @@
                         <div class="building-tooltip-desc">Steel bends. Code breaks. Will persists</div>
                     </div>
                 </div>
+                <!-- Arena Building -->
+                <a href="arena.html" class="arena-map-btn" style="left: 72%; top: 34%;">
+                    <img src="images/arena-btn.png" alt="Arena">
+                    <div class="arena-map-label">Arena</div>
+                </a>
                 <div class="building-marker" style="left: 73%; top: 30%;">
                     <div class="building-tooltip">
                         <div class="building-tooltip-name">Deep Mines</div>
@@ -4673,10 +4712,6 @@
             <span class="btn-icon"><img src="images/mechanics/forge-icon.jpg" alt="Workshop"></span>
             <span class="btn-label">Workshop</span>
         </button>
-        <a class="icon-btn arena-btn" href="arena.html" style="text-decoration:none;">
-            <span class="btn-icon arena-glyph">⚔</span>
-            <span class="btn-label">Arena</span>
-        </a>
     </div>
 
     <!-- ══════════════════════════════════════
