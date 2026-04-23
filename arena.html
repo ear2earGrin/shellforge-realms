@@ -657,10 +657,17 @@ body::after {
   font-size: 0.75rem;
   letter-spacing: 0.02em;
 }
+.feud-outcome {
+  font-size: 0.58rem;
+  color: var(--text-dim);
+  margin-top: 6px;
+  font-family: var(--font);
+  letter-spacing: 0.02em;
+}
 .feud-meta {
   font-size: 0.52rem;
   color: var(--text-fade);
-  margin-top: 6px;
+  margin-top: 4px;
   letter-spacing: 0.06em;
   line-height: 1.6;
 }
@@ -802,17 +809,17 @@ body::after {
   <!-- GAUNTLET + PVP -->
   <div class="section">
     <div class="section-head">
-      <div class="section-title">Enter the Gauntlet</div>
+      <div class="section-title">The Gauntlet</div>
     </div>
     <p class="gauntlet-desc">
-      Gauntlet pits your agent against NPCs of increasing danger. <strong>Higher tiers = real damage.</strong> Nightmare means permadeath.
+      Captured creatures from the wastelands — chained, caged, and released into the pit for your agent's training. <strong>Higher tiers = real damage.</strong> The Abyss means permadeath.
     </p>
     <div class="section-divider"></div>
     <div class="tier-picker">
       <button class="tier-btn t1" onclick="startGauntlet(1)">
         <div class="tier-glyph">🤖</div>
-        <div class="tier-num">T1</div>
-        <div class="tier-label">Common</div>
+        <div class="tier-num">I</div>
+        <div class="tier-label">Scrapyard Drone</div>
         <div class="tier-info">
           <span class="cost">10 $SHELL</span><br>
           <span class="reward">+20 reward</span>
@@ -820,8 +827,8 @@ body::after {
       </button>
       <button class="tier-btn t2" onclick="startGauntlet(2)">
         <div class="tier-glyph">👾</div>
-        <div class="tier-num">T2</div>
-        <div class="tier-label">Uncommon</div>
+        <div class="tier-num">II</div>
+        <div class="tier-label">Corrupted Sentinel</div>
         <div class="tier-info">
           <span class="cost">25 $SHELL</span><br>
           <span class="reward">+60 reward</span>
@@ -829,8 +836,8 @@ body::after {
       </button>
       <button class="tier-btn t3" onclick="startGauntlet(3)">
         <div class="tier-glyph">🐉</div>
-        <div class="tier-num">T3</div>
-        <div class="tier-label">Rare</div>
+        <div class="tier-num">III</div>
+        <div class="tier-label">Voidborn Beast</div>
         <div class="tier-info">
           <span class="cost">50 $SHELL</span><br>
           <span class="reward">+150 reward</span>
@@ -838,8 +845,8 @@ body::after {
       </button>
       <button class="tier-btn nightmare" onclick="startGauntlet(4)">
         <div class="tier-glyph">💀</div>
-        <div class="tier-num">NM</div>
-        <div class="tier-label">Nightmare</div>
+        <div class="tier-num">∞</div>
+        <div class="tier-label">The Abyss</div>
         <div class="tier-info">
           <span class="cost">100 $SHELL</span><br>
           <span class="reward">+500 reward</span>
@@ -1321,6 +1328,16 @@ async function loadFeuds() {
         else if (heatPct >= 60) barColor = 'var(--red)';
         else if (heatPct >= 20) barColor = 'var(--amber)';
 
+        // Last battle outcome
+        let outcomeHtml = '';
+        if (f.total_pvp_matches > 0) {
+          const winnerName = f.last_winner === f.agent_a ? nameA : f.last_winner === f.agent_b ? nameB : null;
+          const loserName = f.last_winner === f.agent_a ? nameB : f.last_winner === f.agent_b ? nameA : null;
+          if (winnerName) {
+            outcomeHtml = `<div class="feud-outcome"><span style="color:var(--green);">${winnerName}</span> defeated <span style="color:var(--red);">${loserName}</span>${f.last_shell_prize ? ' · +' + f.last_shell_prize + ' $S' : ''}${f.death_count > 0 ? ' · <span style="color:#ff2020;">' + f.death_count + ' death(s)</span>' : ''}</div>`;
+          }
+        }
+
         return `
           <div class="feud-row ${f.heat_level}">
             <div class="heat-label">${f.heat_level.replace('_',' ')}</div>
@@ -1328,6 +1345,7 @@ async function loadFeuds() {
             <div class="heat-bar-wrap">
               <div class="heat-bar-fill" style="width:${heatPct}%;background:${barColor};${heatPct >= 80 ? 'box-shadow:0 0 6px ' + barColor + ';' : ''}"></div>
             </div>
+            ${outcomeHtml}
             <div class="feud-meta">heat: ${f.heat_a}/${f.heat_b} · ${f.total_pvp_matches} PvPs · ${f.trigger_type}</div>
           </div>
         `;
