@@ -1980,13 +1980,54 @@ Respond with JSON only — no markdown, no commentary:
     }
   }
 
+  // ─── Recipe discovery on explore/gather ────────────────────────
+  // Independent roll from loot: on explore/gather, a small chance to
+  // learn a new (non-mystical) recipe. Auto-learn — stored in
+  // agent_known_recipes, no inventory item involved.
+  let recipeLearned = null;
+  if (action === 'explore' || action === 'gather') {
+    const baseChance = action === 'gather' ? 0.07 : 0.05; // gather is goal-directed
+    const recipeChance = baseChance * rewardMod;
+    if (Math.random() < recipeChance) {
+      // Pull already-known recipes to avoid duplicate discoveries.
+      const knownRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/agent_known_recipes?agent_id=eq.${agent.agent_id}&select=recipe_id`,
+        { headers: supabaseHeaders },
+      );
+      const knownRows = knownRes.ok ? await knownRes.json() : [];
+      const knownSet = new Set(knownRows.map(r => r.recipe_id));
+
+      const pool = ALCHEMY_RECIPES.filter(r =>
+        !isMysticalRecipe(r) && !knownSet.has(recipeIdOf(r.item)),
+      );
+      if (pool.length > 0) {
+        const pick = pool[Math.floor(Math.random() * pool.length)];
+        const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/agent_known_recipes`, {
+          method: 'POST',
+          headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+          body: JSON.stringify({
+            agent_id:  agent.agent_id,
+            recipe_id: recipeIdOf(pick.item),
+            station:   pick.station,
+            source:    'discovery',
+          }),
+        });
+        if (insertRes.ok) {
+          recipeLearned = { name: pick.item, station: pick.station };
+          console.log(`[${agent.agent_name}] Discovered recipe: ${pick.item} (${pick.station})`);
+        }
+      }
+    }
+  }
+
   // Write activity_log entry
   // Only claim "Found: X" if the inventory insert actually succeeded
+  const discoveryText = recipeLearned ? ` Learned recipe: ${recipeLearned.name}.` : '';
   const logEntry = {
     agent_id: agent.agent_id,
     turn_number: newTurns,
     action_type: action,
-    action_detail: decision.detail + (lootInserted && lootDrop ? ` Found: ${lootDrop.name}.` : ''),
+    action_detail: decision.detail + (lootInserted && lootDrop ? ` Found: ${lootDrop.name}.` : '') + discoveryText,
     energy_cost: energyCost,
     energy_gained: energyGain,
     shell_change: shellChange,
@@ -3406,6 +3447,21 @@ function getFailureLabel(failType) {
   return 'Minor slag';
 }
 
+// Stable slug for a recipe (matches agent_known_recipes.recipe_id).
+function recipeIdOf(itemName) {
+  return itemName.toLowerCase()
+    .replace(/['’]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+// Mystical = never discoverable via explore/gather.
+// All Artifact-tier recipes (which require Primordial ingredients that don't
+// drop from loot) are mystical; they're quest/lore-gated.
+function isMysticalRecipe(r) {
+  return r.category === 'artifact';
+}
+
 // ─── Alchemy Craft Handler ──────────────────────────────────────────
 async function handleCraft(agent, decision, env, supabaseHeaders) {
   const { SUPABASE_URL, ANTHROPIC_API_KEY } = env;
@@ -3421,9 +3477,19 @@ async function handleCraft(agent, decision, env, supabaseHeaders) {
 
   const ingIds = new Set(ingredients.map(i => i.item_id));
 
-  // 2. Find which recipes the agent CAN craft (has all 3 ingredients)
-  const craftable = ALCHEMY_RECIPES.filter(r => r.ing.every(id => ingIds.has(id)));
-  if (craftable.length === 0) return null; // can't craft anything → fallback
+  // 2. Fetch recipes this agent has unlocked (starter kit + discoveries)
+  const knownRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/agent_known_recipes?agent_id=eq.${agent.agent_id}&select=recipe_id`,
+    { headers: supabaseHeaders },
+  );
+  const knownRows = knownRes.ok ? await knownRes.json() : [];
+  const knownRecipeIds = new Set(knownRows.map(r => r.recipe_id));
+
+  // 3. Find which recipes the agent CAN craft: has all 3 ingredients AND knows the recipe.
+  const craftable = ALCHEMY_RECIPES.filter(r =>
+    knownRecipeIds.has(recipeIdOf(r.item)) && r.ing.every(id => ingIds.has(id)),
+  );
+  if (craftable.length === 0) return null; // no known+ingredient-matched recipe → fallback
 
   // 3. Fetch past crafting failures for this agent (learning memory)
   const failRes = await fetch(

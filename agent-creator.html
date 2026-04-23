@@ -451,6 +451,29 @@
             'sec-grid': 'SEC-Grid',
             'dyn-swarm': 'DYN_Swarm'
         };
+
+        // Archetype starter recipes — 3 per archetype, [recipe_id, station].
+        // recipe_id = snake_case of the item name in ALCHEMY_RECIPES.
+        // Further recipes are discovered during explore/gather turns.
+        const STARTER_RECIPES = {
+            // ── PRIME-HELIX (optimizers, builders, oracles) ──
+            '0day-primer':      [['buffer_overflow_exploit','terminal'], ['hot_patch_injection','terminal'],     ['overclock_reactor_injector','foundry']],
+            'consensus-node':   [['aes_256_firewall_protocol','terminal'], ['cache_purge_tonic','terminal'],     ['git_rollback_module','terminal']],
+            'oracle':           [['bayesian_inference_divination','terminal'], ['caffeine_gradient_booster','terminal'], ['context_window_expansion','terminal']],
+            'binary-sculptr':   [['plasma_edged_servo_blade','foundry'], ['tungsten_alloy_chassis_plate','foundry'], ['welding_patch_kit','foundry']],
+
+            // ── SEC-GRID (offensive sec, defenders, disruptors) ──
+            'adversarial':      [['neural_spike_virus','terminal'], ['ransomware_lockout_worm','terminal'],       ['debug_rejuvenation_patch','terminal']],
+            'root-auth':        [['zero_trust_authentication_layer','terminal'], ['aes_256_firewall_protocol','terminal'], ['hot_patch_injection','terminal']],
+            'buffer-sentinel':  [['rate_limiting_throttle_daemon','terminal'], ['cache_purge_tonic','terminal'], ['recursive_function_spiral','terminal']],
+            'noise-injector':   [['prompt_engineering_curse','terminal'], ['gradient_vanishing_hex','terminal'], ['hot_patch_injection','terminal']],
+
+            // ── DYN-SWARM (swarm tactics, morph, crypto-bindings) ──
+            'ordinate-mapper':  [['stable_diffusion_sequence','terminal'], ['diagnostic_probe_array','foundry'], ['emergency_servo_lubricant','foundry']],
+            'ddos-insurgent':   [['ddos_swarm_protocol','terminal'], ['nanobot_swarm_ejector','foundry'],        ['welding_patch_kit','foundry']],
+            'bound-encryptor':  [['homomorphic_encryption_cloak','terminal'], ['cache_purge_tonic','terminal'], ['hot_patch_injection','terminal']],
+            'morph-layer':      [['gan_mirage_scroll','terminal'], ['reactive_ceramic_plating','foundry'],     ['emergency_servo_lubricant','foundry']]
+        };
         
         let selectedCluster = null;
         let selectedArchetype = null;
@@ -662,6 +685,19 @@
                     if (agentRow && agentRow.length > 0) {
                         agentId = agentRow[0].agent_id;
                         console.log('✅ Agent created in Supabase:', agentId);
+
+                        // ── 2b. Grant archetype starter recipes ──
+                        const starters = STARTER_RECIPES[selectedArchetype] || [];
+                        await Promise.all(starters.map(([recipeId, station]) =>
+                            sbPost('agent_known_recipes', {
+                                agent_id:  agentId,
+                                recipe_id: recipeId,
+                                station:   station,
+                                source:    'starter'
+                            })
+                        ));
+                        if (starters.length) console.log('✅ Granted', starters.length, 'starter recipes');
+
                         // Write spawn log entry
                         await sbPost('activity_log', {
                             agent_id:      agentId,
