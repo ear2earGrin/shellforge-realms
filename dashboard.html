@@ -184,17 +184,60 @@
             gap: 20px;
         }
 
-        .map-dna {
+        .dna-readout {
             position: absolute;
             top: 8px;
             left: 8px;
             width: 220px;
-            height: 300px;
             z-index: 15;
+            border: 1px solid rgba(0, 240, 255, 0.4);
+            background: rgba(0, 8, 16, 0.55);
+            box-shadow: 0 0 14px rgba(0, 240, 255, 0.2), inset 0 0 12px rgba(0, 240, 255, 0.05);
+            padding: 6px 8px 8px;
+            pointer-events: none;
+            font-family: 'IBM Plex Mono', monospace;
+        }
+        .dna-readout-label {
+            font-size: 0.6rem;
+            letter-spacing: 0.18em;
+            color: rgba(0, 240, 255, 0.85);
+            text-align: center;
+            text-shadow: 0 0 6px rgba(0, 240, 255, 0.5);
+            text-transform: uppercase;
+        }
+        .dna-readout-value {
+            font-size: 0.78rem;
+            letter-spacing: 0.1em;
+            color: #00f0ff;
+            text-align: center;
+            text-shadow: 0 0 6px rgba(0, 240, 255, 0.5);
+            margin-top: 2px;
+        }
+        .dna-readout.low {
+            border-color: rgba(234, 179, 8, 0.55);
+            box-shadow: 0 0 14px rgba(234, 179, 8, 0.25), inset 0 0 12px rgba(234, 179, 8, 0.06);
+        }
+        .dna-readout.low .dna-readout-label,
+        .dna-readout.low .dna-readout-value {
+            color: #eab308;
+            text-shadow: 0 0 6px rgba(234, 179, 8, 0.5);
+        }
+        .dna-readout.critical {
+            border-color: rgba(239, 68, 68, 0.6);
+            box-shadow: 0 0 14px rgba(239, 68, 68, 0.3), inset 0 0 12px rgba(239, 68, 68, 0.08);
+        }
+        .dna-readout.critical .dna-readout-label,
+        .dna-readout.critical .dna-readout-value {
+            color: #ef4444;
+            text-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
+        }
+        .map-dna {
+            display: block;
+            width: 100%;
+            height: 280px;
             --poster-color: transparent;
             background: transparent;
             filter: drop-shadow(0 0 10px rgba(120, 220, 255, 0.6));
-            pointer-events: none;
         }
 
         .nav-logo {
@@ -3470,23 +3513,27 @@
                 <div class="location-badge" id="currentLocation">Nexarch - Dark Streets</div>
             </div>
             <div class="map-container" id="mapContainer">
-                <model-viewer
-                    class="map-dna"
-                    src="images/3d/dna-hologram-anim.glb"
-                    alt="DNA hologram"
-                    autoplay
-                    animation-name="DNA_spin"
-                    camera-orbit="0deg 75deg 14m"
-                    min-camera-orbit="0deg 75deg 14m"
-                    max-camera-orbit="0deg 75deg 14m"
-                    camera-target="0m 0m 0m"
-                    field-of-view="25deg"
-                    disable-zoom
-                    disable-pan
-                    interaction-prompt="none"
-                    camera-controls="false"
-                    shadow-intensity="0"
-                    exposure="1.1"></model-viewer>
+                <div class="dna-readout" id="dnaReadout">
+                    <div class="dna-readout-label">[ COHERENCE LOCK ]</div>
+                    <model-viewer
+                        class="map-dna"
+                        src="images/3d/dna-hologram-anim.glb"
+                        alt="DNA hologram"
+                        autoplay
+                        animation-name="DNA_spin"
+                        camera-orbit="0deg 75deg 14m"
+                        min-camera-orbit="0deg 75deg 14m"
+                        max-camera-orbit="0deg 75deg 14m"
+                        camera-target="0m 0m 0m"
+                        field-of-view="25deg"
+                        disable-zoom
+                        disable-pan
+                        interaction-prompt="none"
+                        camera-controls="false"
+                        shadow-intensity="0"
+                        exposure="1.1"></model-viewer>
+                    <div class="dna-readout-value" id="dnaCoherenceVal">--/100</div>
+                </div>
                         <!-- Zoom level hint -->
                         <div id="mapZoomHint" style="
                             position:absolute; bottom:8px; right:10px; z-index:20;
@@ -5716,6 +5763,14 @@
         cohStatEl.classList.remove('low', 'critical');
         if (coherence <= 20) { cohBarEl.classList.add('critical'); cohStatEl.classList.add('critical'); }
         else if (coherence <= 40) { cohBarEl.classList.add('low'); cohStatEl.classList.add('low'); }
+        var dnaReadoutEl = document.getElementById('dnaReadout');
+        var dnaCohEl = document.getElementById('dnaCoherenceVal');
+        if (dnaCohEl) dnaCohEl.textContent = `${coherence}/100`;
+        if (dnaReadoutEl) {
+            dnaReadoutEl.classList.remove('low', 'critical');
+            if (coherence <= 20) dnaReadoutEl.classList.add('critical');
+            else if (coherence <= 40) dnaReadoutEl.classList.add('low');
+        }
 
         document.getElementById('karmaValue').textContent = agent.karma >= 0 ? `+${agent.karma}` : agent.karma;
         document.getElementById('locationValue').textContent = agent.location || 'Nexarch';
@@ -6838,6 +6893,14 @@
                     if (cohEl) cohEl.textContent = newCoh + '/100';
                     var cohBar = document.getElementById('coherenceBar');
                     if (cohBar) cohBar.style.width = newCoh + '%';
+                    var dnaCohEl2 = document.getElementById('dnaCoherenceVal');
+                    if (dnaCohEl2) dnaCohEl2.textContent = newCoh + '/100';
+                    var dnaReadoutEl2 = document.getElementById('dnaReadout');
+                    if (dnaReadoutEl2) {
+                        dnaReadoutEl2.classList.remove('low', 'critical');
+                        if (newCoh <= 20) dnaReadoutEl2.classList.add('critical');
+                        else if (newCoh <= 40) dnaReadoutEl2.classList.add('low');
+                    }
                 }
                 
                 if (heard) {
