@@ -1,0 +1,15 @@
+[
+  {
+    "id": "reflex_implant_v1",
+    "kind": "implant",
+    "name": "Reflex Implant v1",
+    "rarity": "Uncommon",
+    "icon": "images/items/reflex-implant-v1.jpg",
+    "description": "Slightly faster reaction time. May cause twitching.",
+    "effect_text": "+5% reaction speed, -2% stability.",
+    "effect_modifiers": [
+      { "kind": "trait_mod", "trait": "reaction_speed", "delta":  0.05, "scope": "passive" },
+      { "kind": "trait_mod", "trait": "stability",      "delta": -0.02, "scope": "passive" }
+    ]
+  }
+]
