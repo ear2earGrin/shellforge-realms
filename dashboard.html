@@ -184,12 +184,16 @@
             gap: 20px;
         }
 
-        .nav-dna {
-            width: 40px;
-            height: 40px;
+        .map-dna {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            width: 110px;
+            height: 130px;
+            z-index: 15;
             --poster-color: transparent;
             background: transparent;
-            filter: drop-shadow(0 0 6px rgba(120, 220, 255, 0.45));
+            filter: drop-shadow(0 0 8px rgba(120, 220, 255, 0.55));
             pointer-events: none;
         }
 
@@ -3266,19 +3270,6 @@
     <!-- Navigation Bar -->
     <nav class="dashboard-nav">
         <div class="nav-left">
-            <model-viewer
-                class="nav-dna"
-                src="images/3d/dna-hologram.glb"
-                alt="DNA hologram"
-                auto-rotate
-                auto-rotate-delay="0"
-                rotation-per-second="30deg"
-                disable-zoom
-                disable-pan
-                interaction-prompt="none"
-                camera-controls="false"
-                shadow-intensity="0"
-                exposure="1.1"></model-viewer>
             <a href="index.html" class="nav-logo">SHELLFORGE REALMS</a>
             <span style="font-size:0.5rem;color:#ff0044;margin-left:8px;opacity:0.7;">v:OPUS-012</span>
         </div>
@@ -3479,6 +3470,18 @@
                 <div class="location-badge" id="currentLocation">Nexarch - Dark Streets</div>
             </div>
             <div class="map-container" id="mapContainer">
+                <model-viewer
+                    class="map-dna"
+                    src="images/3d/dna-hologram-anim.glb"
+                    alt="DNA hologram"
+                    autoplay
+                    animation-name="DNA_spin"
+                    disable-zoom
+                    disable-pan
+                    interaction-prompt="none"
+                    camera-controls="false"
+                    shadow-intensity="0"
+                    exposure="1.1"></model-viewer>
                         <!-- Zoom level hint -->
                         <div id="mapZoomHint" style="
                             position:absolute; bottom:8px; right:10px; z-index:20;
