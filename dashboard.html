@@ -1934,28 +1934,31 @@
             filter: drop-shadow(0 0 10px rgba(0, 240, 255, 0.6)) brightness(1.2);
         }
         .arena-map-label {
+            position: absolute;
+            bottom: calc(100% - 18px); /* sit above icon, accounting for hit-area padding */
+            left: 50%;
+            transform: translate(-50%, 4px);
             font-family: 'Orbitron', monospace;
             font-size: 0.7rem;
             font-weight: 700;
             color: #ff4466;
             letter-spacing: 0.18em;
             text-transform: uppercase;
-            order: -1;
-            margin-bottom: 4px;
-            padding: 3px 8px;
-            background: rgba(10, 10, 15, 0.85);
-            border: 1px solid rgba(255, 68, 102, 0.5);
+            padding: 4px 10px;
+            background: rgba(10, 10, 15, 0.92);
+            border: 1px solid rgba(255, 68, 102, 0.6);
             border-radius: 3px;
             text-shadow: 0 0 8px rgba(255, 68, 102, 0.7);
             box-shadow: 0 0 12px rgba(255, 68, 102, 0.3);
             opacity: 0;
-            transform: translateY(4px);
             transition: opacity 0.2s ease, transform 0.2s ease;
             white-space: nowrap;
+            pointer-events: none;
+            z-index: 10;
         }
         .arena-map-btn:hover .arena-map-label {
             opacity: 1;
-            transform: translateY(0);
+            transform: translate(-50%, 0);
         }
 
         .building-tooltip-name {
@@ -4681,7 +4684,7 @@
                     </div>
                 </div>
                 <!-- Arena Building -->
-                <a href="arena.html" class="arena-map-btn" style="left: 86%; top: 28%;" title="Arena">
+                <a href="arena.html" class="arena-map-btn" style="left: 86%; top: 28%;">
                     <img src="images/arena-btn.png" alt="Arena">
                     <div class="arena-map-label">Arena</div>
                 </a>
