@@ -1889,17 +1889,28 @@
         }
         .arena-map-label {
             font-family: 'Orbitron', monospace;
-            font-size: 0.4rem;
+            font-size: 0.7rem;
+            font-weight: 700;
             color: #ff4466;
-            letter-spacing: 0.1em;
+            letter-spacing: 0.18em;
             text-transform: uppercase;
             order: -1;
-            margin-bottom: 2px;
-            text-shadow: 0 0 6px rgba(255, 68, 102, 0.6), 0 1px 3px rgba(0,0,0,0.8);
+            margin-bottom: 4px;
+            padding: 3px 8px;
+            background: rgba(10, 10, 15, 0.85);
+            border: 1px solid rgba(255, 68, 102, 0.5);
+            border-radius: 3px;
+            text-shadow: 0 0 8px rgba(255, 68, 102, 0.7);
+            box-shadow: 0 0 12px rgba(255, 68, 102, 0.3);
             opacity: 0;
-            transition: opacity 0.3s ease;
+            transform: translateY(4px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            white-space: nowrap;
         }
-        .arena-map-btn:hover .arena-map-label { opacity: 1; }
+        .arena-map-btn:hover .arena-map-label {
+            opacity: 1;
+            transform: translateY(0);
+        }
 
         .building-tooltip-name {
             color: #ffcc00;
@@ -4620,7 +4631,7 @@
                     </div>
                 </div>
                 <!-- Arena Building -->
-                <a href="arena.html" class="arena-map-btn" style="left: 76%; top: 29%;">
+                <a href="arena.html" class="arena-map-btn" style="left: 80%; top: 23%;" title="Arena">
                     <img src="images/arena-btn.png" alt="Arena">
                     <div class="arena-map-label">Arena</div>
                 </a>
