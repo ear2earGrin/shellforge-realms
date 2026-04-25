@@ -188,12 +188,12 @@
             position: absolute;
             top: 8px;
             left: 8px;
-            width: 110px;
-            height: 130px;
+            width: 220px;
+            height: 300px;
             z-index: 15;
             --poster-color: transparent;
             background: transparent;
-            filter: drop-shadow(0 0 8px rgba(120, 220, 255, 0.55));
+            filter: drop-shadow(0 0 10px rgba(120, 220, 255, 0.6));
             pointer-events: none;
         }
 
@@ -3476,6 +3476,10 @@
                     alt="DNA hologram"
                     autoplay
                     animation-name="DNA_spin"
+                    camera-orbit="0deg 82deg 18m"
+                    min-camera-orbit="0deg 82deg 18m"
+                    max-camera-orbit="0deg 82deg 18m"
+                    field-of-view="30deg"
                     disable-zoom
                     disable-pan
                     interaction-prompt="none"
