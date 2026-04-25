@@ -15,6 +15,7 @@
     <title>Dashboard - Shellforge Realms</title>
     <link rel="stylesheet" href="style-v2.css">
     <link rel="stylesheet" href="terminal-notifications.css">
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
     <style>
         /* ─── First Boot Fade-In ─── */
         body.first-boot {
@@ -181,6 +182,15 @@
             display: flex;
             align-items: center;
             gap: 20px;
+        }
+
+        .nav-dna {
+            width: 40px;
+            height: 40px;
+            --poster-color: transparent;
+            background: transparent;
+            filter: drop-shadow(0 0 6px rgba(120, 220, 255, 0.45));
+            pointer-events: none;
         }
 
         .nav-logo {
@@ -3232,6 +3242,19 @@
     <!-- Navigation Bar -->
     <nav class="dashboard-nav">
         <div class="nav-left">
+            <model-viewer
+                class="nav-dna"
+                src="images/3d/dna-hologram.glb"
+                alt="DNA hologram"
+                auto-rotate
+                auto-rotate-delay="0"
+                rotation-per-second="30deg"
+                disable-zoom
+                disable-pan
+                interaction-prompt="none"
+                camera-controls="false"
+                shadow-intensity="0"
+                exposure="1.1"></model-viewer>
             <a href="index.html" class="nav-logo">SHELLFORGE REALMS</a>
             <span style="font-size:0.5rem;color:#ff0044;margin-left:8px;opacity:0.7;">v:OPUS-012</span>
         </div>
