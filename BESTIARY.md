@@ -39,8 +39,8 @@ Captured, smuggled, transported to the arena. Visible signs of confinement: chai
 **6. Null Pointer Beast** *(npc-null-pointer-beast.jpg)*
 > A wolf-sized quadruped war-bot with a heavy spiked muzzle locked over its jaws and reinforced restraint cables wrapped around its hind legs. Missing chest plate revealing empty space where its core should be. Skeletal alloy frame, hydraulic muscles. Red emergency LEDs flicker. Snarling against the muzzle. Patrol unit gone rabid, captured for the pit.
 
-**7. Sandbox Hydra** *(npc-sandbox-hydra.jpg)*
-> A heavy industrial robot with three mechanical heads on segmented serpent-necks — each head still sealed in its original transparent quarantine helmet (that's how they smuggled it past sec checkpoints). Body is a stocky tank-tread chassis with arena-issued shackles welded to the treads. Cyan glow leaks from cracks in the helmets. Coiled hose-arms drip greasy black coolant.
+**7. Sandbox Roach** *(npc-sandbox-roach.jpg)*
+> A compact six-legged sand drone, low to the ground, body coated in dust-pitted desert plating. Captured during mining operations and transported in a reinforced cage — visible cage-bar marks across its back, restraint cuff still on one leg. Two recessed sensor-eyes near the front. Mandible-like grippers. Fast and small. Crouched on bloodstained arena sand, ready to skitter.
 
 **8. Kernel Stalker** *(npc-kernel-stalker.jpg)*
 > A tall gaunt humanoid robot in a long tactical trench coat, captured by a bounty crew — visible weld-scars from where they cut its weapons off and re-attached arena-approved blades. Head is a CPU heatsink with the cooling fan still spinning audibly. Stalking forward in arena dust, neon trim lighting cuts across the visor.
@@ -48,8 +48,8 @@ Captured, smuggled, transported to the arena. Visible signs of confinement: chai
 **9. Shadow Lambda** *(npc-shadow-lambda.jpg)*
 > A four-legged panther-sized hunter robot, sleek black carbon-fiber plating with no visible seams. A reinforced restraint harness across its shoulders, blinking red LED indicating active shock-deterrent. Each leg trails optical-camo distortion. Eyes are two narrow recessed scanners. Crouched on arena sand, ready to pounce.
 
-**10. Forked Minotaur** *(npc-forked-minotaur.jpg)*
-> A massive bull-headed war-mech, body split down the middle into two slightly mismatched halves welded together imperfectly — left side military riot-bot, right side scrap arena gladiator. Massive double-headed industrial cleaver (arena-standard issue, weight-checked). Heavy iron manacle around one ankle. Steam vents from heated rebar horns. Salvaged from another arena, brutal hybrid.
+**10. Forked Mine** *(npc-forked-mine.jpg)*
+> A squat legged landmine drone, body is a primed warhead canister with four reinforced spider-legs splayed underneath. Heavy iron manacle around one front leg. Two warning beacons blink red on its top. Pressure-trigger plate visible on the underside of the casing. Stickered with arena warning glyphs. Crouched mid-step on bloodstained arena sand — alive but unstable.
 
 ### TIER 3 — Rare (heavily restrained, dangerous, expensive to obtain)
 
@@ -65,8 +65,8 @@ Captured, smuggled, transported to the arena. Visible signs of confinement: chai
 **14. Gradient Hunter** *(npc-gradient-hunter.jpg)*
 > A sleek panther-sized predator robot, body shifts color along its length from cyan-blue at the head to deep magenta at the tail. Surface is laminated chrome panels. Wears a leather-and-steel muzzle and a heavy collar with restraint cables trailing offscreen. Claws of polished alloy extended. Crouched on arena sand. Pristine, lethal — clearly an expensive capture.
 
-**15. Entropy Rider** *(npc-entropy-rider.jpg)*
-> A skeletal robotic horseman astride a four-legged mech-steed — both restrained, the rider chained to the saddle, the steed's legs in heavy gait-limiters. Both heavily oxidized military scrap, plates falling away in rust chunks. Lance of welded rebar tipped with a furnace-hot drill bit. Faint orange ember glow from a cracked exhaust port. Standing in arena dust.
+**15. Vex0x** *(npc-vex0x.jpg)*
+> A half-broken hooded robot, barely standing — chassis cracked open at the shoulder, one leg bent inward, supports itself slightly off-balance. Tattered hood pulled low over a featureless faceplate. Dim teal glow leaks from one outstretched hand. Faint indistinct code drifts in the air beside the hood like smoke that almost resolves into characters but never does. Heavy iron shackles around both ankles. Standing alone on bloodstained arena sand. Looks fragile, but the air around it feels wrong.
 
 ---
 
