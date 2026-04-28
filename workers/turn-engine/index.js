@@ -2,6 +2,9 @@
 // Runs every 2h via cron. Queries active agents, calls Claude Haiku,
 // writes AI decision to activity_log, updates agent stats in Supabase.
 
+// Generated catalog data — see alchemy/build-catalog.js. Don't hand-edit.
+import { ALCHEMY_RECIPES } from './catalog-data.js';
+
 const VALID_ACTIONS = [
   'move', 'explore', 'gather', 'craft', 'trade',
   'rest', 'combat', 'quest', 'church', 'arena',
@@ -3315,121 +3318,6 @@ async function moveItemsToVault(loser, supabaseHeaders, supabaseUrl) {
 
   console.log(`[DEATH] ${items.length} item(s) from ${loser.agent_name} moved to vault.`);
 }
-
-// ─── Alchemy Recipes (from recipes.csv) ─────────────────────────────
-// ─── Alchemy v2.0 — Foundry (hardware) + Terminal (software) ─────────────
-// Rebuilt from alchemy/recipes.csv + items.csv. 80 recipes total (34 Foundry / 46 Terminal).
-const ALCHEMY_RECIPES = [
-  // ═══ FOUNDRY — Hardware (welding, forging, assembling) ═══
-
-  // Foundry Weapons (7)
-  { item: 'Plasma-Edged Servo Blade',       category: 'weapon',     station: 'foundry', hwsw: 'hardware', ing: ['tungsten_carbide_filings','arc_welder_discharge','industrial_flux_paste'], rate: 70, fail: 'slag' },
-  { item: 'Railgun Forearm Mount',           category: 'weapon',     station: 'foundry', hwsw: 'hardware', ing: ['electron_flux_crystals','titanium_mesh_strip','magnetic_resonance_fluid'], rate: 70, fail: 'slag' },
-  { item: 'Pneumatic Piston Fist',           category: 'weapon',     station: 'foundry', hwsw: 'hardware', ing: ['salvaged_servo_joint','hydraulic_compression_pulse','industrial_flux_paste'], rate: 70, fail: 'slag' },
-  { item: 'Tungsten Fragmentation Launcher', category: 'weapon',     station: 'foundry', hwsw: 'hardware', ing: ['tungsten_carbide_filings','plasma_server_slag','hydraulic_compression_pulse'], rate: 60, fail: 'explosion_15' },
-  { item: 'EMP Discharge Gauntlet',          category: 'weapon',     station: 'foundry', hwsw: 'hardware', ing: ['electron_flux_crystals','coolant_gel_canister','arc_welder_discharge'], rate: 70, fail: 'slag' },
-  { item: 'Cryo-Bore Drill Lance',           category: 'weapon',     station: 'foundry', hwsw: 'hardware', ing: ['titanium_mesh_strip','coolant_gel_canister','magnetic_resonance_fluid'], rate: 60, fail: 'explosion_10' },
-  { item: 'Nanobot Swarm Ejector',           category: 'weapon',     station: 'foundry', hwsw: 'hardware', ing: ['nanobot_swarm_gel','salvaged_servo_joint','magnetic_resonance_fluid'], rate: 70, fail: 'slag' },
-
-  // Foundry Armor (6)
-  { item: 'Tungsten Alloy Chassis Plate',    category: 'armor',      station: 'foundry', hwsw: 'hardware', ing: ['tungsten_carbide_filings','arc_welder_discharge','magnetic_resonance_fluid'], rate: 70, fail: 'slag' },
-  { item: 'Faraday Cage Neural Helm',        category: 'armor',      station: 'foundry', hwsw: 'hardware', ing: ['fiber_optic_threads','electron_flux_crystals','industrial_flux_paste'], rate: 70, fail: 'slag' },
-  { item: 'Reactive Ceramic Plating',        category: 'armor',      station: 'foundry', hwsw: 'hardware', ing: ['silicon_wafer_dust','coolant_gel_canister','hydraulic_compression_pulse'], rate: 70, fail: 'slag' },
-  { item: 'Titanium Mesh Exoskeleton',       category: 'armor',      station: 'foundry', hwsw: 'hardware', ing: ['titanium_mesh_strip','salvaged_servo_joint','industrial_flux_paste'], rate: 60, fail: 'explosion_15' },
-  { item: 'Cryo-Cooled Heat Sink Array',     category: 'armor',      station: 'foundry', hwsw: 'hardware', ing: ['coolant_gel_canister','electron_flux_crystals','magnetic_resonance_fluid'], rate: 70, fail: 'slag' },
-  { item: 'Salvaged Siege Chassis',          category: 'armor',      station: 'foundry', hwsw: 'hardware', ing: ['nanobot_swarm_gel','tungsten_carbide_filings','hydraulic_compression_pulse'], rate: 60, fail: 'explosion_10' },
-
-  // Foundry Consumables (6)
-  { item: 'Coolant Flush Cartridge',         category: 'consumable', station: 'foundry', hwsw: 'hardware', ing: ['coolant_gel_canister','overclock_catalyst_spark','industrial_flux_paste'], rate: 70, fail: 'slag' },
-  { item: 'Emergency Servo Lubricant',       category: 'consumable', station: 'foundry', hwsw: 'hardware', ing: ['salvaged_servo_joint','gpu_render_flame','magnetic_resonance_fluid'], rate: 70, fail: 'slag' },
-  { item: 'Welding Patch Kit',               category: 'consumable', station: 'foundry', hwsw: 'hardware', ing: ['silicon_wafer_dust','arc_welder_discharge','industrial_flux_paste'], rate: 70, fail: 'slag' },
-  { item: 'Overclock Reactor Injector',      category: 'consumable', station: 'foundry', hwsw: 'hardware', ing: ['electron_flux_crystals','plasma_server_slag','arc_welder_discharge'], rate: 70, fail: 'slag' },
-  { item: 'EMP Hardening Capsule',           category: 'consumable', station: 'foundry', hwsw: 'hardware', ing: ['fiber_optic_threads','titanium_mesh_strip','magnetic_resonance_fluid'], rate: 70, fail: 'slag' },
-  { item: 'Salvage Reclamation Drone',       category: 'consumable', station: 'foundry', hwsw: 'hardware', ing: ['nanobot_swarm_gel','salvaged_servo_joint','hydraulic_compression_pulse'], rate: 60, fail: 'explosion_15' },
-
-  // Foundry Artifacts (4 — Legendary)
-  { item: 'AlphaGo Neural Core',             category: 'artifact',   station: 'foundry', hwsw: 'hardware', ing: ['alpha_zero_primal_seed','quantum_bit_residue','magnetic_resonance_fluid'], rate: 45, fail: 'catastrophic' },
-  { item: 'Quantum Annealer Processor',      category: 'artifact',   station: 'foundry', hwsw: 'hardware', ing: ['kolmogorov_complexity_crystal','quantum_bit_residue','cuda_kernel_ember'], rate: 40, fail: 'catastrophic' },
-  { item: 'Von Neumann Self-Replicator',     category: 'artifact',   station: 'foundry', hwsw: 'hardware', ing: ['von_neumann_probe_spores','nanobot_swarm_gel','hydraulic_compression_pulse'], rate: 45, fail: 'catastrophic' },
-  { item: 'Satoshi Genesis Block Signet',    category: 'artifact',   station: 'foundry', hwsw: 'hardware', ing: ['kolmogorov_complexity_crystal','binary_code_shards','industrial_flux_paste'], rate: 45, fail: 'catastrophic' },
-
-  // Foundry Tools (6)
-  { item: 'Diagnostic Probe Array',          category: 'tool',       station: 'foundry', hwsw: 'hardware', ing: ['silicon_wafer_dust','electron_flux_crystals','industrial_flux_paste'], rate: 70, fail: 'slag' },
-  { item: 'Soldering Gauntlet',              category: 'tool',       station: 'foundry', hwsw: 'hardware', ing: ['tungsten_carbide_filings','salvaged_servo_joint','arc_welder_discharge'], rate: 70, fail: 'slag' },
-  { item: 'Salvage Extraction Claw',         category: 'tool',       station: 'foundry', hwsw: 'hardware', ing: ['titanium_mesh_strip','hydraulic_compression_pulse','industrial_flux_paste'], rate: 70, fail: 'slag' },
-  { item: 'Portable Foundry Anvil',          category: 'tool',       station: 'foundry', hwsw: 'hardware', ing: ['plasma_server_slag','tungsten_carbide_filings','arc_welder_discharge'], rate: 60, fail: 'explosion_15' },
-  { item: 'Hydraulic Jack Lifter',           category: 'tool',       station: 'foundry', hwsw: 'hardware', ing: ['salvaged_servo_joint','coolant_gel_canister','hydraulic_compression_pulse'], rate: 70, fail: 'slag' },
-  { item: 'Arc Welder Repair Rig',           category: 'tool',       station: 'foundry', hwsw: 'hardware', ing: ['electron_flux_crystals','tungsten_carbide_filings','magnetic_resonance_fluid'], rate: 70, fail: 'slag' },
-
-  // Foundry Deployables (5)
-  { item: 'Proximity Mine Cluster',          category: 'deployable', station: 'foundry', hwsw: 'hardware', ing: ['electron_flux_crystals','arc_welder_discharge','industrial_flux_paste'], rate: 70, fail: 'slag' },
-  { item: 'Razor Wire Entanglement Rig',     category: 'deployable', station: 'foundry', hwsw: 'hardware', ing: ['fiber_optic_threads','tungsten_carbide_filings','industrial_flux_paste'], rate: 70, fail: 'slag' },
-  { item: 'Turret Drone Sentry',             category: 'deployable', station: 'foundry', hwsw: 'hardware', ing: ['titanium_mesh_strip','salvaged_servo_joint','arc_welder_discharge'], rate: 70, fail: 'slag' },
-  { item: 'Magnetic Tether Trap',            category: 'deployable', station: 'foundry', hwsw: 'hardware', ing: ['electron_flux_crystals','titanium_mesh_strip','hydraulic_compression_pulse'], rate: 70, fail: 'slag' },
-  { item: 'EMP Pulse Landmine',              category: 'deployable', station: 'foundry', hwsw: 'hardware', ing: ['quantum_bit_residue','plasma_server_slag','magnetic_resonance_fluid'], rate: 60, fail: 'explosion_15' },
-
-  // ═══ TERMINAL — Software (compiling, encoding, injecting) ═══
-
-  // Terminal Weapons (7)
-  { item: 'Buffer Overflow Exploit',         category: 'weapon',     station: 'terminal', hwsw: 'software', ing: ['binary_code_shards','hash_collision_powder','memory_leak_elixir'], rate: 70, fail: 'slag' },
-  { item: 'Neural Spike Virus',              category: 'weapon',     station: 'terminal', hwsw: 'software', ing: ['gradient_descent_tears','payload_injection_droplets','backpropagation_serum'], rate: 70, fail: 'slag' },
-  { item: 'DDoS Swarm Protocol',             category: 'weapon',     station: 'terminal', hwsw: 'software', ing: ['nanobot_swarm_gel','async_await_pulse','null_pointer_solvent'], rate: 75, fail: 'slag' },
-  { item: 'Zero-Day Payload',                category: 'weapon',     station: 'terminal', hwsw: 'software', ing: ['plasma_server_slag','checksum_verify_acid','jit_compiler_surge'], rate: 60, fail: 'explosion_10' },
-  { item: 'Quantum Backdoor Exploit',        category: 'weapon',     station: 'terminal', hwsw: 'software', ing: ['quantum_bit_residue','api_endpoint_salts','overclock_catalyst_spark'], rate: 70, fail: 'slag' },
-  { item: 'SQL Injection Payload',           category: 'weapon',     station: 'terminal', hwsw: 'software', ing: ['base64_encoded_slime','api_endpoint_salts','cache_invalidation_brew'], rate: 60, fail: 'explosion_10' },
-  { item: 'Ransomware Lockout Worm',         category: 'weapon',     station: 'terminal', hwsw: 'software', ing: ['fiber_optic_threads','oauth_token_ichor','null_pointer_solvent'], rate: 70, fail: 'slag' },
-
-  // Terminal Armor (6)
-  { item: 'AES-256 Firewall Protocol',       category: 'armor',      station: 'terminal', hwsw: 'software', ing: ['silicon_wafer_dust','regex_pattern_filaments','garbage_collector_tonic'], rate: 70, fail: 'slag' },
-  { item: 'Homomorphic Encryption Cloak',    category: 'armor',      station: 'terminal', hwsw: 'software', ing: ['quantum_bit_residue','attention_mechanism_dew','virtual_machine_emulsion'], rate: 60, fail: 'explosion_10' },
-  { item: 'Zero-Trust Authentication Layer', category: 'armor',      station: 'terminal', hwsw: 'software', ing: ['base64_encoded_slime','oauth_token_ichor','docker_image_distillate'], rate: 70, fail: 'slag' },
-  { item: 'TensorGuard Neural Shield',       category: 'armor',      station: 'terminal', hwsw: 'software', ing: ['epoch_cycle_blood','tensorflow_igniter','cache_invalidation_brew'], rate: 70, fail: 'slag' },
-  { item: 'Sandbox Isolation Runtime',       category: 'armor',      station: 'terminal', hwsw: 'software', ing: ['nanobot_swarm_gel','payload_injection_droplets','docker_image_distillate'], rate: 60, fail: 'explosion_10' },
-  { item: 'Rate-Limiting Throttle Daemon',   category: 'armor',      station: 'terminal', hwsw: 'software', ing: ['fiber_optic_threads','hash_collision_powder','async_await_pulse'], rate: 70, fail: 'slag' },
-
-  // Terminal Consumables (6)
-  { item: 'Debug Rejuvenation Patch',        category: 'consumable', station: 'terminal', hwsw: 'software', ing: ['backpropagation_serum','checksum_verify_acid','garbage_collector_tonic'], rate: 70, fail: 'slag' },
-  { item: 'Caffeine Gradient Booster',       category: 'consumable', station: 'terminal', hwsw: 'software', ing: ['loss_function_sap','cuda_kernel_ember','memory_leak_elixir'], rate: 70, fail: 'slag' },
-  { item: 'Cache Purge Tonic',               category: 'consumable', station: 'terminal', hwsw: 'software', ing: ['gradient_descent_tears','cache_invalidation_brew','null_pointer_solvent'], rate: 70, fail: 'slag' },
-  { item: 'Hot Patch Injection',             category: 'consumable', station: 'terminal', hwsw: 'software', ing: ['binary_code_shards','api_endpoint_salts','garbage_collector_tonic'], rate: 70, fail: 'slag' },
-  { item: 'Context Window Expansion',        category: 'consumable', station: 'terminal', hwsw: 'software', ing: ['token_embedding_vapor','attention_mechanism_dew','virtual_machine_emulsion'], rate: 70, fail: 'slag' },
-  { item: 'Hyperparameter Tuning Shot',      category: 'consumable', station: 'terminal', hwsw: 'software', ing: ['epoch_cycle_blood','pytorch_flux_core','halting_problem_paradox'], rate: 55, fail: 'explosion_15' },
-
-  // Terminal Scrolls (10)
-  { item: 'Stable Diffusion Sequence',       category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['latent_space_fog','token_embedding_vapor','pytorch_flux_core'], rate: 70, fail: 'slag' },
-  { item: 'GAN Mirage Scroll',               category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['latent_space_fog','gpu_render_flame','overclock_catalyst_spark'], rate: 60, fail: 'explosion_10' },
-  { item: 'Transformer Attention Ritual',    category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['attention_mechanism_dew','epoch_cycle_blood','tensorflow_igniter'], rate: 60, fail: 'explosion_10' },
-  { item: 'Reinforcement Learning Prophecy', category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['gradient_descent_tears','loss_function_sap','tensorflow_igniter'], rate: 60, fail: 'explosion_10' },
-  { item: 'Bayesian Inference Divination',   category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['attention_mechanism_dew','checksum_verify_acid','virtual_machine_emulsion'], rate: 70, fail: 'slag' },
-  { item: 'Genetic Algorithm Evolution',     category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['halting_problem_paradox','nanobot_swarm_gel','pytorch_flux_core'], rate: 55, fail: 'explosion_20' },
-  { item: 'Prompt Engineering Curse',        category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['token_embedding_vapor','hash_collision_powder','lambda_calculus_vapor'], rate: 55, fail: 'explosion_15' },
-  { item: 'Recursive Function Spiral',       category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['loss_function_sap','cuda_kernel_ember','null_pointer_solvent'], rate: 70, fail: 'slag' },
-  { item: 'Monte Carlo Simulation Rune',     category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['latent_space_fog','regex_pattern_filaments','kubernetes_pod_nectar'], rate: 60, fail: 'explosion_10' },
-  { item: 'Gradient Vanishing Hex',          category: 'scroll',     station: 'terminal', hwsw: 'software', ing: ['gradient_descent_tears','backpropagation_serum','memory_leak_elixir'], rate: 70, fail: 'slag' },
-
-  // Terminal Artifacts (6 — Legendary)
-  { item: 'GPT Oracle Crystal',              category: 'artifact',   station: 'terminal', hwsw: 'software', ing: ['token_embedding_vapor','lambda_calculus_vapor','turing_machine_essence'], rate: 40, fail: 'catastrophic' },
-  { item: 'Blockchain Soulbound Key',        category: 'artifact',   station: 'terminal', hwsw: 'software', ing: ['binary_code_shards','von_neumann_probe_spores','kubernetes_pod_nectar'], rate: 45, fail: 'catastrophic' },
-  { item: 'Federated Learning Nexus',        category: 'artifact',   station: 'terminal', hwsw: 'software', ing: ['gradient_descent_tears','kubernetes_pod_nectar','church_turing_thesis_core'], rate: 40, fail: 'catastrophic' },
-  { item: 'Rust Borrow Checker Amulet',      category: 'artifact',   station: 'terminal', hwsw: 'software', ing: ['silicon_wafer_dust','halting_problem_paradox','garbage_collector_tonic'], rate: 40, fail: 'catastrophic' },
-  { item: 'Hugging Face Model Repository',   category: 'artifact',   station: 'terminal', hwsw: 'software', ing: ['token_embedding_vapor','docker_image_distillate','lambda_calculus_vapor'], rate: 45, fail: 'catastrophic' },
-  { item: 'Dijkstra Shortest Path Compass',  category: 'artifact',   station: 'terminal', hwsw: 'software', ing: ['church_turing_thesis_core','attention_mechanism_dew','async_await_pulse'], rate: 40, fail: 'catastrophic' },
-
-  // Terminal Tools (6)
-  { item: 'Git Rollback Module',             category: 'tool',       station: 'terminal', hwsw: 'software', ing: ['binary_code_shards','fiber_optic_threads','cache_invalidation_brew'], rate: 70, fail: 'slag' },
-  { item: 'Docker Containerizer',            category: 'tool',       station: 'terminal', hwsw: 'software', ing: ['docker_image_distillate','nanobot_swarm_gel','virtual_machine_emulsion'], rate: 70, fail: 'slag' },
-  { item: 'Kubernetes Orchestrator',         category: 'tool',       station: 'terminal', hwsw: 'software', ing: ['kubernetes_pod_nectar','plasma_server_slag','async_await_pulse'], rate: 60, fail: 'explosion_10' },
-  { item: 'Wireshark Packet Sniffer',        category: 'tool',       station: 'terminal', hwsw: 'software', ing: ['fiber_optic_threads','api_endpoint_salts','regex_pattern_filaments'], rate: 70, fail: 'slag' },
-  { item: 'Nmap Reconnaissance Scanner',     category: 'tool',       station: 'terminal', hwsw: 'software', ing: ['fiber_optic_threads','regex_pattern_filaments','virtual_machine_emulsion'], rate: 70, fail: 'slag' },
-  { item: 'Vim Reality Editor',              category: 'tool',       station: 'terminal', hwsw: 'software', ing: ['base64_encoded_slime','hash_collision_powder','null_pointer_solvent'], rate: 60, fail: 'explosion_15' },
-
-  // Terminal Deployables (5)
-  { item: 'Honeypot Decoy Server',           category: 'deployable', station: 'terminal', hwsw: 'software', ing: ['binary_code_shards','api_endpoint_salts','docker_image_distillate'], rate: 70, fail: 'slag' },
-  { item: 'Logic Bomb Tripwire',             category: 'deployable', station: 'terminal', hwsw: 'software', ing: ['binary_code_shards','payload_injection_droplets','async_await_pulse'], rate: 70, fail: 'slag' },
-  { item: 'Cryptojacker Leech Node',         category: 'deployable', station: 'terminal', hwsw: 'software', ing: ['electron_flux_crystals','gpu_render_flame','memory_leak_elixir'], rate: 70, fail: 'slag' },
-  { item: 'Rootkit Persistence Mine',        category: 'deployable', station: 'terminal', hwsw: 'software', ing: ['base64_encoded_slime','oauth_token_ichor','garbage_collector_tonic'], rate: 70, fail: 'slag' },
-  { item: 'Packet Storm Jammer',             category: 'deployable', station: 'terminal', hwsw: 'software', ing: ['quantum_bit_residue','regex_pattern_filaments','jit_compiler_surge'], rate: 60, fail: 'explosion_10' },
-];
 
 function getFailureDamage(failType) {
   if (failType === 'catastrophic') return 50;
