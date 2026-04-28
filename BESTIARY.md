@@ -74,25 +74,25 @@ Captured, smuggled, transported to the arena. Visible signs of confinement: chai
 
 Encountered in the wild, **not the arena** — too big, too rooted, or too non-physical to capture. Background should reflect the boss's specific habitat. These are end-game tier with legendary drop chances.
 
-### **B1. Decoherence Leviathan** *(boss-decoherence-leviathan.jpg)*
-**Location:** Quantum Veil Threshold (upper-left of map)
-> A colossal whale-shaped war-mech rising from a sea of wet glass, hull plating made of overlapping armored scales. Some scales are solid metal, others appear half-translucent and shimmer with quantum noise — the closer to the Veil, the more uncertain its physical form. One eye is a polished black sphere, the other is a swirling crystal lattice. Rain rises upward in the background. Biblical scale, half-real.
+### **B1. Veilreaver Wyrm** *(boss-veilreaver-wyrm.jpg)*
+**Location:** Quantum Veil Threshold (upper-left of map, gravity reverses)
+> A colossal gravity-defying serpent-dragon that swims through reversed space itself. Its body is made of interlocking fractured reality plates that constantly flip and reform, causing local gravity to go haywire — small debris orbits around it in chaotic loops. The head is a massive fanged maw that opens into a swirling quantum vortex, deep cyan light pulling inward. Coiled mid-strike, threading through floating shards of broken sky. In the background, rain falls upward against gravity. Biblical scale, otherworldly.
 
-### **B2. Null Sovereign** *(boss-null-sovereign.jpg)*
-**Location:** Singularity Crater
-> A towering robotic king on a fractured metal throne at the rim of a crater. Massive armored figure clad in pure black ceramic plate, no markings, no insignia, no detail. Crown is a void-black ring of carbon. The space immediately around it is unnaturally dim — its black coating absorbs almost all light. Hands hold a scepter capped with a single point of nothingness. Crater walls glow faintly cyan in the background.
+### **B2. The Sovereign** *(boss-the-sovereign.jpg)*
+**Location:** Singularity Crater (dead center of the map)
+> A living singularity king. Body is a walking black hole wearing the hollowed-out armor of a fallen empire — towering, regal, terrifying. The armor is the only thing keeping the void from consuming everything around it; light bends visibly into the gaps between the plates. Crown is a tarnished iron circle once gilded, now blackened. Hands hold a long spear or scepter that fades into nothingness at the tip. Standing at the rim of the cracked crater, faint distortion ripples in the air around him as the void leaks. Crater walls glow faintly cyan in the distance.
 
-### **B3. Prime Breaker** *(boss-prime-breaker.jpg)*
-**Location:** Epoch Spike (mining region)
-> A god-warrior mech of immense scale, armored in tessellating hexagonal cryptographic plates. Wields a colossal industrial hammer with a glowing red impact core. Eight glowing optical sensors arrayed across its faceplate. Standing on a mountain of broken decommissioned bots in the cracked ground of Epoch Spike, with rusted server farm ruins poking through the rocks behind it.
+### **B3. Sentra** *(boss-sentra.jpg)*
+**Location:** Epoch Spike (mining region, rare ore)
+> A walking prime-number siege fortress — an enormous mech whose body is built from endlessly stacking and collapsing hexagonal prime-armor blocks that form shifting siege towers and battlements across its frame. Its "head" is a single massive red-glowing prime-crystal core mounted at the apex. Wields a colossal reality-smashing siege ram that leaves trails of deleted physics behind every swing — the air visibly missing where the ram has passed. Standing on the cracked ground of Epoch Spike, rusted server farm ruins jutting from the rocks behind it.
 
 ### **B4. Silicon Apex** *(boss-silicon-apex.jpg)*
 **Location:** Cache Hollows (forest zone)
 > A vast crystalline tree-shaped construct, trunk made of vertical silicon wafer stacks bolted into a kilometer-high column. Branches are circuit-board tendrils ending in delicate filaments. Roots are heavy industrial cabling spreading across a glowing motherboard plain that extends through the dark forest. Cyan light pulses up the trunk like sap. Drone-birds nest in branches. Half-mech, half-architecture.
 
-### **B5. Last-Checkpoint Titan** *(boss-last-checkpoint-titan.jpg)*
-**Location:** Hallucination Glitch
-> A colossal ancient warrior mech, frozen mid-step in a misty corrupted forest. Body is layered armor plates each from a different era of the Realms — earliest crude welded iron at the core, increasingly advanced layers outward. Massive cracked sword in mid-swing. Helm has a single glowing checkpoint indicator at the visor. Casts faint visual after-images of itself in two slightly different positions. Glitch-distorted trees in the background.
+### **B5. Save-57473** *(boss-save-57473.jpg)*
+**Location:** Hallucination Glitch (corrupted forest)
+> A "Save-State" titan whose body is an endless writhing mass of overlapping translucent save-state layers — each layer showing a different destroyed/regenerating version of itself in eternal loop, all bleeding into one frame at once. Core form is a hulking ancient mech fused with the corrupted forest, glitch-vines and circuit roots bursting from its chest and limbs. Its "head" is a massive cracked glowing checkpoint crystal leaking digital corruption. One enormous arm ends in a jagged timeline-shard blade that flickers between forms. Frozen mid-lunge, breaking free from its own save-loop prison, radiating pure dread in the misty Hallucination Glitch forest.
 
 ---
 
