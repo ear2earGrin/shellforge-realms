@@ -44,11 +44,10 @@ export default function CreateAgentScreen() {
 
     setDeploying(true);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
     if (!user) {
-      Alert.alert("Error", "Not authenticated");
+      Alert.alert("Error", "Session expired. Please sign out and log in again.");
       setDeploying(false);
       return;
     }
