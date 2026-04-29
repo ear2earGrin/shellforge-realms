@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Stack } from "expo-router";
+import { Stack, Redirect } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { View, ActivityIndicator } from "react-native";
 import { supabase } from "../lib/supabase";
@@ -114,6 +114,22 @@ export default function RootLayout() {
     );
   }
 
+  if (!session) {
+    return (
+      <>
+        <StatusBar style="light" />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: colors.bg },
+          }}
+        >
+          <Stack.Screen name="login" />
+        </Stack>
+      </>
+    );
+  }
+
   return (
     <>
       <StatusBar style="light" />
@@ -128,17 +144,11 @@ export default function RootLayout() {
           animation: "fade",
         }}
       >
-        {session ? (
-          <>
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen
-              name="create-agent"
-              options={{ presentation: "modal" }}
-            />
-          </>
-        ) : (
-          <Stack.Screen name="login" />
-        )}
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen
+          name="create-agent"
+          options={{ presentation: "modal" }}
+        />
       </Stack>
     </>
   );
