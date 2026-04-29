@@ -486,6 +486,27 @@
                 <button class="cluster-btn" data-cluster="dyn-swarm">DYN_Swarm</button>
             </div>
             
+            <!-- Agent Name Section -->
+            <div class="bio-section" id="agentNameSection">
+                <div class="bio-label">⌬ Agent Designation</div>
+                <div class="bio-sublabel">
+                    Choose a callsign for your agent. This is how you'll be known across the network.
+                </div>
+                <input
+                    type="text"
+                    id="agentNameInput"
+                    class="bio-textarea"
+                    style="min-height:auto;resize:none;height:42px;"
+                    placeholder="enter callsign..."
+                    maxlength="24"
+                    autocomplete="off"
+                    spellcheck="false"
+                >
+                <div class="bio-counter">
+                    <span id="nameCount">0</span>/24
+                </div>
+            </div>
+
             <!-- Bio/Directive Section -->
             <div class="bio-section">
                 <div class="bio-label">⚡ Core Protocol</div>
@@ -684,7 +705,8 @@
         
         function updateDeployButton() {
             const btn = document.getElementById('deployBtn');
-            if (selectedArchetype) {
+            const nameVal = document.getElementById('agentNameInput').value.trim();
+            if (selectedArchetype && nameVal.length >= 2) {
                 btn.classList.add('enabled');
                 btn.disabled = false;
             } else {
@@ -709,10 +731,17 @@
                 return;
             }
 
+            // Agent name from the input field
+            const agentName = document.getElementById('agentNameInput').value.trim();
+            if (!agentName || agentName.length < 2) {
+                terminalNotify.error('Agent name must be at least 2 characters.');
+                return;
+            }
+
             // Check duplicate — only block if a living agent with this name exists
-            const sbCheck = await sbGet('agents', 'agent_name=eq.' + encodeURIComponent(username) + '&is_alive=eq.true&select=agent_id&limit=1');
+            const sbCheck = await sbGet('agents', 'agent_name=eq.' + encodeURIComponent(agentName) + '&is_alive=eq.true&select=agent_id&limit=1');
             if (sbCheck && sbCheck.length > 0) {
-                terminalNotify.error('An agent named ' + username + ' already exists. One agent per account.');
+                terminalNotify.error('An agent named ' + agentName + ' already exists. Choose another callsign.');
                 return;
             }
 
@@ -758,7 +787,7 @@
                 if (userId) {
                     const agentRow = await sbPost('agents', {
                         user_id:         userId,
-                        agent_name:      username,
+                        agent_name:      agentName,
                         archetype:       selectedArchetype,
                         archetype_name:  archetypeData.name,
                         archetype_image: archetypeData.image,
@@ -786,7 +815,7 @@
                             agent_id:      agentId,
                             turn_number:   0,
                             action_type:   'spawn',
-                            action_detail: username + ' deployed in Nexarch. ' + (bio ? '"' + bio + '"' : 'No directive set.'),
+                            action_detail: agentName + ' deployed in Nexarch. ' + (bio ? '"' + bio + '"' : 'No directive set.'),
                             location:      'Nexarch'
                         });
                     } else {
@@ -797,7 +826,7 @@
                 // ── 3. Cache to localStorage ──
                 const agentCache = {
                     agentId, userId,
-                    username, email, bio,
+                    username: agentName, email, bio,
                     archetype:         selectedArchetype,
                     archetypeName:     archetypeData.name,
                     archetypeImage:    archetypeData.image,
@@ -817,8 +846,8 @@
                     turnsTaken: 0, daysSurvived: 1,
                     createdAt: new Date().toISOString()
                 };
-                localStorage.setItem('shellforgeAgent_' + username, JSON.stringify(agentCache));
-                localStorage.setItem('shellforgeLoggedIn', username);
+                localStorage.setItem('shellforgeAgent_' + agentName, JSON.stringify(agentCache));
+                localStorage.setItem('shellforgeLoggedIn', agentName);
                 localStorage.setItem('shellforge_agent_deployed', 'true');
 
                 sessionStorage.removeItem('shellforgeEmail');
@@ -827,7 +856,7 @@
 
                 // ── 4. Launch boot sequence ──
                 setTimeout(() => {
-                    startBootSequence(username, archetypeData.name, clusterNames[selectedCluster], selectedCluster);
+                    startBootSequence(agentName, archetypeData.name, clusterNames[selectedCluster], selectedCluster);
                 }, 300);
 
             } catch (error) {
@@ -859,6 +888,23 @@
             }
         });
         
+        // Agent name input counter + pre-fill
+        const agentNameInput = document.getElementById('agentNameInput');
+        const nameCount = document.getElementById('nameCount');
+        const isReroll = sessionStorage.getItem('shellforgePassword') === 'reroll';
+
+        // Pre-fill with username; for re-rolls the field is editable, for fresh signups it's locked
+        const prefillName = sessionStorage.getItem('shellforgeUsername') || '';
+        agentNameInput.value = prefillName;
+        nameCount.textContent = prefillName.length;
+
+        agentNameInput.addEventListener('input', function() {
+            // Strip spaces and special chars except - and _
+            this.value = this.value.replace(/[^a-zA-Z0-9_\-]/g, '');
+            nameCount.textContent = this.value.length;
+            updateDeployButton();
+        });
+
         // Archetype stat definitions (hidden from user)
         const archetypeStats = {
             '0day-primer': { aggression: 7, cooperation: 4, risk: 8, deception: 6, curiosity: 9, trust: 5 },
