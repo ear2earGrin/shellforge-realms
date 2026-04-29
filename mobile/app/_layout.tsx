@@ -34,7 +34,17 @@ export default function RootLayout() {
     const {
       data: { session: s },
     } = await supabase.auth.getSession();
-    setSession(s);
+
+    if (s) {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error || !user) {
+        await supabase.auth.signOut();
+        setSession(null);
+        setLoading(false);
+        return;
+      }
+      setSession(s);
+    }
 
     if (s) {
       const [bioAvail, bioEnabled] = await Promise.all([
