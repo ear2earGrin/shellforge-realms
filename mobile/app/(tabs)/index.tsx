@@ -97,6 +97,12 @@ export default function AgentScreen() {
         >
           <Text style={styles.createBtnText}>DEPLOY AGENT</Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.signOut}
+          onPress={() => supabase.auth.signOut()}
+        >
+          <Text style={styles.signOutText}>DISCONNECT</Text>
+        </TouchableOpacity>
       </View>
     );
   }
