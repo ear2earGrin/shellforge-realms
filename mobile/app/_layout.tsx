@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Stack, Redirect } from "expo-router";
+import { Stack, Redirect, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { View, ActivityIndicator } from "react-native";
 import { supabase } from "../lib/supabase";
@@ -22,6 +22,7 @@ export default function RootLayout() {
   const [showConsent, setShowConsent] = useState(false);
   const [versionOk, setVersionOk] = useState(true);
   const [biometricLocked, setBiometricLocked] = useState(false);
+  const segments = useSegments();
 
   const init = useCallback(async () => {
     const vOk = await checkMinVersion();
@@ -36,7 +37,10 @@ export default function RootLayout() {
     } = await supabase.auth.getSession();
 
     if (s) {
-      const { data: { user }, error } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
       if (error || !user) {
         await supabase.auth.signOut();
         setSession(null);
@@ -44,9 +48,7 @@ export default function RootLayout() {
         return;
       }
       setSession(s);
-    }
 
-    if (s) {
       const [bioAvail, bioEnabled] = await Promise.all([
         isBiometricAvailable(),
         isBiometricEnabled(),
@@ -114,29 +116,17 @@ export default function RootLayout() {
     );
   }
 
-  if (!session) {
-    return (
-      <>
-        <StatusBar style="light" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: colors.bg },
-          }}
-        >
-          <Stack.Screen name="login" />
-        </Stack>
-      </>
-    );
-  }
+  const inAuthGroup = segments[0] === "login";
 
   return (
     <>
       <StatusBar style="light" />
-      <AIConsentModal
-        visible={showConsent}
-        onAccept={() => setShowConsent(false)}
-      />
+      {session && (
+        <AIConsentModal
+          visible={showConsent}
+          onAccept={() => setShowConsent(false)}
+        />
+      )}
       <Stack
         screenOptions={{
           headerShown: false,
@@ -144,12 +134,15 @@ export default function RootLayout() {
           animation: "fade",
         }}
       >
+        <Stack.Screen name="login" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
           name="create-agent"
           options={{ presentation: "modal" }}
         />
       </Stack>
+      {!session && !inAuthGroup && <Redirect href="/login" />}
+      {session && inAuthGroup && <Redirect href="/(tabs)" />}
     </>
   );
 }
