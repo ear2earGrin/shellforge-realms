@@ -8,8 +8,67 @@
     "description": "Slightly faster reaction time. May cause twitching.",
     "effect_text": "+5% reaction speed, -2% stability.",
     "effect_modifiers": [
-      { "kind": "trait_mod", "trait": "reaction_speed", "delta":  0.05, "scope": "passive" },
-      { "kind": "trait_mod", "trait": "stability",      "delta": -0.02, "scope": "passive" }
+      { "kind": "trait_mod", "trait": "reaction_speed", "delta":  0.05, "scope": "passive_equipped" },
+      { "kind": "trait_mod", "trait": "stability",      "delta": -0.02, "scope": "passive_equipped" }
+    ]
+  },
+
+  { "id": "synth_ration",            "kind": "consumable", "name": "Synth Ration",            "rarity": "Common",   "icon": "images/items/synth-ration.jpg",            "description": "Tastes like cardboard soaked in motor oil.",                                  "effect_text": "Heals 10 HP + restores 15 energy.",
+    "effect_modifiers": [
+      { "kind": "heal",   "amount": 10, "scope": "on_use" },
+      { "kind": "energy", "amount": 15, "scope": "on_use", "trigger": "energy<40" }
+    ]
+  },
+  { "id": "cooling_gel_pack",        "kind": "consumable", "name": "Cooling Gel Pack",         "rarity": "Common",   "icon": "images/items/cooling-gel-pack.jpg",        "description": "Pressurized gel that snap-cools an overheating chassis.",                     "effect_text": "Heals 8 HP + heat-hazard resistance.",
+    "effect_modifiers": [
+      { "kind": "heal",    "amount": 8, "scope": "on_use" },
+      { "kind": "resist",  "resist": "heat", "scope": "on_use", "trigger": "health<70&&hazard" }
+    ]
+  },
+  { "id": "energy_cell",             "kind": "consumable", "name": "Energy Cell",              "rarity": "Common",   "icon": "images/items/energy-cell.jpg",             "description": "Pre-charged battery brick with a snap-fit power coupling.",                   "effect_text": "Restores 25 energy.",
+    "effect_modifiers": [
+      { "kind": "energy", "amount": 25, "scope": "on_use", "trigger": "energy<30" }
+    ]
+  },
+  { "id": "basic_medkit",            "kind": "consumable", "name": "Basic Medkit",             "rarity": "Common",   "icon": "images/items/basic-medkit.jpg",            "description": "Generic field repair kit — patches, sealant, weld putty.",                    "effect_text": "Heals 25 HP.",
+    "effect_modifiers": [
+      { "kind": "heal", "amount": 25, "scope": "on_use", "trigger": "health<60" }
+    ]
+  },
+  { "id": "rad_away_tab",            "kind": "consumable", "name": "Rad-Away Tab",             "rarity": "Uncommon", "icon": "images/items/rad-away-tab.jpg",            "description": "Chalky tablet that purges corrupted-data poisoning.",                         "effect_text": "Heals 15 HP + radiation hazard resistance.",
+    "effect_modifiers": [
+      { "kind": "heal",   "amount": 15, "scope": "on_use" },
+      { "kind": "resist", "resist": "radiation", "scope": "on_use", "trigger": "health<50&&hazard" }
+    ]
+  },
+  { "id": "error_404_potion",       "kind": "consumable", "name": "Error 404 Potion",          "rarity": "Uncommon", "icon": "images/items/error-404-potion.jpg",       "description": "Glows magenta. Tastes like missing semicolons.",                              "effect_text": "Heals 20 HP + 10 energy + clears all debuffs.",
+    "effect_modifiers": [
+      { "kind": "heal",    "amount": 20, "scope": "on_use" },
+      { "kind": "energy",  "amount": 10, "scope": "on_use" },
+      { "kind": "cleanse", "target": "debuffs", "scope": "on_use", "trigger": "health<40" }
+    ]
+  },
+  { "id": "stim_patch",              "kind": "consumable", "name": "Stim Patch",               "rarity": "Common",   "icon": "images/items/stim-patch.jpg",              "description": "Adhesive transdermal stim. One-time use, not addictive (citation needed).",   "effect_text": "+20 energy and +2 attack.",
+    "effect_modifiers": [
+      { "kind": "energy", "amount": 20, "scope": "on_use" },
+      { "kind": "buff",   "trait": "attack", "delta": 2, "duration": 3, "scope": "on_use", "trigger": "energy<25" }
+    ]
+  },
+  { "id": "combat_stim",             "kind": "consumable", "name": "Combat Stim",              "rarity": "Uncommon", "icon": "images/items/combat-stim.jpg",             "description": "Field-grade aggression cocktail. Stings.",                                    "effect_text": "+5 attack, +2 speed for 3 turns.",
+    "effect_modifiers": [
+      { "kind": "buff", "trait": "attack", "delta": 5, "duration": 3, "scope": "on_use", "trigger": "combat" },
+      { "kind": "buff", "trait": "speed",  "delta": 2, "duration": 3, "scope": "on_use" }
+    ]
+  },
+  { "id": "neural_boost",            "kind": "consumable", "name": "Neural Boost",             "rarity": "Uncommon", "icon": "images/items/neural-boost.jpg",            "description": "Liquid nootropic that briefly accelerates inference clocks.",                 "effect_text": "+30 energy and +3 critical chance.",
+    "effect_modifiers": [
+      { "kind": "energy", "amount": 30, "scope": "on_use" },
+      { "kind": "buff",   "trait": "critical", "delta": 3, "duration": 3, "scope": "on_use", "trigger": "energy<35" }
+    ]
+  },
+  { "id": "resurrection_patch_v0_1", "kind": "consumable", "name": "Resurrection Patch v0.1",  "rarity": "Rare",     "icon": "images/items/resurrection-patch-v0-1.jpg", "description": "Experimental hot-fix patch. Side effects may include existential dread.",     "effect_text": "Auto-revives at full HP if health drops to ≤5.",
+    "effect_modifiers": [
+      { "kind": "heal", "amount": 100, "scope": "on_use", "trigger": "health<=5" }
     ]
   }
 ]

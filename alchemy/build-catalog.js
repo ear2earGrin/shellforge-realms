@@ -159,6 +159,37 @@ const extras = fs.existsSync(extrasPath)
     ? JSON.parse(fs.readFileSync(extrasPath, 'utf8')).map(validateExtra)
     : [];
 
+// ── overlay item-effects.json onto items.csv-derived entries ────────
+// extras.json entries already carry effect_modifiers inline; items.csv
+// entries get them from this file (keyed by item_id).
+const effectsPath = path.join(dir, 'item-effects.json');
+const itemEffects = fs.existsSync(effectsPath)
+    ? JSON.parse(fs.readFileSync(effectsPath, 'utf8'))
+    : {};
+for (const it of items) {
+    if (Array.isArray(itemEffects[it.id])) {
+        it.effect_modifiers = itemEffects[it.id];
+    }
+}
+// Effect-modifier sanity check — every kind listed here is referenced by code.
+const ALLOWED_EFFECT_KINDS = new Set([
+    'trait_mod','heal','energy','cleanse','buff','debuff','resist','reflect','immune',
+    'first_hit_absorb','pierce','aoe','summon','reveal','predict','replay_action',
+    'simulate','evolve_items','extra_action_on_kill','invert_actions',
+    'preserve_items_on_death','drain','jam','lure','trap','perma_debuff','clone',
+    'hot_swap','solve','ask_oracle','rewind_on_fail','escape_trap','reposition',
+    'steal_item','alter_rule','craft_in_field','heal_ally','share_buffs',
+    'permanent_stat_boost','recover_destroyed_item',
+]);
+for (const e of [...items, ...extras]) {
+    if (!Array.isArray(e.effect_modifiers)) continue;
+    for (const m of e.effect_modifiers) {
+        if (!ALLOWED_EFFECT_KINDS.has(m.kind)) {
+            throw new Error(`${e.id}: unknown effect kind "${m.kind}". Add to ALLOWED_EFFECT_KINDS in build-catalog.js if intentional.`);
+        }
+    }
+}
+
 const all = [...items, ...ingredients, ...extras];
 
 // Dedupe / collision check — an ID must appear exactly once across all sources.
@@ -266,17 +297,23 @@ fs.writeFileSync(workerPath, workerOut);
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 const feIngredients = Object.fromEntries(
     all.filter(e => e.kind === 'ingredient').map(e => [e.id, {
-        name:   e.name,
-        cat:    e.category,
-        rarity: e.rarity,
+        name:           e.name,
+        cat:            e.category,
+        subcategory:    e.subcategory,
+        rarity:         e.rarity,
+        craft_affinity: e.craft_affinity,
     }]),
 );
 const feItems = Object.fromEntries(
     all.filter(e => e.kind !== 'ingredient').map(e => [e.id, {
-        name:   e.name,
-        cat:    cap(e.kind),
-        rarity: e.rarity,
-        desc:   e.effect_text || e.description,
+        name:              e.name,
+        kind:              e.kind,
+        cat:               cap(e.kind),
+        type:              e.type,
+        station:           e.station,
+        cluster_exclusive: e.cluster_exclusive,
+        rarity:            e.rarity,
+        desc:              e.effect_text || e.description,
     }]),
 );
 const feRecipes = recipes.map(r => ({

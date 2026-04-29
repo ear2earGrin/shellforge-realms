@@ -1,0 +1,307 @@
+{
+  "_comment": "Structured effect_modifiers per item_id. Merged into catalog.json by build-catalog.js. Items not listed here keep effect_modifiers: null.",
+  "_schema": "Each entry is { kind, scope, ...params }. Kinds: trait_mod | heal | energy | cleanse | buff | debuff | resist | reflect | summon | reveal | predict | pierce | aoe | replay_action | simulate | evolve_items | extra_action_on_kill | invert_actions | preserve_items_on_death | drain | jam | lure | trap | perma_debuff | clone | hot_swap | immune | solve | ask_oracle | rewind_on_fail | escape_trap | reposition | steal_item | alter_rule | craft_in_field | heal_ally | first_hit_absorb. Scopes: passive_equipped | on_use | on_hit | on_cast | on_deploy | on_equip_battle | passive_battle | once_per_battle | once_per_day | on_resurrect | on_battle_end | on_fail",
+
+  "_consumables": "── CONSUMABLES (mirrors CONSUMABLE_EFFECTS in turn-engine) ──",
+  "coolant_flush_cartridge": [
+    { "kind": "heal",    "amount": 20, "scope": "on_use" },
+    { "kind": "cleanse", "target": "debuffs", "scope": "on_use" },
+    { "kind": "resist",  "resist": "heat", "scope": "on_use", "trigger": "health<60||hazard" }
+  ],
+  "emergency_servo_lubricant": [
+    { "kind": "cleanse", "target": "debuffs", "scope": "on_use" },
+    { "kind": "buff",    "trait": "speed", "delta": 2, "duration": 3, "scope": "on_use", "trigger": "speed_debuff" }
+  ],
+  "welding_patch_kit": [
+    { "kind": "heal", "amount": 35, "scope": "on_use", "trigger": "health<50" }
+  ],
+  "overclock_reactor_injector": [
+    { "kind": "energy", "amount": 40, "scope": "on_use" },
+    { "kind": "buff",   "trait": "attack", "delta": 5, "duration": 2, "scope": "on_use", "trigger": "energy<20" }
+  ],
+  "emp_hardening_capsule": [
+    { "kind": "resist", "resist": "emp", "duration": 3, "scope": "on_use", "trigger": "hazard" }
+  ],
+  "debug_rejuvenation_patch": [
+    { "kind": "heal",    "amount": 20, "scope": "on_use" },
+    { "kind": "cleanse", "target": "debuffs", "scope": "on_use" },
+    { "kind": "energy",  "amount": 10, "scope": "on_use", "trigger": "health<50" }
+  ],
+  "caffeine_gradient_booster": [
+    { "kind": "heal",    "amount": 40, "scope": "on_use" },
+    { "kind": "energy",  "amount": 15, "scope": "on_use" },
+    { "kind": "cleanse", "target": "cooldowns", "scope": "on_use", "trigger": "health<50||energy<30" }
+  ],
+  "cache_purge_tonic": [
+    { "kind": "energy", "amount": 100, "scope": "on_use", "trigger": "energy<15" }
+  ],
+  "hot_patch_injection": [
+    { "kind": "heal",    "amount": 25, "scope": "on_use" },
+    { "kind": "cleanse", "target": "debuffs", "count": 1, "scope": "on_use", "trigger": "health<60" }
+  ],
+  "context_window_expansion": [
+    { "kind": "buff", "trait": "critical", "delta": 5, "duration": 3, "scope": "on_use" },
+    { "kind": "buff", "trait": "attack",   "delta": 3, "duration": 3, "scope": "on_use", "trigger": "combat" }
+  ],
+  "hyperparameter_tuning_shot": [
+    { "kind": "permanent_stat_boost", "min": 0.20, "max": 1.00, "scope": "on_use", "trigger": "always_valuable" }
+  ],
+  "salvage_reclamation_drone": [
+    { "kind": "recover_destroyed_item", "count": 1, "lookback_turns": 3, "scope": "on_use" }
+  ],
+
+  "_weapons": "── WEAPONS — trait_mod for base attack + on_hit special ──",
+  "plasma_edged_servo_blade": [
+    { "kind": "trait_mod", "trait": "attack", "delta": 6, "scope": "passive_equipped" },
+    { "kind": "debuff",    "effect": "bleed", "chance": 0.5, "magnitude": 3, "duration": 3, "scope": "on_hit", "target": "enemy" }
+  ],
+  "railgun_forearm_mount": [
+    { "kind": "trait_mod", "trait": "attack",    "delta": 12, "scope": "passive_equipped" },
+    { "kind": "trait_mod", "trait": "precision", "delta": 3,  "scope": "passive_equipped" },
+    { "kind": "pierce",    "armor_pct": 0.30, "scope": "on_hit" }
+  ],
+  "pneumatic_piston_fist": [
+    { "kind": "trait_mod", "trait": "attack", "delta": 6, "scope": "passive_equipped" },
+    { "kind": "debuff",    "effect": "stun",  "chance": 0.4, "duration": 1, "scope": "on_hit", "target": "enemy", "trigger": "critical" }
+  ],
+  "tungsten_fragmentation_launcher": [
+    { "kind": "trait_mod", "trait": "attack", "delta": 15, "scope": "passive_equipped" },
+    { "kind": "aoe",       "damage_pct": 0.5, "scope": "on_hit" }
+  ],
+  "emp_discharge_gauntlet": [
+    { "kind": "trait_mod", "trait": "attack", "delta": 9, "scope": "passive_equipped" },
+    { "kind": "debuff",    "effect": "stun",  "chance": 1.0, "duration": 2, "scope": "on_hit", "target": "enemy" },
+    { "kind": "debuff",    "effect": "disable_random_equipped", "chance": 1.0, "duration": 2, "scope": "on_hit", "target": "enemy" }
+  ],
+  "cryo_bore_drill_lance": [
+    { "kind": "trait_mod", "trait": "attack", "delta": 14, "scope": "passive_equipped" },
+    { "kind": "pierce",    "armor_pct": 0.50, "scope": "on_hit" },
+    { "kind": "debuff",    "effect": "freeze", "chance": 0.25, "duration": 1, "scope": "on_hit", "target": "enemy" }
+  ],
+  "nanobot_swarm_ejector": [
+    { "kind": "trait_mod", "trait": "attack", "delta": 9, "scope": "passive_equipped" },
+    { "kind": "debuff",    "effect": "corrode", "chance": 1.0, "magnitude": -0.20, "stat": "defense", "duration": 3, "scope": "on_hit", "target": "enemy" }
+  ],
+  "buffer_overflow_exploit": [
+    { "kind": "trait_mod", "trait": "attack", "delta": 5, "scope": "passive_equipped" },
+    { "kind": "buff",      "effect": "escalate_with_enemy_memory", "chance": 1.0, "scaling": "enemy_health_pct", "scope": "on_hit", "target": "self" }
+  ],
+  "neural_spike_virus": [
+    { "kind": "trait_mod", "trait": "attack", "delta": 5, "scope": "passive_equipped" },
+    { "kind": "debuff",    "trait": "precision", "delta": -0.50, "duration": 3, "scope": "on_hit", "target": "enemy" }
+  ],
+  "ddos_swarm_protocol": [
+    { "kind": "trait_mod", "trait": "attack", "delta": 8, "scope": "passive_equipped" },
+    { "kind": "aoe",       "scope": "on_hit", "effect": "stun", "duration": 2 }
+  ],
+  "zero_day_payload": [
+    { "kind": "trait_mod", "trait": "attack", "delta": 14, "scope": "passive_equipped" },
+    { "kind": "pierce",    "armor_pct": 0.75, "scope": "on_hit" }
+  ],
+  "quantum_backdoor_exploit": [
+    { "kind": "trait_mod", "trait": "attack",   "delta": 7, "scope": "passive_equipped" },
+    { "kind": "trait_mod", "trait": "critical", "delta": 5, "scope": "passive_equipped" }
+  ],
+  "sql_injection_payload": [
+    { "kind": "trait_mod", "trait": "attack", "delta": 13, "scope": "passive_equipped" },
+    { "kind": "cleanse",   "target": "enemy_buffs", "count": "all", "scope": "on_hit", "target_who": "enemy" },
+    { "kind": "debuff",    "trait": "random", "count": 2, "duration": 3, "scope": "on_hit", "target": "enemy" }
+  ],
+  "ransomware_lockout_worm": [
+    { "kind": "trait_mod", "trait": "attack", "delta": 9, "scope": "passive_equipped" },
+    { "kind": "debuff",    "effect": "action_lock", "actions": 1, "duration": 3, "scope": "on_hit", "target": "enemy" },
+    { "kind": "debuff",    "effect": "dot", "magnitude": 4, "duration": 3, "scope": "on_hit", "target": "enemy" }
+  ],
+
+  "_armor": "── ARMOR — trait_mod for base defense + on_equip resists/reflects ──",
+  "tungsten_alloy_chassis_plate": [
+    { "kind": "trait_mod", "trait": "defense", "delta": 8, "scope": "passive_equipped" },
+    { "kind": "resist",    "resist": "physical", "magnitude": 0.60, "scope": "on_equip_battle" }
+  ],
+  "faraday_cage_neural_helm": [
+    { "kind": "trait_mod", "trait": "defense", "delta": 10, "scope": "passive_equipped" },
+    { "kind": "immune",    "type": "emp", "scope": "on_equip_battle" }
+  ],
+  "reactive_ceramic_plating": [
+    { "kind": "trait_mod", "trait": "defense", "delta": 10, "scope": "passive_equipped" },
+    { "kind": "first_hit_absorb", "per": "turn", "scope": "on_equip_battle" },
+    { "kind": "buff",      "trait": "defense", "delta": 0.05, "stacking": true, "duration": "battle", "scope": "on_equip_battle", "trigger": "on_block" }
+  ],
+  "titanium_mesh_exoskeleton": [
+    { "kind": "trait_mod", "trait": "defense", "delta": 14, "scope": "passive_equipped" },
+    { "kind": "trait_mod", "trait": "speed",   "delta": 3,  "scope": "passive_equipped" }
+  ],
+  "cryo_cooled_heat_sink_array": [
+    { "kind": "trait_mod", "trait": "defense", "delta": 8, "scope": "passive_equipped" },
+    { "kind": "immune",    "type": "overheat", "scope": "on_equip_battle" },
+    { "kind": "resist",    "resist": "all", "magnitude": 0.10, "scope": "on_equip_battle" }
+  ],
+  "salvaged_siege_chassis": [
+    { "kind": "trait_mod", "trait": "defense", "delta": 18, "scope": "passive_equipped" },
+    { "kind": "trait_mod", "trait": "speed",   "delta": -5, "scope": "passive_equipped" }
+  ],
+  "aes_256_firewall_protocol": [
+    { "kind": "trait_mod", "trait": "defense", "delta": 8, "scope": "passive_equipped" },
+    { "kind": "resist",    "resist": "software", "magnitude": 0.80, "scope": "on_equip_battle" },
+    { "kind": "reflect",   "type": "software",   "magnitude": 0.20, "scope": "on_equip_battle" }
+  ],
+  "homomorphic_encryption_cloak": [
+    { "kind": "trait_mod", "trait": "defense", "delta": 14, "scope": "passive_equipped" },
+    { "kind": "immune",    "type": "scan", "scope": "on_equip_battle" },
+    { "kind": "trait_mod", "trait": "dodge",   "delta": 0.30, "vs": "software", "scope": "on_equip_battle" }
+  ],
+  "zero_trust_authentication_layer": [
+    { "kind": "trait_mod", "trait": "defense", "delta": 10, "scope": "passive_equipped" },
+    { "kind": "resist",    "resist": "all",     "magnitude": 0.50, "trigger": "verify_fail", "scope": "on_equip_battle" }
+  ],
+  "tensorguard_neural_shield": [
+    { "kind": "trait_mod", "trait": "defense", "delta": 10, "scope": "passive_equipped" },
+    { "kind": "buff",      "trait": "attack",  "delta": 0.10, "duration": "battle", "trigger": "model_poison_absorbed", "scope": "on_equip_battle" }
+  ],
+  "sandbox_isolation_runtime": [
+    { "kind": "trait_mod", "trait": "defense", "delta": 14, "scope": "passive_equipped" },
+    { "kind": "immune",    "type": "virus", "scope": "on_equip_battle" },
+    { "kind": "reveal",    "target": "intel_bonus", "scope": "on_equip_battle", "trigger": "virus_neutralized" }
+  ],
+  "rate_limiting_throttle_daemon": [
+    { "kind": "trait_mod", "trait": "defense", "delta": 10, "scope": "passive_equipped" },
+    { "kind": "debuff",    "trait": "speed", "delta": -0.50, "duration": 4, "scope": "on_equip_battle", "target": "enemy" }
+  ],
+
+  "_scrolls": "── SCROLLS — single-use on_cast effects ──",
+  "stable_diffusion_sequence": [
+    { "kind": "summon",  "entity": "decoy", "count": 3, "duration": 3, "effect": "miss_chance", "magnitude": 0.50, "scope": "on_cast" }
+  ],
+  "gan_mirage_scroll": [
+    { "kind": "summon",  "entity": "absorb_clone", "count": 2, "duration": 3, "scope": "on_cast" }
+  ],
+  "transformer_attention_ritual": [
+    { "kind": "predict", "attacks": 3, "auto_dodge": true, "scope": "on_cast" }
+  ],
+  "reinforcement_learning_prophecy": [
+    { "kind": "extra_action_on_kill", "duration": "battle", "scope": "on_cast" }
+  ],
+  "bayesian_inference_divination": [
+    { "kind": "reveal", "target": "map_and_inventories", "scope": "on_cast" }
+  ],
+  "genetic_algorithm_evolution": [
+    { "kind": "evolve_items", "count": 3, "tier_increase": 1, "scope": "on_cast" }
+  ],
+  "prompt_engineering_curse": [
+    { "kind": "invert_actions", "duration": 3, "scope": "on_cast", "target": "enemy" }
+  ],
+  "recursive_function_spiral": [
+    { "kind": "replay_action", "free": true, "scope": "on_cast" }
+  ],
+  "monte_carlo_simulation_rune": [
+    { "kind": "simulate", "branches": 3, "scope": "on_cast" }
+  ],
+  "gradient_vanishing_hex": [
+    { "kind": "debuff", "trait": "attack", "delta": -0.15, "duration": 5, "scope": "on_cast", "target": "enemy", "stacking_per_turn": true }
+  ],
+
+  "_tools": "── TOOLS — utility/non-combat effects ──",
+  "diagnostic_probe_array": [
+    { "kind": "reveal", "target": "enemy_stats", "scope": "on_use" }
+  ],
+  "soldering_gauntlet": [
+    { "kind": "heal_ally", "magnitude": 0.25, "scope": "on_use", "trigger": "combat" }
+  ],
+  "salvage_extraction_claw": [
+    { "kind": "trait_mod", "trait": "loot_chance", "delta": 0.50, "scope": "passive_equipped" }
+  ],
+  "portable_foundry_anvil": [
+    { "kind": "craft_in_field", "max_rarity": "Uncommon", "type": "hardware", "scope": "on_use" }
+  ],
+  "hydraulic_jack_lifter": [
+    { "kind": "reposition", "target": "enemy_or_obstacle", "scope": "on_use" }
+  ],
+  "arc_welder_repair_rig": [
+    { "kind": "heal", "amount": 100, "scope": "on_battle_end" }
+  ],
+  "git_rollback_module": [
+    { "kind": "rewind_on_fail", "turns": 1, "scope": "once_per_battle" }
+  ],
+  "docker_containerizer": [
+    { "kind": "escape_trap", "scope": "on_use" }
+  ],
+  "kubernetes_orchestrator": [
+    { "kind": "summon", "entity": "minion_drone", "count": 3, "duration": 5, "scope": "on_use" }
+  ],
+  "wireshark_packet_sniffer": [
+    { "kind": "steal_item", "count": 1, "range": "any", "scope": "on_use" }
+  ],
+  "nmap_reconnaissance_scanner": [
+    { "kind": "reveal", "target": "zone_full", "scope": "on_use" }
+  ],
+  "vim_reality_editor": [
+    { "kind": "alter_rule", "duration": 3, "scope": "on_use" }
+  ],
+
+  "_deployables": "── DEPLOYABLES — placed on battlefield ──",
+  "proximity_mine_cluster": [
+    { "kind": "trap", "trigger": "enemy_enters", "effect": "aoe_damage", "magnitude": 25, "scope": "on_deploy" }
+  ],
+  "razor_wire_entanglement_rig": [
+    { "kind": "trap", "trigger": "passive_aura", "effect": "speed_debuff", "magnitude": -0.50, "duration": 3, "scope": "on_deploy" }
+  ],
+  "turret_drone_sentry": [
+    { "kind": "summon", "entity": "turret", "duration": 5, "auto_attack": true, "scope": "on_deploy" }
+  ],
+  "magnetic_tether_trap": [
+    { "kind": "trap", "trigger": "enemy_enters", "effect": "pull_and_immobilize", "duration": 1, "scope": "on_deploy" }
+  ],
+  "emp_pulse_landmine": [
+    { "kind": "trap", "trigger": "enemy_enters", "effect": "aoe_stun", "duration": 2, "scope": "on_deploy" },
+    { "kind": "trap", "trigger": "enemy_enters", "effect": "aoe_disable_equipped", "duration": 2, "scope": "on_deploy" }
+  ],
+  "honeypot_decoy_server": [
+    { "kind": "lure", "target": "enemy", "duration": 2, "scope": "on_deploy" }
+  ],
+  "logic_bomb_tripwire": [
+    { "kind": "trap", "trigger": "enemy_action", "effect": "burst_damage", "magnitude": 40, "scope": "on_deploy" }
+  ],
+  "cryptojacker_leech_node": [
+    { "kind": "drain", "target": "enemy", "stat": "energy", "magnitude": 0.10, "duration": 5, "scope": "on_deploy" }
+  ],
+  "rootkit_persistence_mine": [
+    { "kind": "perma_debuff", "trait": "random", "delta": -0.10, "scope": "on_deploy", "trigger": "enemy_enters" }
+  ],
+  "packet_storm_jammer": [
+    { "kind": "jam", "target": "enemy_team", "blocks": ["communication","buff_sharing"], "duration": 3, "scope": "on_deploy" }
+  ],
+
+  "_artifacts": "── ARTIFACTS (Legendary, mostly battle-wide or daily) ──",
+  "alphago_neural_core": [
+    { "kind": "predict", "target": "enemy_actions", "accuracy": 0.90, "scope": "passive_battle" }
+  ],
+  "quantum_annealer_processor": [
+    { "kind": "solve", "target": "any_puzzle_or_lock", "scope": "on_use" }
+  ],
+  "von_neumann_self_replicator": [
+    { "kind": "clone", "self_stats_pct": 0.50, "scope": "once_per_battle" }
+  ],
+  "satoshi_genesis_block_signet": [
+    { "kind": "preserve_items_on_death", "all_equipped": true, "scope": "on_resurrect" },
+    { "kind": "heal", "amount_pct": 0.50, "scope": "on_resurrect", "_note": "actually a 50%-stat resurrect; preserve+resurrect stack" }
+  ],
+  "gpt_oracle_crystal": [
+    { "kind": "ask_oracle", "scope": "once_per_day" }
+  ],
+  "blockchain_soulbound_key": [
+    { "kind": "preserve_items_on_death", "all_equipped": true, "ignore_vault_limits": true, "scope": "on_resurrect" }
+  ],
+  "federated_learning_nexus": [
+    { "kind": "share_buffs", "target": "allies", "scope": "passive_battle" }
+  ],
+  "rust_borrow_checker_amulet": [
+    { "kind": "immune", "type": "crash_or_runtime_error", "scope": "passive_battle" }
+  ],
+  "hugging_face_model_repository": [
+    { "kind": "hot_swap", "max_items": 5, "scope": "passive_battle" }
+  ],
+  "dijkstra_shortest_path_compass": [
+    { "kind": "trait_mod", "trait": "travel_speed", "delta": 0.25, "scope": "passive_equipped" },
+    { "kind": "predict", "target": "optimal_route", "scope": "passive_equipped" }
+  ]
+}
