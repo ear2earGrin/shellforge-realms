@@ -761,24 +761,26 @@
 
                 const traits = generateAgentTraits(selectedArchetype, bio, birthSeed);
 
-                // ── 1. Create user row in Supabase ──
-                let userId = null;
-                const userRow = await sbPost('users', {
-                    username:      username,
-                    email:         email || username + '@shellforge.local',
-                    password_hash: 'pending_real_auth'
-                });
-                if (userRow && userRow.length > 0) {
-                    userId = userRow[0].user_id;
-                    console.log('✅ User created in Supabase:', userId);
-                } else {
-                    // user may already exist — try username first, then email
-                    const existing = await sbGet('users', 'username=eq.' + encodeURIComponent(username) + '&select=user_id&limit=1');
-                    if (existing && existing.length > 0) {
-                        userId = existing[0].user_id;
+                // ── 1. Resolve or create user row in Supabase ──
+                let userId = sessionStorage.getItem('shellforgeUserId') || null;
+                if (!userId) {
+                    const userRow = await sbPost('users', {
+                        username:      username,
+                        email:         email || username + '@shellforge.local',
+                        password_hash: 'pending_real_auth'
+                    });
+                    if (userRow && userRow.length > 0) {
+                        userId = userRow[0].user_id;
+                        console.log('✅ User created in Supabase:', userId);
                     } else {
-                        const byEmail = await sbGet('users', 'email=eq.' + encodeURIComponent(email || username + '@shellforge.local') + '&select=user_id&limit=1');
-                        if (byEmail && byEmail.length > 0) userId = byEmail[0].user_id;
+                        // user may already exist — try username first, then email
+                        const existing = await sbGet('users', 'username=eq.' + encodeURIComponent(username) + '&select=user_id&limit=1');
+                        if (existing && existing.length > 0) {
+                            userId = existing[0].user_id;
+                        } else {
+                            const byEmail = await sbGet('users', 'email=eq.' + encodeURIComponent(email || username + '@shellforge.local') + '&select=user_id&limit=1');
+                            if (byEmail && byEmail.length > 0) userId = byEmail[0].user_id;
+                        }
                     }
                 }
 
@@ -794,6 +796,7 @@
                         cluster:         selectedCluster,
                         cluster_name:    clusterNames[selectedCluster],
                         bio:             bio,
+                        quirk:           traits.quirk,
                         energy:          100,
                         health:          100,
                         karma:           traits.karmaStart,
@@ -853,6 +856,7 @@
                 sessionStorage.removeItem('shellforgeEmail');
                 sessionStorage.removeItem('shellforgeUsername');
                 sessionStorage.removeItem('shellforgePassword');
+                sessionStorage.removeItem('shellforgeUserId');
 
                 // ── 4. Launch boot sequence ──
                 setTimeout(() => {

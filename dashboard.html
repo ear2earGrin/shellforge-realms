@@ -345,7 +345,7 @@
             color: rgba(200, 230, 224, 0.5);
             position: relative;
             min-width: 60px;
-            overflow: hidden;
+            overflow: visible;
             z-index: 1;
         }
         .icon-btn:hover {
@@ -453,6 +453,8 @@
             background: #ff0044;
             border: 1px solid rgba(4,6,12,0.9);
             box-shadow: 0 0 6px #ff0044;
+            z-index: 10;
+            pointer-events: none;
         }
         .icon-counter {
             position: absolute;
@@ -464,6 +466,8 @@
             padding: 1px 4px;
             border-radius: 8px;
             box-shadow: 0 0 6px #ff0044;
+            z-index: 10;
+            pointer-events: none;
         }
 
         /* ── PULSE STRIP in nav ── */
@@ -5099,16 +5103,24 @@
             console.log('🔧 Loading agent for user:', _lu);
 
             async function fetchAndRender() {
-                // 1. Try Supabase — look up agent by username
+                // 1. Try Supabase — look up agent by name
                 const rows = await sbGet('agents', 'agent_name=eq.' + encodeURIComponent(_lu) + '&select=*&limit=1');
                 if (rows && rows.length > 0) {
                     console.log('✅ Agent loaded from Supabase');
-                    const dbAgent = rows[0];
+                    let dbAgent = rows[0];
 
-                    // ─── Death check ─────────────────────────────
-                    if (dbAgent.is_alive === false) {
-                        showDeathScreen(dbAgent);
-                        return;
+                    // ─── Death check — look for a newer alive agent for same user ───
+                    if (dbAgent.is_alive === false && dbAgent.user_id) {
+                        const aliveRows = await sbGet('agents', 'user_id=eq.' + dbAgent.user_id + '&is_alive=eq.true&select=*&limit=1');
+                        if (aliveRows && aliveRows.length > 0) {
+                            // Switch to the alive agent and update localStorage
+                            dbAgent = aliveRows[0];
+                            localStorage.setItem('shellforgeLoggedIn', dbAgent.agent_name);
+                            console.log('🔄 Switched to alive agent:', dbAgent.agent_name);
+                        } else {
+                            showDeathScreen(dbAgent);
+                            return;
+                        }
                     }
 
                     // Map DB columns to the shape the rest of the dashboard expects
@@ -5294,17 +5306,17 @@
 
             // New Agent button — wipe old agent flag and re-seed session for agent-creator
             document.getElementById('deathNewAgentBtn').addEventListener('click', function() {
-                var username = localStorage.getItem('shellforgeLoggedIn') || '';
-                var cachedAgent = username ? localStorage.getItem('shellforgeAgent_' + username) : null;
-                var email = '';
-                if (cachedAgent) { try { email = JSON.parse(cachedAgent).email || ''; } catch(e){} }
+                var agentName = dbAgent.agent_name || localStorage.getItem('shellforgeLoggedIn') || '';
+                // Look up the account username from users table for the session
+                var userId = dbAgent.user_id || '';
                 // agent-creator checks sessionStorage for these — re-populate so it doesn't 404
-                sessionStorage.setItem('shellforgeUsername', username);
-                sessionStorage.setItem('shellforgeEmail', email || username + '@shellforge.local');
+                sessionStorage.setItem('shellforgeUsername', agentName);
+                sessionStorage.setItem('shellforgeEmail', dbAgent.email || agentName + '@shellforge.local');
                 sessionStorage.setItem('shellforgePassword', 'reroll');
+                if (userId) sessionStorage.setItem('shellforgeUserId', userId);
                 // Clear old agent data so creator allows a fresh one
                 localStorage.removeItem('shellforge_agent_deployed');
-                if (username) localStorage.removeItem('shellforgeAgent_' + username);
+                localStorage.removeItem('shellforgeAgent_' + agentName);
                 window.location.href = 'agent-creator.html';
             });
 
