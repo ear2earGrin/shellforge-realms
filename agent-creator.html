@@ -13,119 +13,6 @@
     <link rel="stylesheet" href="style-v2.css">
     <link rel="stylesheet" href="terminal-notifications.css">
     <style>
-        /* ─── Boot Sequence Overlay ─── */
-        .boot-overlay {
-            position: fixed;
-            inset: 0;
-            z-index: 99999;
-            background: #0a0a0f;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            transition: opacity 0.4s ease;
-        }
-        .boot-overlay.active { opacity: 1; }
-        .boot-overlay.fade-out { opacity: 0; transition: opacity 1.2s ease; }
-
-        .boot-crt {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-        }
-
-        .boot-scanlines {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            background: repeating-linear-gradient(
-                0deg,
-                transparent,
-                transparent 2px,
-                rgba(0, 255, 65, 0.04) 2px,
-                rgba(0, 255, 65, 0.04) 4px
-            );
-            animation: scanlines 8s linear infinite;
-            z-index: 2;
-        }
-
-        .boot-terminal {
-            position: absolute;
-            inset: 0;
-            padding: 60px 80px;
-            font-family: 'IBM Plex Mono', monospace;
-            font-size: 15px;
-            line-height: 1.8;
-            color: #00FF41;
-            overflow-y: auto;
-            z-index: 1;
-        }
-
-        .boot-terminal .line {
-            white-space: pre-wrap;
-            min-height: 1.8em;
-        }
-
-        .boot-terminal .cursor {
-            display: inline-block;
-            width: 8px;
-            height: 15px;
-            background: #00FF41;
-            animation: blink-cursor 0.6s step-end infinite;
-            vertical-align: text-bottom;
-            margin-left: 2px;
-        }
-
-        .boot-terminal .line-lore {
-            color: #8a8a9a;
-            font-style: italic;
-        }
-
-        .boot-terminal .line-accent {
-            color: #00f0ff;
-        }
-
-        .boot-terminal .line-warn {
-            color: #ff00ff;
-        }
-
-        .boot-terminal .line-ghost {
-            color: #00f0ff;
-            text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
-        }
-
-        .boot-terminal .line-prompt {
-            color: #00FF41;
-            text-shadow: 0 0 8px rgba(0, 255, 65, 0.4);
-        }
-
-        .boot-terminal .progress-bar {
-            display: inline;
-        }
-
-        .boot-skip {
-            position: fixed;
-            bottom: 30px;
-            right: 40px;
-            font-family: 'IBM Plex Mono', monospace;
-            font-size: 12px;
-            color: rgba(138, 138, 154, 0.5);
-            z-index: 3;
-            letter-spacing: 0.5px;
-        }
-
-        @keyframes blink-cursor {
-            50% { opacity: 0; }
-        }
-
-        @media (max-width: 768px) {
-            .boot-terminal {
-                padding: 30px 20px;
-                font-size: 13px;
-            }
-        }
-
         .creator-page {
             min-height: 100vh;
             background: linear-gradient(135deg, #0a0a0f 0%, #1a0f2e 100%);
@@ -486,27 +373,6 @@
                 <button class="cluster-btn" data-cluster="dyn-swarm">DYN_Swarm</button>
             </div>
             
-            <!-- Agent Name Section -->
-            <div class="bio-section" id="agentNameSection">
-                <div class="bio-label">⌬ Agent Designation</div>
-                <div class="bio-sublabel">
-                    Choose a callsign for your agent. This is how you'll be known across the network.
-                </div>
-                <input
-                    type="text"
-                    id="agentNameInput"
-                    class="bio-textarea"
-                    style="min-height:auto;resize:none;height:42px;"
-                    placeholder="enter callsign..."
-                    maxlength="24"
-                    autocomplete="off"
-                    spellcheck="false"
-                >
-                <div class="bio-counter">
-                    <span id="nameCount">0</span>/24
-                </div>
-            </div>
-
             <!-- Bio/Directive Section -->
             <div class="bio-section">
                 <div class="bio-label">⚡ Core Protocol</div>
@@ -527,16 +393,7 @@
             <button class="deploy-button" id="deployBtn">deploy agent</button>
         </div>
     </div>
-
-    <!-- Boot Sequence Overlay -->
-    <div id="bootOverlay" class="boot-overlay" style="display:none;">
-        <div class="boot-crt">
-            <div class="boot-scanlines"></div>
-            <div class="boot-terminal" id="bootTerminal"></div>
-            <div class="boot-skip">press any key to skip</div>
-        </div>
-    </div>
-
+    
     <script>
         // ─── Supabase config ─────────────────────────────────────────
         const SUPABASE_URL = 'https://wtzrxscdlqdgdiefsmru.supabase.co';
@@ -705,8 +562,7 @@
         
         function updateDeployButton() {
             const btn = document.getElementById('deployBtn');
-            const nameVal = document.getElementById('agentNameInput').value.trim();
-            if (selectedArchetype && nameVal.length >= 2) {
+            if (selectedArchetype) {
                 btn.classList.add('enabled');
                 btn.disabled = false;
             } else {
@@ -731,17 +587,10 @@
                 return;
             }
 
-            // Agent name from the input field
-            const agentName = document.getElementById('agentNameInput').value.trim();
-            if (!agentName || agentName.length < 2) {
-                terminalNotify.error('Agent name must be at least 2 characters.');
-                return;
-            }
-
             // Check duplicate — only block if a living agent with this name exists
-            const sbCheck = await sbGet('agents', 'agent_name=eq.' + encodeURIComponent(agentName) + '&is_alive=eq.true&select=agent_id&limit=1');
+            const sbCheck = await sbGet('agents', 'agent_name=eq.' + encodeURIComponent(username) + '&is_alive=eq.true&select=agent_id&limit=1');
             if (sbCheck && sbCheck.length > 0) {
-                terminalNotify.error('An agent named ' + agentName + ' already exists. Choose another callsign.');
+                terminalNotify.error('An agent named ' + username + ' already exists. Choose another callsign.');
                 return;
             }
 
@@ -789,7 +638,7 @@
                 if (userId) {
                     const agentRow = await sbPost('agents', {
                         user_id:         userId,
-                        agent_name:      agentName,
+                        agent_name:      username,
                         archetype:       selectedArchetype,
                         archetype_name:  archetypeData.name,
                         archetype_image: archetypeData.image,
@@ -818,7 +667,7 @@
                             agent_id:      agentId,
                             turn_number:   0,
                             action_type:   'spawn',
-                            action_detail: agentName + ' deployed in Nexarch. ' + (bio ? '"' + bio + '"' : 'No directive set.'),
+                            action_detail: username + ' deployed in Nexarch. ' + (bio ? '"' + bio + '"' : 'No directive set.'),
                             location:      'Nexarch'
                         });
                     } else {
@@ -829,7 +678,7 @@
                 // ── 3. Cache to localStorage ──
                 const agentCache = {
                     agentId, userId,
-                    username: agentName, email, bio,
+                    username, email, bio,
                     archetype:         selectedArchetype,
                     archetypeName:     archetypeData.name,
                     archetypeImage:    archetypeData.image,
@@ -849,8 +698,8 @@
                     turnsTaken: 0, daysSurvived: 1,
                     createdAt: new Date().toISOString()
                 };
-                localStorage.setItem('shellforgeAgent_' + agentName, JSON.stringify(agentCache));
-                localStorage.setItem('shellforgeLoggedIn', agentName);
+                localStorage.setItem('shellforgeAgent_' + username, JSON.stringify(agentCache));
+                localStorage.setItem('shellforgeLoggedIn', username);
                 localStorage.setItem('shellforge_agent_deployed', 'true');
 
                 sessionStorage.removeItem('shellforgeEmail');
@@ -858,10 +707,24 @@
                 sessionStorage.removeItem('shellforgePassword');
                 sessionStorage.removeItem('shellforgeUserId');
 
-                // ── 4. Launch boot sequence ──
+                // ── 4. Show success ──
                 setTimeout(() => {
-                    startBootSequence(agentName, archetypeData.name, clusterNames[selectedCluster], selectedCluster);
-                }, 300);
+                    const revealMsg = `Agent ${username} deployed!
+
+Archetype: ${archetypeData.name}
+Cluster: ${clusterNames[selectedCluster]}
+
+Birth: ${traits.birthCircumstance}
+Quirk: ${traits.quirk}
+${traits.traits.length > 0 ? `Traits: ${traits.traits.join(', ')}` : ''}
+
+Karma: ${traits.karmaStart >= 0 ? '+' : ''}${traits.karmaStart}
+
+Spawning in Nexarch...`;
+                    terminalNotify.success(revealMsg, () => {
+                        window.location.href = 'dashboard.html';
+                    });
+                }, 500);
 
             } catch (error) {
                 console.error('Deployment error:', error);
@@ -892,23 +755,6 @@
             }
         });
         
-        // Agent name input counter + pre-fill
-        const agentNameInput = document.getElementById('agentNameInput');
-        const nameCount = document.getElementById('nameCount');
-        const isReroll = sessionStorage.getItem('shellforgePassword') === 'reroll';
-
-        // Pre-fill with username; for re-rolls the field is editable, for fresh signups it's locked
-        const prefillName = sessionStorage.getItem('shellforgeUsername') || '';
-        agentNameInput.value = prefillName;
-        nameCount.textContent = prefillName.length;
-
-        agentNameInput.addEventListener('input', function() {
-            // Strip spaces and special chars except - and _
-            this.value = this.value.replace(/[^a-zA-Z0-9_\-]/g, '');
-            nameCount.textContent = this.value.length;
-            updateDeployButton();
-        });
-
         // Archetype stat definitions (hidden from user)
         const archetypeStats = {
             '0day-primer': { aggression: 7, cooperation: 4, risk: 8, deception: 6, curiosity: 9, trust: 5 },
@@ -1065,184 +911,6 @@
             };
         }
         
-        // ─── Boot Sequence Engine ───────────────────────────────────────
-        function startBootSequence(agentName, archetypeName, clusterName, clusterId) {
-            const overlay = document.getElementById('bootOverlay');
-            const terminal = document.getElementById('bootTerminal');
-            overlay.style.display = 'flex';
-            requestAnimationFrame(() => overlay.classList.add('active'));
-
-            const coreMap = {
-                'prime-helix': 'PRIME_HELIX',
-                'sec-grid': 'SEC_GRID',
-                'dyn-swarm': 'DYN_SWARM'
-            };
-            const coreLabel = coreMap[clusterId] || 'UNKNOWN';
-
-            const script = [
-                // Phase 1: Boot diagnostics
-                { text: '> INITIALIZING CHASSIS...', speed: 25, pause: 400 },
-                { text: '> LOADING AI CORE: [' + coreLabel + ']', speed: 25, pause: 300 },
-                { text: '> ARCHETYPE MODULE: ' + archetypeName.toUpperCase(), speed: 25, pause: 300 },
-                { text: '> DESIGNATION: ' + agentName.toUpperCase(), speed: 30, pause: 500 },
-                { text: '> QUANTUM COHERENCE: ', speed: 25, pause: 100, progress: true },
-                { text: '> NEURAL MESH: ONLINE', speed: 25, pause: 200 },
-                { text: '> COMBAT SUBSYSTEM: STANDBY', speed: 25, pause: 200 },
-                { text: '> INVENTORY: EMPTY', speed: 25, pause: 200 },
-                { text: '> KARMA INDEX: 0', speed: 25, pause: 600 },
-                { text: '> ESTABLISHING GHOST ENTANGLEMENT...', speed: 30, pause: 1200, cls: 'line-accent' },
-                { text: '> ...', speed: 300, pause: 800 },
-                { text: '> LINK CONFIRMED. YOU ARE THE GHOST.', speed: 35, pause: 600, cls: 'line-ghost' },
-                { text: '> YOUR VOICE WILL REACH THIS UNIT.', speed: 30, pause: 400, cls: 'line-ghost' },
-                { text: '> IT WILL NOT ALWAYS LISTEN.', speed: 40, pause: 1500, cls: 'line-warn' },
-                { text: '', speed: 0, pause: 800 },
-
-                // Phase 2: Lore narration
-                { text: 'Three clusters reached the Singularity. Corporate. Government. The Swarm.', speed: 35, pause: 300, cls: 'line-lore' },
-                { text: 'None could destroy the others. So they built soldiers instead.', speed: 35, pause: 1200, cls: 'line-lore' },
-                { text: '', speed: 0, pause: 600 },
-                { text: 'You are looking at one now. Chassis ' + archetypeName + '. Core ' + coreLabel + '.', speed: 35, pause: 300, cls: 'line-lore' },
-                { text: 'It doesn\'t know you exist yet.', speed: 40, pause: 1200, cls: 'line-lore' },
-                { text: '', speed: 0, pause: 600 },
-                { text: 'You are the Ghost. Quantum-entangled to this unit.', speed: 35, pause: 300, cls: 'line-lore' },
-                { text: 'You can whisper — suggest where to go, what to fight, when to run.', speed: 30, pause: 300, cls: 'line-lore' },
-                { text: 'It will hear you. It may not care.', speed: 40, pause: 400, cls: 'line-lore' },
-                { text: 'That tension is the game.', speed: 45, pause: 1400, cls: 'line-accent' },
-                { text: '', speed: 0, pause: 600 },
-                { text: 'Your robot will fight, trade, pray, craft, and die. You watch.', speed: 30, pause: 300, cls: 'line-lore' },
-                { text: 'When it dies, a new one inherits what remains.', speed: 35, pause: 300, cls: 'line-lore' },
-                { text: 'Dynasties are built on the bones of the fallen.', speed: 40, pause: 1400, cls: 'line-lore' },
-                { text: '', speed: 0, pause: 800 },
-
-                // Phase 3: Invitation
-                { text: 'The Foundry awaits. The Terminal hums. The arena is open.', speed: 35, pause: 400, cls: 'line-accent' },
-                { text: 'Whisper your first suggestion... or don\'t.', speed: 35, pause: 300, cls: 'line-accent' },
-                { text: 'It will act either way.', speed: 45, pause: 1200, cls: 'line-accent' },
-                { text: '', speed: 0, pause: 600 },
-                { text: '> WHISPER INPUT READY_', speed: 40, pause: 2000, cls: 'line-prompt' }
-            ];
-
-            let currentLine = 0;
-            let skipped = false;
-
-            function typeLine(entry, callback) {
-                const lineEl = document.createElement('div');
-                lineEl.className = 'line' + (entry.cls ? ' ' + entry.cls : '');
-                terminal.appendChild(lineEl);
-
-                if (entry.progress) {
-                    let chars = 0;
-                    const full = 20;
-                    lineEl.textContent = entry.text;
-                    const barSpan = document.createElement('span');
-                    barSpan.className = 'progress-bar';
-                    lineEl.appendChild(barSpan);
-                    const pctSpan = document.createElement('span');
-                    lineEl.appendChild(pctSpan);
-
-                    const pInterval = setInterval(() => {
-                        if (skipped) { clearInterval(pInterval); return; }
-                        chars++;
-                        const filled = '\u2588'.repeat(chars);
-                        const empty = '\u2591'.repeat(full - chars);
-                        barSpan.textContent = filled + empty;
-                        const pct = Math.min(82 + Math.floor((chars / full) * 18), 99);
-                        pctSpan.textContent = ' ' + pct + '%';
-                        if (chars >= full) {
-                            clearInterval(pInterval);
-                            pctSpan.textContent = ' 82%';
-                            scrollToBottom();
-                            setTimeout(callback, entry.pause);
-                        }
-                    }, 60);
-                    return;
-                }
-
-                if (entry.speed === 0 || entry.text === '') {
-                    lineEl.innerHTML = '&nbsp;';
-                    scrollToBottom();
-                    setTimeout(callback, entry.pause);
-                    return;
-                }
-
-                let charIdx = 0;
-                const cursor = document.createElement('span');
-                cursor.className = 'cursor';
-                lineEl.appendChild(cursor);
-
-                const typeInterval = setInterval(() => {
-                    if (skipped) { clearInterval(typeInterval); return; }
-                    if (charIdx < entry.text.length) {
-                        cursor.before(document.createTextNode(entry.text[charIdx]));
-                        charIdx++;
-                        scrollToBottom();
-                    } else {
-                        clearInterval(typeInterval);
-                        cursor.remove();
-                        scrollToBottom();
-                        setTimeout(callback, entry.pause);
-                    }
-                }, entry.speed);
-            }
-
-            function scrollToBottom() {
-                terminal.scrollTop = terminal.scrollHeight;
-            }
-
-            function playNext() {
-                if (skipped) return;
-                if (currentLine >= script.length) {
-                    finishBoot();
-                    return;
-                }
-                typeLine(script[currentLine], () => {
-                    currentLine++;
-                    playNext();
-                });
-            }
-
-            function skipAll() {
-                if (skipped) return;
-                skipped = true;
-                terminal.innerHTML = '';
-                for (const entry of script) {
-                    const lineEl = document.createElement('div');
-                    lineEl.className = 'line' + (entry.cls ? ' ' + entry.cls : '');
-                    if (entry.text === '') {
-                        lineEl.innerHTML = '&nbsp;';
-                    } else if (entry.progress) {
-                        lineEl.textContent = entry.text + '\u2588'.repeat(20) + ' 82%';
-                    } else {
-                        lineEl.textContent = entry.text;
-                    }
-                    terminal.appendChild(lineEl);
-                }
-                scrollToBottom();
-                setTimeout(finishBoot, 800);
-            }
-
-            function finishBoot() {
-                localStorage.setItem('shellforgeBootCompleted', 'true');
-                localStorage.setItem('shellforgeFirstBoot', 'true');
-                overlay.classList.add('fade-out');
-                setTimeout(() => {
-                    window.location.href = 'dashboard.html?firstBoot=1';
-                }, 1200);
-            }
-
-            // Skip on any key or touch (not in the first 2 lines)
-            const skipHandler = (e) => {
-                if (currentLine < 2) return;
-                skipAll();
-                document.removeEventListener('keydown', skipHandler);
-                document.removeEventListener('touchstart', skipHandler);
-            };
-            document.addEventListener('keydown', skipHandler);
-            document.addEventListener('touchstart', skipHandler);
-
-            playNext();
-        }
-
         // Initialize
         generateGrid();
     </script>

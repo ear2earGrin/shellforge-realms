@@ -249,40 +249,15 @@
             background: rgba(74,222,128,0.1);
             border-color: rgba(74,222,128,0.4);
         }
-        .agent-pick-row.dead {
-            opacity: 0.6;
-            border-color: rgba(255,0,68,0.25);
-        }
-        .agent-pick-row.dead:hover {
-            opacity: 0.85;
-            border-color: rgba(255,0,68,0.5);
-        }
-        .agent-pick-pip {
-            width: 8px; height: 8px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
+        .agent-pick-row.dead { opacity: 0.6; border-color: rgba(255,0,68,0.25); }
+        .agent-pick-row.dead:hover { opacity: 0.85; border-color: rgba(255,0,68,0.5); }
+        .agent-pick-pip { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
         .agent-pick-pip.alive { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
         .agent-pick-pip.dead  { background: #ff0044; box-shadow: 0 0 6px #ff0044; }
         .agent-pick-info { flex: 1; }
-        .agent-pick-name {
-            font-family: var(--font-main);
-            font-size: 0.95rem;
-            color: var(--color-text);
-        }
-        .agent-pick-meta {
-            font-family: var(--font-main);
-            font-size: 0.65rem;
-            color: var(--color-text-dim);
-            margin-top: 2px;
-        }
-        .agent-pick-tag {
-            font-family: var(--font-main);
-            font-size: 0.6rem;
-            letter-spacing: 0.08em;
-            padding: 2px 8px;
-            border-radius: 4px;
-        }
+        .agent-pick-name { font-family: var(--font-main); font-size: 0.95rem; color: var(--color-text); }
+        .agent-pick-meta { font-family: var(--font-main); font-size: 0.65rem; color: var(--color-text-dim); margin-top: 2px; }
+        .agent-pick-tag { font-family: var(--font-main); font-size: 0.6rem; letter-spacing: 0.08em; padding: 2px 8px; border-radius: 4px; }
         .agent-pick-tag.alive { color: #4ade80; border: 1px solid rgba(74,222,128,0.3); }
         .agent-pick-tag.dead  { color: #ff0044; border: 1px solid rgba(255,0,68,0.3); }
 
@@ -408,8 +383,6 @@
                     const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0enJ4c2NkbHFkZ2RpZWZzbXJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2OTI4MjcsImV4cCI6MjA4OTI2ODgyN30.dLheIKz9anuM58O3Ebsr2rVCOGA-xBGRD9voiXNvIcg';
                     try {
                         const SB_HDRS = { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON };
-
-                        // Resolve user_id — try agent_name first, then users.username
                         let userId = null;
                         let allAgents = [];
 
@@ -422,7 +395,6 @@
                             const rows = await r.json();
                             if (rows && rows.length > 0) userId = rows[0].user_id;
                         }
-
                         // Also try by account username
                         if (!userId) {
                             const ur = await fetch(
@@ -434,7 +406,6 @@
                                 if (users && users.length > 0) userId = users[0].user_id;
                             }
                         }
-
                         // Fetch all agents for this user
                         if (userId) {
                             const ar = await fetch(
@@ -443,17 +414,13 @@
                             );
                             if (ar.ok) allAgents = await ar.json();
                         }
-
                         if (allAgents.length === 1) {
-                            // Single agent — go straight to dashboard
                             localStorage.setItem('shellforgeLoggedIn', allAgents[0].agent_name);
                             localStorage.setItem('shellforgeAgentId', allAgents[0].agent_id);
                             window.location.href = 'dashboard.html';
                             return;
                         }
-
                         if (allAgents.length > 1) {
-                            // Multiple agents — show picker
                             showAgentPicker(allAgents);
                             submitBtn.disabled = false;
                             submitBtn.textContent = 'Login';
@@ -487,23 +454,18 @@
             var picker = document.getElementById('agentPicker');
             var list = document.getElementById('agentPickList');
             var form = document.getElementById('loginForm');
-
-            // Hide form fields, show picker
             form.style.display = 'none';
             picker.classList.add('show');
-
             list.innerHTML = '';
             agents.forEach(function(a) {
                 var dead = a.is_alive === false;
                 var row = document.createElement('div');
                 row.className = 'agent-pick-row' + (dead ? ' dead' : '');
-
                 var meta = (a.archetype_name || 'Unknown') + ' · ' + (a.location || '—');
                 if (dead && a.died_at) {
                     var d = new Date(a.died_at.endsWith('Z') ? a.died_at : a.died_at + 'Z');
                     meta += ' · died ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                 }
-
                 row.innerHTML = ''
                     + '<div class="agent-pick-pip ' + (dead ? 'dead' : 'alive') + '"></div>'
                     + '<div class="agent-pick-info">'
@@ -511,19 +473,14 @@
                     +   '<div class="agent-pick-meta">' + meta + '</div>'
                     + '</div>'
                     + '<div class="agent-pick-tag ' + (dead ? 'dead' : 'alive') + '">'
-                    +   (dead ? 'TERMINATED' : 'ACTIVE')
-                    + '</div>';
-
+                    +   (dead ? 'TERMINATED' : 'ACTIVE') + '</div>';
                 row.addEventListener('click', function() {
                     localStorage.setItem('shellforgeLoggedIn', a.agent_name);
                     localStorage.setItem('shellforgeAgentId', a.agent_id);
                     window.location.href = 'dashboard.html';
                 });
-
                 list.appendChild(row);
             });
-
-            // Add "back" link
             var backRow = document.createElement('div');
             backRow.style.cssText = 'text-align:center;margin-top:12px;';
             backRow.innerHTML = '<a href="#" style="color:var(--color-text-dim);font-size:0.75rem;font-family:var(--font-main);" onclick="document.getElementById(\'loginForm\').style.display=\'\';document.getElementById(\'agentPicker\').classList.remove(\'show\');return false;">← Back to login</a>';
