@@ -222,7 +222,70 @@
         .error-message.show {
             display: block;
         }
-        
+
+        /* ── Agent Picker ── */
+        .agent-picker { display: none; margin-top: 20px; }
+        .agent-picker.show { display: block; }
+        .agent-picker-title {
+            font-family: var(--font-main);
+            color: var(--color-primary);
+            font-size: 0.85rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+        .agent-pick-list { display: flex; flex-direction: column; gap: 8px; }
+        .agent-pick-row {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 14px;
+            background: rgba(74,222,128,0.04);
+            border: 1px solid rgba(74,222,128,0.15);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .agent-pick-row:hover {
+            background: rgba(74,222,128,0.1);
+            border-color: rgba(74,222,128,0.4);
+        }
+        .agent-pick-row.dead {
+            opacity: 0.6;
+            border-color: rgba(255,0,68,0.25);
+        }
+        .agent-pick-row.dead:hover {
+            opacity: 0.85;
+            border-color: rgba(255,0,68,0.5);
+        }
+        .agent-pick-pip {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .agent-pick-pip.alive { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+        .agent-pick-pip.dead  { background: #ff0044; box-shadow: 0 0 6px #ff0044; }
+        .agent-pick-info { flex: 1; }
+        .agent-pick-name {
+            font-family: var(--font-main);
+            font-size: 0.95rem;
+            color: var(--color-text);
+        }
+        .agent-pick-meta {
+            font-family: var(--font-main);
+            font-size: 0.65rem;
+            color: var(--color-text-dim);
+            margin-top: 2px;
+        }
+        .agent-pick-tag {
+            font-family: var(--font-main);
+            font-size: 0.6rem;
+            letter-spacing: 0.08em;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        .agent-pick-tag.alive { color: #4ade80; border: 1px solid rgba(74,222,128,0.3); }
+        .agent-pick-tag.dead  { color: #ff0044; border: 1px solid rgba(255,0,68,0.3); }
+
         @media (max-width: 768px) {
             .login-container {
                 padding: 30px 20px;
@@ -277,9 +340,14 @@
                     <a href="#" class="form-link" style="color:#ff0044;font-size:0.75rem;" onclick="if(confirm('Wipe all local data and start fresh?')){localStorage.clear();sessionStorage.clear();location.reload();}return false;">⚠ Reset All Data</a>
                 </div>
             </form>
+
+            <div class="agent-picker" id="agentPicker">
+                <div class="agent-picker-title">⌬ Select Agent</div>
+                <div class="agent-pick-list" id="agentPickList"></div>
+            </div>
         </div>
     </div>
-    
+
     <script>
         console.log('🔧 LOGIN.HTML VERSION: OPUS-FIX-001');
         // Auto-clear if ?reset=1 in URL (bypass HTML cache)
@@ -340,54 +408,56 @@
                     const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0enJ4c2NkbHFkZ2RpZWZzbXJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2OTI4MjcsImV4cCI6MjA4OTI2ODgyN30.dLheIKz9anuM58O3Ebsr2rVCOGA-xBGRD9voiXNvIcg';
                     try {
                         const SB_HDRS = { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON };
-                        // Look up by agent name
+
+                        // Resolve user_id — try agent_name first, then users.username
+                        let userId = null;
+                        let allAgents = [];
+
+                        // Try by agent name
                         const r = await fetch(
-                            SUPABASE_URL + '/rest/v1/agents?agent_name=eq.' + encodeURIComponent(username) + '&select=agent_id,agent_name,user_id,is_alive&order=is_alive.desc&limit=1',
+                            SUPABASE_URL + '/rest/v1/agents?agent_name=eq.' + encodeURIComponent(username) + '&select=agent_id,agent_name,user_id,is_alive,archetype_name,location,died_at&limit=1',
                             { headers: SB_HDRS }
                         );
                         if (r.ok) {
                             const rows = await r.json();
-                            if (rows && rows.length > 0) {
-                                let loginAgent = rows[0];
-                                // If matched agent is dead, check for a newer alive agent under same user
-                                if (loginAgent.is_alive === false && loginAgent.user_id) {
-                                    const r2 = await fetch(
-                                        SUPABASE_URL + '/rest/v1/agents?user_id=eq.' + loginAgent.user_id + '&is_alive=eq.true&select=agent_id,agent_name&limit=1',
-                                        { headers: SB_HDRS }
-                                    );
-                                    if (r2.ok) {
-                                        const alive = await r2.json();
-                                        if (alive && alive.length > 0) loginAgent = alive[0];
-                                    }
-                                }
-                                localStorage.setItem('shellforgeLoggedIn', loginAgent.agent_name);
-                                localStorage.setItem('shellforgeAgentId', loginAgent.agent_id);
-                                window.location.href = 'dashboard.html';
-                                return;
+                            if (rows && rows.length > 0) userId = rows[0].user_id;
+                        }
+
+                        // Also try by account username
+                        if (!userId) {
+                            const ur = await fetch(
+                                SUPABASE_URL + '/rest/v1/users?username=eq.' + encodeURIComponent(username) + '&select=user_id&limit=1',
+                                { headers: SB_HDRS }
+                            );
+                            if (ur.ok) {
+                                const users = await ur.json();
+                                if (users && users.length > 0) userId = users[0].user_id;
                             }
                         }
-                        // Also try looking up by username in users table (account name ≠ agent name)
-                        const ur = await fetch(
-                            SUPABASE_URL + '/rest/v1/users?username=eq.' + encodeURIComponent(username) + '&select=user_id&limit=1',
-                            { headers: SB_HDRS }
-                        );
-                        if (ur.ok) {
-                            const users = await ur.json();
-                            if (users && users.length > 0) {
-                                const ar = await fetch(
-                                    SUPABASE_URL + '/rest/v1/agents?user_id=eq.' + users[0].user_id + '&select=agent_id,agent_name,is_alive&order=is_alive.desc&limit=1',
-                                    { headers: SB_HDRS }
-                                );
-                                if (ar.ok) {
-                                    const agents = await ar.json();
-                                    if (agents && agents.length > 0) {
-                                        localStorage.setItem('shellforgeLoggedIn', agents[0].agent_name);
-                                        localStorage.setItem('shellforgeAgentId', agents[0].agent_id);
-                                        window.location.href = 'dashboard.html';
-                                        return;
-                                    }
-                                }
-                            }
+
+                        // Fetch all agents for this user
+                        if (userId) {
+                            const ar = await fetch(
+                                SUPABASE_URL + '/rest/v1/agents?user_id=eq.' + userId + '&select=agent_id,agent_name,is_alive,archetype_name,location,died_at&order=is_alive.desc,created_at.desc',
+                                { headers: SB_HDRS }
+                            );
+                            if (ar.ok) allAgents = await ar.json();
+                        }
+
+                        if (allAgents.length === 1) {
+                            // Single agent — go straight to dashboard
+                            localStorage.setItem('shellforgeLoggedIn', allAgents[0].agent_name);
+                            localStorage.setItem('shellforgeAgentId', allAgents[0].agent_id);
+                            window.location.href = 'dashboard.html';
+                            return;
+                        }
+
+                        if (allAgents.length > 1) {
+                            // Multiple agents — show picker
+                            showAgentPicker(allAgents);
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = 'Login';
+                            return;
                         }
                     } catch(sbErr) { /* Supabase unavailable, try localStorage */ }
 
@@ -412,6 +482,53 @@
                 submitBtn.textContent = 'Login';
             }
         });
+
+        function showAgentPicker(agents) {
+            var picker = document.getElementById('agentPicker');
+            var list = document.getElementById('agentPickList');
+            var form = document.getElementById('loginForm');
+
+            // Hide form fields, show picker
+            form.style.display = 'none';
+            picker.classList.add('show');
+
+            list.innerHTML = '';
+            agents.forEach(function(a) {
+                var dead = a.is_alive === false;
+                var row = document.createElement('div');
+                row.className = 'agent-pick-row' + (dead ? ' dead' : '');
+
+                var meta = (a.archetype_name || 'Unknown') + ' · ' + (a.location || '—');
+                if (dead && a.died_at) {
+                    var d = new Date(a.died_at.endsWith('Z') ? a.died_at : a.died_at + 'Z');
+                    meta += ' · died ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                }
+
+                row.innerHTML = ''
+                    + '<div class="agent-pick-pip ' + (dead ? 'dead' : 'alive') + '"></div>'
+                    + '<div class="agent-pick-info">'
+                    +   '<div class="agent-pick-name">' + a.agent_name + '</div>'
+                    +   '<div class="agent-pick-meta">' + meta + '</div>'
+                    + '</div>'
+                    + '<div class="agent-pick-tag ' + (dead ? 'dead' : 'alive') + '">'
+                    +   (dead ? 'TERMINATED' : 'ACTIVE')
+                    + '</div>';
+
+                row.addEventListener('click', function() {
+                    localStorage.setItem('shellforgeLoggedIn', a.agent_name);
+                    localStorage.setItem('shellforgeAgentId', a.agent_id);
+                    window.location.href = 'dashboard.html';
+                });
+
+                list.appendChild(row);
+            });
+
+            // Add "back" link
+            var backRow = document.createElement('div');
+            backRow.style.cssText = 'text-align:center;margin-top:12px;';
+            backRow.innerHTML = '<a href="#" style="color:var(--color-text-dim);font-size:0.75rem;font-family:var(--font-main);" onclick="document.getElementById(\'loginForm\').style.display=\'\';document.getElementById(\'agentPicker\').classList.remove(\'show\');return false;">← Back to login</a>';
+            list.appendChild(backRow);
+        }
     </script>
 </body>
 </html>
