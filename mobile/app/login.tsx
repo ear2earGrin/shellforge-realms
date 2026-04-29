@@ -9,6 +9,7 @@ import {
   Platform,
   Alert,
 } from "react-native";
+import * as AppleAuthentication from "expo-apple-authentication";
 import { supabase } from "../lib/supabase";
 import { colors, spacing } from "../lib/theme";
 
@@ -30,6 +31,38 @@ export default function LoginScreen() {
     setLoading(false);
     if (error) {
       Alert.alert("Sign In Failed", error.message);
+    }
+  }
+
+  async function signInWithApple() {
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      if (!credential.identityToken) {
+        Alert.alert("Error", "No identity token received from Apple");
+        return;
+      }
+
+      setLoading(true);
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: "apple",
+        token: credential.identityToken,
+      });
+      setLoading(false);
+
+      if (error) {
+        Alert.alert("Apple Sign In Failed", error.message);
+      }
+    } catch (e: unknown) {
+      const err = e as { code?: string };
+      if (err.code !== "ERR_REQUEST_CANCELED") {
+        Alert.alert("Error", "Apple Sign In failed. Try email instead.");
+      }
     }
   }
 
@@ -78,6 +111,24 @@ export default function LoginScreen() {
               {loading ? "AUTHENTICATING..." : "CONNECT"}
             </Text>
           </TouchableOpacity>
+
+          {Platform.OS === "ios" && (
+            <>
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>OR</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+                cornerRadius={8}
+                style={styles.appleBtn}
+                onPress={signInWithApple}
+              />
+            </>
+          )}
         </View>
 
         <Text style={styles.footer}>
@@ -160,6 +211,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "800",
     letterSpacing: 2,
+  },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 20,
+    marginBottom: 4,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  dividerText: {
+    color: colors.textMuted,
+    fontSize: 11,
+    letterSpacing: 2,
+    marginHorizontal: 12,
+  },
+  appleBtn: {
+    width: "100%" as unknown as number,
+    height: 50,
   },
   footer: {
     textAlign: "center",

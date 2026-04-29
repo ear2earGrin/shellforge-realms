@@ -8,10 +8,12 @@ import {
   TouchableOpacity,
   Alert,
 } from "react-native";
+import { router } from "expo-router";
 import { supabase } from "../../lib/supabase";
 import { colors, spacing } from "../../lib/theme";
 import type { Agent, InventoryItem } from "../../lib/types";
 import { StatBar } from "../../components/StatBar";
+import { useAppRefresh } from "../../lib/useAppRefresh";
 
 export default function AgentScreen() {
   const [agent, setAgent] = useState<Agent | null>(null);
@@ -79,13 +81,19 @@ export default function AgentScreen() {
     );
   }
 
+  useAppRefresh(useCallback(() => { fetchAgent(); }, [fetchAgent]));
+
   if (!agent) {
     return (
       <View style={styles.center}>
         <Text style={styles.noAgentTitle}>NO AGENT DETECTED</Text>
-        <Text style={styles.noAgentSub}>
-          Create an agent at shellforge.com to begin
-        </Text>
+        <Text style={styles.noAgentSub}>Deploy your first agent to begin</Text>
+        <TouchableOpacity
+          style={styles.createBtn}
+          onPress={() => router.push("/create-agent")}
+        >
+          <Text style={styles.createBtnText}>DEPLOY AGENT</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -240,6 +248,19 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 13,
     marginTop: 8,
+  },
+  createBtn: {
+    marginTop: 20,
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+  },
+  createBtnText: {
+    color: colors.bg,
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 2,
   },
   header: {
     padding: spacing.lg,

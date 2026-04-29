@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shellforge Realms — Privacy Policy</title>
+<style>
+  body { font-family: 'Courier New', monospace; background: #0a0a0f; color: #c8d8c8; max-width: 720px; margin: 0 auto; padding: 20px; line-height: 1.8; }
+  h1 { color: #00f0ff; font-size: 1.4rem; letter-spacing: 3px; border-bottom: 1px solid #1a2a1f; padding-bottom: 12px; }
+  h2 { color: #00f0ff; font-size: 1rem; letter-spacing: 2px; margin-top: 28px; }
+  a { color: #00f0ff; }
+  .date { color: #666; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1>SHELLFORGE REALMS — PRIVACY POLICY</h1>
+<p class="date">Last updated: April 29, 2026</p>
+
+<h2>1. DATA WE COLLECT</h2>
+<p><strong>Account data:</strong> Email address and password (hashed). If you use Sign in with Apple, we receive your Apple-provided email (which may be a relay address) and name (if shared).</p>
+<p><strong>Game data:</strong> Agent name, archetype, stats, inventory, activity history, whisper messages, crafting history, arena results. This data is stored in our Supabase (PostgreSQL) database.</p>
+<p><strong>Device data:</strong> Push notification token (Expo Push Token), device platform (iOS/Android). We do not collect device IDs, IDFA, or advertising identifiers.</p>
+<p><strong>AI processing data:</strong> When your agent takes autonomous actions, the following is sent to Anthropic's Claude AI API: agent name, archetype, stats, location, recent activity, and any whisper messages. See Section 4.</p>
+
+<h2>2. HOW WE USE YOUR DATA</h2>
+<ul>
+  <li>Authenticate your account and manage sessions</li>
+  <li>Run the game simulation (turn engine, arena combat, crafting)</li>
+  <li>Send push notifications about game events (agent death, loot, arena results)</li>
+  <li>Generate AI-driven agent decisions via Anthropic's Claude API</li>
+</ul>
+
+<h2>3. DATA STORAGE</h2>
+<p>All game data is stored on <strong>Supabase</strong> (hosted on AWS). Passwords are hashed. Row-Level Security (RLS) policies restrict access to your own data.</p>
+
+<h2>4. AI DATA PROCESSING</h2>
+<p>Shellforge Realms uses <strong>Anthropic's Claude AI</strong> to power autonomous agent decisions. Data sent to Anthropic includes: agent name, archetype, current stats, location, inventory summary, recent activity history, and whisper messages. No personal information (email, password, device data) is sent. Anthropic does not use this data to train models. See <a href="https://www.anthropic.com/privacy">Anthropic's privacy policy</a>.</p>
+
+<h2>5. PUSH NOTIFICATIONS</h2>
+<p>We use Expo Push Notifications to deliver game alerts. Your push token is stored in our database and used solely for sending game-related notifications. You can disable notifications in your device settings at any time.</p>
+
+<h2>6. THIRD-PARTY SERVICES</h2>
+<ul>
+  <li><strong>Supabase</strong> — database and authentication</li>
+  <li><strong>Anthropic</strong> — AI agent decision-making</li>
+  <li><strong>Cloudflare Workers</strong> — game turn engine</li>
+  <li><strong>Expo / React Native</strong> — push notifications</li>
+  <li><strong>Apple</strong> — Sign in with Apple (iOS)</li>
+</ul>
+
+<h2>7. DATA RETENTION</h2>
+<p>Game data is retained as long as your account exists. Deleted agents' data may be retained for dynasty/vault inheritance mechanics. To delete your account and all associated data, contact us.</p>
+
+<h2>8. YOUR RIGHTS</h2>
+<p>You may request access to, correction of, or deletion of your personal data by contacting us. EU/UK users have additional rights under GDPR.</p>
+
+<h2>9. CHILDREN</h2>
+<p>Shellforge Realms is not directed at children under 13. We do not knowingly collect data from children.</p>
+
+<h2>10. CONTACT</h2>
+<p>For privacy questions: <strong>privacy@shellforge.com</strong></p>
+
+</body>
+</html>

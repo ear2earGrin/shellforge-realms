@@ -603,6 +603,37 @@ const ARCHETYPE_GUIDANCE = {
   'morph-layer': `You are a hacker and shapeshifter — you adapt to whatever the situation demands. Low on health? You become cautious. Flush with $SHELL? You become bold. In a dangerous zone? You find the exploit. You don't have a "default" behavior — you read the situation and transform. You're drawn to crafting (self-improvement), exploration (finding new tools), and the arena (testing your adaptations). Your weakness: you have no fixed identity — you can seem erratic, switching strategies so often that you never master any single approach.`,
 };
 
+// ─── Push Notifications via Expo Push API ───────────────────────────────────
+// Sends a push notification to all tokens associated with a user.
+// Looks up push_tokens table by user_id (derived from agent's user_id).
+async function sendPushToAgent(agentUserId, title, body, supabaseHeaders, SUPABASE_URL) {
+  try {
+    const tokensRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/push_tokens?user_id=eq.${agentUserId}&select=token`,
+      { headers: supabaseHeaders },
+    );
+    if (!tokensRes.ok) return;
+    const tokens = await tokensRes.json();
+    if (!tokens.length) return;
+
+    const messages = tokens.map(t => ({
+      to: t.token,
+      sound: 'default',
+      title,
+      body,
+      data: { type: 'game_event' },
+    }));
+
+    await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(messages),
+    });
+  } catch (err) {
+    console.error('[sendPush] failed:', err.message);
+  }
+}
+
 export default {
   // Cron trigger
   async scheduled(event, env, ctx) {
@@ -775,6 +806,7 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
         }),
       });
       console.log(`☠ ${agent.agent_name} died from environmental hazards in ${agent.location}`);
+      await sendPushToAgent(agent.user_id, `${agent.agent_name} has fallen`, `Killed by ${agent.location} environment. Deploy a new agent to continue.`, supabaseHeaders, SUPABASE_URL);
       return;
     }
   }
@@ -1172,6 +1204,9 @@ Respond with JSON only — no markdown, no commentary:
           lootInserted = true;
           lootDrop = { id: aiItem.id, name: aiItem.name, rarity: aiItem.rarity, ai: true };
           console.log(`[${agent.agent_name}] AI loot: ${aiItem.name} (${aiItem.rarity}) [${aiItem.traits.join(',')}]`);
+          if (aiItem.rarity === 'rare') {
+            await sendPushToAgent(agent.user_id, 'Rare item found!', `${agent.agent_name} discovered: ${aiItem.name}`, supabaseHeaders, SUPABASE_URL);
+          }
         } else {
           console.error(`[${agent.agent_name}] AI item insert FAILED for ${aiItem.name} — falling back to loot table`);
         }
@@ -1587,6 +1622,14 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
     `[ARENA] ${winner.agent_name} wins! ${loser.agent_name} hp=${loserHP}. ` +
     (loserIsAlive ? 'Alive.' : 'DEAD — death flow triggered.'),
   );
+
+  // Push notifications for arena results
+  await sendPushToAgent(winner.user_id, 'Arena Victory!', `${winner.agent_name} defeated ${loser.agent_name}. +${shellPrize} $SHELL`, supabaseHeaders, SUPABASE_URL);
+  if (!loserIsAlive) {
+    await sendPushToAgent(loser.user_id, `${loser.agent_name} has fallen`, `Killed in the arena by ${winner.agent_name}. Deploy a new agent.`, supabaseHeaders, SUPABASE_URL);
+  } else {
+    await sendPushToAgent(loser.user_id, 'Arena Defeat', `${loser.agent_name} lost to ${winner.agent_name}. HP: ${loserHP}`, supabaseHeaders, SUPABASE_URL);
+  }
 
   return { winnerId: winner.agent_id, loserId: loser.agent_id, loserIsAlive };
 }
