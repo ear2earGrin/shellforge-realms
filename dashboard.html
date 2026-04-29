@@ -5292,9 +5292,19 @@
                 this.style.cursor = 'not-allowed';
             });
 
-            // New Agent button — wipe old agent flag and redirect
+            // New Agent button — wipe old agent flag and re-seed session for agent-creator
             document.getElementById('deathNewAgentBtn').addEventListener('click', function() {
+                var username = localStorage.getItem('shellforgeLoggedIn') || '';
+                var cachedAgent = username ? localStorage.getItem('shellforgeAgent_' + username) : null;
+                var email = '';
+                if (cachedAgent) { try { email = JSON.parse(cachedAgent).email || ''; } catch(e){} }
+                // agent-creator checks sessionStorage for these — re-populate so it doesn't 404
+                sessionStorage.setItem('shellforgeUsername', username);
+                sessionStorage.setItem('shellforgeEmail', email || username + '@shellforge.local');
+                sessionStorage.setItem('shellforgePassword', 'reroll');
+                // Clear old agent data so creator allows a fresh one
                 localStorage.removeItem('shellforge_agent_deployed');
+                if (username) localStorage.removeItem('shellforgeAgent_' + username);
                 window.location.href = 'agent-creator.html';
             });
 

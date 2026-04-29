@@ -1,6 +1,6 @@
 # SHELLFORGE — Bestiary
 
-> Reference for all hostile creatures. 15 arena beasts (capturable, transportable) + 5 world bosses (location-bound, untransportable).
+> Reference for all hostile creatures. 15 arena beasts (capturable, transportable) + 10 world beasts (wild roamers) + 5 world bosses (location-bound, untransportable). 30 total.
 > Last updated: 2026-04-25
 
 ---
@@ -96,11 +96,72 @@ Encountered in the wild, **not the arena** — too big, too rooted, or too non-p
 
 ---
 
+## WORLD BEASTS (10)
+
+Roaming creatures encountered in the wild — not arena-capturable, not location-bound like bosses. Mid-game tier encounters found across various zones.
+
+### Uncommon
+
+**1. Molt Leech** *(wb-molt-leech.jpg)*
+**Location:** Wetland Ducts
+> A segmented leech-like machine that sheds and regrows armor plating mid-combat.
+> **Traits:** parasitic, regeneration
+
+**2. Archive Golem** *(wb-archive-golem.jpg)*
+**Location:** Data Ruins
+> A lumbering construct built from compacted server racks and fossilized data banks.
+> **Traits:** heavy, data_shield
+
+**3. Mesa Crawler** *(wb-mesa-crawler.jpg)*
+**Location:** Silicon Flats
+> A flat-bodied crawler that blends into the silicon mesa floor and strikes from below.
+> **Traits:** burrowing, ambush
+
+**4. Datawraith** *(wb-datawraith.jpg)*
+**Location:** Corrupted Archives
+> A spectral construct woven from corrupted data streams, barely visible in dim light.
+> **Traits:** data_drain, incorporeal
+
+**5. Drone Hound** *(wb-drone-hound.jpg)*
+**Location:** Scrapyard Perimeter
+> A decommissioned patrol drone running on feral subroutines, hunting in packs.
+> **Traits:** pack_tactics, patrol
+
+### Rare
+
+**6. Null-Spawn** *(wb-null-spawn.jpg)*
+**Location:** Void Margins
+> A flickering entity that phases in and out of existence, born from corrupted null-space.
+> **Traits:** phase_shift, null_aura
+
+**7. Sigma Beast** *(wb-sigma-beast.jpg)*
+**Location:** Signal Wastes
+> A massive signal-eating predator that disrupts all nearby electronics with its roar.
+> **Traits:** signal_jam, enrage
+
+**8. Temporal Echo** *(wb-temporal-echo.jpg)*
+**Location:** Chrono Drift
+> A ghostly duplicate left behind by a time anomaly — fights with delayed mirror attacks.
+> **Traits:** afterimage, time_slip
+
+**9. The Rendered** *(wb-the-rendered.jpg)*
+**Location:** Pixel Barrens
+> A half-rendered creature — parts of its body visibly incomplete, polygons exposed.
+> **Traits:** glitch_form, unfinished
+
+**10. Void Walker** *(wb-void-walker.jpg)*
+**Location:** Deep Null Zone
+> A tall silent figure that walks between dimensional tears, trailing darkness.
+> **Traits:** void_step, dark_vision
+
+---
+
 ## File Naming
 
 | Type | Filename | Folder |
 |------|----------|--------|
 | Arena beasts | `npc-<slug>.jpg` | `images/npcs/` |
+| World beasts | `wb-<slug>.jpg` | `images/world-beasts/` |
 | World bosses | `boss-<slug>.jpg` | `images/bosses/` |
 
 Standard 1024×1024 source, auto-cropped to 256×256 for in-game display.

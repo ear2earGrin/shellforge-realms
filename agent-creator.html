@@ -709,14 +709,10 @@
                 return;
             }
 
-            // Check duplicate — Supabase first, then localStorage
-            const sbCheck = await sbGet('agents', 'agent_name=eq.' + encodeURIComponent(username) + '&select=agent_id&limit=1');
+            // Check duplicate — only block if a living agent with this name exists
+            const sbCheck = await sbGet('agents', 'agent_name=eq.' + encodeURIComponent(username) + '&is_alive=eq.true&select=agent_id&limit=1');
             if (sbCheck && sbCheck.length > 0) {
                 terminalNotify.error('An agent named ' + username + ' already exists. One agent per account.');
-                return;
-            }
-            if (localStorage.getItem('shellforgeAgent_' + username)) {
-                terminalNotify.error('Agent limit: 1 per account. Username already taken.');
                 return;
             }
 

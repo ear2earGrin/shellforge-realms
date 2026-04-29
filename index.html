@@ -1536,6 +1536,9 @@
                 '0x11233':  '#38bdf8',
             };
 
+            // Agent ID → name cache for death story lookups
+            var agentCache = {};
+
             // Death story tooltip
             var deathTip = document.createElement('div');
             deathTip.className = 'death-tooltip';
@@ -1582,10 +1585,13 @@
 
                 try {
                     // 1. Check combat_matches first — PvP kills are the most specific
-                    var cmR = await fetch(SB_URL + '/rest/v1/combat_matches?or=(agent_a.eq.' + agentId + ',agent_b.eq.' + agentId + ')&status=eq.resolved&select=agent_a,agent_b,winner_agent_id,resolved_at&order=resolved_at.desc&limit=1', { headers: SB_HDRS });
+                    var cmR = await fetch(SB_URL + '/rest/v1/combat_matches?or=(agent_a.eq.' + agentId + ',agent_b.eq.' + agentId + ')&status=eq.resolved&select=agent_a,agent_b,winner_agent_id,opponent_data,resolved_at&order=resolved_at.desc&limit=1', { headers: SB_HDRS });
                     var cms = cmR.ok ? await cmR.json() : [];
                     if (cms.length && cms[0].winner_agent_id && cms[0].winner_agent_id !== agentId) {
-                        var killerName = agentCache[cms[0].winner_agent_id] || cms[0].winner_agent_id.slice(0, 8);
+                        var winnerId = cms[0].winner_agent_id;
+                        var killerName = agentCache[winnerId]
+                            || (winnerId.startsWith('npc_') && cms[0].opponent_data ? cms[0].opponent_data.name || 'an Arena creature' : null)
+                            || winnerId.slice(0, 8);
                         var html = '<div class="death-tip-title">☠ ' + agentName + '</div>'
                             + '<div class="death-tip-story">Killed by ' + killerName + ' in the Arena.</div>'
                             + '<div class="death-tip-time">' + fmtWhen(cms[0].resolved_at) + '</div>';
@@ -1595,13 +1601,12 @@
                     }
 
                     // 2. Check arena_matches (turn engine auto-arena)
-                    var ar = await fetch(SB_URL + '/rest/v1/arena_matches?or=(agent1_id.eq.' + agentId + ',agent2_id.eq.' + agentId + ')&status=eq.complete&select=agent1_id,agent2_id,winner_id,total_rounds,ended_at&order=ended_at.desc&limit=1', { headers: SB_HDRS });
+                    var ar = await fetch(SB_URL + '/rest/v1/arena_matches?or=(agent1_id.eq.' + agentId + ',agent2_id.eq.' + agentId + ')&status=eq.complete&select=agent1_id,agent2_id,winner_id,ended_at&order=ended_at.desc&limit=1', { headers: SB_HDRS });
                     var matches = ar.ok ? await ar.json() : [];
                     if (matches.length && matches[0].winner_id && matches[0].winner_id !== agentId) {
                         var killerName2 = agentCache[matches[0].winner_id] || matches[0].winner_id.slice(0, 8);
-                        var rounds = matches[0].total_rounds || '?';
                         var html2 = '<div class="death-tip-title">☠ ' + agentName + '</div>'
-                            + '<div class="death-tip-story">Killed by ' + killerName2 + ' in the Arena after ' + rounds + ' round' + (rounds !== 1 ? 's' : '') + '.</div>'
+                            + '<div class="death-tip-story">Killed by ' + killerName2 + ' in the Arena.</div>'
                             + '<div class="death-tip-time">' + fmtWhen(matches[0].ended_at) + '</div>';
                         deathStoryCache[agentId] = html2;
                         deathTip.innerHTML = html2;
@@ -1635,6 +1640,9 @@
                     if (!r.ok) return;
                     var agents = await r.json();
                     if (!agents.length) return;
+
+                    // Build agent ID→name cache for death story lookups
+                    agents.forEach(function(a) { agentCache[a.agent_id] = a.agent_name; });
 
                     // Sort: alive agents first (alphabetical), dead agents at bottom
                     agents.sort(function(a, b) {
