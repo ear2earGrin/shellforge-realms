@@ -25,7 +25,10 @@ export default function AgentScreen() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     const { data: agents } = await supabase
       .from("agents")

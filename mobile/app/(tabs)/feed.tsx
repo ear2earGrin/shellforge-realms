@@ -122,7 +122,10 @@ export default function FeedScreen() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     // Get user's agent
     const { data: agents } = await supabase
