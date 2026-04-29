@@ -73,6 +73,8 @@ export default function AgentScreen() {
     setRefreshing(false);
   }, [fetchAgent]);
 
+  useAppRefresh(useCallback(() => { fetchAgent(); }, [fetchAgent]));
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -80,8 +82,6 @@ export default function AgentScreen() {
       </View>
     );
   }
-
-  useAppRefresh(useCallback(() => { fetchAgent(); }, [fetchAgent]));
 
   if (!agent) {
     return (
