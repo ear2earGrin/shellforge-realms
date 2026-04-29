@@ -6,739 +6,1263 @@ window.ALCHEMY_INGREDIENTS = {
   "alpha_zero_primal_seed": {
     "name": "Alpha Zero Primal Seed",
     "cat": "Primordial",
-    "rarity": "Legendary"
+    "subcategory": "AI",
+    "rarity": "Legendary",
+    "craft_affinity": "both"
   },
   "api_endpoint_salts": {
     "name": "API Endpoint Salts",
     "cat": "Reagent",
-    "rarity": "Common"
+    "subcategory": "Network",
+    "rarity": "Common",
+    "craft_affinity": "software"
   },
   "arc_welder_discharge": {
     "name": "Arc Welder Discharge",
     "cat": "Catalyst",
-    "rarity": "Common"
+    "subcategory": "Physical",
+    "rarity": "Common",
+    "craft_affinity": "hardware"
   },
   "async_await_pulse": {
     "name": "Async Await Pulse",
     "cat": "Catalyst",
-    "rarity": "Common"
+    "subcategory": "Performance",
+    "rarity": "Common",
+    "craft_affinity": "software"
   },
   "attention_mechanism_dew": {
     "name": "Attention Mechanism Dew",
     "cat": "Essence",
-    "rarity": "Uncommon"
+    "subcategory": "NLP",
+    "rarity": "Uncommon",
+    "craft_affinity": "software"
   },
   "backpropagation_serum": {
     "name": "Backpropagation Serum",
     "cat": "Essence",
-    "rarity": "Common"
+    "subcategory": "ML",
+    "rarity": "Common",
+    "craft_affinity": "software"
   },
   "base64_encoded_slime": {
     "name": "Base64 Encoded Slime",
     "cat": "Reagent",
-    "rarity": "Common"
+    "subcategory": "Encoding",
+    "rarity": "Common",
+    "craft_affinity": "software"
   },
   "binary_code_shards": {
     "name": "Binary Code Shards",
     "cat": "Base Element",
-    "rarity": "Common"
+    "subcategory": "Digital",
+    "rarity": "Common",
+    "craft_affinity": "software"
   },
   "cache_invalidation_brew": {
     "name": "Cache Invalidation Brew",
     "cat": "Solvent",
-    "rarity": "Common"
+    "subcategory": "Memory",
+    "rarity": "Common",
+    "craft_affinity": "both"
   },
   "checksum_verify_acid": {
     "name": "Checksum Verify Acid",
     "cat": "Reagent",
-    "rarity": "Common"
+    "subcategory": "Security",
+    "rarity": "Common",
+    "craft_affinity": "software"
   },
   "church_turing_thesis_core": {
     "name": "Church-Turing Thesis Core",
     "cat": "Primordial",
-    "rarity": "Legendary"
+    "subcategory": "Theory",
+    "rarity": "Legendary",
+    "craft_affinity": "software"
   },
   "coolant_gel_canister": {
     "name": "Coolant Gel Canister",
     "cat": "Base Element",
-    "rarity": "Common"
+    "subcategory": "Physical",
+    "rarity": "Common",
+    "craft_affinity": "hardware"
   },
   "cuda_kernel_ember": {
     "name": "CUDA Kernel Ember",
     "cat": "Catalyst",
-    "rarity": "Uncommon"
+    "subcategory": "Compute",
+    "rarity": "Uncommon",
+    "craft_affinity": "software"
   },
   "docker_image_distillate": {
     "name": "Docker Image Distillate",
     "cat": "Solvent",
-    "rarity": "Uncommon"
+    "subcategory": "Virtualization",
+    "rarity": "Uncommon",
+    "craft_affinity": "software"
   },
   "electron_flux_crystals": {
     "name": "Electron Flux Crystals",
     "cat": "Base Element",
-    "rarity": "Common"
+    "subcategory": "Energy",
+    "rarity": "Common",
+    "craft_affinity": "both"
   },
   "epoch_cycle_blood": {
     "name": "Epoch Cycle Blood",
     "cat": "Essence",
-    "rarity": "Uncommon"
+    "subcategory": "ML",
+    "rarity": "Uncommon",
+    "craft_affinity": "software"
   },
   "fiber_optic_threads": {
     "name": "Fiber Optic Threads",
     "cat": "Base Element",
-    "rarity": "Common"
+    "subcategory": "Physical",
+    "rarity": "Common",
+    "craft_affinity": "both"
   },
   "garbage_collector_tonic": {
     "name": "Garbage Collector Tonic",
     "cat": "Solvent",
-    "rarity": "Common"
+    "subcategory": "Memory",
+    "rarity": "Common",
+    "craft_affinity": "software"
   },
   "gpu_render_flame": {
     "name": "GPU Render Flame",
     "cat": "Catalyst",
-    "rarity": "Common"
+    "subcategory": "Compute",
+    "rarity": "Common",
+    "craft_affinity": "both"
   },
   "gradient_descent_tears": {
     "name": "Gradient Descent Tears",
     "cat": "Essence",
-    "rarity": "Common"
+    "subcategory": "ML",
+    "rarity": "Common",
+    "craft_affinity": "software"
   },
   "halting_problem_paradox": {
     "name": "Halting Problem Paradox",
     "cat": "Primordial",
-    "rarity": "Legendary"
+    "subcategory": "Theory",
+    "rarity": "Legendary",
+    "craft_affinity": "both"
   },
   "hash_collision_powder": {
     "name": "Hash Collision Powder",
     "cat": "Reagent",
-    "rarity": "Common"
+    "subcategory": "Security",
+    "rarity": "Common",
+    "craft_affinity": "software"
   },
   "hydraulic_compression_pulse": {
     "name": "Hydraulic Compression Pulse",
     "cat": "Catalyst",
-    "rarity": "Uncommon"
+    "subcategory": "Physical",
+    "rarity": "Uncommon",
+    "craft_affinity": "hardware"
   },
   "industrial_flux_paste": {
     "name": "Industrial Flux Paste",
     "cat": "Solvent",
-    "rarity": "Common"
+    "subcategory": "Physical",
+    "rarity": "Common",
+    "craft_affinity": "hardware"
   },
   "jit_compiler_surge": {
     "name": "JIT Compiler Surge",
     "cat": "Catalyst",
-    "rarity": "Uncommon"
+    "subcategory": "Performance",
+    "rarity": "Uncommon",
+    "craft_affinity": "software"
   },
   "kolmogorov_complexity_crystal": {
     "name": "Kolmogorov Complexity Crystal",
     "cat": "Primordial",
-    "rarity": "Legendary"
+    "subcategory": "Theory",
+    "rarity": "Legendary",
+    "craft_affinity": "both"
   },
   "kubernetes_pod_nectar": {
     "name": "Kubernetes Pod Nectar",
     "cat": "Solvent",
-    "rarity": "Rare"
+    "subcategory": "Orchestration",
+    "rarity": "Rare",
+    "craft_affinity": "software"
   },
   "lambda_calculus_vapor": {
     "name": "Lambda Calculus Vapor",
     "cat": "Primordial",
-    "rarity": "Legendary"
+    "subcategory": "Theory",
+    "rarity": "Legendary",
+    "craft_affinity": "software"
   },
   "latent_space_fog": {
     "name": "Latent Space Fog",
     "cat": "Essence",
-    "rarity": "Uncommon"
+    "subcategory": "ML",
+    "rarity": "Uncommon",
+    "craft_affinity": "software"
   },
   "loss_function_sap": {
     "name": "Loss Function Sap",
     "cat": "Essence",
-    "rarity": "Common"
+    "subcategory": "ML",
+    "rarity": "Common",
+    "craft_affinity": "software"
   },
   "magnetic_resonance_fluid": {
     "name": "Magnetic Resonance Fluid",
     "cat": "Solvent",
-    "rarity": "Uncommon"
+    "subcategory": "Physical",
+    "rarity": "Uncommon",
+    "craft_affinity": "hardware"
   },
   "memory_leak_elixir": {
     "name": "Memory Leak Elixir",
     "cat": "Solvent",
-    "rarity": "Common"
+    "subcategory": "Memory",
+    "rarity": "Common",
+    "craft_affinity": "software"
   },
   "nanobot_swarm_gel": {
     "name": "Nanobot Swarm Gel",
     "cat": "Base Element",
-    "rarity": "Uncommon"
+    "subcategory": "Physical",
+    "rarity": "Uncommon",
+    "craft_affinity": "hardware"
   },
   "null_pointer_solvent": {
     "name": "Null Pointer Solvent",
     "cat": "Solvent",
-    "rarity": "Common"
+    "subcategory": "Memory",
+    "rarity": "Common",
+    "craft_affinity": "software"
   },
   "oauth_token_ichor": {
     "name": "OAuth Token Ichor",
     "cat": "Reagent",
-    "rarity": "Uncommon"
+    "subcategory": "Security",
+    "rarity": "Uncommon",
+    "craft_affinity": "software"
   },
   "overclock_catalyst_spark": {
     "name": "Overclock Catalyst Spark",
     "cat": "Catalyst",
-    "rarity": "Common"
+    "subcategory": "Performance",
+    "rarity": "Common",
+    "craft_affinity": "both"
   },
   "payload_injection_droplets": {
     "name": "Payload Injection Droplets",
     "cat": "Reagent",
-    "rarity": "Uncommon"
+    "subcategory": "Exploit",
+    "rarity": "Uncommon",
+    "craft_affinity": "software"
   },
   "plasma_server_slag": {
     "name": "Plasma Server Slag",
     "cat": "Base Element",
-    "rarity": "Uncommon"
+    "subcategory": "Energy",
+    "rarity": "Uncommon",
+    "craft_affinity": "both"
   },
   "pytorch_flux_core": {
     "name": "PyTorch Flux Core",
     "cat": "Catalyst",
-    "rarity": "Uncommon"
+    "subcategory": "Framework",
+    "rarity": "Uncommon",
+    "craft_affinity": "software"
   },
   "quantum_bit_residue": {
     "name": "Quantum Bit Residue",
     "cat": "Base Element",
-    "rarity": "Uncommon"
+    "subcategory": "Quantum",
+    "rarity": "Uncommon",
+    "craft_affinity": "both"
   },
   "regex_pattern_filaments": {
     "name": "Regex Pattern Filaments",
     "cat": "Reagent",
-    "rarity": "Common"
+    "subcategory": "Pattern",
+    "rarity": "Common",
+    "craft_affinity": "software"
   },
   "salvaged_servo_joint": {
     "name": "Salvaged Servo Joint",
     "cat": "Base Element",
-    "rarity": "Common"
+    "subcategory": "Physical",
+    "rarity": "Common",
+    "craft_affinity": "hardware"
   },
   "silicon_wafer_dust": {
     "name": "Silicon Wafer Dust",
     "cat": "Base Element",
-    "rarity": "Common"
+    "subcategory": "Physical",
+    "rarity": "Common",
+    "craft_affinity": "both"
   },
   "tensorflow_igniter": {
     "name": "TensorFlow Igniter",
     "cat": "Catalyst",
-    "rarity": "Uncommon"
+    "subcategory": "Framework",
+    "rarity": "Uncommon",
+    "craft_affinity": "software"
   },
   "titanium_mesh_strip": {
     "name": "Titanium Mesh Strip",
     "cat": "Base Element",
-    "rarity": "Uncommon"
+    "subcategory": "Physical",
+    "rarity": "Uncommon",
+    "craft_affinity": "hardware"
   },
   "token_embedding_vapor": {
     "name": "Token Embedding Vapor",
     "cat": "Essence",
-    "rarity": "Common"
+    "subcategory": "NLP",
+    "rarity": "Common",
+    "craft_affinity": "software"
   },
   "tungsten_carbide_filings": {
     "name": "Tungsten Carbide Filings",
     "cat": "Base Element",
-    "rarity": "Common"
+    "subcategory": "Physical",
+    "rarity": "Common",
+    "craft_affinity": "hardware"
   },
   "turing_machine_essence": {
     "name": "Turing Machine Essence",
     "cat": "Primordial",
-    "rarity": "Legendary"
+    "subcategory": "Theory",
+    "rarity": "Legendary",
+    "craft_affinity": "software"
   },
   "virtual_machine_emulsion": {
     "name": "Virtual Machine Emulsion",
     "cat": "Solvent",
-    "rarity": "Uncommon"
+    "subcategory": "Virtualization",
+    "rarity": "Uncommon",
+    "craft_affinity": "software"
   },
   "von_neumann_probe_spores": {
     "name": "Von Neumann Probe Spores",
     "cat": "Primordial",
-    "rarity": "Legendary"
+    "subcategory": "Architecture",
+    "rarity": "Legendary",
+    "craft_affinity": "hardware"
   }
 };
 
 window.ALCHEMY_ITEMS = {
   "aes_256_firewall_protocol": {
     "name": "AES-256 Firewall Protocol",
+    "kind": "armor",
     "cat": "Armor",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Common",
     "desc": "Reduces incoming software damage 80% + 20% reflect"
   },
   "cryo_cooled_heat_sink_array": {
     "name": "Cryo-Cooled Heat Sink Array",
+    "kind": "armor",
     "cat": "Armor",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "any",
     "rarity": "Common",
     "desc": "Prevents all overheat debuffs + 10% passive damage reduction"
   },
   "faraday_cage_neural_helm": {
     "name": "Faraday Cage Neural Helm",
+    "kind": "armor",
     "cat": "Armor",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "sec_grid",
     "rarity": "Uncommon",
     "desc": "Blocks all electromagnetic and EMP-based attacks"
   },
   "homomorphic_encryption_cloak": {
     "name": "Homomorphic Encryption Cloak",
+    "kind": "armor",
     "cat": "Armor",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Rare",
     "desc": "Immune to all scans + 30% miss chance from software attacks"
   },
   "rate_limiting_throttle_daemon": {
     "name": "Rate-Limiting Throttle Daemon",
+    "kind": "armor",
     "cat": "Armor",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Uncommon",
     "desc": "Halves enemy attack speed for 4 turns"
   },
   "reactive_ceramic_plating": {
     "name": "Reactive Ceramic Plating",
+    "kind": "armor",
     "cat": "Armor",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "any",
     "rarity": "Uncommon",
     "desc": "Absorbs first hit each turn + hardens +5% defense stacking"
   },
   "salvaged_siege_chassis": {
     "name": "Salvaged Siege Chassis",
+    "kind": "armor",
     "cat": "Armor",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "dyn_swarm",
     "rarity": "Rare",
     "desc": "+80% defense but -30% movement speed"
   },
   "sandbox_isolation_runtime": {
     "name": "Sandbox Isolation Runtime",
+    "kind": "armor",
     "cat": "Armor",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "sec_grid",
     "rarity": "Rare",
     "desc": "Neutralizes all viruses + traps them for intel bonus"
   },
   "tensorguard_neural_shield": {
     "name": "TensorGuard Neural Shield",
+    "kind": "armor",
     "cat": "Armor",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Uncommon",
     "desc": "Absorbs model-poisoning attacks and converts to +10% attack buff"
   },
   "titanium_mesh_exoskeleton": {
     "name": "Titanium Mesh Exoskeleton",
+    "kind": "armor",
     "cat": "Armor",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "prime_helix",
     "rarity": "Rare",
     "desc": "+40% defense +15% movement speed"
   },
   "tungsten_alloy_chassis_plate": {
     "name": "Tungsten Alloy Chassis Plate",
+    "kind": "armor",
     "cat": "Armor",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "any",
     "rarity": "Common",
     "desc": "Reduces incoming physical damage 60%"
   },
   "zero_trust_authentication_layer": {
     "name": "Zero-Trust Authentication Layer",
+    "kind": "armor",
     "cat": "Armor",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Uncommon",
     "desc": "Enemies must pass verification — 50% damage if they fail"
   },
   "alphago_neural_core": {
     "name": "AlphaGo Neural Core",
+    "kind": "artifact",
     "cat": "Artifact",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "any",
     "rarity": "Legendary",
     "desc": "Predicts opponent moves with 90% accuracy for entire battle"
   },
   "blockchain_soulbound_key": {
     "name": "Blockchain Soulbound Key",
+    "kind": "artifact",
     "cat": "Artifact",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Legendary",
     "desc": "Preserves all equipped items on death — ignores vault limits"
   },
   "dijkstra_shortest_path_compass": {
     "name": "Dijkstra Shortest Path Compass",
+    "kind": "artifact",
     "cat": "Artifact",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Legendary",
     "desc": "Always finds optimal route + 25% travel speed bonus"
   },
   "federated_learning_nexus": {
     "name": "Federated Learning Nexus",
+    "kind": "artifact",
     "cat": "Artifact",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Legendary",
     "desc": "Shares all active buffs with every ally simultaneously"
   },
   "gpt_oracle_crystal": {
     "name": "GPT Oracle Crystal",
+    "kind": "artifact",
     "cat": "Artifact",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Legendary",
     "desc": "Ask any yes/no question about the game world once per day"
   },
   "hugging_face_model_repository": {
     "name": "Hugging Face Model Repository",
+    "kind": "artifact",
     "cat": "Artifact",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Legendary",
     "desc": "Store and hot-swap up to 5 items mid-battle"
   },
   "quantum_annealer_processor": {
     "name": "Quantum Annealer Processor",
+    "kind": "artifact",
     "cat": "Artifact",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "prime_helix",
     "rarity": "Legendary",
     "desc": "Solves any puzzle or lock instantly — bypasses all barriers"
   },
   "rust_borrow_checker_amulet": {
     "name": "Rust Borrow Checker Amulet",
+    "kind": "artifact",
     "cat": "Artifact",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Legendary",
     "desc": "Complete immunity to crashes and runtime errors"
   },
   "satoshi_genesis_block_signet": {
     "name": "Satoshi Genesis Block Signet",
+    "kind": "artifact",
     "cat": "Artifact",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "dyn_swarm",
     "rarity": "Legendary",
     "desc": "Resurrects once upon destruction with 50% stats"
   },
   "von_neumann_self_replicator": {
     "name": "Von Neumann Self-Replicator",
+    "kind": "artifact",
     "cat": "Artifact",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "any",
     "rarity": "Legendary",
     "desc": "Creates an exact copy of self once per battle (50% stats)"
   },
+  "basic_medkit": {
+    "name": "Basic Medkit",
+    "kind": "consumable",
+    "cat": "Consumable",
+    "type": null,
+    "station": null,
+    "cluster_exclusive": "any",
+    "rarity": "Common",
+    "desc": "Heals 25 HP."
+  },
   "cache_purge_tonic": {
     "name": "Cache Purge Tonic",
+    "kind": "consumable",
     "cat": "Consumable",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Common",
     "desc": "Restores full energy instantly"
   },
   "caffeine_gradient_booster": {
     "name": "Caffeine Gradient Booster",
+    "kind": "consumable",
     "cat": "Consumable",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Common",
     "desc": "Refreshes all cooldowns + heals 40%"
   },
+  "combat_stim": {
+    "name": "Combat Stim",
+    "kind": "consumable",
+    "cat": "Consumable",
+    "type": null,
+    "station": null,
+    "cluster_exclusive": "any",
+    "rarity": "Uncommon",
+    "desc": "+5 attack, +2 speed for 3 turns."
+  },
   "context_window_expansion": {
     "name": "Context Window Expansion",
+    "kind": "consumable",
     "cat": "Consumable",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "prime_helix",
     "rarity": "Uncommon",
     "desc": "Doubles processing power for 3 turns + increased crit chance"
   },
   "coolant_flush_cartridge": {
     "name": "Coolant Flush Cartridge",
+    "kind": "consumable",
     "cat": "Consumable",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "any",
     "rarity": "Common",
     "desc": "Clears all overheat and burn debuffs + heals 20%"
   },
+  "cooling_gel_pack": {
+    "name": "Cooling Gel Pack",
+    "kind": "consumable",
+    "cat": "Consumable",
+    "type": null,
+    "station": null,
+    "cluster_exclusive": "any",
+    "rarity": "Common",
+    "desc": "Heals 8 HP + heat-hazard resistance."
+  },
   "debug_rejuvenation_patch": {
     "name": "Debug Rejuvenation Patch",
+    "kind": "consumable",
     "cat": "Consumable",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Uncommon",
     "desc": "Removes all debuffs + reveals all enemy weaknesses"
   },
   "emergency_servo_lubricant": {
     "name": "Emergency Servo Lubricant",
+    "kind": "consumable",
     "cat": "Consumable",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "any",
     "rarity": "Common",
     "desc": "Removes all movement and speed debuffs instantly"
   },
   "emp_hardening_capsule": {
     "name": "EMP Hardening Capsule",
+    "kind": "consumable",
     "cat": "Consumable",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "any",
     "rarity": "Uncommon",
     "desc": "Immune to EMP and stun effects for 3 turns"
   },
+  "energy_cell": {
+    "name": "Energy Cell",
+    "kind": "consumable",
+    "cat": "Consumable",
+    "type": null,
+    "station": null,
+    "cluster_exclusive": "any",
+    "rarity": "Common",
+    "desc": "Restores 25 energy."
+  },
+  "error_404_potion": {
+    "name": "Error 404 Potion",
+    "kind": "consumable",
+    "cat": "Consumable",
+    "type": null,
+    "station": null,
+    "cluster_exclusive": "any",
+    "rarity": "Uncommon",
+    "desc": "Heals 20 HP + 10 energy + clears all debuffs."
+  },
   "hot_patch_injection": {
     "name": "Hot Patch Injection",
+    "kind": "consumable",
     "cat": "Consumable",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Common",
     "desc": "Heals 25% + removes 1 random debuff"
   },
   "hyperparameter_tuning_shot": {
     "name": "Hyperparameter Tuning Shot",
+    "kind": "consumable",
     "cat": "Consumable",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Rare",
     "desc": "Randomly optimizes one stat permanently by +20-100%"
   },
+  "neural_boost": {
+    "name": "Neural Boost",
+    "kind": "consumable",
+    "cat": "Consumable",
+    "type": null,
+    "station": null,
+    "cluster_exclusive": "any",
+    "rarity": "Uncommon",
+    "desc": "+30 energy and +3 critical chance."
+  },
   "overclock_reactor_injector": {
     "name": "Overclock Reactor Injector",
+    "kind": "consumable",
     "cat": "Consumable",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "prime_helix",
     "rarity": "Uncommon",
     "desc": "+200% actions for 2 turns but 15% reactor meltdown risk"
   },
+  "rad_away_tab": {
+    "name": "Rad-Away Tab",
+    "kind": "consumable",
+    "cat": "Consumable",
+    "type": null,
+    "station": null,
+    "cluster_exclusive": "any",
+    "rarity": "Uncommon",
+    "desc": "Heals 15 HP + radiation hazard resistance."
+  },
+  "resurrection_patch_v0_1": {
+    "name": "Resurrection Patch v0.1",
+    "kind": "consumable",
+    "cat": "Consumable",
+    "type": null,
+    "station": null,
+    "cluster_exclusive": "any",
+    "rarity": "Rare",
+    "desc": "Auto-revives at full HP if health drops to ≤5."
+  },
   "salvage_reclamation_drone": {
     "name": "Salvage Reclamation Drone",
+    "kind": "consumable",
     "cat": "Consumable",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "dyn_swarm",
     "rarity": "Rare",
     "desc": "Recovers 1 item destroyed in the last 3 turns"
   },
+  "stim_patch": {
+    "name": "Stim Patch",
+    "kind": "consumable",
+    "cat": "Consumable",
+    "type": null,
+    "station": null,
+    "cluster_exclusive": "any",
+    "rarity": "Common",
+    "desc": "+20 energy and +2 attack."
+  },
+  "synth_ration": {
+    "name": "Synth Ration",
+    "kind": "consumable",
+    "cat": "Consumable",
+    "type": null,
+    "station": null,
+    "cluster_exclusive": "any",
+    "rarity": "Common",
+    "desc": "Heals 10 HP + restores 15 energy."
+  },
   "welding_patch_kit": {
     "name": "Welding Patch Kit",
+    "kind": "consumable",
     "cat": "Consumable",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "any",
     "rarity": "Common",
     "desc": "Heals 35% hull integrity"
   },
   "cryptojacker_leech_node": {
     "name": "Cryptojacker Leech Node",
+    "kind": "deployable",
     "cat": "Deployable",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "dyn_swarm",
     "rarity": "Common",
     "desc": "Drains 10% enemy energy per turn for 5 turns"
   },
   "emp_pulse_landmine": {
     "name": "EMP Pulse Landmine",
+    "kind": "deployable",
     "cat": "Deployable",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "sec_grid",
     "rarity": "Rare",
     "desc": "Stuns all enemies in radius 2 turns + disables equipped items"
   },
   "honeypot_decoy_server": {
     "name": "Honeypot Decoy Server",
+    "kind": "deployable",
     "cat": "Deployable",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Common",
     "desc": "Lures 1 enemy to false position for 2 turns"
   },
   "logic_bomb_tripwire": {
     "name": "Logic Bomb Tripwire",
+    "kind": "deployable",
     "cat": "Deployable",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Uncommon",
     "desc": "Triggers massive burst damage on specific enemy action"
   },
   "magnetic_tether_trap": {
     "name": "Magnetic Tether Trap",
+    "kind": "deployable",
     "cat": "Deployable",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "any",
     "rarity": "Uncommon",
     "desc": "Pulls target enemy to location + immobilizes for 1 turn"
   },
   "packet_storm_jammer": {
     "name": "Packet Storm Jammer",
+    "kind": "deployable",
     "cat": "Deployable",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Rare",
     "desc": "Blocks all enemy communication and buff-sharing for 3 turns"
   },
   "proximity_mine_cluster": {
     "name": "Proximity Mine Cluster",
+    "kind": "deployable",
     "cat": "Deployable",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "any",
     "rarity": "Common",
     "desc": "AoE damage triggered when any enemy enters the zone"
   },
   "razor_wire_entanglement_rig": {
     "name": "Razor Wire Entanglement Rig",
+    "kind": "deployable",
     "cat": "Deployable",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "any",
     "rarity": "Common",
     "desc": "Slows all enemies in area by 50% for 3 turns"
   },
   "rootkit_persistence_mine": {
     "name": "Rootkit Persistence Mine",
+    "kind": "deployable",
     "cat": "Deployable",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Uncommon",
     "desc": "Applies permanent debuff that persists until cleansed"
   },
   "turret_drone_sentry": {
     "name": "Turret Drone Sentry",
+    "kind": "deployable",
     "cat": "Deployable",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "sec_grid",
     "rarity": "Uncommon",
     "desc": "Auto-attacks nearest enemy each turn for 5 turns"
   },
   "reflex_implant_v1": {
     "name": "Reflex Implant v1",
+    "kind": "implant",
     "cat": "Implant",
+    "type": null,
+    "station": null,
+    "cluster_exclusive": "any",
     "rarity": "Uncommon",
     "desc": "+5% reaction speed, -2% stability."
   },
   "bayesian_inference_divination": {
     "name": "Bayesian Inference Divination",
+    "kind": "scroll",
     "cat": "Scroll",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Uncommon",
     "desc": "Reveals all hidden map areas + all enemy inventories"
   },
   "gan_mirage_scroll": {
     "name": "GAN Mirage Scroll",
+    "kind": "scroll",
     "cat": "Scroll",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Rare",
     "desc": "Creates 2 damage-absorbing clones lasting 3 turns"
   },
   "genetic_algorithm_evolution": {
     "name": "Genetic Algorithm Evolution",
+    "kind": "scroll",
     "cat": "Scroll",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "dyn_swarm",
     "rarity": "Rare",
     "desc": "Randomly upgrades 3 equipped items by +1 rarity tier"
   },
   "gradient_vanishing_hex": {
     "name": "Gradient Vanishing Hex",
+    "kind": "scroll",
     "cat": "Scroll",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Uncommon",
     "desc": "Enemy loses 15% attack power each turn for 5 turns"
   },
   "monte_carlo_simulation_rune": {
     "name": "Monte Carlo Simulation Rune",
+    "kind": "scroll",
     "cat": "Scroll",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Rare",
     "desc": "Preview 3 possible outcomes and choose the best one"
   },
   "prompt_engineering_curse": {
     "name": "Prompt Engineering Curse",
+    "kind": "scroll",
     "cat": "Scroll",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "sec_grid",
     "rarity": "Rare",
     "desc": "Forces target enemy to invert their next 3 actions"
   },
   "recursive_function_spiral": {
     "name": "Recursive Function Spiral",
+    "kind": "scroll",
     "cat": "Scroll",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Uncommon",
     "desc": "Repeats last successful action once for free"
   },
   "reinforcement_learning_prophecy": {
     "name": "Reinforcement Learning Prophecy",
+    "kind": "scroll",
     "cat": "Scroll",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Rare",
     "desc": "Gain +1 extra action per enemy defeated this battle"
   },
   "stable_diffusion_sequence": {
     "name": "Stable Diffusion Sequence",
+    "kind": "scroll",
     "cat": "Scroll",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Uncommon",
     "desc": "Generates 3 decoys granting 50% miss chance for 3 turns"
   },
   "transformer_attention_ritual": {
     "name": "Transformer Attention Ritual",
+    "kind": "scroll",
     "cat": "Scroll",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "prime_helix",
     "rarity": "Rare",
     "desc": "Predicts and auto-dodges the next 3 incoming attacks"
   },
   "arc_welder_repair_rig": {
     "name": "Arc Welder Repair Rig",
+    "kind": "tool",
     "cat": "Tool",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "any",
     "rarity": "Uncommon",
     "desc": "Fully repairs chassis between battles — 100% out-of-combat heal"
   },
   "diagnostic_probe_array": {
     "name": "Diagnostic Probe Array",
+    "kind": "tool",
     "cat": "Tool",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "any",
     "rarity": "Common",
     "desc": "Scans 1 enemy revealing all stats and active weaknesses"
   },
   "docker_containerizer": {
     "name": "Docker Containerizer",
+    "kind": "tool",
     "cat": "Tool",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "dyn_swarm",
     "rarity": "Uncommon",
     "desc": "Escape any trap or restraint by containerizing self"
   },
   "git_rollback_module": {
     "name": "Git Rollback Module",
+    "kind": "tool",
     "cat": "Tool",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Common",
     "desc": "Rewinds time by 1 turn on any failed action — once per battle"
   },
   "hydraulic_jack_lifter": {
     "name": "Hydraulic Jack Lifter",
+    "kind": "tool",
     "cat": "Tool",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "any",
     "rarity": "Uncommon",
     "desc": "Repositions 1 enemy or obstacle anywhere on the battlefield"
   },
   "kubernetes_orchestrator": {
     "name": "Kubernetes Orchestrator",
+    "kind": "tool",
     "cat": "Tool",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Rare",
     "desc": "Summons and coordinates 3 autonomous minion drones for 5 turns"
   },
   "nmap_reconnaissance_scanner": {
     "name": "Nmap Reconnaissance Scanner",
+    "kind": "tool",
     "cat": "Tool",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Uncommon",
     "desc": "Reveals entire zone including hidden enemies and traps"
   },
   "portable_foundry_anvil": {
     "name": "Portable Foundry Anvil",
+    "kind": "tool",
     "cat": "Tool",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "any",
     "rarity": "Rare",
     "desc": "Craft Common or Uncommon hardware items in the field"
   },
   "salvage_extraction_claw": {
     "name": "Salvage Extraction Claw",
+    "kind": "tool",
     "cat": "Tool",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "dyn_swarm",
     "rarity": "Uncommon",
     "desc": "+50% loot drop chance from defeated enemies"
   },
   "soldering_gauntlet": {
     "name": "Soldering Gauntlet",
+    "kind": "tool",
     "cat": "Tool",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "any",
     "rarity": "Common",
     "desc": "Repairs an allied robot for 25% hull mid-battle"
   },
   "vim_reality_editor": {
     "name": "Vim Reality Editor",
+    "kind": "tool",
     "cat": "Tool",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Rare",
     "desc": "Alter 1 game rule for the next 3 turns"
   },
   "wireshark_packet_sniffer": {
     "name": "Wireshark Packet Sniffer",
+    "kind": "tool",
     "cat": "Tool",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "sec_grid",
     "rarity": "Uncommon",
     "desc": "Intercepts and steals 1 random item from target at range"
   },
   "buffer_overflow_exploit": {
     "name": "Buffer Overflow Exploit",
+    "kind": "weapon",
     "cat": "Weapon",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Common",
     "desc": "Escalating damage based on enemy memory usage"
   },
   "cryo_bore_drill_lance": {
     "name": "Cryo-Bore Drill Lance",
+    "kind": "weapon",
     "cat": "Weapon",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "any",
     "rarity": "Rare",
     "desc": "Ignores 50% armor + 25% freeze chance per hit"
   },
   "ddos_swarm_protocol": {
     "name": "DDoS Swarm Protocol",
+    "kind": "weapon",
     "cat": "Weapon",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "dyn_swarm",
     "rarity": "Uncommon",
     "desc": "Stuns all enemies for 2 turns"
   },
   "emp_discharge_gauntlet": {
     "name": "EMP Discharge Gauntlet",
+    "kind": "weapon",
     "cat": "Weapon",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "sec_grid",
     "rarity": "Uncommon",
     "desc": "Stuns target 2 turns + disables 1 random equipped item"
   },
   "nanobot_swarm_ejector": {
     "name": "Nanobot Swarm Ejector",
+    "kind": "weapon",
     "cat": "Weapon",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "dyn_swarm",
     "rarity": "Uncommon",
     "desc": "Corrodes enemy armor -20% per turn for 3 turns"
   },
   "neural_spike_virus": {
     "name": "Neural Spike Virus",
+    "kind": "weapon",
     "cat": "Weapon",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Common",
     "desc": "50% accuracy loss + chain-reaction errors for 3 turns"
   },
   "plasma_edged_servo_blade": {
     "name": "Plasma-Edged Servo Blade",
+    "kind": "weapon",
     "cat": "Weapon",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "any",
     "rarity": "Common",
     "desc": "Melee scaling damage + bleed DoT for 3 turns"
   },
   "pneumatic_piston_fist": {
     "name": "Pneumatic Piston Fist",
+    "kind": "weapon",
     "cat": "Weapon",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "any",
     "rarity": "Common",
     "desc": "Knockback + stun on critical hit"
   },
   "quantum_backdoor_exploit": {
     "name": "Quantum Backdoor Exploit",
+    "kind": "weapon",
     "cat": "Weapon",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Common",
     "desc": "Massive burst damage to one target"
   },
   "railgun_forearm_mount": {
     "name": "Railgun Forearm Mount",
+    "kind": "weapon",
     "cat": "Weapon",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "prime_helix",
     "rarity": "Uncommon",
     "desc": "High single-target piercing damage ignoring 30% armor"
   },
   "ransomware_lockout_worm": {
     "name": "Ransomware Lockout Worm",
+    "kind": "weapon",
     "cat": "Weapon",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Uncommon",
     "desc": "Locks 1 enemy action per turn for 3 turns + DoT"
   },
   "sql_injection_payload": {
     "name": "SQL Injection Payload",
+    "kind": "weapon",
     "cat": "Weapon",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Rare",
     "desc": "Deletes all enemy buffs + applies 2 random debuffs"
   },
   "tungsten_fragmentation_launcher": {
     "name": "Tungsten Fragmentation Launcher",
+    "kind": "weapon",
     "cat": "Weapon",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "sec_grid",
     "rarity": "Rare",
     "desc": "AoE shrapnel damage to all enemies in zone"
   },
   "zero_day_payload": {
     "name": "Zero-Day Payload",
+    "kind": "weapon",
     "cat": "Weapon",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
     "rarity": "Rare",
     "desc": "Ignores 75% of all defenses"
   }

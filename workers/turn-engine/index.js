@@ -523,6 +523,14 @@ function getWeaponRange(itemId, itemName) {
 
 // ─── Consumable Item System ──────────────────────────────────────────────────
 // Defines what each consumable does and when an agent should auto-use it.
+//
+// NOTE: This is the *legacy* flat-shape lookup used by checkAutoUseConsumable /
+// useConsumable. The canonical effect data now lives in
+// items_master.effect_modifiers (sourced from alchemy/item-effects.json). When
+// combat-engine merges, refactor this lookup to derive from effect_modifiers
+// at runtime — that's the single source going forward, and it covers
+// weapons/armor/scrolls/deployables/artifacts/implants too. Keep this table
+// in sync with item-effects.json until then; it should stay a strict subset.
 const CONSUMABLE_EFFECTS = {
   // Market consumables
   'synth_ration':              { heal: 10, energy: 15, trigger: 'energy<40' },

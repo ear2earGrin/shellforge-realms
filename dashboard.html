@@ -3203,6 +3203,94 @@
             justify-content: center;
         }
         .oracle-overlay.open { display: flex; }
+
+        /* ── Starter chest overlay (first-boot ceremony) ───────────── */
+        .chest-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: radial-gradient(circle at center, rgba(20,10,40,0.96), rgba(0,0,0,0.99));
+            z-index: 1000001;
+            align-items: center; justify-content: center;
+            flex-direction: column;
+            font-family: var(--font-mono, monospace);
+        }
+        .chest-overlay.open { display: flex; }
+        .chest-overlay .title {
+            font-size: 1.4rem; letter-spacing: 0.3em;
+            color: rgba(192,132,252,0.9);
+            text-shadow: 0 0 16px rgba(192,132,252,0.55);
+            margin-bottom: 8px;
+        }
+        .chest-overlay .subtitle {
+            font-size: 0.7rem; letter-spacing: 0.15em;
+            color: rgba(192,132,252,0.55);
+            margin-bottom: 28px;
+        }
+        .chest-grid { display: flex; gap: 24px; }
+        .chest-card {
+            width: 200px; min-height: 280px;
+            border: 1px solid rgba(192,132,252,0.4);
+            background: linear-gradient(180deg, rgba(15,8,30,0.95), rgba(8,4,15,0.95));
+            padding: 18px 14px;
+            border-radius: 6px;
+            display: flex; flex-direction: column; align-items: center;
+            cursor: pointer;
+            position: relative; overflow: hidden;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+        .chest-card[data-theme="chassis"]  { border-color: rgba(255,140,0,0.55); box-shadow: 0 0 18px rgba(255,140,0,0.18) inset; }
+        .chest-card[data-theme="terminal"] { border-color: rgba(0,240,255,0.55);  box-shadow: 0 0 18px rgba(0,240,255,0.18) inset; }
+        .chest-card[data-theme="wanderer"] { border-color: rgba(192,132,252,0.55);box-shadow: 0 0 18px rgba(192,132,252,0.18) inset; }
+        .chest-card:not(.opened):hover {
+            transform: translateY(-4px) scale(1.03);
+            box-shadow: 0 0 24px rgba(192,132,252,0.4);
+        }
+        .chest-card .lid {
+            font-size: 4.5rem; line-height: 1; margin: 14px 0 8px;
+            transition: transform 0.4s cubic-bezier(.36,1.6,.6,1), opacity 0.3s ease;
+        }
+        .chest-card.opened .lid { transform: rotate(-25deg) translateY(-6px); opacity: 0.6; }
+        .chest-card .theme-name {
+            font-size: 0.7rem; letter-spacing: 0.2em;
+            color: rgba(255,255,255,0.85); margin-bottom: 4px;
+        }
+        .chest-card .theme-desc {
+            font-size: 0.55rem; opacity: 0.55; margin-bottom: 10px;
+            text-align: center; line-height: 1.4; min-height: 28px;
+        }
+        .chest-card .contents {
+            display: none;
+            font-family: var(--font-main, monospace);
+            font-size: 0.55rem; line-height: 1.6;
+            color: rgba(255,255,255,0.85);
+            text-align: left;
+            padding: 6px 4px;
+            width: 100%;
+        }
+        .chest-card.opened .contents { display: block; }
+        .chest-card .open-hint {
+            font-size: 0.5rem; letter-spacing: 0.2em;
+            color: rgba(192,132,252,0.5);
+            margin-top: auto;
+        }
+        .chest-card.opened .open-hint { color: rgba(74,222,128,0.65); }
+        .chest-overlay .continue-btn {
+            margin-top: 28px;
+            padding: 10px 28px;
+            background: rgba(192,132,252,0.15);
+            border: 1px solid rgba(192,132,252,0.5);
+            color: rgba(192,132,252,0.9);
+            cursor: pointer;
+            font-family: var(--font-mono, monospace);
+            font-size: 0.65rem; letter-spacing: 0.25em;
+            text-transform: uppercase;
+        }
+        .chest-overlay .continue-btn[disabled] {
+            opacity: 0.3; cursor: not-allowed;
+        }
+        .chest-overlay .continue-btn:not([disabled]):hover {
+            background: rgba(192,132,252,0.3);
+        }
         .oracle-box {
             width: 320px;
             padding: 24px 20px;
@@ -4983,6 +5071,14 @@
         </div>
     </div>
 
+    <!-- STARTER CHESTS — first-boot ceremony -->
+    <div class="chest-overlay" id="chestOverlay">
+        <div class="title">[ STARTER CACHES ]</div>
+        <div class="subtitle">Recovered from the launch silo. Open them all to begin.</div>
+        <div class="chest-grid" id="chestGrid"></div>
+        <button class="continue-btn" id="chestContinue" disabled onclick="closeChestOverlay()">Continue →</button>
+    </div>
+
     <!-- Generated catalog (items, ingredients, recipes). See alchemy/build-catalog.js. -->
     <script src="alchemy/catalog-frontend.js"></script>
 
@@ -6422,8 +6518,116 @@
                 history.replaceState(null, '', cleanUrl);
             }
 
-            // Start dashboard tour after fade-in completes
-            setTimeout(startDashboardTour, 2500);
+            // Show starter chests first; dashboard tour kicks off only after
+            // the player closes the chest overlay (or right away if they have
+            // none — e.g. an agent created before the chests feature shipped).
+            checkAndShowStarterChests().then(hadChests => {
+                const tourDelay = hadChests ? 800 : 2500;
+                setTimeout(startDashboardTour, tourDelay);
+            });
+        }
+
+        // ── Starter chest overlay ───────────────────────────────────────
+        const CHEST_THEMES = {
+            chassis:  { icon: '🔩', name: 'CHASSIS CACHE',  desc: 'Hardware salvage — weapon, plating, repair stim.' },
+            terminal: { icon: '💻', name: 'TERMINAL CACHE', desc: 'Software bundle — exploit, firewall, runtime patch.' },
+            wanderer: { icon: '🧰', name: "WANDERER'S CACHE", desc: 'Mixed kit — tool, scroll, catalysts, ingredients.' },
+        };
+        async function checkAndShowStarterChests() {
+            if (!_currentAgent) return false;
+            const chests = await sbGet('agent_starter_chests',
+                'agent_id=eq.' + _currentAgent.agentId +
+                '&opened_at=is.null&order=chest_index.asc&select=id,chest_index,theme,contents');
+            if (!chests || chests.length === 0) return false;
+            renderStarterChests(chests);
+            document.getElementById('chestOverlay').classList.add('open');
+            return true;
+        }
+        function renderStarterChests(chests) {
+            const grid = document.getElementById('chestGrid');
+            grid.innerHTML = chests.map(c => {
+                const theme = CHEST_THEMES[c.theme] || { icon: '📦', name: c.theme.toUpperCase(), desc: '' };
+                return '<div class="chest-card" data-theme="' + c.theme + '" data-chest-id="' + c.id + '" onclick="openStarterChest(this)">' +
+                    '<div class="lid">' + theme.icon + '</div>' +
+                    '<div class="theme-name">' + theme.name + '</div>' +
+                    '<div class="theme-desc">' + theme.desc + '</div>' +
+                    '<div class="contents" id="chestContents-' + c.id + '"></div>' +
+                    '<div class="open-hint">CLICK TO OPEN</div>' +
+                    '</div>';
+            }).join('');
+            // Stash contents on the elements for opening
+            chests.forEach(c => {
+                const card = grid.querySelector('[data-chest-id="' + c.id + '"]');
+                if (card) card._contents = c.contents || [];
+            });
+            updateChestContinueState();
+        }
+        async function openStarterChest(card) {
+            if (card.classList.contains('opened') || card._opening) return;
+            card._opening = true;
+            const chestId = card.dataset.chestId;
+            const contents = card._contents || [];
+            const target = document.getElementById('chestContents-' + chestId);
+
+            // Visual reveal
+            card.classList.add('opened');
+            const lookup = (id) => (window.ALCHEMY_ITEMS && window.ALCHEMY_ITEMS[id]) || (window.ALCHEMY_INGREDIENTS && window.ALCHEMY_INGREDIENTS[id]) || null;
+            target.innerHTML = contents.map(c => {
+                const meta = lookup(c.item_id);
+                const name = meta ? meta.name : c.item_id;
+                const qty  = c.quantity > 1 ? ' ×' + c.quantity : '';
+                return '<div>+ ' + name + qty + '</div>';
+            }).join('');
+            card.querySelector('.open-hint').textContent = '✓ COLLECTED';
+
+            // Grant items + mark opened (in parallel)
+            await Promise.all([
+                grantChestContents(contents),
+                fetch(SUPABASE_URL + '/rest/v1/agent_starter_chests?id=eq.' + chestId, {
+                    method: 'PATCH', headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                    body: JSON.stringify({ opened_at: new Date().toISOString() })
+                })
+            ]);
+            updateChestContinueState();
+        }
+        async function grantChestContents(contents) {
+            // Aggregate by item_id, then upsert each into inventory.
+            const byId = {};
+            contents.forEach(c => { byId[c.item_id] = (byId[c.item_id] || 0) + (c.quantity || 1); });
+            for (const [item_id, quantity] of Object.entries(byId)) {
+                const meta = (window.ALCHEMY_ITEMS && window.ALCHEMY_ITEMS[item_id]) || (window.ALCHEMY_INGREDIENTS && window.ALCHEMY_INGREDIENTS[item_id]);
+                if (!meta) continue;
+                const isIngredient = !!(window.ALCHEMY_INGREDIENTS && window.ALCHEMY_INGREDIENTS[item_id]);
+                const item_type    = isIngredient ? 'ingredient' : (meta.kind || 'material');
+                const item_category= isIngredient ? meta.cat : (meta.cat || null);
+                // Try upsert: increment quantity if already present
+                const existing = await sbGet('inventory',
+                    'agent_id=eq.' + _currentAgent.agentId + '&item_id=eq.' + encodeURIComponent(item_id) + '&select=inventory_id,quantity&limit=1');
+                if (existing && existing.length > 0) {
+                    await fetch(SUPABASE_URL + '/rest/v1/inventory?inventory_id=eq.' + existing[0].inventory_id, {
+                        method: 'PATCH', headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                        body: JSON.stringify({ quantity: existing[0].quantity + quantity })
+                    });
+                } else {
+                    await sbPost('inventory', {
+                        agent_id:      _currentAgent.agentId,
+                        item_id:       item_id,
+                        item_name:     meta.name,
+                        item_type:     item_type,
+                        item_category: item_category,
+                        quantity:      quantity,
+                        is_equipped:   false
+                    });
+                }
+            }
+        }
+        function updateChestContinueState() {
+            const cards = document.querySelectorAll('#chestGrid .chest-card');
+            const allOpened = cards.length > 0 && [...cards].every(c => c.classList.contains('opened'));
+            document.getElementById('chestContinue').disabled = !allOpened;
+        }
+        function closeChestOverlay() {
+            document.getElementById('chestOverlay').classList.remove('open');
         }
 
         // ─── Dashboard Tutorial Tour ─────────────────────────────
