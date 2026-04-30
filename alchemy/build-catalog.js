@@ -156,7 +156,9 @@ const ingredients = parseCSV('ingredients.csv').map(fromIngredient);
 
 const extrasPath = path.join(dir, 'extras.json');
 const extras = fs.existsSync(extrasPath)
-    ? JSON.parse(fs.readFileSync(extrasPath, 'utf8')).map(validateExtra)
+    ? JSON.parse(fs.readFileSync(extrasPath, 'utf8'))
+        .filter(e => !e._section)              // section dividers for human readability
+        .map(validateExtra)
     : [];
 
 // ── overlay item-effects.json onto items.csv-derived entries ────────
@@ -180,6 +182,8 @@ const ALLOWED_EFFECT_KINDS = new Set([
     'hot_swap','solve','ask_oracle','rewind_on_fail','escape_trap','reposition',
     'steal_item','alter_rule','craft_in_field','heal_ally','share_buffs',
     'permanent_stat_boost','recover_destroyed_item',
+    // Pliny's Arsenal additions:
+    'snapshot_restore','share_damage','cost_reduce',
 ]);
 for (const e of [...items, ...extras]) {
     if (!Array.isArray(e.effect_modifiers)) continue;
