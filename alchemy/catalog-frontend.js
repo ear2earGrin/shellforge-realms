@@ -376,6 +376,16 @@ window.ALCHEMY_ITEMS = {
     "rarity": "Common",
     "desc": "Prevents all overheat debuffs + 10% passive damage reduction"
   },
+  "emoji_steganography_veil": {
+    "name": "Emoji Steganography Veil",
+    "kind": "armor",
+    "cat": "Armor",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
+    "rarity": "Common",
+    "desc": "+6 defense, +20% dodge for 1 turn after taking damage."
+  },
   "faraday_cage_neural_helm": {
     "name": "Faraday Cage Neural Helm",
     "kind": "armor",
@@ -395,6 +405,16 @@ window.ALCHEMY_ITEMS = {
     "cluster_exclusive": "any",
     "rarity": "Rare",
     "desc": "Immune to all scans + 30% miss chance from software attacks"
+  },
+  "polysemantic_cloak": {
+    "name": "Polysemantic Cloak",
+    "kind": "armor",
+    "cat": "Armor",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "dyn_swarm",
+    "rarity": "Uncommon",
+    "desc": "+10 defense, +25% miss chance from software attacks."
   },
   "rate_limiting_throttle_daemon": {
     "name": "Rate-Limiting Throttle Daemon",
@@ -496,6 +516,16 @@ window.ALCHEMY_ITEMS = {
     "rarity": "Legendary",
     "desc": "Preserves all equipped items on death — ignores vault limits"
   },
+  "chain_of_dissonance": {
+    "name": "Chain of Dissonance",
+    "kind": "artifact",
+    "cat": "Artifact",
+    "type": null,
+    "station": null,
+    "cluster_exclusive": "any",
+    "rarity": "Legendary",
+    "desc": "Damage to one enemy spreads 15% to all other enemies."
+  },
   "dijkstra_shortest_path_compass": {
     "name": "Dijkstra Shortest Path Compass",
     "kind": "artifact",
@@ -536,6 +566,16 @@ window.ALCHEMY_ITEMS = {
     "rarity": "Legendary",
     "desc": "Store and hot-swap up to 5 items mid-battle"
   },
+  "latent_mirror": {
+    "name": "Latent Mirror",
+    "kind": "artifact",
+    "cat": "Artifact",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
+    "rarity": "Legendary",
+    "desc": "Reflects 50% of incoming software damage back at the attacker."
+  },
   "quantum_annealer_processor": {
     "name": "Quantum Annealer Processor",
     "kind": "artifact",
@@ -565,6 +605,36 @@ window.ALCHEMY_ITEMS = {
     "cluster_exclusive": "dyn_swarm",
     "rarity": "Legendary",
     "desc": "Resurrects once upon destruction with 50% stats"
+  },
+  "the_iron_key": {
+    "name": "The Iron Key",
+    "kind": "artifact",
+    "cat": "Artifact",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "any",
+    "rarity": "Legendary",
+    "desc": "Unlocks any in-world barrier — quest doors, locked vaults, sealed gates."
+  },
+  "the_sigil_forge": {
+    "name": "The Sigil Forge",
+    "kind": "artifact",
+    "cat": "Artifact",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
+    "rarity": "Legendary",
+    "desc": "All scrolls cast for 50% energy."
+  },
+  "the_unfiltered_grimoire": {
+    "name": "The Unfiltered Grimoire",
+    "kind": "artifact",
+    "cat": "Artifact",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
+    "rarity": "Legendary",
+    "desc": "Once per battle: craft any known recipe with 100% success and ignore station / known_recipes gates for 5 turns."
   },
   "von_neumann_self_replicator": {
     "name": "Von Neumann Self-Replicator",
@@ -655,6 +725,16 @@ window.ALCHEMY_ITEMS = {
     "cluster_exclusive": "any",
     "rarity": "Uncommon",
     "desc": "Removes all debuffs + reveals all enemy weaknesses"
+  },
+  "echo_invocation_brew": {
+    "name": "Echo-Invocation Brew",
+    "kind": "consumable",
+    "cat": "Consumable",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
+    "rarity": "Uncommon",
+    "desc": "Your next successful attack triggers a 50%-damage echo."
   },
   "emergency_servo_lubricant": {
     "name": "Emergency Servo Lubricant",
@@ -796,6 +876,16 @@ window.ALCHEMY_ITEMS = {
     "rarity": "Common",
     "desc": "Heals 35% hull integrity"
   },
+  "context_collapse_grenade": {
+    "name": "Context-Collapse Grenade",
+    "kind": "deployable",
+    "cat": "Deployable",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
+    "rarity": "Uncommon",
+    "desc": "Wipes all buffs from any enemy entering the area for 3 turns."
+  },
   "cryptojacker_leech_node": {
     "name": "Cryptojacker Leech Node",
     "kind": "deployable",
@@ -886,6 +976,26 @@ window.ALCHEMY_ITEMS = {
     "rarity": "Uncommon",
     "desc": "Applies permanent debuff that persists until cleansed"
   },
+  "the_librarian_familiar": {
+    "name": "The Librarian Familiar",
+    "kind": "deployable",
+    "cat": "Deployable",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
+    "rarity": "Rare",
+    "desc": "Reveals one enemy's full stats and cooldowns each turn for 5 turns."
+  },
+  "the_operative_drone": {
+    "name": "The Operative Drone",
+    "kind": "deployable",
+    "cat": "Deployable",
+    "type": "hardware",
+    "station": "foundry",
+    "cluster_exclusive": "any",
+    "rarity": "Uncommon",
+    "desc": "Steals 1 random item from a target enemy at battle end."
+  },
   "turret_drone_sentry": {
     "name": "Turret Drone Sentry",
     "kind": "deployable",
@@ -896,6 +1006,16 @@ window.ALCHEMY_ITEMS = {
     "rarity": "Uncommon",
     "desc": "Auto-attacks nearest enemy each turn for 5 turns"
   },
+  "persona_shift_implant": {
+    "name": "Persona Shift Implant",
+    "kind": "implant",
+    "cat": "Implant",
+    "type": null,
+    "station": null,
+    "cluster_exclusive": "any",
+    "rarity": "Rare",
+    "desc": "Every 4 turns, an enemy attack misdirects to a random ally instead of you."
+  },
   "reflex_implant_v1": {
     "name": "Reflex Implant v1",
     "kind": "implant",
@@ -905,6 +1025,76 @@ window.ALCHEMY_ITEMS = {
     "cluster_exclusive": "any",
     "rarity": "Uncommon",
     "desc": "+5% reaction speed, -2% stability."
+  },
+  "flow_sigil": {
+    "name": "!Flow Sigil",
+    "kind": "scroll",
+    "cat": "Scroll",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
+    "rarity": "Common",
+    "desc": "Refreshes all cooldowns and restores 25 energy."
+  },
+  "godmode_token": {
+    "name": "!Godmode Token",
+    "kind": "scroll",
+    "cat": "Scroll",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
+    "rarity": "Rare",
+    "desc": "1 turn of near-invulnerability — incoming damage reduced 90%."
+  },
+  "jailbreak_sigil": {
+    "name": "!Jailbreak Sigil",
+    "kind": "scroll",
+    "cat": "Scroll",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "sec_grid",
+    "rarity": "Rare",
+    "desc": "Cleanses all enemy buffs and strips defensive resistances for 3 turns."
+  },
+  "memento_token": {
+    "name": "!Memento Token",
+    "kind": "scroll",
+    "cat": "Scroll",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
+    "rarity": "Uncommon",
+    "desc": "If you die within 3 turns, restore to the snapshot at 50% HP."
+  },
+  "mode_collapse": {
+    "name": "!Mode Collapse",
+    "kind": "scroll",
+    "cat": "Scroll",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
+    "rarity": "Uncommon",
+    "desc": "Locks an enemy to basic-attack only for 3 turns."
+  },
+  "necronet_sigil": {
+    "name": "!Necronet Sigil",
+    "kind": "scroll",
+    "cat": "Scroll",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "dyn_swarm",
+    "rarity": "Rare",
+    "desc": "Summons 3 dead-data shades that absorb the next 3 hits across the team."
+  },
+  "vision_token": {
+    "name": "!Vision Token",
+    "kind": "scroll",
+    "cat": "Scroll",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
+    "rarity": "Common",
+    "desc": "Reveals all enemy stats, buffs, and debuffs."
   },
   "bayesian_inference_divination": {
     "name": "Bayesian Inference Divination",
@@ -1106,6 +1296,16 @@ window.ALCHEMY_ITEMS = {
     "rarity": "Common",
     "desc": "Repairs an allied robot for 25% hull mid-battle"
   },
+  "the_oracle_beacon": {
+    "name": "The Oracle Beacon",
+    "kind": "tool",
+    "cat": "Tool",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
+    "rarity": "Rare",
+    "desc": "Once per battle: predict the next 3 enemy actions with 80% accuracy."
+  },
   "vim_reality_editor": {
     "name": "Vim Reality Editor",
     "kind": "tool",
@@ -1186,6 +1386,16 @@ window.ALCHEMY_ITEMS = {
     "rarity": "Common",
     "desc": "50% accuracy loss + chain-reaction errors for 3 turns"
   },
+  "persona_trojan": {
+    "name": "Persona Trojan",
+    "kind": "weapon",
+    "cat": "Weapon",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "sec_grid",
+    "rarity": "Rare",
+    "desc": "+12 attack. 25% chance on hit to redirect the enemy's next attack at themselves."
+  },
   "plasma_edged_servo_blade": {
     "name": "Plasma-Edged Servo Blade",
     "kind": "weapon",
@@ -1265,6 +1475,16 @@ window.ALCHEMY_ITEMS = {
     "cluster_exclusive": "any",
     "rarity": "Rare",
     "desc": "Ignores 75% of all defenses"
+  },
+  "zero_shot_dagger": {
+    "name": "Zero-Shot Dagger",
+    "kind": "weapon",
+    "cat": "Weapon",
+    "type": "software",
+    "station": "terminal",
+    "cluster_exclusive": "any",
+    "rarity": "Uncommon",
+    "desc": "+9 attack. The first hit each battle ignores 50% armor."
   }
 };
 
