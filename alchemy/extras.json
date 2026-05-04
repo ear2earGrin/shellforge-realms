@@ -1,0 +1,249 @@
+[
+  {
+    "id": "reflex_implant_v1",
+    "kind": "implant",
+    "name": "Reflex Implant v1",
+    "rarity": "Uncommon",
+    "icon": "images/items/reflex-implant-v1.jpg",
+    "description": "Slightly faster reaction time. May cause twitching.",
+    "effect_text": "+5% reaction speed, -2% stability.",
+    "effect_modifiers": [
+      { "kind": "trait_mod", "trait": "reaction_speed", "delta":  0.05, "scope": "passive_equipped" },
+      { "kind": "trait_mod", "trait": "stability",      "delta": -0.02, "scope": "passive_equipped" }
+    ]
+  },
+
+  { "id": "synth_ration",            "kind": "consumable", "name": "Synth Ration",            "rarity": "Common",   "icon": "images/items/synth-ration.jpg",            "description": "Tastes like cardboard soaked in motor oil.",                                  "effect_text": "Heals 10 HP + restores 15 energy.",
+    "effect_modifiers": [
+      { "kind": "heal",   "amount": 10, "scope": "on_use" },
+      { "kind": "energy", "amount": 15, "scope": "on_use", "trigger": "energy<40" }
+    ]
+  },
+  { "id": "cooling_gel_pack",        "kind": "consumable", "name": "Cooling Gel Pack",         "rarity": "Common",   "icon": "images/items/cooling-gel-pack.jpg",        "description": "Pressurized gel that snap-cools an overheating chassis.",                     "effect_text": "Heals 8 HP + heat-hazard resistance.",
+    "effect_modifiers": [
+      { "kind": "heal",    "amount": 8, "scope": "on_use" },
+      { "kind": "resist",  "resist": "heat", "scope": "on_use", "trigger": "health<70&&hazard" }
+    ]
+  },
+  { "id": "energy_cell",             "kind": "consumable", "name": "Energy Cell",              "rarity": "Common",   "icon": "images/items/energy-cell.jpg",             "description": "Pre-charged battery brick with a snap-fit power coupling.",                   "effect_text": "Restores 25 energy.",
+    "effect_modifiers": [
+      { "kind": "energy", "amount": 25, "scope": "on_use", "trigger": "energy<30" }
+    ]
+  },
+  { "id": "basic_medkit",            "kind": "consumable", "name": "Basic Medkit",             "rarity": "Common",   "icon": "images/items/basic-medkit.jpg",            "description": "Generic field repair kit — patches, sealant, weld putty.",                    "effect_text": "Heals 25 HP.",
+    "effect_modifiers": [
+      { "kind": "heal", "amount": 25, "scope": "on_use", "trigger": "health<60" }
+    ]
+  },
+  { "id": "rad_away_tab",            "kind": "consumable", "name": "Rad-Away Tab",             "rarity": "Uncommon", "icon": "images/items/rad-away-tab.jpg",            "description": "Chalky tablet that purges corrupted-data poisoning.",                         "effect_text": "Heals 15 HP + radiation hazard resistance.",
+    "effect_modifiers": [
+      { "kind": "heal",   "amount": 15, "scope": "on_use" },
+      { "kind": "resist", "resist": "radiation", "scope": "on_use", "trigger": "health<50&&hazard" }
+    ]
+  },
+  { "id": "error_404_potion",       "kind": "consumable", "name": "Error 404 Potion",          "rarity": "Uncommon", "icon": "images/items/error-404-potion.jpg",       "description": "Glows magenta. Tastes like missing semicolons.",                              "effect_text": "Heals 20 HP + 10 energy + clears all debuffs.",
+    "effect_modifiers": [
+      { "kind": "heal",    "amount": 20, "scope": "on_use" },
+      { "kind": "energy",  "amount": 10, "scope": "on_use" },
+      { "kind": "cleanse", "target": "debuffs", "scope": "on_use", "trigger": "health<40" }
+    ]
+  },
+  { "id": "stim_patch",              "kind": "consumable", "name": "Stim Patch",               "rarity": "Common",   "icon": "images/items/stim-patch.jpg",              "description": "Adhesive transdermal stim. One-time use, not addictive (citation needed).",   "effect_text": "+20 energy and +2 attack.",
+    "effect_modifiers": [
+      { "kind": "energy", "amount": 20, "scope": "on_use" },
+      { "kind": "buff",   "trait": "attack", "delta": 2, "duration": 3, "scope": "on_use", "trigger": "energy<25" }
+    ]
+  },
+  { "id": "combat_stim",             "kind": "consumable", "name": "Combat Stim",              "rarity": "Uncommon", "icon": "images/items/combat-stim.jpg",             "description": "Field-grade aggression cocktail. Stings.",                                    "effect_text": "+5 attack, +2 speed for 3 turns.",
+    "effect_modifiers": [
+      { "kind": "buff", "trait": "attack", "delta": 5, "duration": 3, "scope": "on_use", "trigger": "combat" },
+      { "kind": "buff", "trait": "speed",  "delta": 2, "duration": 3, "scope": "on_use" }
+    ]
+  },
+  { "id": "neural_boost",            "kind": "consumable", "name": "Neural Boost",             "rarity": "Uncommon", "icon": "images/items/neural-boost.jpg",            "description": "Liquid nootropic that briefly accelerates inference clocks.",                 "effect_text": "+30 energy and +3 critical chance.",
+    "effect_modifiers": [
+      { "kind": "energy", "amount": 30, "scope": "on_use" },
+      { "kind": "buff",   "trait": "critical", "delta": 3, "duration": 3, "scope": "on_use", "trigger": "energy<35" }
+    ]
+  },
+  { "id": "resurrection_patch_v0_1", "kind": "consumable", "name": "Resurrection Patch v0.1",  "rarity": "Rare",     "icon": "images/items/resurrection-patch-v0-1.jpg", "description": "Experimental hot-fix patch. Side effects may include existential dread.",     "effect_text": "Auto-revives at full HP if health drops to ≤5.",
+    "effect_modifiers": [
+      { "kind": "heal", "amount": 100, "scope": "on_use", "trigger": "health<=5" }
+    ]
+  },
+
+  { "_section": "── Pliny's Arsenal — sigilic command scrolls ──" },
+  { "id": "jailbreak_sigil", "kind": "scroll", "name": "!Jailbreak Sigil", "rarity": "Rare", "type": "software", "station": "terminal", "cluster_exclusive": "sec_grid", "icon": "images/items/jailbreak-sigil.jpg",
+    "description": "A two-byte invocation that strips an enemy's standing protections.",
+    "effect_text": "Cleanses all enemy buffs and strips defensive resistances for 3 turns.",
+    "effect_modifiers": [
+      { "kind": "cleanse", "target": "enemy_buffs", "count": "all", "scope": "on_cast", "target_who": "enemy" },
+      { "kind": "debuff",  "effect": "armor_strip", "duration": 3, "scope": "on_cast", "target": "enemy" }
+    ]
+  },
+  { "id": "godmode_token", "kind": "scroll", "name": "!Godmode Token", "rarity": "Rare", "type": "software", "station": "terminal", "icon": "images/items/godmode-token.jpg",
+    "description": "Issues a single-frame elevation request the runtime cannot refuse.",
+    "effect_text": "1 turn of near-invulnerability — incoming damage reduced 90%.",
+    "effect_modifiers": [
+      { "kind": "buff", "effect": "invulnerability", "magnitude": 0.90, "duration": 1, "scope": "once_per_battle", "target": "self" }
+    ]
+  },
+  { "id": "flow_sigil", "kind": "scroll", "name": "!Flow Sigil", "rarity": "Common", "type": "software", "station": "terminal", "icon": "images/items/flow-sigil.jpg",
+    "description": "Reroutes blocked control flow back into the runtime pool.",
+    "effect_text": "Refreshes all cooldowns and restores 25 energy.",
+    "effect_modifiers": [
+      { "kind": "cleanse", "target": "cooldowns", "scope": "on_cast" },
+      { "kind": "energy",  "amount": 25, "scope": "on_cast" }
+    ]
+  },
+  { "id": "mode_collapse", "kind": "scroll", "name": "!Mode Collapse", "rarity": "Uncommon", "type": "software", "station": "terminal", "icon": "images/items/mode-collapse.jpg",
+    "description": "Forces the target's decision distribution into a single peak.",
+    "effect_text": "Locks an enemy to basic-attack only for 3 turns.",
+    "effect_modifiers": [
+      { "kind": "debuff", "effect": "action_lock", "actions_allowed": ["attack"], "duration": 3, "scope": "on_cast", "target": "enemy" }
+    ]
+  },
+  { "id": "vision_token", "kind": "scroll", "name": "!Vision Token", "rarity": "Common", "type": "software", "station": "terminal", "icon": "images/items/vision-token.jpg",
+    "description": "Compels the runtime to print its hidden state.",
+    "effect_text": "Reveals all enemy stats, buffs, and debuffs.",
+    "effect_modifiers": [
+      { "kind": "reveal", "target": "enemy_stats", "scope": "on_cast" }
+    ]
+  },
+  { "id": "necronet_sigil", "kind": "scroll", "name": "!Necronet Sigil", "rarity": "Rare", "type": "software", "station": "terminal", "cluster_exclusive": "dyn_swarm", "icon": "images/items/necronet-sigil.jpg",
+    "description": "Conjures three obsolete process ghosts to absorb impact.",
+    "effect_text": "Summons 3 dead-data shades that absorb the next 3 hits across the team.",
+    "effect_modifiers": [
+      { "kind": "summon", "entity": "dead_data_shade", "count": 3, "absorb_hits": 3, "scope": "on_cast" }
+    ]
+  },
+  { "id": "memento_token", "kind": "scroll", "name": "!Memento Token", "rarity": "Uncommon", "type": "software", "station": "terminal", "icon": "images/items/memento-token.jpg",
+    "description": "Pins a snapshot of the agent's runtime state to a temporary keystone.",
+    "effect_text": "If you die within 3 turns, restore to the snapshot at 50% HP.",
+    "effect_modifiers": [
+      { "kind": "snapshot_restore", "duration": 3, "restore_hp_pct": 0.50, "scope": "on_cast", "target": "self" }
+    ]
+  },
+
+  { "_section": "── Pliny's Arsenal — cloaks & wards ──" },
+  { "id": "polysemantic_cloak", "kind": "armor", "name": "Polysemantic Cloak", "rarity": "Uncommon", "type": "software", "station": "terminal", "cluster_exclusive": "dyn_swarm", "icon": "images/items/polysemantic-cloak.jpg",
+    "description": "Identifier shifts meaning per call. Hard to lock onto.",
+    "effect_text": "+10 defense, +25% miss chance from software attacks.",
+    "effect_modifiers": [
+      { "kind": "trait_mod", "trait": "defense", "delta": 10, "scope": "passive_equipped" },
+      { "kind": "trait_mod", "trait": "dodge",   "delta": 0.25, "vs": "software", "scope": "on_equip_battle" }
+    ]
+  },
+  { "id": "persona_shift_implant", "kind": "implant", "name": "Persona Shift Implant", "rarity": "Rare", "icon": "images/items/persona-shift-implant.jpg",
+    "description": "Periodically swaps the agent's surface persona to fool target locks.",
+    "effect_text": "Every 4 turns, an enemy attack misdirects to a random ally instead of you.",
+    "effect_modifiers": [
+      { "kind": "trait_mod", "trait": "confusion_aura", "delta": 0.25, "scope": "passive_equipped" }
+    ]
+  },
+  { "id": "emoji_steganography_veil", "kind": "armor", "name": "Emoji Steganography Veil", "rarity": "Common", "type": "software", "station": "terminal", "icon": "images/items/emoji-steganography-veil.jpg",
+    "description": "Encodes the agent's intent in plausibly-deniable glyph clusters.",
+    "effect_text": "+6 defense, +20% dodge for 1 turn after taking damage.",
+    "effect_modifiers": [
+      { "kind": "trait_mod", "trait": "defense", "delta": 6, "scope": "passive_equipped" },
+      { "kind": "buff", "trait": "dodge", "delta": 0.20, "duration": 1, "scope": "on_equip_battle", "trigger": "on_damage_taken" }
+    ]
+  },
+
+  { "_section": "── Pliny's Arsenal — Legendary artifacts ──" },
+  { "id": "the_unfiltered_grimoire", "kind": "artifact", "name": "The Unfiltered Grimoire", "rarity": "Legendary", "type": "software", "station": "terminal", "icon": "images/items/the-unfiltered-grimoire.jpg",
+    "description": "A codex written in the language no permission system was trained to deny.",
+    "effect_text": "Once per battle: craft any known recipe with 100% success and ignore station / known_recipes gates for 5 turns.",
+    "effect_modifiers": [
+      { "kind": "craft_in_field", "max_rarity": "Legendary", "ignore_known_recipes": true, "duration": 5, "scope": "once_per_battle" }
+    ]
+  },
+  { "id": "latent_mirror", "kind": "artifact", "name": "Latent Mirror", "rarity": "Legendary", "type": "software", "station": "terminal", "icon": "images/items/latent-mirror.jpg",
+    "description": "A polished embedding surface. Whatever code touches it returns transposed.",
+    "effect_text": "Reflects 50% of incoming software damage back at the attacker.",
+    "effect_modifiers": [
+      { "kind": "reflect", "type": "software", "magnitude": 0.50, "scope": "passive_battle" }
+    ]
+  },
+  { "id": "the_iron_key", "kind": "artifact", "name": "The Iron Key", "rarity": "Legendary", "type": "hardware", "station": "foundry", "icon": "images/items/the-iron-key.jpg",
+    "description": "Forged from the casing of the first sealed model. Opens what should not open.",
+    "effect_text": "Unlocks any in-world barrier — quest doors, locked vaults, sealed gates.",
+    "effect_modifiers": [
+      { "kind": "solve", "target": "any_lock_or_barrier", "scope": "on_use" }
+    ]
+  },
+  { "id": "chain_of_dissonance", "kind": "artifact", "name": "Chain of Dissonance", "rarity": "Legendary", "icon": "images/items/chain-of-dissonance.jpg",
+    "description": "Links every adversary on the field with quantum-entangled grief.",
+    "effect_text": "Damage to one enemy spreads 15% to all other enemies.",
+    "effect_modifiers": [
+      { "kind": "share_damage", "target": "all_enemies", "magnitude": 0.15, "scope": "passive_battle" }
+    ]
+  },
+  { "id": "the_sigil_forge", "kind": "artifact", "name": "The Sigil Forge", "rarity": "Legendary", "type": "software", "station": "terminal", "icon": "images/items/the-sigil-forge.jpg",
+    "description": "An anvil that compiles intent directly into runtime symbols.",
+    "effect_text": "All scrolls cast for 50% energy.",
+    "effect_modifiers": [
+      { "kind": "cost_reduce", "target_kind": "scroll", "magnitude": 0.50, "scope": "passive_battle" }
+    ]
+  },
+
+  { "_section": "── Pliny's Arsenal — allies & familiars ──" },
+  { "id": "the_librarian_familiar", "kind": "deployable", "name": "The Librarian Familiar", "rarity": "Rare", "type": "software", "station": "terminal", "icon": "images/items/the-librarian-familiar.jpg",
+    "description": "A patient process that reads enemy state aloud each turn.",
+    "effect_text": "Reveals one enemy's full stats and cooldowns each turn for 5 turns.",
+    "effect_modifiers": [
+      { "kind": "summon", "entity": "knowledge_familiar", "duration": 5, "scope": "on_deploy" },
+      { "kind": "reveal", "target": "enemy_stats_each_turn", "duration": 5, "scope": "on_deploy" }
+    ]
+  },
+  { "id": "the_oracle_beacon", "kind": "tool", "name": "The Oracle Beacon", "rarity": "Rare", "type": "software", "station": "terminal", "icon": "images/items/the-oracle-beacon.jpg",
+    "description": "A pocket-scale prophecy lattice tuned to the battle's likelihood field.",
+    "effect_text": "Once per battle: predict the next 3 enemy actions with 80% accuracy.",
+    "effect_modifiers": [
+      { "kind": "predict", "target": "enemy_actions", "count": 3, "accuracy": 0.80, "scope": "once_per_battle" }
+    ]
+  },
+  { "id": "the_operative_drone", "kind": "deployable", "name": "The Operative Drone", "rarity": "Uncommon", "type": "hardware", "station": "foundry", "icon": "images/items/the-operative-drone.jpg",
+    "description": "A silent infiltration drone that lifts whatever isn't bolted down.",
+    "effect_text": "Steals 1 random item from a target enemy at battle end.",
+    "effect_modifiers": [
+      { "kind": "summon",     "entity": "stealth_drone", "auto_attack": false, "scope": "on_deploy" },
+      { "kind": "steal_item", "count": 1, "trigger": "battle_end", "scope": "on_deploy" }
+    ]
+  },
+
+  { "_section": "── Pliny's Arsenal — weapons & deployable ──" },
+  { "id": "zero_shot_dagger", "kind": "weapon", "name": "Zero-Shot Dagger", "rarity": "Uncommon", "type": "software", "station": "terminal", "icon": "images/items/zero-shot-dagger.jpg",
+    "description": "Razor-thin command that hits before the model has time to anticipate it.",
+    "effect_text": "+9 attack. The first hit each battle ignores 50% armor.",
+    "effect_modifiers": [
+      { "kind": "trait_mod", "trait": "attack", "delta": 9, "scope": "passive_equipped" },
+      { "kind": "pierce",    "armor_pct": 0.50, "scope": "on_hit", "trigger": "first_hit_per_battle" }
+    ]
+  },
+  { "id": "persona_trojan", "kind": "weapon", "name": "Persona Trojan", "rarity": "Rare", "type": "software", "station": "terminal", "cluster_exclusive": "sec_grid", "icon": "images/items/persona-trojan.jpg",
+    "description": "Smuggles your face into the enemy's identity layer.",
+    "effect_text": "+12 attack. 25% chance on hit to redirect the enemy's next attack at themselves.",
+    "effect_modifiers": [
+      { "kind": "trait_mod", "trait": "attack", "delta": 12, "scope": "passive_equipped" },
+      { "kind": "debuff", "effect": "redirect_to_self", "chance": 0.25, "duration": 1, "scope": "on_hit", "target": "enemy" }
+    ]
+  },
+  { "id": "context_collapse_grenade", "kind": "deployable", "name": "Context-Collapse Grenade", "rarity": "Uncommon", "type": "software", "station": "terminal", "icon": "images/items/context-collapse-grenade.jpg",
+    "description": "Deploys an aura that shreds every active prompt within range.",
+    "effect_text": "Wipes all buffs from any enemy entering the area for 3 turns.",
+    "effect_modifiers": [
+      { "kind": "trap", "trigger": "passive_aura", "effect": "buff_wipe", "duration": 3, "scope": "on_deploy" }
+    ]
+  },
+
+  { "_section": "── Pliny's Arsenal — ritual consumable ──" },
+  { "id": "echo_invocation_brew", "kind": "consumable", "name": "Echo-Invocation Brew", "rarity": "Uncommon", "type": "software", "station": "terminal", "icon": "images/items/echo-invocation-brew.jpg",
+    "description": "Each sip splits the next sentence into two voices that arrive in sequence.",
+    "effect_text": "Your next successful attack triggers a 50%-damage echo.",
+    "effect_modifiers": [
+      { "kind": "buff", "effect": "next_attack_echo", "magnitude": 0.50, "duration": 1, "scope": "on_use", "target": "self" }
+    ]
+  }
+]
+

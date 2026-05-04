@@ -393,7 +393,19 @@
             <button class="deploy-button" id="deployBtn">deploy agent</button>
         </div>
     </div>
-    
+
+    <!-- Boot Sequence Overlay -->
+    <div id="bootOverlay" class="boot-overlay" style="display:none;">
+        <div class="boot-crt">
+            <div class="boot-scanlines"></div>
+            <div class="boot-terminal" id="bootTerminal"></div>
+            <div class="boot-skip">press any key to skip</div>
+        </div>
+    </div>
+
+    <!-- Generated catalog (items, ingredients, recipes). See alchemy/build-catalog.js. -->
+    <script src="alchemy/catalog-frontend.js"></script>
+
     <script>
         // ─── Supabase config ─────────────────────────────────────────
         const SUPABASE_URL = 'https://wtzrxscdlqdgdiefsmru.supabase.co';
@@ -451,10 +463,125 @@
             'sec-grid': 'SEC-Grid',
             'dyn-swarm': 'DYN_Swarm'
         };
+
+        // Archetype starter recipes — 3 per archetype, [recipe_id, station].
+        // recipe_id = snake_case of the item name in ALCHEMY_RECIPES.
+        // Further recipes are discovered during explore/gather turns.
+        const STARTER_RECIPES = {
+            // ── PRIME-HELIX (optimizers, builders, oracles) ──
+            '0day-primer':      [['buffer_overflow_exploit','terminal'], ['hot_patch_injection','terminal'],     ['overclock_reactor_injector','foundry']],
+            'consensus-node':   [['aes_256_firewall_protocol','terminal'], ['cache_purge_tonic','terminal'],     ['git_rollback_module','terminal']],
+            'oracle':           [['bayesian_inference_divination','terminal'], ['caffeine_gradient_booster','terminal'], ['context_window_expansion','terminal']],
+            'binary-sculptr':   [['plasma_edged_servo_blade','foundry'], ['tungsten_alloy_chassis_plate','foundry'], ['welding_patch_kit','foundry']],
+
+            // ── SEC-GRID (offensive sec, defenders, disruptors) ──
+            'adversarial':      [['neural_spike_virus','terminal'], ['ransomware_lockout_worm','terminal'],       ['debug_rejuvenation_patch','terminal']],
+            'root-auth':        [['zero_trust_authentication_layer','terminal'], ['aes_256_firewall_protocol','terminal'], ['hot_patch_injection','terminal']],
+            'buffer-sentinel':  [['rate_limiting_throttle_daemon','terminal'], ['cache_purge_tonic','terminal'], ['recursive_function_spiral','terminal']],
+            'noise-injector':   [['prompt_engineering_curse','terminal'], ['gradient_vanishing_hex','terminal'], ['hot_patch_injection','terminal']],
+
+            // ── DYN-SWARM (swarm tactics, morph, crypto-bindings) ──
+            'ordinate-mapper':  [['stable_diffusion_sequence','terminal'], ['diagnostic_probe_array','foundry'], ['emergency_servo_lubricant','foundry']],
+            'ddos-insurgent':   [['ddos_swarm_protocol','terminal'], ['nanobot_swarm_ejector','foundry'],        ['welding_patch_kit','foundry']],
+            'bound-encryptor':  [['homomorphic_encryption_cloak','terminal'], ['cache_purge_tonic','terminal'], ['hot_patch_injection','terminal']],
+            'morph-layer':      [['gan_mirage_scroll','terminal'], ['reactive_ceramic_plating','foundry'],     ['emergency_servo_lubricant','foundry']]
+        };
         
         let selectedCluster = null;
         let selectedArchetype = null;
-        
+
+        // ── Starter chest rolling ────────────────────────────────────────
+        // Deterministic from agent.birth_seed so reload-during-deploy is safe.
+        function makeRng(seed) {
+            // Mulberry32 — small, fast, good enough for loot rolls.
+            let s = seed >>> 0;
+            return function() {
+                s = (s + 0x6D2B79F5) >>> 0;
+                let t = Math.imul(s ^ (s >>> 15), 1 | s);
+                t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+                return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+            };
+        }
+        function rollChests(birthSeed) {
+            const rng = makeRng(birthSeed);
+            const items = window.ALCHEMY_ITEMS || {};
+            const ings  = window.ALCHEMY_INGREDIENTS || {};
+            const all   = Object.entries(items).map(([id, m]) => ({ id, ...m }));
+            const allI  = Object.entries(ings).map(([id, m]) => ({ id, ...m }));
+            const pickFrom = (pool) => pool[Math.floor(rng() * pool.length)];
+
+            // Weighted pick by rarity (Common 88, Uncommon 12 default; Wanderer's tool/scroll
+            // gets a slight Uncommon bias). Returns one entry from `pool` after rarity filter.
+            const pickByRarity = (pool, weights) => {
+                const tiers = ['Common','Uncommon','Rare','Legendary'];
+                const cumul = [];
+                let total = 0;
+                for (const t of tiers) {
+                    total += weights[t] || 0;
+                    cumul.push({ tier: t, cum: total });
+                }
+                if (total === 0) return null;
+                const roll = rng() * total;
+                const tier = cumul.find(c => roll <= c.cum).tier;
+                const subset = pool.filter(p => p.rarity === tier);
+                if (!subset.length) return pickFrom(pool); // fallback to any
+                return pickFrom(subset);
+            };
+
+            const W_GEAR = { Common: 88, Uncommon: 12 };
+            const W_TOOL = { Common: 80, Uncommon: 20 };
+            const W_SCROLL = { Uncommon: 90, Rare: 10 };
+
+            const weapons    = (type) => all.filter(e => e.kind === 'weapon'     && e.type === type && e.cluster_exclusive === 'any');
+            const armors     = (type) => all.filter(e => e.kind === 'armor'      && e.type === type && e.cluster_exclusive === 'any');
+            const consumes   = (type) => all.filter(e => e.kind === 'consumable' && e.type === type && e.cluster_exclusive === 'any');
+            const tools      = ()     => all.filter(e => e.kind === 'tool'       && e.cluster_exclusive === 'any');
+            const scrolls    = ()     => all.filter(e => e.kind === 'scroll'     && e.cluster_exclusive === 'any');
+            const ingsAffin  = (a)    => allI.filter(e => e.craft_affinity === a || e.craft_affinity === 'both').filter(e => e.rarity === 'Common');
+            const catalysts  = ()     => allI.filter(e => e.cat === 'Catalyst' && e.rarity !== 'Legendary');
+            const ingsAny    = ()     => allI.filter(e => e.cat !== 'Primordial');
+
+            // Quantity for ingredient stacks: 3-5 typical, 2-3 for catalyst.
+            const qtyIng     = () => 3 + Math.floor(rng() * 3); // 3..5
+            const qtyCatalyst= () => 2 + Math.floor(rng() * 2); // 2..3
+
+            // Helper to convert a picked entry to {item_id, quantity}.
+            const stack = (e, qty) => e ? ({ item_id: e.id, quantity: qty }) : null;
+
+            // ── Chassis Cache (hardware) ──
+            const chassis = [
+                stack(pickByRarity(weapons('hardware'),  W_GEAR), 1),
+                stack(pickByRarity(armors('hardware'),   W_GEAR), 1),
+                stack(pickByRarity(consumes('hardware'), { Common: 100 }), 1),
+                stack(pickFrom(ingsAffin('hardware')),   qtyIng()),
+                stack(pickFrom(ingsAffin('hardware')),   qtyIng()),
+            ].filter(Boolean);
+
+            // ── Terminal Cache (software) ──
+            const terminal = [
+                stack(pickByRarity(weapons('software'),  W_GEAR), 1),
+                stack(pickByRarity(armors('software'),   W_GEAR), 1),
+                stack(pickByRarity(consumes('software'), { Common: 100 }), 1),
+                stack(pickFrom(ingsAffin('software')),   qtyIng()),
+                stack(pickFrom(ingsAffin('software')),   qtyIng()),
+            ].filter(Boolean);
+
+            // ── Wanderer's Cache (mix) ──
+            const wanderer = [
+                stack(pickByRarity(tools(),   W_TOOL),   1),
+                stack(pickByRarity(scrolls(), W_SCROLL), 1),
+                stack(pickFrom(catalysts()), qtyCatalyst()),
+                stack(pickFrom(ingsAny()),   qtyIng()),
+                stack(pickFrom(ingsAny()),   qtyIng()),
+            ].filter(Boolean);
+
+            return [
+                { theme: 'chassis',  contents: chassis },
+                { theme: 'terminal', contents: terminal },
+                { theme: 'wanderer', contents: wanderer },
+            ];
+        }
+
         // Generate archetype grid
         function generateGrid() {
             const grid = document.getElementById('archetypesGrid');
@@ -662,6 +789,32 @@
                     if (agentRow && agentRow.length > 0) {
                         agentId = agentRow[0].agent_id;
                         console.log('✅ Agent created in Supabase:', agentId);
+
+                        // ── 2b. Grant archetype starter recipes ──
+                        const starters = STARTER_RECIPES[selectedArchetype] || [];
+                        await Promise.all(starters.map(([recipeId, station]) =>
+                            sbPost('agent_known_recipes', {
+                                agent_id:  agentId,
+                                recipe_id: recipeId,
+                                station:   station,
+                                source:    'starter'
+                            })
+                        ));
+                        if (starters.length) console.log('✅ Granted', starters.length, 'starter recipes');
+
+                        // ── 2c. Roll + persist 3 starter chests ──
+                        const chests = rollChests(birthSeed);
+                        await Promise.all(chests.map((chest, i) =>
+                            sbPost('agent_starter_chests', {
+                                agent_id:    agentId,
+                                chest_index: i,
+                                theme:       chest.theme,
+                                contents:    chest.contents
+                            })
+                        ));
+                        console.log('✅ Rolled', chests.length, 'starter chests:',
+                            chests.map(c => c.theme + '(' + c.contents.length + ')').join(', '));
+
                         // Write spawn log entry
                         await sbPost('activity_log', {
                             agent_id:      agentId,
