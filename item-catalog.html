@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ShellForge Realms — Item Catalog</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap');
+  :root {
+    --bg: #0a0e0a;
+    --card-bg: rgba(10,20,10,0.85);
+    --border: rgba(74,222,128,0.15);
+    --text: #c8d6c0;
+    --text-dim: #6a7a6a;
+    --green: #4ade80;
+    --blue: #60a5fa;
+    --purple: #c084fc;
+    --gold: #fbbf24;
+    --common: #8a9a8a;
+    --uncommon: #4ade80;
+    --rare: #60a5fa;
+    --legendary: #fbbf24;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+  }
+  .header {
+    text-align: center;
+    padding: 30px 20px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.4rem;
+    color: var(--green);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  .header .stats {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-top: 6px;
+  }
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 16px 20px;
+    justify-content: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .filter-btn {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 4px 12px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    transition: all 0.15s;
+  }
+  .filter-btn:hover { border-color: var(--green); color: var(--text); }
+  .filter-btn.active { background: rgba(74,222,128,0.1); border-color: var(--green); color: var(--green); }
+  .search-box {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 3px;
+    font-family: inherit;
+    font-size: 0.7rem;
+    width: 200px;
+    outline: none;
+  }
+  .search-box:focus { border-color: var(--green); }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: all 0.2s;
+    cursor: default;
+  }
+  .card:hover { border-color: rgba(74,222,128,0.4); transform: translateY(-1px); }
+  .card.rarity-Common { border-left: 3px solid var(--common); }
+  .card.rarity-Uncommon { border-left: 3px solid var(--uncommon); }
+  .card.rarity-Rare { border-left: 3px solid var(--rare); }
+  .card.rarity-Legendary { border-left: 3px solid var(--legendary); }
+  .card-top {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+  }
+  .card-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 4px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: rgba(0,0,0,0.5);
+    border: 2px solid rgba(138,154,138,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .card.rarity-Uncommon .card-icon { border-color: rgba(74,222,128,0.4); }
+  .card.rarity-Rare .card-icon { border-color: rgba(96,165,250,0.4); }
+  .card.rarity-Legendary .card-icon { border-color: rgba(251,191,36,0.5); box-shadow: 0 0 12px rgba(251,191,36,0.15); }
+  .card-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .card-icon .no-icon {
+    font-size: 1.8rem;
+    opacity: 0.3;
+  }
+  .card-info { flex: 1; min-width: 0; }
+  .card-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+  }
+  .card.rarity-Common .card-name { color: var(--common); }
+  .card.rarity-Uncommon .card-name { color: var(--uncommon); }
+  .card.rarity-Rare .card-name { color: var(--blue); }
+  .card.rarity-Legendary .card-name { color: var(--gold); }
+  .card-meta {
+    font-size: 0.58rem;
+    color: var(--text-dim);
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+  .card-meta .tag {
+    background: rgba(0,0,0,0.3);
+    padding: 1px 6px;
+    border-radius: 2px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .card-desc {
+    font-size: 0.62rem;
+    color: var(--text-dim);
+    line-height: 1.4;
+    margin-top: 2px;
+  }
+  .card-effect {
+    padding: 8px 12px;
+    border-top: 1px solid rgba(255,255,255,0.04);
+    font-size: 0.6rem;
+    color: var(--green);
+    line-height: 1.4;
+  }
+  .card-effect::before {
+    content: 'EFFECT: ';
+    color: var(--text-dim);
+    font-size: 0.52rem;
+    letter-spacing: 0.08em;
+  }
+  .card-mods {
+    padding: 4px 12px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .mod-tag {
+    font-size: 0.5rem;
+    padding: 2px 6px;
+    border-radius: 2px;
+    border: 1px solid rgba(74,222,128,0.15);
+    background: rgba(74,222,128,0.05);
+    color: var(--text-dim);
+  }
+  .card-ingredient-meta {
+    padding: 4px 12px 10px;
+    font-size: 0.55rem;
+    color: var(--text-dim);
+  }
+  .card-ingredient-meta span {
+    margin-right: 10px;
+  }
+  .set-badge {
+    display: inline-block;
+    font-size: 0.5rem;
+    padding: 1px 6px;
+    border-radius: 2px;
+    background: rgba(192,132,252,0.1);
+    border: 1px solid rgba(192,132,252,0.3);
+    color: var(--purple);
+    margin-left: 6px;
+  }
+  .cluster-badge {
+    font-size: 0.5rem;
+    padding: 1px 6px;
+    border-radius: 2px;
+  }
+  .cluster-prime_helix { background: rgba(96,165,250,0.1); border: 1px solid rgba(96,165,250,0.3); color: var(--blue); }
+  .cluster-sec_grid { background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.3); color: var(--gold); }
+  .cluster-dyn_swarm { background: rgba(192,132,252,0.1); border: 1px solid rgba(192,132,252,0.3); color: var(--purple); }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Item Catalog</h1>
+  <div class="stats" id="statsLine"></div>
+</div>
+
+<div class="filters">
+  <input type="text" class="search-box" id="searchBox" placeholder="Search items...">
+  <button class="filter-btn active" data-kind="all">All</button>
+  <button class="filter-btn" data-kind="weapon">Weapon</button>
+  <button class="filter-btn" data-kind="armor">Armor</button>
+  <button class="filter-btn" data-kind="consumable">Consumable</button>
+  <button class="filter-btn" data-kind="scroll">Scroll</button>
+  <button class="filter-btn" data-kind="artifact">Artifact</button>
+  <button class="filter-btn" data-kind="tool">Tool</button>
+  <button class="filter-btn" data-kind="deployable">Deployable</button>
+  <button class="filter-btn" data-kind="ingredient">Ingredient</button>
+  <button class="filter-btn" data-kind="implant">Implant</button>
+  <button class="filter-btn" data-rarity="Common">Common</button>
+  <button class="filter-btn" data-rarity="Uncommon">Uncommon</button>
+  <button class="filter-btn" data-rarity="Rare">Rare</button>
+  <button class="filter-btn" data-rarity="Legendary">Legendary</button>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<script>
+(function() {
+  fetch('alchemy/catalog.json').then(r => r.json()).then(run);
+  function run(catalog) {
+  const grid = document.getElementById('grid');
+  const statsLine = document.getElementById('statsLine');
+  const searchBox = document.getElementById('searchBox');
+
+  const rarityOrder = { Common: 0, Uncommon: 1, Rare: 2, Legendary: 3 };
+  const sorted = catalog.slice().sort((a, b) => {
+    const ka = a.kind.localeCompare(b.kind);
+    if (ka !== 0) return ka;
+    const ra = (rarityOrder[a.rarity] || 0) - (rarityOrder[b.rarity] || 0);
+    if (ra !== 0) return ra;
+    return a.name.localeCompare(b.name);
+  });
+
+  function modSummary(mods) {
+    if (!mods || !mods.length) return [];
+    return mods.map(function(m) {
+      if (m.kind === 'trait_mod') return m.trait + (m.delta > 0 ? '+' : '') + m.delta;
+      if (m.kind === 'heal') return 'heal ' + (m.amount || (m.amount_pct * 100 + '%'));
+      if (m.kind === 'energy') return 'energy +' + m.amount;
+      if (m.kind === 'buff') return 'buff:' + (m.trait || m.effect);
+      if (m.kind === 'debuff') return 'debuff:' + (m.trait || m.effect);
+      if (m.kind === 'resist') return 'resist:' + m.resist;
+      if (m.kind === 'immune') return 'immune:' + m.type;
+      if (m.kind === 'pierce') return 'pierce ' + (m.armor_pct * 100) + '%';
+      if (m.kind === 'reflect') return 'reflect ' + (m.magnitude * 100) + '%';
+      if (m.kind === 'summon') return 'summon:' + m.entity;
+      if (m.kind === 'trap') return 'trap:' + m.effect;
+      return m.kind;
+    });
+  }
+
+  function renderCards(items) {
+    grid.innerHTML = '';
+    items.forEach(function(item) {
+      var card = document.createElement('div');
+      card.className = 'card rarity-' + item.rarity;
+      card.dataset.kind = item.kind;
+      card.dataset.rarity = item.rarity;
+      card.dataset.name = item.name.toLowerCase();
+
+      var iconHtml = item.icon
+        ? '<img src="' + item.icon + '" alt="' + item.name + '" onerror="this.outerHTML=\'<div class=no-icon>?</div>\'">'
+        : '<div class="no-icon">?</div>';
+
+      var clusterHtml = '';
+      if (item.cluster_exclusive && item.cluster_exclusive !== 'any') {
+        clusterHtml = '<span class="cluster-badge cluster-' + item.cluster_exclusive + '">' + item.cluster_exclusive.replace('_', ' ') + '</span>';
+      }
+
+      var setHtml = '';
+      if (item.set_id) {
+        setHtml = '<span class="set-badge">SET: ' + item.set_id + '</span>';
+      }
+
+      var html = '<div class="card-top">';
+      html += '<div class="card-icon">' + iconHtml + '</div>';
+      html += '<div class="card-info">';
+      html += '<div class="card-name">' + item.name + setHtml + '</div>';
+      html += '<div class="card-meta">';
+      html += '<span class="tag">' + item.kind + '</span>';
+      html += '<span class="tag">' + item.rarity + '</span>';
+      if (item.type) html += '<span class="tag">' + item.type + '</span>';
+      if (item.station) html += '<span class="tag">' + item.station + '</span>';
+      html += clusterHtml;
+      html += '</div>';
+      html += '<div class="card-desc">' + item.description + '</div>';
+      html += '</div></div>';
+
+      if (item.effect_text) {
+        html += '<div class="card-effect">' + item.effect_text + '</div>';
+      }
+
+      if (item.kind === 'ingredient') {
+        html += '<div class="card-ingredient-meta">';
+        if (item.category) html += '<span>Category: ' + item.category + '</span>';
+        if (item.subcategory) html += '<span>Sub: ' + item.subcategory + '</span>';
+        if (item.craft_affinity) html += '<span>Affinity: ' + item.craft_affinity + '</span>';
+        html += '</div>';
+      }
+
+      var mods = modSummary(item.effect_modifiers);
+      if (mods.length) {
+        html += '<div class="card-mods">';
+        mods.forEach(function(m) { html += '<span class="mod-tag">' + m + '</span>'; });
+        html += '</div>';
+      }
+
+      card.innerHTML = html;
+      grid.appendChild(card);
+    });
+  }
+
+  renderCards(sorted);
+
+  // Stats
+  var kinds = {};
+  sorted.forEach(function(i) { kinds[i.kind] = (kinds[i.kind] || 0) + 1; });
+  var kindStr = Object.keys(kinds).sort().map(function(k) { return k + ': ' + kinds[k]; }).join('  |  ');
+  statsLine.textContent = sorted.length + ' items  |  ' + kindStr;
+
+  // Filtering
+  var activeKind = 'all';
+  var activeRarity = null;
+  var searchTerm = '';
+
+  function applyFilters() {
+    var cards = grid.querySelectorAll('.card');
+    var visible = 0;
+    cards.forEach(function(c) {
+      var kindMatch = activeKind === 'all' || c.dataset.kind === activeKind;
+      var rarityMatch = !activeRarity || c.dataset.rarity === activeRarity;
+      var searchMatch = !searchTerm || c.dataset.name.indexOf(searchTerm) !== -1;
+      if (kindMatch && rarityMatch && searchMatch) {
+        c.classList.remove('hidden');
+        visible++;
+      } else {
+        c.classList.add('hidden');
+      }
+    });
+    statsLine.textContent = visible + ' / ' + sorted.length + ' items shown  |  ' + kindStr;
+  }
+
+  document.querySelectorAll('.filter-btn[data-kind]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.filter-btn[data-kind]').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      activeKind = btn.dataset.kind;
+      applyFilters();
+    });
+  });
+
+  document.querySelectorAll('.filter-btn[data-rarity]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      if (btn.classList.contains('active')) {
+        btn.classList.remove('active');
+        activeRarity = null;
+      } else {
+        document.querySelectorAll('.filter-btn[data-rarity]').forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        activeRarity = btn.dataset.rarity;
+      }
+      applyFilters();
+    });
+  });
+
+  searchBox.addEventListener('input', function() {
+    searchTerm = searchBox.value.toLowerCase().trim();
+    applyFilters();
+  });
+  } // end run()
+})();
+</script>
+</body>
+</html>
