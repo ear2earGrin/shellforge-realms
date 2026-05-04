@@ -6,6 +6,7 @@ import {
   StyleSheet,
   RefreshControl,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../../lib/supabase";
 import { colors, spacing } from "../../lib/theme";
 import type { ActivityLog } from "../../lib/types";
@@ -21,6 +22,7 @@ const ACTION_COLORS: Record<string, string> = {
   quest: colors.secondary,
   church: "#ddbbff",
   arena: colors.danger,
+  spawn: colors.primary,
 };
 
 function timeAgo(dateStr: string): string {
@@ -40,7 +42,7 @@ function LogEntry({ item }: { item: ActivityLog }) {
   return (
     <View style={styles.entry}>
       <View style={styles.entryHeader}>
-        <View style={[styles.actionBadge, { borderColor: accentColor }]}>
+        <View style={[styles.actionBadge, { borderColor: accentColor + "55" }]}>
           <Text style={[styles.actionType, { color: accentColor }]}>
             {item.action_type.toUpperCase()}
           </Text>
@@ -114,6 +116,7 @@ function LogEntry({ item }: { item: ActivityLog }) {
 }
 
 export default function FeedScreen() {
+  const insets = useSafeAreaInsets();
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -127,7 +130,6 @@ export default function FeedScreen() {
       return;
     }
 
-    // Get user's agent
     const { data: agents } = await supabase
       .from("agents")
       .select("agent_id")
@@ -187,9 +189,18 @@ export default function FeedScreen() {
   return (
     <FlatList
       style={styles.container}
+      contentContainerStyle={[
+        logs.length === 0 ? { flex: 1 } : undefined,
+        { paddingTop: insets.top },
+      ]}
       data={logs}
       keyExtractor={(item) => item.log_id}
       renderItem={({ item }) => <LogEntry item={item} />}
+      ListHeaderComponent={
+        <View style={styles.feedHeader}>
+          <Text style={styles.feedHeaderText}>FEED</Text>
+        </View>
+      }
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -205,7 +216,6 @@ export default function FeedScreen() {
           </Text>
         </View>
       }
-      contentContainerStyle={logs.length === 0 ? { flex: 1 } : undefined}
     />
   );
 }
@@ -226,15 +236,30 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: 12,
     letterSpacing: 3,
+    fontFamily: "Courier",
+  },
+  feedHeader: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  feedHeaderText: {
+    color: colors.primary,
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 4,
+    fontFamily: "Courier",
+    textAlign: "center",
   },
   emptyText: {
     color: colors.text,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "600",
   },
   emptySub: {
     color: colors.textMuted,
-    fontSize: 13,
+    fontSize: 12,
     marginTop: 4,
   },
   entry: {
@@ -255,41 +280,46 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   actionType: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "800",
     letterSpacing: 1,
+    fontFamily: "Courier",
   },
   turnNum: {
     color: colors.textMuted,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "600",
+    fontFamily: "Courier",
   },
   timestamp: {
     color: colors.textMuted,
-    fontSize: 11,
+    fontSize: 10,
     marginLeft: "auto",
+    fontFamily: "Courier",
   },
   detail: {
     color: colors.text,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 19,
   },
   statsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 10,
     marginTop: 8,
   },
   statChip: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "700",
     letterSpacing: 0.5,
+    fontFamily: "Courier",
   },
   locationTag: {
     color: colors.textMuted,
-    fontSize: 10,
-    letterSpacing: 1,
-    marginTop: 6,
+    fontSize: 9,
+    letterSpacing: 1.5,
+    marginTop: 8,
     textTransform: "uppercase",
+    fontFamily: "Courier",
   },
 });

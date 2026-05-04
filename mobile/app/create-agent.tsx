@@ -249,11 +249,11 @@ export default function CreateAgentScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
+  container: { flex: 1, backgroundColor: colors.bgDeep },
   content: { padding: spacing.lg, paddingTop: 60 },
   title: {
     color: colors.primary,
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "900",
     letterSpacing: 4,
     textAlign: "center",
@@ -265,8 +265,9 @@ const styles = StyleSheet.create({
   },
   label: {
     color: colors.textMuted,
-    fontSize: 10,
+    fontSize: 9,
     letterSpacing: 2,
+    fontWeight: "600",
     marginBottom: 6,
     marginTop: 16,
   },
@@ -274,8 +275,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgCard,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
-    padding: 14,
+    borderRadius: 12,
+    padding: 16,
     fontSize: 16,
     color: colors.text,
   },
@@ -285,8 +286,9 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: colors.textMuted,
-    fontSize: 10,
+    fontSize: 9,
     letterSpacing: 3,
+    fontWeight: "700",
     marginTop: 24,
     marginBottom: 12,
   },
@@ -296,10 +298,10 @@ const styles = StyleSheet.create({
   },
   clusterBtn: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: "center",
     backgroundColor: colors.bgCard,
   },
@@ -323,11 +325,11 @@ const styles = StyleSheet.create({
   },
   archetypeCard: {
     width: "48%" as unknown as number,
-    paddingVertical: 16,
+    paddingVertical: 18,
     paddingHorizontal: 12,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 10,
+    borderRadius: 14,
     alignItems: "center",
     backgroundColor: colors.bgCard,
   },
@@ -351,8 +353,8 @@ const styles = StyleSheet.create({
   },
   deployBtn: {
     backgroundColor: colors.primary,
-    borderRadius: 8,
-    padding: 16,
+    borderRadius: 12,
+    padding: 18,
     alignItems: "center",
     marginTop: 32,
   },
@@ -360,8 +362,8 @@ const styles = StyleSheet.create({
     opacity: 0.35,
   },
   deployBtnText: {
-    color: colors.bg,
-    fontSize: 14,
+    color: colors.bgDeep,
+    fontSize: 13,
     fontWeight: "900",
     letterSpacing: 3,
   },
@@ -372,7 +374,7 @@ const styles = StyleSheet.create({
   },
   cancelText: {
     color: colors.textMuted,
-    fontSize: 11,
+    fontSize: 10,
     letterSpacing: 2,
   },
 });

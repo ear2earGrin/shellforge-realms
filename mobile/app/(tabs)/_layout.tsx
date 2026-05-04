@@ -13,20 +13,13 @@ function TabIcon({
 }) {
   return (
     <View style={styles.tabIcon}>
-      <Text
-        style={[
-          styles.tabEmoji,
-          { opacity: focused ? 1 : 0.5 },
-        ]}
-      >
+      <Text style={[styles.tabEmoji, { opacity: focused ? 1 : 0.35 }]}>
         {icon}
       </Text>
       <Text
         style={[
           styles.tabLabel,
-          {
-            color: focused ? colors.primary : colors.textMuted,
-          },
+          { color: focused ? colors.primary : "#556" },
         ]}
       >
         {label}
@@ -39,24 +32,15 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerStyle: {
-          backgroundColor: colors.bg,
-          borderBottomColor: colors.border,
-          borderBottomWidth: 1,
-        } as any,
-        headerTintColor: colors.primary,
-        headerTitleStyle: {
-          fontWeight: "bold",
-          fontSize: 16,
-          letterSpacing: 1,
-        },
+        headerShown: false,
         tabBarStyle: {
-          backgroundColor: colors.bg,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
-          height: 80,
-          paddingBottom: 20,
-          paddingTop: 8,
+          backgroundColor: "rgba(8,8,16,0.96)",
+          borderTopWidth: 0,
+          height: 85,
+          paddingBottom: 24,
+          paddingTop: 10,
+          elevation: 0,
+          shadowOpacity: 0,
         },
         tabBarShowLabel: false,
         tabBarActiveTintColor: colors.primary,
@@ -107,14 +91,14 @@ const styles = StyleSheet.create({
   tabIcon: {
     alignItems: "center",
     justifyContent: "center",
-    gap: 2,
+    gap: 3,
   },
   tabEmoji: {
     fontSize: 22,
   },
   tabLabel: {
-    fontSize: 9,
-    fontWeight: "700",
+    fontSize: 8,
+    fontWeight: "800",
     letterSpacing: 1.5,
   },
 });

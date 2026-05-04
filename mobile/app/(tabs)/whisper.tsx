@@ -10,6 +10,7 @@ import {
   Platform,
   Alert,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../../lib/supabase";
 import { colors, spacing } from "../../lib/theme";
 import type { Whisper } from "../../lib/types";
@@ -18,6 +19,7 @@ const MAX_CHARS = 200;
 const COOLDOWN_HOURS = 12;
 
 export default function WhisperScreen() {
+  const insets = useSafeAreaInsets();
   const [whispers, setWhispers] = useState<Whisper[]>([]);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -162,12 +164,23 @@ export default function WhisperScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={100}
     >
-      {/* Whisper History */}
       <FlatList
         data={whispers}
         keyExtractor={(item) => item.whisper_id}
         inverted
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingTop: 12, paddingBottom: insets.top + 50 },
+        ]}
+        ListHeaderComponent={null}
+        ListFooterComponent={
+          <View style={[styles.screenHeader, { paddingTop: insets.top + 8 }]}>
+            <Text style={styles.screenHeaderText}>WHISPER</Text>
+            <Text style={styles.screenHeaderSub}>
+              {">"} transmitting to {agentName}
+            </Text>
+          </View>
+        }
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>NO WHISPERS SENT</Text>
@@ -180,25 +193,32 @@ export default function WhisperScreen() {
           <View
             style={[
               styles.whisperBubble,
-              item.was_heard
-                ? styles.whisperHeard
-                : styles.whisperLost,
+              item.was_heard ? styles.whisperHeard : styles.whisperLost,
             ]}
           >
             <Text style={styles.whisperMsg}>{item.message}</Text>
             <View style={styles.whisperMeta}>
-              <Text
+              <View
                 style={[
-                  styles.whisperStatus,
+                  styles.whisperStatusBadge,
                   {
-                    color: item.was_heard
-                      ? colors.success
-                      : colors.danger,
+                    borderColor: item.was_heard
+                      ? colors.success + "55"
+                      : colors.danger + "55",
                   },
                 ]}
               >
-                {item.was_heard ? "HEARD" : "LOST"}
-              </Text>
+                <Text
+                  style={[
+                    styles.whisperStatus,
+                    {
+                      color: item.was_heard ? colors.success : colors.danger,
+                    },
+                  ]}
+                >
+                  {item.was_heard ? "HEARD" : "LOST"}
+                </Text>
+              </View>
               <Text style={styles.whisperRoll}>
                 Roll: {item.roll_value}/100
               </Text>
@@ -224,9 +244,7 @@ export default function WhisperScreen() {
               <TextInput
                 style={styles.input}
                 value={message}
-                onChangeText={(t) =>
-                  t.length <= MAX_CHARS && setMessage(t)
-                }
+                onChangeText={(t) => t.length <= MAX_CHARS && setMessage(t)}
                 placeholder={`Whisper to ${agentName}...`}
                 placeholderTextColor={colors.textMuted}
                 multiline
@@ -270,15 +288,38 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: 12,
     letterSpacing: 3,
+    fontFamily: "Courier",
   },
   noAgent: {
     color: colors.textMuted,
-    fontSize: 14,
+    fontSize: 12,
     letterSpacing: 2,
+    fontFamily: "Courier",
+  },
+  screenHeader: {
+    paddingHorizontal: spacing.md,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  screenHeaderText: {
+    color: colors.primary,
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 4,
+    fontFamily: "Courier",
+    textAlign: "center",
+  },
+  screenHeaderSub: {
+    color: colors.textMuted,
+    fontSize: 10,
+    fontFamily: "Courier",
+    textAlign: "center",
+    marginTop: 4,
   },
   listContent: {
     padding: spacing.md,
-    gap: 12,
+    gap: 10,
   },
   emptyState: {
     alignItems: "center",
@@ -286,14 +327,16 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     color: colors.text,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
     letterSpacing: 2,
+    fontFamily: "Courier",
   },
   emptySub: {
     color: colors.textMuted,
-    fontSize: 12,
+    fontSize: 11,
     marginTop: 4,
+    fontFamily: "Courier",
   },
   whisperBubble: {
     padding: 14,
@@ -302,36 +345,47 @@ const styles = StyleSheet.create({
   },
   whisperHeard: {
     backgroundColor: colors.bgCard,
-    borderColor: colors.success + "40",
+    borderColor: colors.success + "30",
   },
   whisperLost: {
     backgroundColor: colors.bgCard,
-    borderColor: colors.danger + "30",
-    opacity: 0.7,
+    borderColor: colors.danger + "20",
+    opacity: 0.65,
   },
   whisperMsg: {
     color: colors.text,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 19,
+    fontFamily: "Courier",
   },
   whisperMeta: {
     flexDirection: "row",
-    gap: 12,
-    marginTop: 8,
+    alignItems: "center",
+    gap: 10,
+    marginTop: 10,
+  },
+  whisperStatusBadge: {
+    borderWidth: 1,
+    borderRadius: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
   },
   whisperStatus: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: "800",
     letterSpacing: 1,
+    fontFamily: "Courier",
   },
   whisperRoll: {
     color: colors.textMuted,
-    fontSize: 10,
+    fontSize: 9,
+    fontFamily: "Courier",
   },
   whisperTime: {
     color: colors.textMuted,
-    fontSize: 10,
+    fontSize: 9,
     marginLeft: "auto",
+    fontFamily: "Courier",
   },
   inputArea: {
     padding: spacing.md,
@@ -349,8 +403,9 @@ const styles = StyleSheet.create({
   },
   cooldownText: {
     color: colors.warning,
-    fontSize: 11,
+    fontSize: 10,
     letterSpacing: 2,
+    fontFamily: "Courier",
   },
   inputRow: {
     flexDirection: "row",
@@ -365,7 +420,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     color: colors.text,
-    fontSize: 14,
+    fontSize: 13,
+    fontFamily: "Courier",
     maxHeight: 100,
   },
   sendBtn: {
@@ -380,14 +436,15 @@ const styles = StyleSheet.create({
   },
   sendText: {
     color: colors.bg,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "800",
     letterSpacing: 1,
   },
   charCount: {
     color: colors.textMuted,
-    fontSize: 10,
+    fontSize: 9,
     textAlign: "right",
     marginTop: 4,
+    fontFamily: "Courier",
   },
 });

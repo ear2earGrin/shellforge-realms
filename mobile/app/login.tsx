@@ -9,11 +9,13 @@ import {
   Platform,
   Alert,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as AppleAuthentication from "expo-apple-authentication";
 import { supabase } from "../lib/supabase";
 import { colors, spacing } from "../lib/theme";
 
 export default function LoginScreen() {
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -71,14 +73,17 @@ export default function LoginScreen() {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <View style={styles.inner}>
+      <View style={[styles.inner, { paddingTop: insets.top + 40 }]}>
+        {/* Branding */}
         <View style={styles.header}>
+          <View style={styles.logoGlow} />
           <Text style={styles.title}>SHELLFORGE</Text>
           <Text style={styles.subtitle}>R E A L M S</Text>
           <View style={styles.line} />
           <Text style={styles.tagline}>Companion Terminal</Text>
         </View>
 
+        {/* Form */}
         <View style={styles.form}>
           <Text style={styles.label}>EMAIL</Text>
           <TextInput
@@ -97,7 +102,7 @@ export default function LoginScreen() {
             style={styles.input}
             value={password}
             onChangeText={setPassword}
-            placeholder="••••••••"
+            placeholder={"••••••••"}
             placeholderTextColor={colors.textMuted}
             secureTextEntry
           />
@@ -121,9 +126,13 @@ export default function LoginScreen() {
               </View>
 
               <AppleAuthentication.AppleAuthenticationButton
-                buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
-                cornerRadius={8}
+                buttonType={
+                  AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
+                }
+                buttonStyle={
+                  AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+                }
+                cornerRadius={12}
                 style={styles.appleBtn}
                 onPress={signInWithApple}
               />
@@ -142,7 +151,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: colors.bgDeep,
   },
   inner: {
     flex: 1,
@@ -152,6 +161,15 @@ const styles = StyleSheet.create({
   header: {
     alignItems: "center",
     marginBottom: 48,
+    position: "relative",
+  },
+  logoGlow: {
+    position: "absolute",
+    top: -20,
+    width: 200,
+    height: 100,
+    borderRadius: 100,
+    backgroundColor: "rgba(0,240,255,0.03)",
   },
   title: {
     fontSize: 32,
@@ -170,10 +188,10 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: colors.primary,
     marginVertical: 16,
-    opacity: 0.5,
+    opacity: 0.3,
   },
   tagline: {
-    fontSize: 12,
+    fontSize: 11,
     color: colors.textMuted,
     letterSpacing: 3,
     textTransform: "uppercase",
@@ -182,24 +200,25 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   label: {
-    fontSize: 10,
+    fontSize: 9,
     color: colors.textMuted,
     letterSpacing: 2,
+    fontWeight: "600",
     marginTop: 8,
   },
   input: {
     backgroundColor: colors.bgCard,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
-    padding: 14,
+    borderRadius: 12,
+    padding: 16,
     fontSize: 16,
     color: colors.text,
   },
   button: {
     backgroundColor: colors.primary,
-    borderRadius: 8,
-    padding: 16,
+    borderRadius: 12,
+    padding: 18,
     alignItems: "center",
     marginTop: 24,
   },
@@ -207,8 +226,8 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   buttonText: {
-    color: colors.bg,
-    fontSize: 14,
+    color: colors.bgDeep,
+    fontSize: 13,
     fontWeight: "800",
     letterSpacing: 2,
   },
@@ -225,18 +244,19 @@ const styles = StyleSheet.create({
   },
   dividerText: {
     color: colors.textMuted,
-    fontSize: 11,
+    fontSize: 10,
     letterSpacing: 2,
     marginHorizontal: 12,
   },
   appleBtn: {
     width: "100%" as unknown as number,
-    height: 50,
+    height: 52,
   },
   footer: {
     textAlign: "center",
     color: colors.textMuted,
-    fontSize: 12,
+    fontSize: 11,
     marginTop: 32,
+    letterSpacing: 0.5,
   },
 });

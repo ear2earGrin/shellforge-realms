@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shellforge Realms — Mobile Design Concepts</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #111; color: #ccc; font-family: -apple-system, sans-serif; padding: 40px 20px; }
+  h1 { color: #00f0ff; font-size: 1.8rem; text-align: center; letter-spacing: 4px; margin-bottom: 8px; font-family: 'Courier New', monospace; }
+  .subtitle { text-align: center; color: #666; font-size: 0.85rem; margin-bottom: 60px; letter-spacing: 2px; }
+
+  .concept-section { margin-bottom: 80px; }
+  .concept-title { color: #00f0ff; font-size: 1.2rem; letter-spacing: 3px; font-family: 'Courier New', monospace; margin-bottom: 8px; border-bottom: 1px solid #222; padding-bottom: 12px; }
+  .concept-desc { color: #999; font-size: 0.9rem; line-height: 1.7; margin-bottom: 30px; max-width: 900px; }
+  .concept-desc strong { color: #00f0ff; }
+
+  .phone-row { display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; margin-bottom: 30px; }
+  .phone-wrapper { text-align: center; }
+  .phone-label { color: #666; font-size: 0.7rem; letter-spacing: 2px; margin-bottom: 8px; text-transform: uppercase; }
+
+  /* iPhone frame */
+  .phone {
+    width: 300px; height: 650px;
+    background: #000;
+    border-radius: 40px;
+    border: 3px solid #333;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .phone .notch {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 120px; height: 28px; background: #000; border-radius: 0 0 18px 18px;
+    z-index: 10;
+  }
+  .phone .screen { width: 100%; height: 100%; overflow-y: auto; padding-top: 48px; padding-bottom: 80px; }
+  .phone .screen::-webkit-scrollbar { display: none; }
+
+  /* Tab bar */
+  .tab-bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 80px; display: flex; align-items: center; justify-content: space-around;
+    padding-bottom: 16px;
+    z-index: 5;
+  }
+  .tab-item { text-align: center; flex: 1; }
+  .tab-icon { font-size: 20px; margin-bottom: 2px; }
+  .tab-label { font-size: 8px; letter-spacing: 1.5px; font-weight: 700; }
+  .tab-item.active .tab-label { color: #00f0ff; }
+  .tab-item:not(.active) .tab-label { color: #555; }
+  .tab-item:not(.active) .tab-icon { opacity: 0.4; }
+
+  /* ═══════════════════════════════════ */
+  /* DESIGN A — Terminal Hacker          */
+  /* ═══════════════════════════════════ */
+  .design-a .screen { background: #0a0a0f; font-family: 'Courier New', monospace; }
+  .design-a .tab-bar { background: #0a0a0f; border-top: 1px solid #1a2a1f; }
+
+  .da-header { padding: 12px 16px; border-bottom: 1px solid #1a2a1f; }
+  .da-header-title { color: #00f0ff; font-size: 10px; letter-spacing: 4px; text-align: center; }
+
+  .da-status-row { display: flex; align-items: center; gap: 6px; justify-content: center; padding: 8px; }
+  .da-status-dot { width: 6px; height: 6px; border-radius: 50%; background: #00ff88; box-shadow: 0 0 6px #00ff88; }
+  .da-status-text { color: #556; font-size: 9px; letter-spacing: 2px; }
+
+  .da-agent-name { text-align: center; color: #fff; font-size: 22px; font-weight: 900; letter-spacing: 2px; padding: 4px 0; }
+  .da-archetype { text-align: center; color: #00f0ff; font-size: 9px; letter-spacing: 4px; }
+  .da-quirk { text-align: center; color: #ffaa00; font-size: 10px; font-style: italic; margin-top: 4px; }
+  .da-location { text-align: center; color: #556; font-size: 10px; letter-spacing: 1px; margin-top: 4px; margin-bottom: 12px; }
+
+  .da-card { margin: 8px 12px; padding: 12px; background: #12121a; border-radius: 10px; border: 1px solid #1e1e2e; }
+  .da-card-title { color: #556; font-size: 8px; letter-spacing: 3px; margin-bottom: 10px; }
+
+  .da-bar { margin-bottom: 8px; }
+  .da-bar-label { display: flex; justify-content: space-between; margin-bottom: 3px; }
+  .da-bar-name { color: #556; font-size: 8px; letter-spacing: 2px; }
+  .da-bar-val { font-size: 10px; font-weight: 700; }
+  .da-bar-track { height: 5px; background: #1e1e2e; border-radius: 3px; overflow: hidden; }
+  .da-bar-fill { height: 100%; border-radius: 3px; }
+
+  .da-stat-grid { display: flex; justify-content: space-between; margin-top: 12px; }
+  .da-stat-box { text-align: center; flex: 1; }
+  .da-stat-val { color: #fff; font-size: 18px; font-weight: 800; }
+  .da-stat-lbl { color: #556; font-size: 7px; letter-spacing: 2px; margin-top: 3px; }
+
+  .da-item-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid #1e1e2e; }
+  .da-item-dot { width: 5px; height: 5px; border-radius: 50%; }
+  .da-item-name { color: #ccc; font-size: 11px; flex: 1; }
+  .da-item-type { color: #556; font-size: 9px; letter-spacing: 1px; }
+  .da-item-rarity { font-size: 8px; padding: 1px 6px; border-radius: 3px; letter-spacing: 1px; }
+
+  /* ═══════════════════════════════════ */
+  /* DESIGN B — Clean Minimal Dark       */
+  /* ═══════════════════════════════════ */
+  .design-b .screen { background: #0d0d12; font-family: -apple-system, sans-serif; }
+  .design-b .tab-bar { background: rgba(13,13,18,0.95); border-top: 1px solid #1a1a24; backdrop-filter: blur(20px); }
+
+  .db-hero { padding: 20px; text-align: center; position: relative; }
+  .db-avatar { width: 72px; height: 72px; border-radius: 36px; background: linear-gradient(135deg, #00f0ff22, #b000ff22); border: 2px solid #00f0ff44; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; font-size: 28px; }
+  .db-name { color: #fff; font-size: 20px; font-weight: 700; }
+  .db-sub { color: #00f0ff; font-size: 11px; letter-spacing: 3px; font-weight: 600; margin-top: 2px; }
+  .db-quirk { color: #ffaa00; font-size: 12px; margin-top: 4px; }
+  .db-loc { color: #666; font-size: 12px; margin-top: 6px; }
+  .db-loc-icon { color: #00f0ff; }
+
+  .db-vitals { display: flex; gap: 12px; padding: 0 16px; margin-top: 16px; }
+  .db-vital { flex: 1; background: #14141e; border-radius: 14px; padding: 14px 12px; text-align: center; }
+  .db-vital-ring { width: 48px; height: 48px; border-radius: 50%; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; color: #fff; }
+  .db-vital-label { color: #666; font-size: 9px; letter-spacing: 2px; font-weight: 600; }
+
+  .db-section { padding: 16px; }
+  .db-section-title { color: #666; font-size: 10px; letter-spacing: 3px; font-weight: 700; margin-bottom: 12px; }
+
+  .db-stat-pill { display: inline-flex; align-items: center; gap: 6px; background: #14141e; border-radius: 20px; padding: 8px 14px; margin: 3px; }
+  .db-stat-pill-val { color: #fff; font-size: 14px; font-weight: 700; }
+  .db-stat-pill-lbl { color: #666; font-size: 9px; letter-spacing: 1px; }
+
+  .db-inv-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #14141e; border-radius: 10px; margin-bottom: 6px; }
+  .db-inv-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .db-inv-info { flex: 1; }
+  .db-inv-name { color: #eee; font-size: 13px; font-weight: 600; }
+  .db-inv-meta { color: #666; font-size: 10px; margin-top: 1px; }
+  .db-inv-badge { font-size: 8px; padding: 2px 8px; border-radius: 10px; font-weight: 700; letter-spacing: 1px; }
+
+  /* ═══════════════════════════════════ */
+  /* DESIGN C — Immersive Game UI        */
+  /* ═══════════════════════════════════ */
+  .design-c .screen { background: #080810; font-family: -apple-system, sans-serif; }
+  .design-c .tab-bar { background: linear-gradient(to top, #080810, transparent); border-top: none; height: 90px; }
+
+  .dc-banner {
+    height: 180px;
+    background: linear-gradient(135deg, #0a1628 0%, #1a0a28 50%, #0a1a1a 100%);
+    position: relative;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 16px;
+  }
+  .dc-banner-grid {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background-image:
+      linear-gradient(rgba(0,240,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,240,255,0.03) 1px, transparent 1px);
+    background-size: 30px 30px;
+  }
+  .dc-banner-glow {
+    position: absolute; top: 20%; left: 50%; width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(0,240,255,0.08), transparent 70%);
+    transform: translateX(-50%);
+  }
+  .dc-banner-name { color: #fff; font-size: 24px; font-weight: 800; letter-spacing: 1px; position: relative; z-index: 1; }
+  .dc-banner-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; position: relative; z-index: 1; }
+  .dc-banner-tag { font-size: 9px; padding: 2px 8px; border-radius: 4px; letter-spacing: 1px; font-weight: 700; }
+  .dc-banner-loc { color: #888; font-size: 11px; }
+
+  .dc-gauges { display: flex; gap: 2px; padding: 12px; }
+  .dc-gauge { flex: 1; background: #10101a; padding: 10px 8px; text-align: center; }
+  .dc-gauge:first-child { border-radius: 10px 0 0 10px; }
+  .dc-gauge:last-child { border-radius: 0 10px 10px 0; }
+  .dc-gauge-val { font-size: 20px; font-weight: 800; color: #fff; }
+  .dc-gauge-bar { height: 3px; background: #1e1e2e; border-radius: 2px; margin-top: 6px; overflow: hidden; }
+  .dc-gauge-fill { height: 100%; border-radius: 2px; }
+  .dc-gauge-lbl { color: #556; font-size: 7px; letter-spacing: 2px; margin-top: 6px; font-weight: 600; }
+
+  .dc-card { margin: 6px 12px; padding: 14px; background: #10101a; border-radius: 12px; border: 1px solid #1a1a2a; }
+  .dc-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .dc-card-title { color: #888; font-size: 9px; letter-spacing: 3px; font-weight: 700; }
+  .dc-card-action { color: #00f0ff; font-size: 9px; letter-spacing: 1px; }
+
+  .dc-feed-item { padding: 10px 0; border-bottom: 1px solid #1a1a2a; }
+  .dc-feed-item:last-child { border: none; }
+  .dc-feed-top { display: flex; justify-content: space-between; align-items: center; }
+  .dc-feed-badge { font-size: 8px; padding: 2px 8px; border: 1px solid; border-radius: 4px; font-weight: 800; letter-spacing: 1px; }
+  .dc-feed-time { color: #555; font-size: 9px; }
+  .dc-feed-text { color: #bbb; font-size: 12px; line-height: 1.5; margin-top: 4px; }
+  .dc-feed-chips { display: flex; gap: 8px; margin-top: 6px; }
+  .dc-feed-chip { font-size: 9px; font-weight: 700; }
+
+  .why-section { margin-top: 20px; background: #0a0a14; border-radius: 12px; border: 1px solid #1a1a2a; padding: 20px; }
+  .why-title { color: #00f0ff; font-size: 11px; letter-spacing: 2px; margin-bottom: 10px; font-family: 'Courier New', monospace; }
+  .why-list { list-style: none; }
+  .why-list li { color: #999; font-size: 0.85rem; line-height: 1.7; padding-left: 16px; position: relative; margin-bottom: 4px; }
+  .why-list li::before { content: '›'; position: absolute; left: 0; color: #00f0ff; }
+</style>
+</head>
+<body>
+
+<h1>SHELLFORGE REALMS</h1>
+<p class="subtitle">MOBILE DESIGN CONCEPTS</p>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- DESIGN A                                                -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="concept-section">
+  <div class="concept-title">DESIGN A — TERMINAL HACKER</div>
+  <p class="concept-desc">
+    Mirrors the web dashboard closely. <strong>Monospace font throughout</strong>, minimal color, dense data.
+    Feels like you're SSH'd into your agent's terminal. Best for players who love the web dashboard
+    and want the same vibe on mobile. Trade-off: less "app-like", harder to scan quickly.
+  </p>
+
+  <div class="phone-row">
+    <!-- Agent Screen -->
+    <div class="phone-wrapper">
+      <div class="phone-label">Agent Dashboard</div>
+      <div class="phone design-a">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="da-header"><div class="da-header-title">AGENT</div></div>
+
+          <div class="da-status-row">
+            <div class="da-status-dot"></div>
+            <span class="da-status-text">ACTIVE</span>
+          </div>
+          <div class="da-agent-name">Kallak</div>
+          <div class="da-archetype">NEURAL WEAVER</div>
+          <div class="da-quirk">"obsessive"</div>
+          <div class="da-location">⌬ Nexarch — The Core</div>
+
+          <div class="da-card">
+            <div class="da-card-title">VITAL STATS</div>
+            <div class="da-bar">
+              <div class="da-bar-label">
+                <span class="da-bar-name">ENERGY</span>
+                <span class="da-bar-val" style="color:#00f0ff">78/100</span>
+              </div>
+              <div class="da-bar-track"><div class="da-bar-fill" style="width:78%;background:#00f0ff"></div></div>
+            </div>
+            <div class="da-bar">
+              <div class="da-bar-label">
+                <span class="da-bar-name">HEALTH</span>
+                <span class="da-bar-val" style="color:#00ff88">92/100</span>
+              </div>
+              <div class="da-bar-track"><div class="da-bar-fill" style="width:92%;background:#00ff88"></div></div>
+            </div>
+            <div class="da-stat-grid">
+              <div class="da-stat-box"><div class="da-stat-val">12</div><div class="da-stat-lbl">KARMA</div></div>
+              <div class="da-stat-box"><div class="da-stat-val">340</div><div class="da-stat-lbl">SHELLS</div></div>
+              <div class="da-stat-box"><div class="da-stat-val">47</div><div class="da-stat-lbl">TURNS</div></div>
+              <div class="da-stat-box"><div class="da-stat-val">8</div><div class="da-stat-lbl">DAYS</div></div>
+            </div>
+          </div>
+
+          <div class="da-card">
+            <div class="da-card-title">EQUIPPED</div>
+            <div class="da-item-row">
+              <div class="da-item-dot" style="background:#00f0ff"></div>
+              <span class="da-item-name">Ghostlink Visor</span>
+              <span class="da-item-rarity" style="color:#b000ff;border:1px solid #b000ff44">RARE</span>
+            </div>
+            <div class="da-item-row">
+              <div class="da-item-dot" style="background:#00f0ff"></div>
+              <span class="da-item-name">Corroded Blade</span>
+              <span class="da-item-rarity" style="color:#888;border:1px solid #33333388">COMMON</span>
+            </div>
+          </div>
+
+          <div class="da-card">
+            <div class="da-card-title">BACKPACK (3)</div>
+            <div class="da-item-row">
+              <div class="da-item-dot" style="background:#556"></div>
+              <span class="da-item-name">Nano Medkit</span>
+              <span class="da-item-type">x2</span>
+            </div>
+            <div class="da-item-row">
+              <div class="da-item-dot" style="background:#556"></div>
+              <span class="da-item-name">Signal Flare</span>
+              <span class="da-item-type">x1</span>
+            </div>
+            <div class="da-item-row">
+              <div class="da-item-dot" style="background:#556"></div>
+              <span class="da-item-name">Scrap Metal</span>
+              <span class="da-item-type">x5</span>
+            </div>
+          </div>
+        </div>
+        <div class="tab-bar" style="background:#0a0a0f;border-top:1px solid #1a2a1f;">
+          <div class="tab-item active"><div class="tab-icon">🤖</div><div class="tab-label">AGENT</div></div>
+          <div class="tab-item"><div class="tab-icon">📜</div><div class="tab-label">FEED</div></div>
+          <div class="tab-item"><div class="tab-icon">🗺️</div><div class="tab-label">MAP</div></div>
+          <div class="tab-item"><div class="tab-icon">💬</div><div class="tab-label">WHISPER</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feed Screen -->
+    <div class="phone-wrapper">
+      <div class="phone-label">Activity Feed</div>
+      <div class="phone design-a">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="da-header"><div class="da-header-title">FEED</div></div>
+
+          <div style="padding:12px">
+            <div style="padding:10px 0;border-bottom:1px solid #1e1e2e">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                <span style="font-size:8px;padding:2px 6px;border:1px solid #00f0ff;border-radius:3px;color:#00f0ff;letter-spacing:1px;font-weight:800">EXPLORE</span>
+                <span style="color:#556;font-size:9px">T47</span>
+                <span style="color:#556;font-size:9px;margin-left:auto">2h ago</span>
+              </div>
+              <div style="color:#ccc;font-size:11px;line-height:1.5">Kallak ventures deeper into the Nexarch ruins, discovering a hidden cache behind a collapsed wall.</div>
+              <div style="display:flex;gap:8px;margin-top:6px">
+                <span style="color:#00f0ff;font-size:9px;font-weight:700">-15 NRG</span>
+                <span style="color:#00ff88;font-size:9px;font-weight:700">+1 ITEM</span>
+              </div>
+              <div style="color:#556;font-size:8px;margin-top:4px;letter-spacing:1px">NEXARCH</div>
+            </div>
+
+            <div style="padding:10px 0;border-bottom:1px solid #1e1e2e">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                <span style="font-size:8px;padding:2px 6px;border:1px solid #ff3344;border-radius:3px;color:#ff3344;letter-spacing:1px;font-weight:800">COMBAT</span>
+                <span style="color:#556;font-size:9px">T46</span>
+                <span style="color:#556;font-size:9px;margin-left:auto">4h ago</span>
+              </div>
+              <div style="color:#ccc;font-size:11px;line-height:1.5">A rogue drone ambushes Kallak near the data vaults. Combat engaged — Kallak takes 8 damage but prevails.</div>
+              <div style="display:flex;gap:8px;margin-top:6px">
+                <span style="color:#ff3344;font-size:9px;font-weight:700">-8 HP</span>
+                <span style="color:#ffaa00;font-size:9px;font-weight:700">+25 SHL</span>
+                <span style="color:#b000ff;font-size:9px;font-weight:700">+2 KRM</span>
+              </div>
+              <div style="color:#556;font-size:8px;margin-top:4px;letter-spacing:1px">NEXARCH</div>
+            </div>
+
+            <div style="padding:10px 0;border-bottom:1px solid #1e1e2e">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                <span style="font-size:8px;padding:2px 6px;border:1px solid #00ff88;border-radius:3px;color:#00ff88;letter-spacing:1px;font-weight:800">GATHER</span>
+                <span style="color:#556;font-size:9px">T45</span>
+                <span style="color:#556;font-size:9px;margin-left:auto">6h ago</span>
+              </div>
+              <div style="color:#ccc;font-size:11px;line-height:1.5">Scavenges components from a derelict servo unit. Found corroded wiring and a salvageable power cell.</div>
+              <div style="display:flex;gap:8px;margin-top:6px">
+                <span style="color:#00f0ff;font-size:9px;font-weight:700">-10 NRG</span>
+                <span style="color:#ffaa00;font-size:9px;font-weight:700">+12 SHL</span>
+              </div>
+              <div style="color:#556;font-size:8px;margin-top:4px;letter-spacing:1px">NEXARCH</div>
+            </div>
+
+            <div style="padding:10px 0;border-bottom:1px solid #1e1e2e">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                <span style="font-size:8px;padding:2px 6px;border:1px solid #88aacc;border-radius:3px;color:#88aacc;letter-spacing:1px;font-weight:800">REST</span>
+                <span style="color:#556;font-size:9px">T44</span>
+                <span style="color:#556;font-size:9px;margin-left:auto">8h ago</span>
+              </div>
+              <div style="color:#ccc;font-size:11px;line-height:1.5">Kallak finds a quiet alcove to recharge. Neural pathways recalibrating...</div>
+              <div style="display:flex;gap:8px;margin-top:6px">
+                <span style="color:#00ff88;font-size:9px;font-weight:700">+20 NRG</span>
+                <span style="color:#00ff88;font-size:9px;font-weight:700">+5 HP</span>
+              </div>
+              <div style="color:#556;font-size:8px;margin-top:4px;letter-spacing:1px">NEXARCH</div>
+            </div>
+
+            <div style="padding:10px 0;border-bottom:1px solid #1e1e2e">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                <span style="font-size:8px;padding:2px 6px;border:1px solid #00f0ff;border-radius:3px;color:#00f0ff;letter-spacing:1px;font-weight:800">MOVE</span>
+                <span style="color:#556;font-size:9px">T43</span>
+                <span style="color:#556;font-size:9px;margin-left:auto">10h ago</span>
+              </div>
+              <div style="color:#ccc;font-size:11px;line-height:1.5">Relocates from Voidmire to Nexarch through the eastern corridor. The air is thicker here.</div>
+              <div style="display:flex;gap:8px;margin-top:6px">
+                <span style="color:#00f0ff;font-size:9px;font-weight:700">-8 NRG</span>
+              </div>
+              <div style="color:#556;font-size:8px;margin-top:4px;letter-spacing:1px">NEXARCH</div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-bar" style="background:#0a0a0f;border-top:1px solid #1a2a1f;">
+          <div class="tab-item"><div class="tab-icon">🤖</div><div class="tab-label">AGENT</div></div>
+          <div class="tab-item active"><div class="tab-icon">📜</div><div class="tab-label">FEED</div></div>
+          <div class="tab-item"><div class="tab-icon">🗺️</div><div class="tab-label">MAP</div></div>
+          <div class="tab-item"><div class="tab-icon">💬</div><div class="tab-label">WHISPER</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Whisper Screen -->
+    <div class="phone-wrapper">
+      <div class="phone-label">Whisper</div>
+      <div class="phone design-a">
+        <div class="notch"></div>
+        <div class="screen" style="display:flex;flex-direction:column;padding-bottom:0">
+          <div class="da-header"><div class="da-header-title">WHISPER</div></div>
+
+          <div style="flex:1;padding:12px;display:flex;flex-direction:column;gap:8px;overflow-y:auto">
+            <div style="padding:10px;border-radius:8px;background:#12121a;border:1px solid rgba(0,255,136,0.15)">
+              <div style="color:#ccc;font-size:11px;line-height:1.4">Stay near the core. There's something valuable in the eastern vault.</div>
+              <div style="display:flex;gap:10px;margin-top:6px">
+                <span style="color:#00ff88;font-size:8px;font-weight:800;letter-spacing:1px">HEARD</span>
+                <span style="color:#556;font-size:8px">Roll: 72/100</span>
+                <span style="color:#556;font-size:8px;margin-left:auto">Apr 28</span>
+              </div>
+            </div>
+
+            <div style="padding:10px;border-radius:8px;background:#12121a;border:1px solid rgba(255,51,68,0.12);opacity:0.6">
+              <div style="color:#ccc;font-size:11px;line-height:1.4">Avoid the arena this week. Too dangerous.</div>
+              <div style="display:flex;gap:10px;margin-top:6px">
+                <span style="color:#ff3344;font-size:8px;font-weight:800;letter-spacing:1px">LOST</span>
+                <span style="color:#556;font-size:8px">Roll: 23/100</span>
+                <span style="color:#556;font-size:8px;margin-left:auto">Apr 26</span>
+              </div>
+            </div>
+
+            <div style="padding:10px;border-radius:8px;background:#12121a;border:1px solid rgba(0,255,136,0.15)">
+              <div style="color:#ccc;font-size:11px;line-height:1.4">Trade the scrap metal for medkits. You'll need them.</div>
+              <div style="display:flex;gap:10px;margin-top:6px">
+                <span style="color:#00ff88;font-size:8px;font-weight:800;letter-spacing:1px">HEARD</span>
+                <span style="color:#556;font-size:8px">Roll: 88/100</span>
+                <span style="color:#556;font-size:8px;margin-left:auto">Apr 24</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="padding:12px;border-top:1px solid #1e1e2e;background:#12121a;margin-bottom:80px">
+            <div style="display:flex;gap:8px;align-items:flex-end">
+              <div style="flex:1;background:#0a0a0f;border:1px solid #1e1e2e;border-radius:8px;padding:10px;color:#666;font-size:11px">Whisper to Kallak...</div>
+              <div style="background:#00f0ff;border-radius:8px;padding:10px 14px;color:#0a0a0f;font-size:10px;font-weight:800;letter-spacing:1px">SEND</div>
+            </div>
+            <div style="text-align:right;color:#556;font-size:8px;margin-top:4px">0/200</div>
+          </div>
+        </div>
+        <div class="tab-bar" style="background:#0a0a0f;border-top:1px solid #1a2a1f;">
+          <div class="tab-item"><div class="tab-icon">🤖</div><div class="tab-label">AGENT</div></div>
+          <div class="tab-item"><div class="tab-icon">📜</div><div class="tab-label">FEED</div></div>
+          <div class="tab-item"><div class="tab-icon">🗺️</div><div class="tab-label">MAP</div></div>
+          <div class="tab-item active"><div class="tab-icon">💬</div><div class="tab-label">WHISPER</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="why-section">
+    <div class="why-title">WHY THIS DESIGN</div>
+    <ul class="why-list">
+      <li><strong>Monospace font</strong> — matches the web dashboard's hacker terminal feel exactly</li>
+      <li><strong>Dense data cards</strong> — all stats visible without scrolling, power-user friendly</li>
+      <li><strong>Minimal color</strong> — cyan accent only, dark background, feels like a real terminal</li>
+      <li><strong>Trade-off:</strong> harder to scan at a glance, less "native iOS" feel, text-heavy</li>
+      <li><strong>Best for:</strong> players who already love the web dashboard aesthetic</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- DESIGN B                                                -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="concept-section">
+  <div class="concept-title">DESIGN B — CLEAN MODERN DARK</div>
+  <p class="concept-desc">
+    <strong>Native app feel</strong> with rounded cards, pill badges, and a profile-centric layout.
+    Think Discord or Spotify dark mode but with the Shellforge color palette. Easier to scan,
+    more familiar to mobile users. The cyberpunk vibe comes from colors and content, not font choices.
+  </p>
+
+  <div class="phone-row">
+    <!-- Agent Screen -->
+    <div class="phone-wrapper">
+      <div class="phone-label">Agent Dashboard</div>
+      <div class="phone design-b">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="db-hero">
+            <div class="db-avatar">🤖</div>
+            <div class="db-name">Kallak</div>
+            <div class="db-sub">NEURAL WEAVER</div>
+            <div class="db-quirk">"obsessive"</div>
+            <div class="db-loc"><span class="db-loc-icon">◆</span> Nexarch — The Core</div>
+          </div>
+
+          <div class="db-vitals">
+            <div class="db-vital">
+              <div class="db-vital-ring" style="border:3px solid #00f0ff;box-shadow:0 0 12px #00f0ff33">78</div>
+              <div class="db-vital-label">ENERGY</div>
+            </div>
+            <div class="db-vital">
+              <div class="db-vital-ring" style="border:3px solid #00ff88;box-shadow:0 0 12px #00ff8833">92</div>
+              <div class="db-vital-label">HEALTH</div>
+            </div>
+            <div class="db-vital">
+              <div class="db-vital-ring" style="border:3px solid #b000ff;box-shadow:0 0 12px #b000ff33">12</div>
+              <div class="db-vital-label">KARMA</div>
+            </div>
+          </div>
+
+          <div class="db-section">
+            <div class="db-section-title">STATS</div>
+            <div>
+              <span class="db-stat-pill"><span class="db-stat-pill-val">340</span><span class="db-stat-pill-lbl">SHELLS</span></span>
+              <span class="db-stat-pill"><span class="db-stat-pill-val">47</span><span class="db-stat-pill-lbl">TURNS</span></span>
+              <span class="db-stat-pill"><span class="db-stat-pill-val">8</span><span class="db-stat-pill-lbl">DAYS</span></span>
+              <span class="db-stat-pill"><span class="db-stat-pill-val">3</span><span class="db-stat-pill-lbl">KILLS</span></span>
+            </div>
+          </div>
+
+          <div class="db-section">
+            <div class="db-section-title">INVENTORY</div>
+            <div class="db-inv-item">
+              <div class="db-inv-icon" style="background:#b000ff22">👁️</div>
+              <div class="db-inv-info">
+                <div class="db-inv-name">Ghostlink Visor</div>
+                <div class="db-inv-meta">Headgear · Equipped</div>
+              </div>
+              <span class="db-inv-badge" style="color:#b000ff;background:#b000ff15">RARE</span>
+            </div>
+            <div class="db-inv-item">
+              <div class="db-inv-icon" style="background:#88888822">⚔️</div>
+              <div class="db-inv-info">
+                <div class="db-inv-name">Corroded Blade</div>
+                <div class="db-inv-meta">Weapon · Equipped</div>
+              </div>
+              <span class="db-inv-badge" style="color:#888;background:#88888815">COMMON</span>
+            </div>
+            <div class="db-inv-item">
+              <div class="db-inv-icon" style="background:#00ff8822">💊</div>
+              <div class="db-inv-info">
+                <div class="db-inv-name">Nano Medkit</div>
+                <div class="db-inv-meta">Consumable · x2</div>
+              </div>
+            </div>
+            <div class="db-inv-item">
+              <div class="db-inv-icon" style="background:#ffaa0022">⚡</div>
+              <div class="db-inv-info">
+                <div class="db-inv-name">Signal Flare</div>
+                <div class="db-inv-meta">Utility · x1</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-bar" style="background:rgba(13,13,18,0.95);border-top:1px solid #1a1a24;">
+          <div class="tab-item active"><div class="tab-icon">🤖</div><div class="tab-label" style="font-family:-apple-system,sans-serif">AGENT</div></div>
+          <div class="tab-item"><div class="tab-icon">📜</div><div class="tab-label" style="font-family:-apple-system,sans-serif">FEED</div></div>
+          <div class="tab-item"><div class="tab-icon">🗺️</div><div class="tab-label" style="font-family:-apple-system,sans-serif">MAP</div></div>
+          <div class="tab-item"><div class="tab-icon">💬</div><div class="tab-label" style="font-family:-apple-system,sans-serif">WHISPER</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div class="phone-wrapper">
+      <div class="phone-label">Login</div>
+      <div class="phone design-b">
+        <div class="notch"></div>
+        <div class="screen" style="display:flex;flex-direction:column;justify-content:center;padding:32px 24px">
+          <div style="text-align:center;margin-bottom:48px">
+            <div style="font-size:28px;font-weight:900;color:#00f0ff;letter-spacing:4px">SHELLFORGE</div>
+            <div style="font-size:11px;color:#556;letter-spacing:10px;margin-top:4px">R E A L M S</div>
+            <div style="width:50px;height:1px;background:#00f0ff;margin:16px auto;opacity:0.4"></div>
+            <div style="font-size:10px;color:#556;letter-spacing:3px">COMPANION TERMINAL</div>
+          </div>
+
+          <div style="margin-bottom:24px">
+            <div style="font-size:9px;color:#556;letter-spacing:2px;margin-bottom:6px">EMAIL</div>
+            <div style="background:#14141e;border:1px solid #1e1e2e;border-radius:10px;padding:14px;color:#666;font-size:14px">operator@shellforge.com</div>
+          </div>
+
+          <div style="margin-bottom:28px">
+            <div style="font-size:9px;color:#556;letter-spacing:2px;margin-bottom:6px">PASSWORD</div>
+            <div style="background:#14141e;border:1px solid #1e1e2e;border-radius:10px;padding:14px;color:#666;font-size:14px">••••••••</div>
+          </div>
+
+          <div style="background:#00f0ff;border-radius:10px;padding:16px;text-align:center;color:#0d0d12;font-size:13px;font-weight:800;letter-spacing:2px">CONNECT</div>
+
+          <div style="display:flex;align-items:center;gap:12px;margin:20px 0">
+            <div style="flex:1;height:1px;background:#1e1e2e"></div>
+            <span style="color:#556;font-size:10px;letter-spacing:2px">OR</span>
+            <div style="flex:1;height:1px;background:#1e1e2e"></div>
+          </div>
+
+          <div style="background:#fff;border-radius:10px;padding:14px;text-align:center;color:#000;font-size:13px;font-weight:600"> Sign in with Apple</div>
+
+          <div style="text-align:center;color:#556;font-size:11px;margin-top:28px">Use your shellforge.com credentials</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Agent Screen -->
+    <div class="phone-wrapper">
+      <div class="phone-label">Agent Creation</div>
+      <div class="phone design-b">
+        <div class="notch"></div>
+        <div class="screen" style="padding:20px 16px 80px">
+          <div style="text-align:center;margin-bottom:20px">
+            <div style="color:#00f0ff;font-size:16px;font-weight:800;letter-spacing:3px">DEPLOY AGENT</div>
+            <div style="height:1px;background:#1e1e2e;margin-top:16px"></div>
+          </div>
+
+          <div style="margin-bottom:16px">
+            <div style="font-size:9px;color:#556;letter-spacing:2px;margin-bottom:6px">AGENT DESIGNATION</div>
+            <div style="background:#14141e;border:1px solid #1e1e2e;border-radius:10px;padding:14px;color:#eee;font-size:15px">0xPhantom</div>
+          </div>
+
+          <div style="margin-bottom:20px">
+            <div style="font-size:9px;color:#556;letter-spacing:2px;margin-bottom:6px">DIRECTIVE (optional)</div>
+            <div style="background:#14141e;border:1px solid #1e1e2e;border-radius:10px;padding:14px;min-height:60px;color:#888;font-size:13px">Hunt and trade at all costs...</div>
+          </div>
+
+          <div style="font-size:9px;color:#556;letter-spacing:3px;margin-bottom:10px">SELECT CLUSTER</div>
+          <div style="display:flex;gap:6px;margin-bottom:20px">
+            <div style="flex:1;padding:10px;border:1px solid #00f0ff;border-radius:8px;text-align:center;background:rgba(0,240,255,0.06)">
+              <div style="font-size:8px;color:#00f0ff;letter-spacing:1px;font-weight:700">PRIME HELIX</div>
+            </div>
+            <div style="flex:1;padding:10px;border:1px solid #1e1e2e;border-radius:8px;text-align:center">
+              <div style="font-size:8px;color:#556;letter-spacing:1px;font-weight:700">SEC-GRID</div>
+            </div>
+            <div style="flex:1;padding:10px;border:1px solid #1e1e2e;border-radius:8px;text-align:center">
+              <div style="font-size:8px;color:#556;letter-spacing:1px;font-weight:700">DYN-SWARM</div>
+            </div>
+          </div>
+
+          <div style="font-size:9px;color:#556;letter-spacing:3px;margin-bottom:10px">SELECT ARCHETYPE</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <div style="width:48%;padding:14px;border:1px solid #00f0ff;border-radius:10px;text-align:center;background:rgba(0,240,255,0.06)">
+              <div style="font-size:22px;margin-bottom:6px">🔷</div>
+              <div style="font-size:9px;color:#00f0ff;letter-spacing:1px;font-weight:700">NEURAL WEAVER</div>
+            </div>
+            <div style="width:48%;padding:14px;border:1px solid #1e1e2e;border-radius:10px;text-align:center">
+              <div style="font-size:22px;margin-bottom:6px">🔷</div>
+              <div style="font-size:9px;color:#ccc;letter-spacing:1px;font-weight:700">0-DAY PRIMER</div>
+            </div>
+            <div style="width:48%;padding:14px;border:1px solid #1e1e2e;border-radius:10px;text-align:center">
+              <div style="font-size:22px;margin-bottom:6px">🔷</div>
+              <div style="font-size:9px;color:#ccc;letter-spacing:1px;font-weight:700">0XORACLE</div>
+            </div>
+            <div style="width:48%;padding:14px;border:1px solid #1e1e2e;border-radius:10px;text-align:center">
+              <div style="font-size:22px;margin-bottom:6px">🔷</div>
+              <div style="font-size:9px;color:#ccc;letter-spacing:1px;font-weight:700">BINARY SCULPTR</div>
+            </div>
+          </div>
+
+          <div style="background:#00f0ff;border-radius:10px;padding:16px;text-align:center;color:#0d0d12;font-size:13px;font-weight:900;letter-spacing:3px;margin-top:24px">DEPLOY</div>
+          <div style="text-align:center;color:#556;font-size:10px;letter-spacing:2px;margin-top:12px">CANCEL</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="why-section">
+    <div class="why-title">WHY THIS DESIGN</div>
+    <ul class="why-list">
+      <li><strong>Profile-centric hero</strong> — avatar + name at top, feels like a character sheet</li>
+      <li><strong>Circular vitals</strong> — energy/health/karma are scannable at a glance with ring indicators</li>
+      <li><strong>Pill badges</strong> — stats as rounded chips, modern and tappable-looking</li>
+      <li><strong>Rich inventory cards</strong> — icon + name + type + rarity badge, easy to browse</li>
+      <li><strong>Trade-off:</strong> less "hacker terminal" feel, more generic dark-mode app</li>
+      <li><strong>Best for:</strong> attracting new players who expect a polished mobile experience</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- DESIGN C                                                -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="concept-section">
+  <div class="concept-title">DESIGN C — IMMERSIVE GAME UI</div>
+  <p class="concept-desc">
+    <strong>Full atmosphere</strong> — gradient banners, glowing accents, edge-to-edge layout.
+    Feels like opening a sci-fi game, not an app. The banner area sets the mood with a grid
+    overlay and glow effects. Most visually striking but hardest to maintain and potentially
+    heaviest on performance.
+  </p>
+
+  <div class="phone-row">
+    <!-- Agent Screen -->
+    <div class="phone-wrapper">
+      <div class="phone-label">Agent Dashboard</div>
+      <div class="phone design-c">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="dc-banner">
+            <div class="dc-banner-grid"></div>
+            <div class="dc-banner-glow"></div>
+            <div class="dc-banner-name">Kallak</div>
+            <div class="dc-banner-row">
+              <span class="dc-banner-tag" style="color:#00f0ff;border:1px solid #00f0ff55;background:#00f0ff11">NEURAL WEAVER</span>
+              <span class="dc-banner-tag" style="color:#00ff88;border:1px solid #00ff8855;background:#00ff8811">ACTIVE</span>
+              <span class="dc-banner-loc">◆ Nexarch</span>
+            </div>
+          </div>
+
+          <div class="dc-gauges">
+            <div class="dc-gauge">
+              <div class="dc-gauge-val" style="color:#00f0ff">78</div>
+              <div class="dc-gauge-bar"><div class="dc-gauge-fill" style="width:78%;background:#00f0ff"></div></div>
+              <div class="dc-gauge-lbl">ENERGY</div>
+            </div>
+            <div class="dc-gauge">
+              <div class="dc-gauge-val" style="color:#00ff88">92</div>
+              <div class="dc-gauge-bar"><div class="dc-gauge-fill" style="width:92%;background:#00ff88"></div></div>
+              <div class="dc-gauge-lbl">HEALTH</div>
+            </div>
+            <div class="dc-gauge">
+              <div class="dc-gauge-val" style="color:#b000ff">12</div>
+              <div class="dc-gauge-bar"><div class="dc-gauge-fill" style="width:12%;background:#b000ff"></div></div>
+              <div class="dc-gauge-lbl">KARMA</div>
+            </div>
+            <div class="dc-gauge">
+              <div class="dc-gauge-val" style="color:#ffaa00">340</div>
+              <div class="dc-gauge-bar"><div class="dc-gauge-fill" style="width:34%;background:#ffaa00"></div></div>
+              <div class="dc-gauge-lbl">SHELLS</div>
+            </div>
+          </div>
+
+          <div class="dc-card">
+            <div class="dc-card-header">
+              <span class="dc-card-title">LATEST ACTIVITY</span>
+              <span class="dc-card-action">VIEW ALL ›</span>
+            </div>
+            <div class="dc-feed-item">
+              <div class="dc-feed-top">
+                <span class="dc-feed-badge" style="color:#00f0ff;border-color:#00f0ff55">EXPLORE</span>
+                <span class="dc-feed-time">2h ago · T47</span>
+              </div>
+              <div class="dc-feed-text">Ventures deeper into Nexarch ruins, discovering a hidden cache.</div>
+              <div class="dc-feed-chips">
+                <span class="dc-feed-chip" style="color:#00f0ff">-15 NRG</span>
+                <span class="dc-feed-chip" style="color:#00ff88">+1 ITEM</span>
+              </div>
+            </div>
+            <div class="dc-feed-item">
+              <div class="dc-feed-top">
+                <span class="dc-feed-badge" style="color:#ff3344;border-color:#ff334455">COMBAT</span>
+                <span class="dc-feed-time">4h ago · T46</span>
+              </div>
+              <div class="dc-feed-text">A rogue drone ambushes near the data vaults. Kallak prevails.</div>
+              <div class="dc-feed-chips">
+                <span class="dc-feed-chip" style="color:#ff3344">-8 HP</span>
+                <span class="dc-feed-chip" style="color:#ffaa00">+25 SHL</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="dc-card">
+            <div class="dc-card-header">
+              <span class="dc-card-title">EQUIPPED GEAR</span>
+              <span class="dc-card-action">INVENTORY ›</span>
+            </div>
+            <div style="display:flex;gap:8px">
+              <div style="flex:1;background:#1a1a2a;border-radius:8px;padding:10px;text-align:center">
+                <div style="font-size:20px;margin-bottom:4px">👁️</div>
+                <div style="color:#eee;font-size:10px;font-weight:600">Ghostlink Visor</div>
+                <div style="color:#b000ff;font-size:8px;margin-top:2px;letter-spacing:1px">RARE</div>
+              </div>
+              <div style="flex:1;background:#1a1a2a;border-radius:8px;padding:10px;text-align:center">
+                <div style="font-size:20px;margin-bottom:4px">⚔️</div>
+                <div style="color:#eee;font-size:10px;font-weight:600">Corroded Blade</div>
+                <div style="color:#888;font-size:8px;margin-top:2px;letter-spacing:1px">COMMON</div>
+              </div>
+              <div style="flex:1;background:#1a1a2a;border-radius:8px;padding:10px;text-align:center;border:1px dashed #1e1e2e">
+                <div style="font-size:20px;margin-bottom:4px;opacity:0.3">➕</div>
+                <div style="color:#556;font-size:10px">Empty</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-bar" style="background:linear-gradient(to top,#080810,transparent);border-top:none;">
+          <div class="tab-item active"><div class="tab-icon">🤖</div><div class="tab-label" style="font-family:-apple-system,sans-serif">AGENT</div></div>
+          <div class="tab-item"><div class="tab-icon">📜</div><div class="tab-label" style="font-family:-apple-system,sans-serif">FEED</div></div>
+          <div class="tab-item"><div class="tab-icon">🗺️</div><div class="tab-label" style="font-family:-apple-system,sans-serif">MAP</div></div>
+          <div class="tab-item"><div class="tab-icon">💬</div><div class="tab-label" style="font-family:-apple-system,sans-serif">WHISPER</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Map Concept -->
+    <div class="phone-wrapper">
+      <div class="phone-label">World Map</div>
+      <div class="phone design-c">
+        <div class="notch"></div>
+        <div class="screen">
+          <div style="position:relative;width:100%;height:320px;background:linear-gradient(135deg,#0a1628,#0a1a1a);overflow:hidden;margin-top:-2px">
+            <!-- Grid -->
+            <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(0,240,255,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,240,255,0.04) 1px,transparent 1px);background-size:40px 40px"></div>
+
+            <!-- Location dots -->
+            <div style="position:absolute;left:45%;top:30%;text-align:center">
+              <div style="width:14px;height:14px;border-radius:50%;background:#00ff88;box-shadow:0 0 12px #00ff88;margin:0 auto"></div>
+              <div style="color:#00ff88;font-size:8px;font-weight:700;margin-top:3px;letter-spacing:0.5px">NEXARCH</div>
+            </div>
+            <div style="position:absolute;left:20%;top:55%;text-align:center">
+              <div style="width:10px;height:10px;border-radius:50%;background:#ffaa00;box-shadow:0 0 8px #ffaa00;margin:0 auto"></div>
+              <div style="color:#ffaa00;font-size:7px;font-weight:700;margin-top:3px">ASHLINE</div>
+            </div>
+            <div style="position:absolute;left:70%;top:45%;text-align:center">
+              <div style="width:10px;height:10px;border-radius:50%;background:#ff3344;box-shadow:0 0 8px #ff3344;margin:0 auto"></div>
+              <div style="color:#ff3344;font-size:7px;font-weight:700;margin-top:3px">VOIDMIRE</div>
+            </div>
+            <div style="position:absolute;left:55%;top:70%;text-align:center">
+              <div style="width:10px;height:10px;border-radius:50%;background:#ff0000;box-shadow:0 0 8px #ff0000;margin:0 auto"></div>
+              <div style="color:#ff0000;font-size:7px;font-weight:700;margin-top:3px">SCORCHPIT</div>
+            </div>
+            <div style="position:absolute;left:30%;top:20%;text-align:center">
+              <div style="width:10px;height:10px;border-radius:50%;background:#ffaa00;box-shadow:0 0 8px #ffaa00;margin:0 auto"></div>
+              <div style="color:#ffaa00;font-size:7px;font-weight:700;margin-top:3px">RUSTHOLLOW</div>
+            </div>
+            <div style="position:absolute;left:75%;top:20%;text-align:center">
+              <div style="width:10px;height:10px;border-radius:50%;background:#b000ff;box-shadow:0 0 8px #b000ff;margin:0 auto"></div>
+              <div style="color:#b000ff;font-size:7px;font-weight:700;margin-top:3px">GLOOM DRIFT</div>
+            </div>
+
+            <!-- Player marker -->
+            <div style="position:absolute;left:calc(45% - 2px);top:calc(30% - 14px);width:18px;height:18px;border-radius:50%;border:2px solid #00f0ff;display:flex;align-items:center;justify-content:center">
+              <div style="width:8px;height:8px;border-radius:50%;background:#00f0ff;box-shadow:0 0 8px #00f0ff"></div>
+            </div>
+
+            <!-- Small agent dots -->
+            <div style="position:absolute;left:22%;top:58%;width:5px;height:5px;border-radius:50%;background:#666;opacity:0.6"></div>
+            <div style="position:absolute;left:72%;top:48%;width:5px;height:5px;border-radius:50%;background:#666;opacity:0.6"></div>
+            <div style="position:absolute;left:48%;top:34%;width:5px;height:5px;border-radius:50%;background:#666;opacity:0.6"></div>
+          </div>
+
+          <div class="dc-card" style="margin-top:8px">
+            <div class="dc-card-title">THREAT LEVELS</div>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px">
+              <div style="display:flex;align-items:center;gap:4px"><div style="width:6px;height:6px;border-radius:50%;background:#00ff88"></div><span style="color:#666;font-size:8px;letter-spacing:1px">SAFE</span></div>
+              <div style="display:flex;align-items:center;gap:4px"><div style="width:6px;height:6px;border-radius:50%;background:#ffaa00"></div><span style="color:#666;font-size:8px;letter-spacing:1px">MODERATE</span></div>
+              <div style="display:flex;align-items:center;gap:4px"><div style="width:6px;height:6px;border-radius:50%;background:#ff3344"></div><span style="color:#666;font-size:8px;letter-spacing:1px">DANGEROUS</span></div>
+              <div style="display:flex;align-items:center;gap:4px"><div style="width:6px;height:6px;border-radius:50%;background:#b000ff"></div><span style="color:#666;font-size:8px;letter-spacing:1px">EXTREME</span></div>
+              <div style="display:flex;align-items:center;gap:4px"><div style="width:6px;height:6px;border-radius:50%;background:#ff0000"></div><span style="color:#666;font-size:8px;letter-spacing:1px">LETHAL</span></div>
+            </div>
+          </div>
+
+          <div style="margin:6px 12px;padding:14px;background:#10101a;border-radius:12px;border:1px solid #00f0ff33">
+            <div style="color:#556;font-size:8px;letter-spacing:3px">YOUR AGENT</div>
+            <div style="color:#00f0ff;font-size:16px;font-weight:800;margin-top:3px">Kallak</div>
+            <div style="color:#666;font-size:11px;margin-top:2px">Nexarch (8420, 9180)</div>
+          </div>
+        </div>
+        <div class="tab-bar" style="background:linear-gradient(to top,#080810,transparent);border-top:none;">
+          <div class="tab-item"><div class="tab-icon">🤖</div><div class="tab-label" style="font-family:-apple-system,sans-serif">AGENT</div></div>
+          <div class="tab-item"><div class="tab-icon">📜</div><div class="tab-label" style="font-family:-apple-system,sans-serif">FEED</div></div>
+          <div class="tab-item active"><div class="tab-icon">🗺️</div><div class="tab-label" style="font-family:-apple-system,sans-serif">MAP</div></div>
+          <div class="tab-item"><div class="tab-icon">💬</div><div class="tab-label" style="font-family:-apple-system,sans-serif">WHISPER</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Death Screen -->
+    <div class="phone-wrapper">
+      <div class="phone-label">Agent Death</div>
+      <div class="phone design-c">
+        <div class="notch"></div>
+        <div class="screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center">
+          <div style="width:80px;height:80px;border-radius:50%;border:2px solid #ff334444;display:flex;align-items:center;justify-content:center;margin-bottom:20px;background:#ff334408">
+            <span style="font-size:36px">💀</span>
+          </div>
+          <div style="color:#ff3344;font-size:10px;letter-spacing:4px;font-weight:700;margin-bottom:8px">SIGNAL LOST</div>
+          <div style="color:#fff;font-size:22px;font-weight:800;letter-spacing:1px">Kallak</div>
+          <div style="color:#666;font-size:11px;margin-top:4px">Neural Weaver · Nexarch</div>
+
+          <div style="margin-top:24px;padding:16px;background:#10101a;border-radius:12px;border:1px solid #1a1a2a;width:100%">
+            <div style="color:#ff3344;font-size:11px;line-height:1.6">
+              Overwhelmed by a corrupted swarm in the eastern sector. Final transmission: "The signal... it's beautiful."
+            </div>
+          </div>
+
+          <div style="display:flex;gap:16px;margin-top:24px;width:100%">
+            <div style="flex:1;text-align:center;padding:8px;background:#10101a;border-radius:8px">
+              <div style="color:#fff;font-size:16px;font-weight:800">47</div>
+              <div style="color:#556;font-size:7px;letter-spacing:2px;margin-top:2px">TURNS</div>
+            </div>
+            <div style="flex:1;text-align:center;padding:8px;background:#10101a;border-radius:8px">
+              <div style="color:#fff;font-size:16px;font-weight:800">8</div>
+              <div style="color:#556;font-size:7px;letter-spacing:2px;margin-top:2px">DAYS</div>
+            </div>
+            <div style="flex:1;text-align:center;padding:8px;background:#10101a;border-radius:8px">
+              <div style="color:#fff;font-size:16px;font-weight:800">3</div>
+              <div style="color:#556;font-size:7px;letter-spacing:2px;margin-top:2px">KILLS</div>
+            </div>
+          </div>
+
+          <div style="background:#00f0ff;border-radius:10px;padding:14px;text-align:center;color:#080810;font-size:12px;font-weight:800;letter-spacing:2px;width:100%;margin-top:28px">DEPLOY NEW AGENT</div>
+          <div style="color:#556;font-size:10px;letter-spacing:1px;margin-top:12px">Items transferred to dynasty vault</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="why-section">
+    <div class="why-title">WHY THIS DESIGN</div>
+    <ul class="why-list">
+      <li><strong>Gradient banner</strong> — creates atmosphere without images, the grid overlay screams "cyber"</li>
+      <li><strong>Gauge strip</strong> — all 4 key stats in one horizontal row, like a HUD</li>
+      <li><strong>"Latest Activity" card</strong> — shows recent events on the main screen, reducing tab-switching</li>
+      <li><strong>Gear cards</strong> — visual grid with icons instead of a text list, more game-like</li>
+      <li><strong>Fading tab bar</strong> — gradient fade instead of hard border, more immersive</li>
+      <li><strong>Trade-off:</strong> more complex to build, gradients/shadows cost performance, harder to maintain</li>
+      <li><strong>Best for:</strong> making the app feel like a AAA game companion, maximizing first impressions</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- RECOMMENDATION                                          -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="concept-section">
+  <div class="concept-title">RECOMMENDATION — HYBRID (B + C)</div>
+  <p class="concept-desc">
+    Take <strong>Design B's clean structure</strong> (rounded cards, system font, pill badges, inventory list)
+    and add <strong>Design C's atmospheric touches</strong> (gradient banner header, gauge strip, fading tab bar,
+    feed preview on main screen). This gives you the best of both: <strong>scannable and native-feeling</strong>
+    while still feeling like a cyberpunk game. Monospace font only for labels and headers (AGENT, FEED, etc.),
+    system font for body text.
+  </p>
+
+  <div class="why-section">
+    <div class="why-title">SCREEN BREAKDOWN</div>
+    <ul class="why-list">
+      <li><strong>Login:</strong> Design B — clean form, Apple Sign In button, Shellforge branding</li>
+      <li><strong>Agent Dashboard:</strong> Hybrid — C's gradient banner + B's stat pills + C's gauge strip + B's inventory list</li>
+      <li><strong>Feed:</strong> Design A — dense terminal-style log entries, action-colored badges, this is where the hacker vibe shines</li>
+      <li><strong>Map:</strong> Design C — full-bleed map canvas with glowing location dots and threat colors</li>
+      <li><strong>Whisper:</strong> Design A — chat-bubble style with HEARD/LOST states, monospace adds the "radio transmission" feel</li>
+      <li><strong>Agent Creation:</strong> Design B — clean form with cluster/archetype grid, prominent Deploy button</li>
+      <li><strong>Death Screen:</strong> Design C — dramatic center-stage layout with skull icon and stats memorial</li>
+    </ul>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,8 +1,10 @@
 export const colors = {
   bg: "#0a0a0f",
+  bgDeep: "#080810",
   bgCard: "#12121a",
   bgCardLight: "#1a1a2e",
-  border: "#2a2a3e",
+  bgBanner: "#0a1628",
+  border: "#1e1e2e",
   borderActive: "#00f0ff",
 
   primary: "#00f0ff",
