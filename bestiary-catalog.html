@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ShellForge Realms — Bestiary</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap');
+  :root {
+    --bg: #0a0a0f;
+    --card-bg: rgba(10,12,20,0.85);
+    --border: rgba(74,222,128,0.15);
+    --text: #c8d6d0;
+    --text-dim: #6a7a7a;
+    --green: #4ade80;
+    --cyan: #00f0ff;
+    --magenta: #ff2cf7;
+    --red: #ff0044;
+    --amber: #fbbf24;
+    --common: #8a9a8a;
+    --uncommon: #4ade80;
+    --rare: #60a5fa;
+    --legendary: #fbbf24;
+    --arena: #ff2cf7;
+    --boss: #ff0044;
+    --world_beast: #00f0ff;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+  }
+  a { color: var(--green); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .header {
+    text-align: center;
+    padding: 30px 20px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.4rem;
+    color: var(--red);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  .header .sub {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-top: 6px;
+  }
+  .back-link {
+    position: fixed;
+    top: 16px; left: 16px;
+    font-size: 0.7rem;
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: rgba(0,0,0,0.6);
+    z-index: 100;
+    transition: all 0.2s;
+  }
+  .back-link:hover { border-color: var(--green); text-decoration: none; }
+
+  /* Filters */
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 16px 20px;
+    justify-content: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .filter-btn {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 4px 12px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    transition: all 0.15s;
+  }
+  .filter-btn:hover { border-color: var(--green); color: var(--text); }
+  .filter-btn.active { background: rgba(74,222,128,0.1); border-color: var(--green); color: var(--green); }
+  .filter-btn[data-cat="arena"].active { background: rgba(255,44,247,0.1); border-color: var(--arena); color: var(--arena); }
+  .filter-btn[data-cat="boss"].active { background: rgba(255,0,68,0.1); border-color: var(--boss); color: var(--boss); }
+  .filter-btn[data-cat="world_beast"].active { background: rgba(0,240,255,0.1); border-color: var(--world_beast); color: var(--world_beast); }
+  .search-box {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 3px;
+    font-family: inherit;
+    font-size: 0.7rem;
+    width: 200px;
+    outline: none;
+  }
+  .search-box:focus { border-color: var(--green); }
+
+  /* Grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 14px;
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* Card */
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: all 0.2s;
+    cursor: default;
+    position: relative;
+  }
+  .card:hover { border-color: rgba(74,222,128,0.4); transform: translateY(-2px); }
+  .card.cat-arena { border-left: 3px solid var(--arena); }
+  .card.cat-boss { border-left: 3px solid var(--boss); }
+  .card.cat-world_beast { border-left: 3px solid var(--world_beast); }
+
+  .card-top {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+  }
+  .card-portrait {
+    width: 80px;
+    height: 80px;
+    border-radius: 4px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: rgba(0,0,0,0.6);
+    border: 2px solid rgba(138,154,138,0.3);
+  }
+  .cat-arena .card-portrait { border-color: rgba(255,44,247,0.35); }
+  .cat-boss .card-portrait { border-color: rgba(255,0,68,0.4); box-shadow: 0 0 12px rgba(255,0,68,0.15); }
+  .cat-world_beast .card-portrait { border-color: rgba(0,240,255,0.35); }
+  .card-portrait img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .card-portrait .no-img {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem; opacity: 0.2;
+  }
+
+  .card-info { flex: 1; min-width: 0; }
+  .card-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+  }
+  .cat-arena .card-name { color: var(--arena); }
+  .cat-boss .card-name { color: var(--red); }
+  .cat-world_beast .card-name { color: var(--cyan); }
+
+  .card-tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .tag {
+    font-size: 0.5rem;
+    padding: 1px 6px;
+    border-radius: 2px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.06);
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .tag-cat { border-color: rgba(255,44,247,0.25); color: var(--arena); }
+  .tag-cat.boss { border-color: rgba(255,0,68,0.25); color: var(--red); }
+  .tag-cat.world_beast { border-color: rgba(0,240,255,0.25); color: var(--cyan); }
+  .tag-tier { border-color: rgba(251,191,36,0.2); color: var(--amber); }
+  .tag-rarity.common { color: var(--common); }
+  .tag-rarity.uncommon { color: var(--uncommon); border-color: rgba(74,222,128,0.2); }
+  .tag-rarity.rare { color: var(--rare); border-color: rgba(96,165,250,0.2); }
+  .tag-rarity.legendary { color: var(--legendary); border-color: rgba(251,191,36,0.3); }
+
+  .card-desc {
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    line-height: 1.4;
+  }
+
+  /* Stats bar (shown on hover) */
+  .card-stats {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+    border-top: 1px solid transparent;
+  }
+  .card:hover .card-stats {
+    max-height: 200px;
+    border-top-color: rgba(255,255,255,0.04);
+  }
+  .stats-inner {
+    padding: 10px 12px;
+  }
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.58rem;
+    margin-bottom: 3px;
+  }
+  .stat-label { color: var(--text-dim); }
+  .stat-val { color: var(--green); }
+  .stat-bar-wrap {
+    flex: 1;
+    margin: 0 8px;
+    height: 4px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 2px;
+    align-self: center;
+  }
+  .stat-bar {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--green);
+    transition: width 0.3s ease;
+  }
+
+  .card-traits {
+    padding: 0 12px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .trait-tag {
+    font-size: 0.5rem;
+    padding: 2px 6px;
+    border-radius: 2px;
+    border: 1px solid rgba(0,240,255,0.2);
+    background: rgba(0,240,255,0.05);
+    color: var(--cyan);
+  }
+
+  .card-drops {
+    padding: 0 12px 10px;
+    font-size: 0.52rem;
+    color: var(--text-dim);
+  }
+  .card-drops .drop-label { color: var(--text-dim); margin-right: 4px; }
+  .card-drops .drop-common { color: var(--common); }
+  .card-drops .drop-rare { color: var(--rare); }
+
+  .card-location {
+    padding: 0 12px 10px;
+    font-size: 0.55rem;
+  }
+  .card-location::before {
+    content: 'LOCATION: ';
+    color: var(--text-dim);
+    font-size: 0.48rem;
+    letter-spacing: 0.08em;
+  }
+  .card-location span { color: var(--amber); }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+  }
+
+  @media (max-width: 600px) {
+    .grid { grid-template-columns: 1fr; }
+    .card-portrait { width: 64px; height: 64px; }
+  }
+</style>
+</head>
+<body>
+
+<a href="index.html" class="back-link">← Back</a>
+
+<div class="header">
+  <h1>Bestiary</h1>
+  <div class="sub" id="statsLine">Loading...</div>
+</div>
+
+<div class="filters">
+  <input type="text" class="search-box" id="searchBox" placeholder="Search creatures...">
+  <button class="filter-btn active" data-cat="all">All</button>
+  <button class="filter-btn" data-cat="arena">Arena Beasts</button>
+  <button class="filter-btn" data-cat="world_beast">World Beasts</button>
+  <button class="filter-btn" data-cat="boss">World Bosses</button>
+  <button class="filter-btn" data-tier="1">Tier 1</button>
+  <button class="filter-btn" data-tier="2">Tier 2</button>
+  <button class="filter-btn" data-tier="3">Tier 3</button>
+  <button class="filter-btn" data-tier="4">Tier 4</button>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<script>
+(function() {
+  var SB_URL = 'https://wtzrxscdlqdgdiefsmru.supabase.co';
+  var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0enJ4c2NkbHFkZ2RpZWZzbXJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2OTI4MjcsImV4cCI6MjA4OTI2ODgyN30.dLheIKz9anuM58O3Ebsr2rVCOGA-xBGRD9voiXNvIcg';
+  var HDRS = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY };
+
+  fetch(SB_URL + '/rest/v1/bestiary?select=*&order=category,tier,name', { headers: HDRS })
+    .then(function(r) { return r.json(); })
+    .then(run)
+    .catch(function(e) {
+      document.getElementById('grid').innerHTML = '<div class="empty-state">Failed to load bestiary: ' + e.message + '</div>';
+    });
+
+  function run(creatures) {
+    var grid = document.getElementById('grid');
+    var statsLine = document.getElementById('statsLine');
+    var searchBox = document.getElementById('searchBox');
+
+    var catCounts = {};
+    creatures.forEach(function(c) { catCounts[c.category] = (catCounts[c.category] || 0) + 1; });
+    statsLine.textContent = creatures.length + ' creatures — '
+      + (catCounts.arena || 0) + ' arena · '
+      + (catCounts.world_beast || 0) + ' world beasts · '
+      + (catCounts.boss || 0) + ' world bosses';
+
+    var catLabels = { arena: 'Arena', boss: 'Boss', world_beast: 'World' };
+    var maxHp = Math.max.apply(null, creatures.map(function(c){ return c.hp || 0; }));
+    var maxAtk = Math.max.apply(null, creatures.map(function(c){ return c.attack || 0; }));
+    var maxDef = Math.max.apply(null, creatures.map(function(c){ return c.defense || 0; }));
+    var maxSpd = Math.max.apply(null, creatures.map(function(c){ return c.speed || 0; }));
+
+    function renderCard(c) {
+      var imgHtml = c.image_path
+        ? '<img src="' + c.image_path + '" alt="' + c.name + '" loading="lazy">'
+        : '<div class="no-img">?</div>';
+
+      var traitsHtml = '';
+      if (c.traits && c.traits.length) {
+        traitsHtml = '<div class="card-traits">' + c.traits.map(function(t) {
+          return '<span class="trait-tag">' + t + '</span>';
+        }).join('') + '</div>';
+      }
+
+      var dropsHtml = '';
+      if (c.drop_table) {
+        var parts = [];
+        if (c.drop_table.common) parts.push('<span class="drop-common">' + c.drop_table.common.join(', ') + '</span>');
+        if (c.drop_table.rare) parts.push('<span class="drop-rare">' + c.drop_table.rare.join(', ') + '</span>');
+        if (parts.length) dropsHtml = '<div class="card-drops"><span class="drop-label">DROPS:</span> ' + parts.join(' · ') + '</div>';
+      }
+
+      var locHtml = c.location ? '<div class="card-location"><span>' + c.location + '</span></div>' : '';
+
+      return '<div class="card cat-' + c.category + '" data-cat="' + c.category + '" data-tier="' + c.tier + '" data-name="' + c.name.toLowerCase() + '">'
+        + '<div class="card-top">'
+        +   '<div class="card-portrait">' + imgHtml + '</div>'
+        +   '<div class="card-info">'
+        +     '<div class="card-name">' + c.name + '</div>'
+        +     '<div class="card-tags">'
+        +       '<span class="tag tag-cat ' + c.category + '">' + (catLabels[c.category] || c.category) + '</span>'
+        +       '<span class="tag tag-tier">T' + c.tier + '</span>'
+        +       '<span class="tag tag-rarity ' + (c.rarity || '').toLowerCase() + '">' + (c.rarity || '?') + '</span>'
+        +     '</div>'
+        +     '<div class="card-desc">' + (c.description || '') + '</div>'
+        +   '</div>'
+        + '</div>'
+        + '<div class="card-stats"><div class="stats-inner">'
+        +   statBar('HP', c.hp, maxHp)
+        +   statBar('ATK', c.attack, maxAtk)
+        +   statBar('DEF', c.defense, maxDef)
+        +   statBar('SPD', c.speed, maxSpd)
+        +   '<div class="stat-row"><span class="stat-label">Shells</span><span class="stat-val">+' + (c.shell_reward || 0) + ' ⌬</span></div>'
+        +   '<div class="stat-row"><span class="stat-label">Karma</span><span class="stat-val">+' + (c.karma_reward || 0) + '</span></div>'
+        + '</div></div>'
+        + traitsHtml
+        + dropsHtml
+        + locHtml
+        + '</div>';
+    }
+
+    function statBar(label, val, max) {
+      var pct = max > 0 ? Math.round((val / max) * 100) : 0;
+      return '<div class="stat-row">'
+        + '<span class="stat-label">' + label + '</span>'
+        + '<div class="stat-bar-wrap"><div class="stat-bar" style="width:' + pct + '%"></div></div>'
+        + '<span class="stat-val">' + (val || 0) + '</span>'
+        + '</div>';
+    }
+
+    grid.innerHTML = creatures.map(renderCard).join('');
+
+    // Filtering
+    var activeFilter = { cat: 'all', tier: null };
+
+    document.querySelectorAll('.filter-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var cat = btn.getAttribute('data-cat');
+        var tier = btn.getAttribute('data-tier');
+
+        if (cat) {
+          document.querySelectorAll('.filter-btn[data-cat]').forEach(function(b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+          activeFilter.cat = cat;
+        }
+        if (tier) {
+          if (btn.classList.contains('active')) {
+            btn.classList.remove('active');
+            activeFilter.tier = null;
+          } else {
+            document.querySelectorAll('.filter-btn[data-tier]').forEach(function(b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            activeFilter.tier = tier;
+          }
+        }
+        applyFilters();
+      });
+    });
+
+    searchBox.addEventListener('input', applyFilters);
+
+    function applyFilters() {
+      var query = searchBox.value.toLowerCase().trim();
+      var cards = grid.querySelectorAll('.card');
+      var shown = 0;
+      cards.forEach(function(card) {
+        var matchCat = activeFilter.cat === 'all' || card.getAttribute('data-cat') === activeFilter.cat;
+        var matchTier = !activeFilter.tier || card.getAttribute('data-tier') === activeFilter.tier;
+        var matchSearch = !query || card.getAttribute('data-name').indexOf(query) !== -1 || card.textContent.toLowerCase().indexOf(query) !== -1;
+        if (matchCat && matchTier && matchSearch) {
+          card.classList.remove('hidden');
+          shown++;
+        } else {
+          card.classList.add('hidden');
+        }
+      });
+    }
+  }
+})();
+</script>
+</body>
+</html>
