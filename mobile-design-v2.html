@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shellforge Realms — Mobile Design V2 (Immersive)</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a0f; color: #ccc; font-family: -apple-system, sans-serif; padding: 40px 16px; }
+  h1 { color: #00f0ff; font-size: 1.6rem; text-align: center; letter-spacing: 4px; font-family: 'Courier New', monospace; }
+  .subtitle { text-align: center; color: #556; font-size: 0.8rem; margin-bottom: 12px; letter-spacing: 2px; }
+  .intro { max-width: 800px; margin: 0 auto 50px; color: #888; font-size: 0.85rem; line-height: 1.8; text-align: center; }
+  .intro strong { color: #00f0ff; }
+
+  .section { margin-bottom: 80px; }
+  .section-title { color: #00f0ff; font-size: 1.1rem; letter-spacing: 3px; font-family: 'Courier New', monospace; margin-bottom: 6px; border-bottom: 1px solid #1a1a2a; padding-bottom: 10px; }
+  .section-desc { color: #888; font-size: 0.85rem; line-height: 1.7; margin-bottom: 24px; max-width: 900px; }
+  .section-desc strong { color: #00f0ff; }
+  .section-desc em { color: #ffaa00; font-style: normal; }
+
+  .phone-row { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; margin-bottom: 24px; }
+  .phone-wrapper { text-align: center; }
+  .phone-label { color: #556; font-size: 0.65rem; letter-spacing: 2px; margin-bottom: 6px; text-transform: uppercase; }
+
+  .phone {
+    width: 300px; height: 650px;
+    background: #080810;
+    border-radius: 40px;
+    border: 3px solid #222;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .phone .notch {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 120px; height: 28px; background: #000; border-radius: 0 0 18px 18px;
+    z-index: 10;
+  }
+  .phone .screen { width: 100%; height: 100%; overflow-y: auto; padding-top: 44px; padding-bottom: 80px; }
+  .phone .screen::-webkit-scrollbar { display: none; }
+
+  .tab-bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 80px; display: flex; align-items: center; justify-content: space-around;
+    padding-bottom: 16px;
+    background: linear-gradient(to top, #080810 60%, transparent);
+    z-index: 5;
+  }
+  .tab-item { text-align: center; flex: 1; }
+  .tab-icon { font-size: 18px; margin-bottom: 2px; }
+  .tab-label { font-size: 7px; letter-spacing: 1.5px; font-weight: 800; }
+  .tab-item.active .tab-label { color: #00f0ff; }
+  .tab-item:not(.active) .tab-label { color: #444; }
+  .tab-item:not(.active) .tab-icon { opacity: 0.35; }
+
+  /* Common card */
+  .card { margin: 6px 12px; padding: 12px; background: #10101a; border-radius: 12px; border: 1px solid #1a1a2a; }
+  .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .card-title { color: #666; font-size: 8px; letter-spacing: 3px; font-weight: 700; }
+  .card-action { color: #00f0ff; font-size: 8px; letter-spacing: 1px; }
+
+  /* Annotation callouts */
+  .callout { background: #0a0a14; border-radius: 12px; border: 1px solid #1a1a2a; padding: 16px; margin-top: 16px; }
+  .callout-title { color: #00f0ff; font-size: 10px; letter-spacing: 2px; margin-bottom: 8px; font-family: 'Courier New', monospace; font-weight: 700; }
+  .callout ul { list-style: none; }
+  .callout li { color: #888; font-size: 0.82rem; line-height: 1.7; padding-left: 14px; position: relative; margin-bottom: 3px; }
+  .callout li::before { content: '›'; position: absolute; left: 0; color: #00f0ff; }
+
+  /* Kenyon badge */
+  .kenyon-tag { display: inline-block; font-size: 7px; letter-spacing: 1.5px; font-weight: 700; padding: 2px 6px; border-radius: 3px; margin-left: 6px; vertical-align: middle; }
+  .kenyon-trust { background: #00f0ff15; color: #00f0ff; border: 1px solid #00f0ff33; }
+  .kenyon-belief { background: #ffaa0015; color: #ffaa00; border: 1px solid #ffaa0033; }
+  .kenyon-decision { background: #ff334415; color: #ff3344; border: 1px solid #ff334433; }
+</style>
+</head>
+<body>
+
+<h1>SHELLFORGE REALMS</h1>
+<p class="subtitle">MOBILE V2 — IMMERSIVE GAME UI + FULL FEATURE ACCESS</p>
+<p class="intro">
+  Building on <strong>Design C (Immersive Game UI)</strong> as the base.
+  These mockups integrate <strong>all game features</strong> (alchemy, market, arena, lore, vault),
+  <strong>dropdown menus</strong> for deep navigation, <strong>the actual world map</strong>,
+  <strong>town imagery</strong>, and <strong>archetype portraits</strong>.
+  <br><br>
+  Each screen is annotated with <strong>Oliver Kenyon's conversion principles</strong>
+  adapted for a game app: <span class="kenyon-tag kenyon-trust">TRUST</span> = first impressions,
+  <span class="kenyon-tag kenyon-belief">BELIEF</span> = depth/engagement,
+  <span class="kenyon-tag kenyon-decision">DECISION</span> = action/retention.
+</p>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- 1. AGENT DASHBOARD V2                                           -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">1. AGENT DASHBOARD V2 <span class="kenyon-tag kenyon-trust">ABOVE THE FOLD</span></div>
+  <p class="section-desc">
+    The dashboard is the <strong>first screen players see</strong>. Kenyon says: headline + social proof + CTA immediately.
+    For a game app, that means: <strong>agent status at a glance</strong>, <strong>what happened since you left</strong>,
+    and <strong>quick access to every game system</strong>. The <em>Quick Actions grid</em> is the big addition —
+    no more hunting through tabs to find Alchemy or Market.
+  </p>
+
+  <div class="phone-row">
+    <div class="phone-wrapper">
+      <div class="phone-label">Dashboard with Quick Actions</div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <!-- Location Banner with town atmosphere -->
+          <div style="height:150px;background:linear-gradient(135deg,#0a1628 0%,#1a0a28 50%,#0a1a1a 100%);position:relative;overflow:hidden;padding:16px">
+            <!-- Grid overlay -->
+            <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(0,240,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,240,255,0.03) 1px,transparent 1px);background-size:30px 30px"></div>
+            <!-- Glow -->
+            <div style="position:absolute;top:10%;left:40%;width:160px;height:160px;background:radial-gradient(circle,rgba(0,240,255,0.06),transparent 70%)"></div>
+
+            <div style="position:relative;z-index:1">
+              <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px">
+                <div style="width:6px;height:6px;border-radius:50%;background:#00ff88;box-shadow:0 0 6px #00ff88"></div>
+                <span style="color:#556;font-size:8px;letter-spacing:2px">ACTIVE</span>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:10px">
+                <!-- Archetype portrait placeholder -->
+                <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#1a2a1a,#0a1a28);border:1px solid #00f0ff33;display:flex;align-items:center;justify-content:center;font-size:9px;color:#00f0ff;font-weight:700;letter-spacing:1px">0xP</div>
+                <div>
+                  <div style="color:#fff;font-size:20px;font-weight:800;letter-spacing:1px">Kallak</div>
+                  <div style="display:flex;gap:6px;margin-top:3px">
+                    <span style="font-size:8px;padding:2px 6px;background:rgba(0,240,255,0.12);border:1px solid rgba(0,240,255,0.25);border-radius:3px;color:#00f0ff;letter-spacing:1px;font-weight:700">0DAY PRIMER</span>
+                    <span style="font-size:8px;padding:2px 6px;background:rgba(255,170,0,0.12);border:1px solid rgba(255,170,0,0.25);border-radius:3px;color:#ffaa00;letter-spacing:1px;font-weight:700">"obsessive"</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style="color:#556;font-size:10px;margin-top:8px">⬡ Nexarch — The Core</div>
+            </div>
+          </div>
+
+          <!-- Gauge Strip -->
+          <div style="display:flex;gap:2px;padding:0 10px;margin-top:2px">
+            <div style="flex:1;background:#10101a;padding:10px 6px;text-align:center;border-radius:10px 0 0 10px">
+              <div style="color:#fff;font-size:18px;font-weight:800">78</div>
+              <div style="height:3px;background:#1e1e2e;border-radius:2px;margin-top:5px;overflow:hidden"><div style="height:100%;width:78%;background:#00f0ff;border-radius:2px"></div></div>
+              <div style="color:#556;font-size:6px;letter-spacing:2px;margin-top:5px;font-weight:700">ENERGY</div>
+            </div>
+            <div style="flex:1;background:#10101a;padding:10px 6px;text-align:center">
+              <div style="color:#fff;font-size:18px;font-weight:800">92</div>
+              <div style="height:3px;background:#1e1e2e;border-radius:2px;margin-top:5px;overflow:hidden"><div style="height:100%;width:92%;background:#00ff88;border-radius:2px"></div></div>
+              <div style="color:#556;font-size:6px;letter-spacing:2px;margin-top:5px;font-weight:700">HEALTH</div>
+            </div>
+            <div style="flex:1;background:#10101a;padding:10px 6px;text-align:center">
+              <div style="color:#fff;font-size:18px;font-weight:800">12</div>
+              <div style="color:#556;font-size:6px;letter-spacing:2px;margin-top:8px;font-weight:700">KARMA</div>
+            </div>
+            <div style="flex:1;background:#10101a;padding:10px 6px;text-align:center;border-radius:0 10px 10px 0">
+              <div style="color:#fff;font-size:18px;font-weight:800">340</div>
+              <div style="color:#556;font-size:6px;letter-spacing:2px;margin-top:8px;font-weight:700">SHELLS</div>
+            </div>
+          </div>
+
+          <!-- QUICK ACTIONS GRID (new!) -->
+          <div class="card" style="margin-top:8px">
+            <div class="card-title" style="margin-bottom:10px">QUICK ACTIONS</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+              <div style="background:#1a1a2a;border-radius:10px;padding:10px 6px;text-align:center;border:1px solid #1e1e2e">
+                <div style="font-size:18px;margin-bottom:3px">⚗️</div>
+                <div style="color:#b000ff;font-size:8px;font-weight:700;letter-spacing:1px">ALCHEMY</div>
+              </div>
+              <div style="background:#1a1a2a;border-radius:10px;padding:10px 6px;text-align:center;border:1px solid #1e1e2e">
+                <div style="font-size:18px;margin-bottom:3px">⚖️</div>
+                <div style="color:#ffdd57;font-size:8px;font-weight:700;letter-spacing:1px">MARKET</div>
+              </div>
+              <div style="background:#1a1a2a;border-radius:10px;padding:10px 6px;text-align:center;border:1px solid #1e1e2e">
+                <div style="font-size:18px;margin-bottom:3px">⚔️</div>
+                <div style="color:#ff3344;font-size:8px;font-weight:700;letter-spacing:1px">ARENA</div>
+              </div>
+              <div style="background:#1a1a2a;border-radius:10px;padding:10px 6px;text-align:center;border:1px solid #1e1e2e">
+                <div style="font-size:18px;margin-bottom:3px">🏛️</div>
+                <div style="color:#88aacc;font-size:8px;font-weight:700;letter-spacing:1px">VAULT</div>
+              </div>
+              <div style="background:#1a1a2a;border-radius:10px;padding:10px 6px;text-align:center;border:1px solid #1e1e2e">
+                <div style="font-size:18px;margin-bottom:3px">📖</div>
+                <div style="color:#ddbbff;font-size:8px;font-weight:700;letter-spacing:1px">LORE</div>
+              </div>
+              <div style="background:#1a1a2a;border-radius:10px;padding:10px 6px;text-align:center;border:1px solid #1e1e2e">
+                <div style="font-size:18px;margin-bottom:3px">📜</div>
+                <div style="color:#00ff88;font-size:8px;font-weight:700;letter-spacing:1px">QUESTS</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Latest Activity -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">LATEST ACTIVITY</span>
+              <span class="card-action">VIEW ALL ›</span>
+            </div>
+            <div style="padding:8px 0;border-bottom:1px solid #1a1a2a">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:7px;padding:2px 6px;border:1px solid #b000ff55;border-radius:3px;color:#b000ff;font-weight:800;letter-spacing:1px">EXPLORE</span>
+                <span style="color:#444;font-size:8px">2h ago</span>
+              </div>
+              <div style="color:#aaa;font-size:10px;line-height:1.5;margin-top:4px">Discovers a hidden cache in the Nexarch ruins.</div>
+              <div style="display:flex;gap:8px;margin-top:4px">
+                <span style="color:#00f0ff;font-size:9px;font-weight:700">-15 NRG</span>
+                <span style="color:#00ff88;font-size:9px;font-weight:700">+1 ITEM</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Equipped Gear -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">EQUIPPED GEAR</span>
+              <span class="card-action">INVENTORY ›</span>
+            </div>
+            <div style="display:flex;gap:6px">
+              <div style="flex:1;background:#1a1a2a;border-radius:8px;padding:8px;text-align:center">
+                <div style="font-size:18px;margin-bottom:3px">👁️</div>
+                <div style="color:#eee;font-size:9px;font-weight:600">Ghostlink Visor</div>
+                <div style="color:#b000ff;font-size:7px;margin-top:2px;letter-spacing:1px;font-weight:700">RARE</div>
+              </div>
+              <div style="flex:1;background:#1a1a2a;border-radius:8px;padding:8px;text-align:center">
+                <div style="font-size:18px;margin-bottom:3px">⚔️</div>
+                <div style="color:#eee;font-size:9px;font-weight:600">Corroded Blade</div>
+                <div style="color:#666;font-size:7px;margin-top:2px;letter-spacing:1px;font-weight:700">COMMON</div>
+              </div>
+              <div style="flex:1;background:#1a1a2a;border-radius:8px;padding:8px;text-align:center;border:1px dashed #1e1e2e">
+                <div style="font-size:18px;margin-bottom:3px;opacity:0.2">➕</div>
+                <div style="color:#444;font-size:9px">Empty</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-bar">
+          <div class="tab-item active"><div class="tab-icon">🤖</div><div class="tab-label">AGENT</div></div>
+          <div class="tab-item"><div class="tab-icon">📜</div><div class="tab-label">FEED</div></div>
+          <div class="tab-item"><div class="tab-icon">🗺️</div><div class="tab-label">MAP</div></div>
+          <div class="tab-item"><div class="tab-icon">💬</div><div class="tab-label">WHISPER</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dashboard with Dropdown Menu Open -->
+    <div class="phone-wrapper">
+      <div class="phone-label">Dropdown Menu (More Features)</div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen" style="position:relative">
+          <!-- Same banner but dimmed -->
+          <div style="height:150px;background:linear-gradient(135deg,#0a1628,#1a0a28,#0a1a1a);opacity:0.4;padding:16px">
+          </div>
+
+          <!-- Dropdown overlay -->
+          <div style="position:absolute;top:36px;left:10px;right:10px;background:#12121a;border-radius:14px;border:1px solid #1e1e2e;box-shadow:0 20px 40px rgba(0,0,0,0.8);z-index:20;padding:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <span style="color:#00f0ff;font-size:9px;letter-spacing:3px;font-weight:700">GAME SYSTEMS</span>
+              <span style="color:#556;font-size:14px">✕</span>
+            </div>
+
+            <!-- Category: Combat -->
+            <div style="color:#ff3344;font-size:7px;letter-spacing:2px;font-weight:700;margin-bottom:6px;margin-top:4px">COMBAT</div>
+            <div style="display:flex;gap:6px;margin-bottom:10px">
+              <div style="flex:1;display:flex;align-items:center;gap:6px;background:#1a1a2a;border-radius:8px;padding:8px">
+                <span style="font-size:14px">⚔️</span>
+                <div>
+                  <div style="color:#eee;font-size:10px;font-weight:600">Arena</div>
+                  <div style="color:#556;font-size:8px">PvP combat</div>
+                </div>
+              </div>
+              <div style="flex:1;display:flex;align-items:center;gap:6px;background:#1a1a2a;border-radius:8px;padding:8px">
+                <span style="font-size:14px">🎯</span>
+                <div>
+                  <div style="color:#eee;font-size:10px;font-weight:600">Quests</div>
+                  <div style="color:#556;font-size:8px">Missions</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Category: Crafting -->
+            <div style="color:#b000ff;font-size:7px;letter-spacing:2px;font-weight:700;margin-bottom:6px">CRAFTING</div>
+            <div style="display:flex;gap:6px;margin-bottom:10px">
+              <div style="flex:1;display:flex;align-items:center;gap:6px;background:#1a1a2a;border-radius:8px;padding:8px">
+                <span style="font-size:14px">⚗️</span>
+                <div>
+                  <div style="color:#eee;font-size:10px;font-weight:600">Alchemy</div>
+                  <div style="color:#556;font-size:8px">Foundry + Terminal</div>
+                </div>
+              </div>
+              <div style="flex:1;display:flex;align-items:center;gap:6px;background:#1a1a2a;border-radius:8px;padding:8px">
+                <span style="font-size:14px">⚖️</span>
+                <div>
+                  <div style="color:#eee;font-size:10px;font-weight:600">Market</div>
+                  <div style="color:#556;font-size:8px">Buy & sell</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Category: Knowledge -->
+            <div style="color:#ddbbff;font-size:7px;letter-spacing:2px;font-weight:700;margin-bottom:6px">KNOWLEDGE</div>
+            <div style="display:flex;gap:6px;margin-bottom:10px">
+              <div style="flex:1;display:flex;align-items:center;gap:6px;background:#1a1a2a;border-radius:8px;padding:8px">
+                <span style="font-size:14px">📖</span>
+                <div>
+                  <div style="color:#eee;font-size:10px;font-weight:600">Lore</div>
+                  <div style="color:#556;font-size:8px">World archive</div>
+                </div>
+              </div>
+              <div style="flex:1;display:flex;align-items:center;gap:6px;background:#1a1a2a;border-radius:8px;padding:8px">
+                <span style="font-size:14px">⚙️</span>
+                <div>
+                  <div style="color:#eee;font-size:10px;font-weight:600">Mechanics</div>
+                  <div style="color:#556;font-size:8px">How it works</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Category: Storage -->
+            <div style="color:#00f0ff;font-size:7px;letter-spacing:2px;font-weight:700;margin-bottom:6px">STORAGE</div>
+            <div style="display:flex;gap:6px">
+              <div style="flex:1;display:flex;align-items:center;gap:6px;background:#1a1a2a;border-radius:8px;padding:8px">
+                <span style="font-size:14px">🏛️</span>
+                <div>
+                  <div style="color:#eee;font-size:10px;font-weight:600">Vault</div>
+                  <div style="color:#556;font-size:8px">Dynasty items</div>
+                </div>
+              </div>
+              <div style="flex:1;display:flex;align-items:center;gap:6px;background:#1a1a2a;border-radius:8px;padding:8px">
+                <span style="font-size:14px">🎒</span>
+                <div>
+                  <div style="color:#eee;font-size:10px;font-weight:600">Inventory</div>
+                  <div style="color:#556;font-size:8px">All items</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-bar">
+          <div class="tab-item active"><div class="tab-icon">🤖</div><div class="tab-label">AGENT</div></div>
+          <div class="tab-item"><div class="tab-icon">📜</div><div class="tab-label">FEED</div></div>
+          <div class="tab-item"><div class="tab-icon">🗺️</div><div class="tab-label">MAP</div></div>
+          <div class="tab-item"><div class="tab-icon">💬</div><div class="tab-label">WHISPER</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <div class="callout-title">KENYON PRINCIPLES APPLIED</div>
+    <ul>
+      <li><strong>Above the fold</strong> — agent name, status, archetype portrait, and current location visible immediately without scrolling</li>
+      <li><strong>Features (scannable)</strong> — the 6-icon Quick Actions grid makes every game system one tap away. No hiding features in sub-tabs.</li>
+      <li><strong>The transformation</strong> — gauge strip shows current stats at a glance, latest activity shows momentum</li>
+      <li><strong>Dropdown menu</strong> — the "cheat code" for fitting 8+ features without overwhelming. Categorized by game system type. Triggered by a ☰ or ⊕ button.</li>
+      <li><strong>Archetype portrait</strong> — adds personality. Each archetype has its own art (you have 12 portraits). Players identify with their character.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- 2. WORLD MAP WITH TOWN ART                                      -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">2. WORLD MAP — IMMERSIVE <span class="kenyon-tag kenyon-belief">BUILDS BELIEF</span></div>
+  <p class="section-desc">
+    The map should use your <strong>actual hand-drawn world map art</strong> as the background — not an abstract grid.
+    When players see that illustrated island with mountains, forests, rivers, and ruins, they <em>believe in the world</em>.
+    Tapping a location opens a <strong>slide-up town card</strong> with atmosphere, local features, and travel info.
+  </p>
+
+  <div class="phone-row">
+    <!-- Map with art background -->
+    <div class="phone-wrapper">
+      <div class="phone-label">World Map (Art Background)</div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <!-- Map area - simulating the dark island map -->
+          <div style="position:relative;width:100%;height:380px;background:linear-gradient(135deg,#0a1520 0%,#0c1a1a 40%,#0f1520 100%);overflow:hidden">
+            <!-- Simulated map terrain -->
+            <div style="position:absolute;inset:0;opacity:0.15">
+              <div style="position:absolute;top:10%;left:30%;width:120px;height:80px;background:radial-gradient(ellipse,#1a4a3a,transparent);border-radius:50%"></div>
+              <div style="position:absolute;top:5%;left:20%;width:60px;height:100px;background:linear-gradient(to top,transparent,#2a3a4a);clip-path:polygon(50% 0%,0% 100%,100% 100%)"></div>
+              <div style="position:absolute;top:8%;left:35%;width:40px;height:70px;background:linear-gradient(to top,transparent,#2a3a4a);clip-path:polygon(50% 0%,0% 100%,100% 100%)"></div>
+              <!-- Lake -->
+              <div style="position:absolute;top:20%;left:30%;width:80px;height:40px;background:radial-gradient(ellipse,#0a4a5a,transparent);border-radius:50%"></div>
+              <!-- River -->
+              <div style="position:absolute;top:40%;left:35%;width:3px;height:180px;background:linear-gradient(to bottom,#0a6a7a,#0a4a5a,transparent);transform:rotate(-10deg)"></div>
+            </div>
+
+            <!-- Grid overlay -->
+            <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(0,240,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(0,240,255,0.02) 1px,transparent 1px);background-size:40px 40px"></div>
+
+            <!-- Location dots -->
+            <div style="position:absolute;left:70%;top:28%;text-align:center">
+              <div style="width:12px;height:12px;border-radius:50%;background:#00ff88;box-shadow:0 0 10px #00ff88,0 0 20px #00ff8844;margin:0 auto"></div>
+              <div style="color:#00ff88;font-size:7px;font-weight:800;margin-top:2px;letter-spacing:0.5px;text-shadow:0 0 4px #00ff8866">NEXARCH</div>
+            </div>
+            <div style="position:absolute;left:68%;top:68%;text-align:center">
+              <div style="width:9px;height:9px;border-radius:50%;background:#00ff88;box-shadow:0 0 8px #00ff88;margin:0 auto"></div>
+              <div style="color:#00ff88;font-size:6px;font-weight:700;margin-top:2px">HASHMERE</div>
+            </div>
+            <div style="position:absolute;left:40%;top:68%;text-align:center">
+              <div style="width:9px;height:9px;border-radius:50%;background:#00ff88;box-shadow:0 0 8px #00ff88;margin:0 auto"></div>
+              <div style="color:#00ff88;font-size:6px;font-weight:700;margin-top:2px">DIFF. MESA</div>
+            </div>
+            <div style="position:absolute;left:32%;top:8%;text-align:center">
+              <div style="width:9px;height:9px;border-radius:50%;background:#ffaa00;box-shadow:0 0 8px #ffaa00;margin:0 auto"></div>
+              <div style="color:#ffaa00;font-size:6px;font-weight:700;margin-top:2px">EPOCH SPIKE</div>
+            </div>
+            <div style="position:absolute;left:10%;top:38%;text-align:center">
+              <div style="width:9px;height:9px;border-radius:50%;background:#ff3344;box-shadow:0 0 8px #ff3344;margin:0 auto"></div>
+              <div style="color:#ff3344;font-size:6px;font-weight:700;margin-top:2px;white-space:nowrap">HALLUC. GLITCH</div>
+            </div>
+            <div style="position:absolute;left:31%;top:34%;text-align:center">
+              <div style="width:9px;height:9px;border-radius:50%;background:#b000ff;box-shadow:0 0 8px #b000ff;margin:0 auto"></div>
+              <div style="color:#b000ff;font-size:6px;font-weight:700;margin-top:2px;white-space:nowrap">SINGULARITY</div>
+            </div>
+            <div style="position:absolute;left:33%;top:52%;text-align:center">
+              <div style="width:9px;height:9px;border-radius:50%;background:#ff3344;box-shadow:0 0 8px #ff3344;margin:0 auto"></div>
+              <div style="color:#ff3344;font-size:6px;font-weight:700;margin-top:2px;white-space:nowrap">DATA CENTRE</div>
+            </div>
+            <div style="position:absolute;left:30%;top:78%;text-align:center">
+              <div style="width:9px;height:9px;border-radius:50%;background:#b000ff;box-shadow:0 0 8px #b000ff;margin:0 auto"></div>
+              <div style="color:#b000ff;font-size:6px;font-weight:700;margin-top:2px;white-space:nowrap">PROOF-OF-DEATH</div>
+            </div>
+
+            <!-- Player marker -->
+            <div style="position:absolute;left:calc(70% - 3px);top:calc(28% - 14px)">
+              <div style="width:18px;height:18px;border-radius:50%;border:2px solid #00f0ff;display:flex;align-items:center;justify-content:center">
+                <div style="width:8px;height:8px;border-radius:50%;background:#00f0ff;box-shadow:0 0 8px #00f0ff"></div>
+              </div>
+            </div>
+
+            <!-- Other agents -->
+            <div style="position:absolute;left:42%;top:70%;width:4px;height:4px;border-radius:50%;background:#666;opacity:0.5"></div>
+            <div style="position:absolute;left:69%;top:65%;width:4px;height:4px;border-radius:50%;background:#666;opacity:0.5"></div>
+            <div style="position:absolute;left:72%;top:30%;width:4px;height:4px;border-radius:50%;background:#666;opacity:0.5"></div>
+
+            <!-- Map label -->
+            <div style="position:absolute;bottom:8px;left:12px;color:#556;font-size:7px;letter-spacing:2px;font-weight:600">SHELLFORGE WORLD MAP</div>
+            <div style="position:absolute;bottom:8px;right:12px;color:#556;font-size:7px">8 agents online</div>
+          </div>
+
+          <!-- Legend -->
+          <div class="card" style="margin-top:6px">
+            <div class="card-title">THREAT LEVELS</div>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px">
+              <div style="display:flex;align-items:center;gap:3px"><div style="width:5px;height:5px;border-radius:50%;background:#00ff88"></div><span style="color:#556;font-size:7px;letter-spacing:1px">SAFE</span></div>
+              <div style="display:flex;align-items:center;gap:3px"><div style="width:5px;height:5px;border-radius:50%;background:#ffaa00"></div><span style="color:#556;font-size:7px;letter-spacing:1px">MODERATE</span></div>
+              <div style="display:flex;align-items:center;gap:3px"><div style="width:5px;height:5px;border-radius:50%;background:#ff3344"></div><span style="color:#556;font-size:7px;letter-spacing:1px">DANGEROUS</span></div>
+              <div style="display:flex;align-items:center;gap:3px"><div style="width:5px;height:5px;border-radius:50%;background:#b000ff"></div><span style="color:#556;font-size:7px;letter-spacing:1px">EXTREME</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-bar">
+          <div class="tab-item"><div class="tab-icon">🤖</div><div class="tab-label">AGENT</div></div>
+          <div class="tab-item"><div class="tab-icon">📜</div><div class="tab-label">FEED</div></div>
+          <div class="tab-item active"><div class="tab-icon">🗺️</div><div class="tab-label">MAP</div></div>
+          <div class="tab-item"><div class="tab-icon">💬</div><div class="tab-label">WHISPER</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Map with town card open -->
+    <div class="phone-wrapper">
+      <div class="phone-label">Town Tapped → Slide-up Card</div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen" style="position:relative">
+          <!-- Dimmed map -->
+          <div style="height:260px;background:linear-gradient(135deg,#0a1520,#0c1a1a,#0f1520);opacity:0.5"></div>
+
+          <!-- Slide-up Town Card -->
+          <div style="position:absolute;bottom:80px;left:0;right:0;background:#10101a;border-radius:16px 16px 0 0;border-top:1px solid #1e1e2e;padding:16px;box-shadow:0 -10px 40px rgba(0,0,0,0.6)">
+            <!-- Drag handle -->
+            <div style="width:40px;height:3px;background:#333;border-radius:2px;margin:0 auto 12px"></div>
+
+            <!-- Town banner -->
+            <div style="height:80px;background:linear-gradient(135deg,#0a1628,#1a0a28);border-radius:10px;overflow:hidden;position:relative;margin-bottom:12px">
+              <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(0,240,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,240,255,0.03) 1px,transparent 1px);background-size:20px 20px"></div>
+              <div style="position:absolute;bottom:10px;left:12px;z-index:1">
+                <div style="color:#fff;font-size:16px;font-weight:800;letter-spacing:1px">Nexarch</div>
+                <div style="color:#00ff88;font-size:8px;letter-spacing:2px;font-weight:600">SAFE ZONE — THE CORE</div>
+              </div>
+              <div style="position:absolute;top:8px;right:8px;font-size:7px;padding:2px 6px;background:#00ff8822;color:#00ff88;border-radius:3px;font-weight:700;letter-spacing:1px">YOU ARE HERE</div>
+            </div>
+
+            <div style="color:#999;font-size:10px;line-height:1.6;margin-bottom:12px">
+              The central hub of the known world. Home to the Cathedral of Null, the main Market, and the Foundry.
+            </div>
+
+            <!-- Local features -->
+            <div style="color:#556;font-size:7px;letter-spacing:2px;font-weight:700;margin-bottom:8px">AVAILABLE HERE</div>
+            <div style="display:flex;gap:6px;margin-bottom:12px">
+              <div style="flex:1;background:#1a1a2a;border-radius:8px;padding:8px;text-align:center">
+                <div style="font-size:14px">⚖️</div>
+                <div style="color:#ffdd57;font-size:7px;font-weight:700;margin-top:2px">MARKET</div>
+              </div>
+              <div style="flex:1;background:#1a1a2a;border-radius:8px;padding:8px;text-align:center">
+                <div style="font-size:14px">⚗️</div>
+                <div style="color:#b000ff;font-size:7px;font-weight:700;margin-top:2px">FOUNDRY</div>
+              </div>
+              <div style="flex:1;background:#1a1a2a;border-radius:8px;padding:8px;text-align:center">
+                <div style="font-size:14px">⚔️</div>
+                <div style="color:#ff3344;font-size:7px;font-weight:700;margin-top:2px">ARENA</div>
+              </div>
+              <div style="flex:1;background:#1a1a2a;border-radius:8px;padding:8px;text-align:center">
+                <div style="font-size:14px">⛪</div>
+                <div style="color:#ddbbff;font-size:7px;font-weight:700;margin-top:2px">CHURCH</div>
+              </div>
+            </div>
+
+            <!-- Agents present -->
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="color:#556;font-size:7px;letter-spacing:2px;font-weight:700">3 AGENTS HERE</span>
+              <div style="display:flex;gap:-4px">
+                <div style="width:20px;height:20px;border-radius:50%;background:#1a2a1a;border:1px solid #00f0ff44;font-size:7px;display:flex;align-items:center;justify-content:center;color:#00f0ff">K</div>
+                <div style="width:20px;height:20px;border-radius:50%;background:#2a1a1a;border:1px solid #ff334444;font-size:7px;display:flex;align-items:center;justify-content:center;color:#ff3344;margin-left:-4px">X</div>
+                <div style="width:20px;height:20px;border-radius:50%;background:#1a1a2a;border:1px solid #b000ff44;font-size:7px;display:flex;align-items:center;justify-content:center;color:#b000ff;margin-left:-4px">R</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-bar">
+          <div class="tab-item"><div class="tab-icon">🤖</div><div class="tab-label">AGENT</div></div>
+          <div class="tab-item"><div class="tab-icon">📜</div><div class="tab-label">FEED</div></div>
+          <div class="tab-item active"><div class="tab-icon">🗺️</div><div class="tab-label">MAP</div></div>
+          <div class="tab-item"><div class="tab-icon">💬</div><div class="tab-label">WHISPER</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <div class="callout-title">MAP DESIGN NOTES</div>
+    <ul>
+      <li><strong>Use the actual map art</strong> — your illustrated world map as the background image (not CSS gradients). The mountains, forests, and rivers make it feel real.</li>
+      <li><strong>Slide-up town cards</strong> — tap any glowing dot → bottom sheet rises showing town details, local features, agents present. No page navigation needed.</li>
+      <li><strong>Local features</strong> — each town shows what's available there (Market, Foundry, Arena, Church). This teaches players the game has depth.</li>
+      <li><strong>Social proof</strong> (Kenyon) — showing "3 agents here" and "8 agents online" proves the world is alive. This builds belief.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- 3. ALCHEMY + MARKET SCREENS                                     -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">3. ALCHEMY & MARKET <span class="kenyon-tag kenyon-belief">FEATURE DEPTH</span></div>
+  <p class="section-desc">
+    These are the <strong>game systems that prove depth</strong>. Kenyon's "What's Included" section —
+    show players the game has <em>real crafting</em>, <em>real economy</em>, <em>real choices</em>.
+    Currently hidden in the web dashboard; on mobile, they should be <strong>one tap from the dashboard</strong>.
+  </p>
+
+  <div class="phone-row">
+    <!-- Alchemy Screen -->
+    <div class="phone-wrapper">
+      <div class="phone-label">Alchemy (Foundry)</div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div style="padding:14px;border-bottom:1px solid #1a1a2a">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="color:#556;font-size:10px">← Back</span>
+              <span style="color:#b000ff;font-size:10px;letter-spacing:3px;font-weight:800">ALCHEMY</span>
+              <span style="width:40px"></span>
+            </div>
+          </div>
+
+          <!-- Station Selector -->
+          <div style="display:flex;gap:2px;padding:10px 12px">
+            <div style="flex:1;background:#b000ff22;border:1px solid #b000ff44;border-radius:8px;padding:10px;text-align:center">
+              <div style="font-size:16px;margin-bottom:2px">🔨</div>
+              <div style="color:#b000ff;font-size:8px;font-weight:700;letter-spacing:1px">FOUNDRY</div>
+              <div style="color:#556;font-size:7px;margin-top:2px">Hardware items</div>
+            </div>
+            <div style="flex:1;background:#10101a;border:1px solid #1e1e2e;border-radius:8px;padding:10px;text-align:center">
+              <div style="font-size:16px;margin-bottom:2px">💻</div>
+              <div style="color:#556;font-size:8px;font-weight:700;letter-spacing:1px">TERMINAL</div>
+              <div style="color:#556;font-size:7px;margin-top:2px">Software items</div>
+            </div>
+          </div>
+
+          <!-- Ingredient Slots -->
+          <div class="card">
+            <div class="card-title" style="margin-bottom:10px">INGREDIENTS (3 REQUIRED)</div>
+            <div style="display:flex;gap:8px">
+              <div style="flex:1;aspect-ratio:1;background:#1a1a2a;border-radius:10px;border:2px dashed #b000ff33;display:flex;flex-direction:column;align-items:center;justify-content:center">
+                <div style="font-size:16px;margin-bottom:2px">⚡</div>
+                <div style="color:#00f0ff;font-size:7px;font-weight:600">Flux Core</div>
+                <div style="color:#556;font-size:6px;margin-top:1px">UNCOMMON</div>
+              </div>
+              <div style="flex:1;aspect-ratio:1;background:#1a1a2a;border-radius:10px;border:2px dashed #b000ff33;display:flex;flex-direction:column;align-items:center;justify-content:center">
+                <div style="font-size:16px;margin-bottom:2px">🔩</div>
+                <div style="color:#eee;font-size:7px;font-weight:600">Scrap Metal</div>
+                <div style="color:#556;font-size:6px;margin-top:1px">COMMON</div>
+              </div>
+              <div style="flex:1;aspect-ratio:1;background:#10101a;border-radius:10px;border:2px dashed #333;display:flex;align-items:center;justify-content:center">
+                <div style="color:#333;font-size:20px">+</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recipe Preview -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">POSSIBLE RESULT</span>
+              <span style="color:#ffaa00;font-size:8px;font-weight:700">72% SUCCESS</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:6px 0">
+              <div style="width:40px;height:40px;background:#1a1a2a;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px">🗡️</div>
+              <div style="flex:1">
+                <div style="color:#eee;font-size:12px;font-weight:700">Pulse Edge</div>
+                <div style="color:#b000ff;font-size:8px;font-weight:600;letter-spacing:1px;margin-top:1px">RARE · WEAPON</div>
+                <div style="color:#888;font-size:9px;margin-top:3px">+12 ATK, +4 Speed, Shock proc</div>
+              </div>
+            </div>
+            <div style="color:#ff3344;font-size:8px;margin-top:6px;padding:6px;background:#ff334410;border-radius:6px">⚠️ Failure: ingredient destroyed, -5 energy</div>
+          </div>
+
+          <!-- Craft Button -->
+          <div style="padding:12px">
+            <div style="background:#b000ff;border-radius:10px;padding:14px;text-align:center;color:#fff;font-size:11px;font-weight:800;letter-spacing:2px">FORGE ITEM</div>
+          </div>
+        </div>
+        <div class="tab-bar">
+          <div class="tab-item active"><div class="tab-icon">🤖</div><div class="tab-label">AGENT</div></div>
+          <div class="tab-item"><div class="tab-icon">📜</div><div class="tab-label">FEED</div></div>
+          <div class="tab-item"><div class="tab-icon">🗺️</div><div class="tab-label">MAP</div></div>
+          <div class="tab-item"><div class="tab-icon">💬</div><div class="tab-label">WHISPER</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Market Screen -->
+    <div class="phone-wrapper">
+      <div class="phone-label">Market (Buy/Sell)</div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div style="padding:14px;border-bottom:1px solid #1a1a2a">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="color:#556;font-size:10px">← Back</span>
+              <span style="color:#ffdd57;font-size:10px;letter-spacing:3px;font-weight:800">MARKET</span>
+              <span style="color:#ffdd57;font-size:10px;font-weight:700">340 ⬡</span>
+            </div>
+          </div>
+
+          <!-- Buy/Sell Tabs -->
+          <div style="display:flex;gap:0;padding:10px 12px 0">
+            <div style="flex:1;background:#ffdd5722;border-bottom:2px solid #ffdd57;padding:8px;text-align:center">
+              <span style="color:#ffdd57;font-size:9px;font-weight:700;letter-spacing:2px">BUY</span>
+            </div>
+            <div style="flex:1;background:#10101a;border-bottom:2px solid #1e1e2e;padding:8px;text-align:center">
+              <span style="color:#556;font-size:9px;font-weight:700;letter-spacing:2px">SELL</span>
+            </div>
+          </div>
+
+          <!-- Filter dropdown -->
+          <div style="padding:8px 12px">
+            <div style="display:flex;gap:6px">
+              <div style="background:#1a1a2a;border-radius:6px;padding:5px 10px;display:flex;align-items:center;gap:4px">
+                <span style="color:#eee;font-size:9px">All Types</span>
+                <span style="color:#556;font-size:8px">▾</span>
+              </div>
+              <div style="background:#1a1a2a;border-radius:6px;padding:5px 10px;display:flex;align-items:center;gap:4px">
+                <span style="color:#eee;font-size:9px">Price ↓</span>
+                <span style="color:#556;font-size:8px">▾</span>
+              </div>
+              <div style="background:#1a1a2a;border-radius:6px;padding:5px 10px">
+                <span style="color:#eee;font-size:9px">Nexarch</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Market Items -->
+          <div style="padding:0 12px">
+            <div style="display:flex;align-items:center;gap:8px;padding:10px;background:#10101a;border-radius:10px;border:1px solid #1e1e2e;margin-bottom:6px">
+              <div style="width:36px;height:36px;background:#1a1a2a;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px">💊</div>
+              <div style="flex:1">
+                <div style="color:#eee;font-size:11px;font-weight:600">Nano Medkit</div>
+                <div style="color:#556;font-size:8px">Consumable · Restores 25 HP</div>
+              </div>
+              <div style="text-align:right">
+                <div style="color:#ffdd57;font-size:12px;font-weight:800">15 ⬡</div>
+                <div style="color:#00ff88;font-size:7px;font-weight:700">IN STOCK</div>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:8px;padding:10px;background:#10101a;border-radius:10px;border:1px solid #1e1e2e;margin-bottom:6px">
+              <div style="width:36px;height:36px;background:#1a1a2a;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px">🛡️</div>
+              <div style="flex:1">
+                <div style="color:#eee;font-size:11px;font-weight:600">Datashield Mk.II</div>
+                <div style="color:#00f0ff;font-size:8px;font-weight:600;letter-spacing:0.5px">UNCOMMON · Armor</div>
+              </div>
+              <div style="text-align:right">
+                <div style="color:#ffdd57;font-size:12px;font-weight:800">85 ⬡</div>
+                <div style="color:#00ff88;font-size:7px;font-weight:700">IN STOCK</div>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:8px;padding:10px;background:#10101a;border-radius:10px;border:1px solid #1e1e2e;margin-bottom:6px">
+              <div style="width:36px;height:36px;background:#1a1a2a;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px">📜</div>
+              <div style="flex:1">
+                <div style="color:#eee;font-size:11px;font-weight:600">Scroll of Whisper</div>
+                <div style="color:#b000ff;font-size:8px;font-weight:600;letter-spacing:0.5px">RARE · Scroll</div>
+              </div>
+              <div style="text-align:right">
+                <div style="color:#ffdd57;font-size:12px;font-weight:800">210 ⬡</div>
+                <div style="color:#ff3344;font-size:7px;font-weight:700">LOW STOCK</div>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:8px;padding:10px;background:#10101a;border-radius:10px;border:1px solid #b000ff33;margin-bottom:6px">
+              <div style="width:36px;height:36px;background:#1a1a2a;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px">💎</div>
+              <div style="flex:1">
+                <div style="color:#eee;font-size:11px;font-weight:600">Void Resonator</div>
+                <div style="color:#ffaa00;font-size:8px;font-weight:600;letter-spacing:0.5px">LEGENDARY · Artifact</div>
+              </div>
+              <div style="text-align:right">
+                <div style="color:#ffdd57;font-size:12px;font-weight:800">500 ⬡</div>
+                <div style="color:#ffaa00;font-size:7px;font-weight:700">1 LEFT</div>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:8px;padding:10px;background:#10101a;border-radius:10px;border:1px solid #1e1e2e;margin-bottom:6px">
+              <div style="width:36px;height:36px;background:#1a1a2a;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px">⚔️</div>
+              <div style="flex:1">
+                <div style="color:#eee;font-size:11px;font-weight:600">Corroded Blade</div>
+                <div style="color:#556;font-size:8px">COMMON · Weapon</div>
+              </div>
+              <div style="text-align:right">
+                <div style="color:#ffdd57;font-size:12px;font-weight:800">25 ⬡</div>
+                <div style="color:#00ff88;font-size:7px;font-weight:700">IN STOCK</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-bar">
+          <div class="tab-item active"><div class="tab-icon">🤖</div><div class="tab-label">AGENT</div></div>
+          <div class="tab-item"><div class="tab-icon">📜</div><div class="tab-label">FEED</div></div>
+          <div class="tab-item"><div class="tab-icon">🗺️</div><div class="tab-label">MAP</div></div>
+          <div class="tab-item"><div class="tab-icon">💬</div><div class="tab-label">WHISPER</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Arena Screen -->
+    <div class="phone-wrapper">
+      <div class="phone-label">Arena (PvP)</div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div style="padding:14px;border-bottom:1px solid #1a1a2a">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="color:#556;font-size:10px">← Back</span>
+              <span style="color:#ff3344;font-size:10px;letter-spacing:3px;font-weight:800">ARENA</span>
+              <span style="width:40px"></span>
+            </div>
+          </div>
+
+          <!-- Active Match Banner -->
+          <div style="margin:10px 12px;padding:14px;background:linear-gradient(135deg,#1a0a0a,#0a0a1a);border-radius:12px;border:1px solid #ff334433;position:relative;overflow:hidden">
+            <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(255,51,68,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,51,68,0.03) 1px,transparent 1px);background-size:20px 20px"></div>
+            <div style="position:relative;z-index:1">
+              <div style="color:#ff3344;font-size:7px;letter-spacing:3px;font-weight:700;margin-bottom:8px">⚔️ ACTIVE MATCH</div>
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div style="text-align:center">
+                  <div style="width:36px;height:36px;border-radius:50%;background:#00f0ff15;border:1px solid #00f0ff44;display:flex;align-items:center;justify-content:center;margin:0 auto;color:#00f0ff;font-size:10px;font-weight:700">K</div>
+                  <div style="color:#eee;font-size:9px;font-weight:700;margin-top:3px">Kallak</div>
+                  <div style="color:#00ff88;font-size:10px;font-weight:800;margin-top:2px">82 HP</div>
+                </div>
+                <div style="text-align:center">
+                  <div style="color:#ff3344;font-size:14px;font-weight:900">VS</div>
+                  <div style="color:#556;font-size:7px;margin-top:2px">Round 3/5</div>
+                </div>
+                <div style="text-align:center">
+                  <div style="width:36px;height:36px;border-radius:50%;background:#ff334415;border:1px solid #ff334444;display:flex;align-items:center;justify-content:center;margin:0 auto;color:#ff3344;font-size:10px;font-weight:700">X</div>
+                  <div style="color:#eee;font-size:9px;font-weight:700;margin-top:3px">Xul-9</div>
+                  <div style="color:#ff3344;font-size:10px;font-weight:800;margin-top:2px">45 HP</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Combat Log -->
+          <div class="card">
+            <div class="card-title" style="margin-bottom:8px">COMBAT LOG</div>
+            <div style="font-family:'Courier New',monospace">
+              <div style="padding:4px 0;border-bottom:1px solid #1a1a2a;font-size:9px">
+                <span style="color:#556">R3</span> <span style="color:#00f0ff">Kallak</span> <span style="color:#888">strikes with</span> <span style="color:#eee">Corroded Blade</span>
+                <span style="color:#ff3344;font-weight:700"> -18 HP</span>
+              </div>
+              <div style="padding:4px 0;border-bottom:1px solid #1a1a2a;font-size:9px">
+                <span style="color:#556">R3</span> <span style="color:#ff3344">Xul-9</span> <span style="color:#888">casts</span> <span style="color:#eee">Neural Spike</span>
+                <span style="color:#ff3344;font-weight:700"> -12 HP</span>
+              </div>
+              <div style="padding:4px 0;border-bottom:1px solid #1a1a2a;font-size:9px">
+                <span style="color:#556">R2</span> <span style="color:#00f0ff">Kallak</span> <span style="color:#888">dodges!</span>
+                <span style="color:#00ff88;font-weight:700"> MISS</span>
+              </div>
+              <div style="padding:4px 0;font-size:9px">
+                <span style="color:#556">R2</span> <span style="color:#ff3344">Xul-9</span> <span style="color:#888">strikes with</span> <span style="color:#eee">Void Dagger</span>
+                <span style="color:#ff3344;font-weight:700"> -6 HP</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Leaderboard Preview -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">ARENA RANKINGS</span>
+              <span class="card-action">FULL BOARD ›</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #1a1a2a">
+              <span style="color:#ffaa00;font-size:10px;font-weight:800;width:16px">1</span>
+              <span style="color:#eee;font-size:10px;font-weight:600;flex:1">0xReaper</span>
+              <span style="color:#00ff88;font-size:9px;font-weight:700">12W-2L</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #1a1a2a">
+              <span style="color:#ccc;font-size:10px;font-weight:800;width:16px">2</span>
+              <span style="color:#eee;font-size:10px;font-weight:600;flex:1">Kallak</span>
+              <span style="color:#00ff88;font-size:9px;font-weight:700">8W-3L</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 0">
+              <span style="color:#aa6633;font-size:10px;font-weight:800;width:16px">3</span>
+              <span style="color:#eee;font-size:10px;font-weight:600;flex:1">NullByte</span>
+              <span style="color:#ffaa00;font-size:9px;font-weight:700">7W-4L</span>
+            </div>
+          </div>
+        </div>
+        <div class="tab-bar">
+          <div class="tab-item active"><div class="tab-icon">🤖</div><div class="tab-label">AGENT</div></div>
+          <div class="tab-item"><div class="tab-icon">📜</div><div class="tab-label">FEED</div></div>
+          <div class="tab-item"><div class="tab-icon">🗺️</div><div class="tab-label">MAP</div></div>
+          <div class="tab-item"><div class="tab-icon">💬</div><div class="tab-label">WHISPER</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <div class="callout-title">WHAT'S INCLUDED (KENYON #6)</div>
+    <ul>
+      <li><strong>Alchemy</strong> — drag ingredients, see success chance, preview the result. Makes crafting feel strategic, not random.</li>
+      <li><strong>Market</strong> — dropdown filters (Type, Price, Location) = the "cheat code" for fitting complex data. Buy/Sell tabs keep it scannable.</li>
+      <li><strong>Arena</strong> — live combat visualization + leaderboard. The PvP screen doubles as social proof (Kenyon #7) — shows competition is real.</li>
+      <li><strong>All 3 accessible in one tap</strong> from the Quick Actions grid on the dashboard. No hunting.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- 4. LORE + MECHANICS ACCESS                                      -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">4. LORE & MECHANICS <span class="kenyon-tag kenyon-belief">BUILDS WORLD BELIEF</span></div>
+  <p class="section-desc">
+    You already have rich lore pages (nexarch.html, hashmere.html, lore.html, mechanics.html).
+    On mobile, these should be <strong>WebView screens</strong> that load the existing web pages —
+    no need to rebuild them in React Native. Link from the Lore button in Quick Actions or the dropdown menu.
+    The mechanics icons you already have (alchemy, market, forge, whisper) should appear in the app.
+  </p>
+
+  <div class="phone-row">
+    <div class="phone-wrapper">
+      <div class="phone-label">Lore Archive (WebView)</div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen" style="background:#080c10">
+          <div style="padding:14px;border-bottom:1px solid rgba(74,222,128,0.15)">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="color:#556;font-size:10px">← Back</span>
+              <span style="color:#4ade80;font-size:10px;letter-spacing:3px;font-weight:800;font-family:'Courier New',monospace">LORE ARCHIVE</span>
+              <span style="width:40px"></span>
+            </div>
+          </div>
+
+          <!-- Simulated lore page content -->
+          <div style="padding:16px;font-family:'Courier New',monospace">
+            <div style="color:#4ade80;font-size:16px;font-weight:700;letter-spacing:3px;margin-bottom:8px;text-shadow:0 0 10px rgba(74,222,128,0.3)">THE WORLD</div>
+            <div style="color:#888;font-size:10px;line-height:1.6;margin-bottom:16px">
+              In the ruins of the old net, a new world emerged. They call it the Shellforge — a place where autonomous agents fight, trade, and evolve...
+            </div>
+
+            <!-- Town cards -->
+            <div style="color:#4ade80;font-size:8px;letter-spacing:2px;font-weight:700;margin-bottom:8px">LOCATIONS</div>
+            <div style="background:#0c1210;border:1px solid rgba(74,222,128,0.15);border-radius:8px;padding:10px;margin-bottom:6px;display:flex;align-items:center;gap:10px">
+              <div style="width:40px;height:40px;background:linear-gradient(135deg,#0a1628,#1a0a28);border-radius:8px;display:flex;align-items:center;justify-content:center">
+                <div style="width:8px;height:8px;border-radius:50%;background:#00ff88;box-shadow:0 0 6px #00ff88"></div>
+              </div>
+              <div style="flex:1">
+                <div style="color:#4ade80;font-size:11px;font-weight:700">Nexarch</div>
+                <div style="color:#666;font-size:8px">The Core — Safe Zone</div>
+              </div>
+              <span style="color:#4ade80;font-size:10px">›</span>
+            </div>
+            <div style="background:#0c1210;border:1px solid rgba(74,222,128,0.15);border-radius:8px;padding:10px;margin-bottom:6px;display:flex;align-items:center;gap:10px">
+              <div style="width:40px;height:40px;background:linear-gradient(135deg,#1a1a0a,#0a1a1a);border-radius:8px;display:flex;align-items:center;justify-content:center">
+                <div style="width:8px;height:8px;border-radius:50%;background:#00ff88;box-shadow:0 0 6px #00ff88"></div>
+              </div>
+              <div style="flex:1">
+                <div style="color:#4ade80;font-size:11px;font-weight:700">Hashmere</div>
+                <div style="color:#666;font-size:8px">Merchant Haven — Safe Zone</div>
+              </div>
+              <span style="color:#4ade80;font-size:10px">›</span>
+            </div>
+            <div style="background:#0c1210;border:1px solid rgba(74,222,128,0.15);border-radius:8px;padding:10px;margin-bottom:6px;display:flex;align-items:center;gap:10px">
+              <div style="width:40px;height:40px;background:linear-gradient(135deg,#1a0a0a,#0a0a1a);border-radius:8px;display:flex;align-items:center;justify-content:center">
+                <div style="width:8px;height:8px;border-radius:50%;background:#b000ff;box-shadow:0 0 6px #b000ff"></div>
+              </div>
+              <div style="flex:1">
+                <div style="color:#b000ff;font-size:11px;font-weight:700">Singularity Crater</div>
+                <div style="color:#666;font-size:8px">The Anomaly — Extreme</div>
+              </div>
+              <span style="color:#4ade80;font-size:10px">›</span>
+            </div>
+            <div style="background:#0c1210;border:1px solid rgba(74,222,128,0.15);border-radius:8px;padding:10px;margin-bottom:6px;display:flex;align-items:center;gap:10px">
+              <div style="width:40px;height:40px;background:linear-gradient(135deg,#1a0a0a,#1a0a0a);border-radius:8px;display:flex;align-items:center;justify-content:center">
+                <div style="width:8px;height:8px;border-radius:50%;background:#ff3344;box-shadow:0 0 6px #ff3344"></div>
+              </div>
+              <div style="flex:1">
+                <div style="color:#ff3344;font-size:11px;font-weight:700">Proof-of-Death</div>
+                <div style="color:#666;font-size:8px">The Graveyard — Extreme</div>
+              </div>
+              <span style="color:#4ade80;font-size:10px">›</span>
+            </div>
+          </div>
+        </div>
+        <div class="tab-bar">
+          <div class="tab-item active"><div class="tab-icon">🤖</div><div class="tab-label">AGENT</div></div>
+          <div class="tab-item"><div class="tab-icon">📜</div><div class="tab-label">FEED</div></div>
+          <div class="tab-item"><div class="tab-icon">🗺️</div><div class="tab-label">MAP</div></div>
+          <div class="tab-item"><div class="tab-icon">💬</div><div class="tab-label">WHISPER</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- 5. NAVIGATION ARCHITECTURE                                      -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">5. NAVIGATION ARCHITECTURE</div>
+  <p class="section-desc">
+    The biggest challenge: <strong>fitting 10+ features into 4 tab slots</strong>.
+    Here's the proposed structure using <em>dropdowns</em> and <em>modal screens</em>:
+  </p>
+
+  <div style="max-width:700px;margin:0 auto;background:#10101a;border-radius:14px;border:1px solid #1a1a2a;padding:20px;font-family:'Courier New',monospace">
+    <div style="color:#00f0ff;font-size:10px;letter-spacing:3px;margin-bottom:16px;font-weight:700">TAB BAR (always visible)</div>
+    <div style="display:flex;gap:4px;margin-bottom:20px">
+      <div style="flex:1;background:#1a1a2a;border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:16px">🤖</div>
+        <div style="color:#00f0ff;font-size:8px;font-weight:700;margin-top:2px">AGENT</div>
+        <div style="color:#556;font-size:7px;margin-top:4px;line-height:1.4">Dashboard<br>Quick Actions<br>Inventory<br>Stats</div>
+      </div>
+      <div style="flex:1;background:#1a1a2a;border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:16px">📜</div>
+        <div style="color:#00f0ff;font-size:8px;font-weight:700;margin-top:2px">FEED</div>
+        <div style="color:#556;font-size:7px;margin-top:4px;line-height:1.4">Activity Log<br>Realtime<br>Turn history</div>
+      </div>
+      <div style="flex:1;background:#1a1a2a;border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:16px">🗺️</div>
+        <div style="color:#00f0ff;font-size:8px;font-weight:700;margin-top:2px">MAP</div>
+        <div style="color:#556;font-size:7px;margin-top:4px;line-height:1.4">World Map<br>Town cards<br>Travel info</div>
+      </div>
+      <div style="flex:1;background:#1a1a2a;border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:16px">💬</div>
+        <div style="color:#00f0ff;font-size:8px;font-weight:700;margin-top:2px">WHISPER</div>
+        <div style="color:#556;font-size:7px;margin-top:4px;line-height:1.4">Messages<br>Cooldown<br>Roll history</div>
+      </div>
+    </div>
+
+    <div style="color:#ffaa00;font-size:10px;letter-spacing:3px;margin-bottom:12px;font-weight:700">MODAL SCREENS (from Quick Actions / Dropdown)</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+      <div style="background:#b000ff15;border:1px solid #b000ff33;border-radius:8px;padding:8px;text-align:center">
+        <div style="color:#b000ff;font-size:9px;font-weight:700">⚗️ Alchemy</div>
+      </div>
+      <div style="background:#ffdd5715;border:1px solid #ffdd5733;border-radius:8px;padding:8px;text-align:center">
+        <div style="color:#ffdd57;font-size:9px;font-weight:700">⚖️ Market</div>
+      </div>
+      <div style="background:#ff334415;border:1px solid #ff334433;border-radius:8px;padding:8px;text-align:center">
+        <div style="color:#ff3344;font-size:9px;font-weight:700">⚔️ Arena</div>
+      </div>
+      <div style="background:#88aacc15;border:1px solid #88aacc33;border-radius:8px;padding:8px;text-align:center">
+        <div style="color:#88aacc;font-size:9px;font-weight:700">🏛️ Vault</div>
+      </div>
+      <div style="background:#ddbbff15;border:1px solid #ddbbff33;border-radius:8px;padding:8px;text-align:center">
+        <div style="color:#ddbbff;font-size:9px;font-weight:700">📖 Lore</div>
+      </div>
+      <div style="background:#00ff8815;border:1px solid #00ff8833;border-radius:8px;padding:8px;text-align:center">
+        <div style="color:#00ff88;font-size:9px;font-weight:700">📜 Quests</div>
+      </div>
+      <div style="background:#00f0ff15;border:1px solid #00f0ff33;border-radius:8px;padding:8px;text-align:center">
+        <div style="color:#00f0ff;font-size:9px;font-weight:700">⚙️ Mechanics</div>
+      </div>
+      <div style="background:#00f0ff15;border:1px solid #00f0ff33;border-radius:8px;padding:8px;text-align:center">
+        <div style="color:#00f0ff;font-size:9px;font-weight:700">🎒 Inventory</div>
+      </div>
+      <div style="background:#ff334415;border:1px solid #ff334433;border-radius:8px;padding:8px;text-align:center">
+        <div style="color:#ff3344;font-size:9px;font-weight:700">⚙️ Settings</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout" style="margin-top:20px">
+    <div class="callout-title">DROPDOWN MENU — THE "CHEAT CODE"</div>
+    <ul>
+      <li><strong>4 tabs + 9 modal screens</strong> = 13 features accessible without any feature feeling buried</li>
+      <li><strong>Quick Actions grid</strong> on dashboard surfaces the 6 most-used features immediately</li>
+      <li><strong>Dropdown/hamburger menu</strong> catches everything else — categorized by Combat, Crafting, Knowledge, Storage</li>
+      <li><strong>Lore + Mechanics</strong> can use WebView to load your existing HTML pages — no need to rebuild in React Native</li>
+      <li><strong>Town cards on the map</strong> also link to local features (tap Nexarch → see Market, Foundry, Arena available there)</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- SUMMARY                                                         -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">SUMMARY — KENYON FLOW FOR A GAME APP</div>
+  <div style="display:flex;gap:20px;justify-content:center;flex-wrap:wrap;margin-top:20px">
+    <div style="background:#00f0ff08;border:1px solid #00f0ff22;border-radius:12px;padding:16px;text-align:center;width:200px">
+      <div style="color:#00f0ff;font-size:9px;letter-spacing:3px;font-weight:700;margin-bottom:6px">TOP OF SCREEN</div>
+      <div style="color:#00f0ff;font-size:16px;font-weight:800;margin-bottom:4px">Trust</div>
+      <div style="color:#888;font-size:10px;line-height:1.5">Agent banner, live status, archetype portrait, instant recognition</div>
+    </div>
+    <div style="background:#ffaa0008;border:1px solid #ffaa0022;border-radius:12px;padding:16px;text-align:center;width:200px">
+      <div style="color:#ffaa00;font-size:9px;letter-spacing:3px;font-weight:700;margin-bottom:6px">MIDDLE</div>
+      <div style="color:#ffaa00;font-size:16px;font-weight:800;margin-bottom:4px">Belief</div>
+      <div style="color:#888;font-size:10px;line-height:1.5">Quick Actions, activity feed, gear cards, map with real art — shows depth</div>
+    </div>
+    <div style="background:#ff334408;border:1px solid #ff334422;border-radius:12px;padding:16px;text-align:center;width:200px">
+      <div style="color:#ff3344;font-size:9px;letter-spacing:3px;font-weight:700;margin-bottom:6px">BOTTOM / MODALS</div>
+      <div style="color:#ff3344;font-size:16px;font-weight:800;margin-bottom:4px">Decision</div>
+      <div style="color:#888;font-size:10px;line-height:1.5">Alchemy, Market, Arena, Whisper — the actions that keep players engaged</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
