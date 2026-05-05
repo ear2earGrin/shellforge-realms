@@ -10,7 +10,7 @@ scripts
 .env.*
 .wrangler
 workers
-combat
+combat/
 alchemy/*.sql
 alchemy/build-*.js
 alchemy/seed.sql

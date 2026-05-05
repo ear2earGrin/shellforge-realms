@@ -613,9 +613,12 @@ async function renderAgentCard(snap, state, side, viewerOwns, match) {
   const ownsMark = viewerOwns ? '●' : '';
   let npcImg = isNpc ? (match?.opponent_data?.image || '') : '';
   let bestiaryData = null;
-  if (isNpc && match?.opponent_data?.name) {
-    bestiaryData = await getBestiaryData(match.opponent_data.name);
-    if (!npcImg && bestiaryData) npcImg = bestiaryData.image_path || '';
+  if (isNpc) {
+    const creatureName = match?.opponent_data?.name || snap.agent_name || '';
+    if (creatureName) {
+      bestiaryData = await getBestiaryData(creatureName);
+      if (!npcImg && bestiaryData) npcImg = bestiaryData.image_path || '';
+    }
   }
   const imgUrl = npcImg || archetypeImageUrl(archetype);
   const portraitStyle = imgUrl ? `background-image:url('${imgUrl}');background-size:cover;background-position:center;` : '';
