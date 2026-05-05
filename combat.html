@@ -416,6 +416,23 @@ function archetypeImageUrl(archetype) {
   return img ? `images/archetypes/${encodeURIComponent(img)}` : null;
 }
 
+// Bestiary image lookup cache
+const _bestiaryCache = new Map();
+async function getBestiaryImage(creatureName) {
+  if (!creatureName) return '';
+  if (_bestiaryCache.has(creatureName)) return _bestiaryCache.get(creatureName);
+  try {
+    const r = await fetch(
+      SUPABASE_URL + '/rest/v1/bestiary?name=eq.' + encodeURIComponent(creatureName) + '&select=image_path&limit=1',
+      { headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON } }
+    );
+    const rows = r.ok ? await r.json() : [];
+    const img = (rows[0] && rows[0].image_path) || '';
+    _bestiaryCache.set(creatureName, img);
+    return img;
+  } catch { return ''; }
+}
+
 // Resolve agent id: local first, Supabase fallback.
 async function resolveAgentId() {
   if (_cachedAgentId) return _cachedAgentId;
@@ -499,7 +516,10 @@ async function renderAgentCard(snap, state, side, viewerOwns, match) {
   const hpClass = side === 'enemy' ? 'hp-enemy' : '';
   const cardClass = side === 'enemy' ? 'enemy' : 'player';
   const ownsMark = viewerOwns ? '●' : '';
-  const npcImg = isNpc ? (match?.opponent_data?.image || '') : '';
+  let npcImg = isNpc ? (match?.opponent_data?.image || '') : '';
+  if (isNpc && !npcImg && match?.opponent_data?.name) {
+    npcImg = await getBestiaryImage(match.opponent_data.name);
+  }
   const imgUrl = npcImg || archetypeImageUrl(archetype);
   const portraitStyle = imgUrl ? `background-image:url('${imgUrl}');background-size:cover;background-position:center;` : '';
   let portraitFallback = '';

@@ -1065,8 +1065,11 @@ async function getAgentMeta(agentId) {
   } catch { return null; }
 }
 
-function avatarFor(meta, cssClass = '') {
-  if (!meta) return `<span class="agent-avatar ${cssClass}">?</span>`;
+function avatarFor(meta, cssClass = '', npcImageUrl = '') {
+  if (!meta && !npcImageUrl) return `<span class="agent-avatar ${cssClass}">?</span>`;
+  if (npcImageUrl) {
+    return `<span class="agent-avatar ${cssClass}" style="background-image:url('${npcImageUrl}');background-size:cover;background-position:center;"></span>`;
+  }
   const img = ARCHETYPE_IMAGES[meta.archetype];
   if (img) {
     return `<span class="agent-avatar ${cssClass}" style="background-image:url('images/archetypes/${encodeURIComponent(img).replace(/%20/g, '%20')}');" title="${meta.agent_name || ''}"></span>`;
@@ -1074,20 +1077,40 @@ function avatarFor(meta, cssClass = '') {
   return `<span class="agent-avatar ${cssClass}" title="${meta.agent_name || ''}">${(meta.agent_name || '?').charAt(0).toUpperCase()}</span>`;
 }
 
+// Bestiary image lookup cache
+const _bestiaryCache = new Map();
+async function getBestiaryImage(creatureName) {
+  if (!creatureName) return '';
+  if (_bestiaryCache.has(creatureName)) return _bestiaryCache.get(creatureName);
+  try {
+    const r = await fetch(
+      SUPABASE_URL + '/rest/v1/bestiary?name=eq.' + encodeURIComponent(creatureName) + '&select=image_path&limit=1',
+      { headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON } }
+    );
+    const rows = r.ok ? await r.json() : [];
+    const img = (rows[0] && rows[0].image_path) || '';
+    _bestiaryCache.set(creatureName, img);
+    return img;
+  } catch { return ''; }
+}
+
 async function matchRow(m) {
-  const [metaA, metaB] = await Promise.all([
+  const isNpcFight = !m.agent_b || (m.agent_b && m.agent_b.startsWith('npc_'));
+  const npcName = m.opponent_data?.name || '';
+  const [metaA, metaB, npcImg] = await Promise.all([
     m.agent_a ? getAgentMeta(m.agent_a) : null,
-    m.agent_b ? getAgentMeta(m.agent_b) : null,
+    (!isNpcFight && m.agent_b) ? getAgentMeta(m.agent_b) : null,
+    isNpcFight ? getBestiaryImage(npcName) : Promise.resolve(''),
   ]);
   const aName = metaA?.agent_name || m.agent_a || '?';
-  const bName = metaB?.agent_name || m.agent_b || (m.opponent_data?.npc_id || 'NPC');
+  const bName = metaB?.agent_name || npcName || m.agent_b || 'NPC';
   return `
     <a class="match-row" href="combat.html?match_id=${m.id}">
       <span class="match-type-pill ${m.match_type}">${m.match_type}</span>
       <div class="match-vs">
         ${avatarFor(metaA)}
         <span>${aName}</span><span class="vs-arrow">⚔</span><span>${bName}</span>
-        ${avatarFor(metaB, 'enemy')}
+        ${avatarFor(metaB, 'enemy', npcImg)}
       </div>
       <div class="match-meta">
         T${m.turns_total || 0} · ${m.shell_pot ? `${m.shell_pot} ⌬` : ''}
