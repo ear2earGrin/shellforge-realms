@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (curlCommand) {
         curlCommand.addEventListener('click', function() {
-            const commandText = 'curl -s https://shellforge.com/skill.md';
+            const commandText = 'curl -s https://shellforge.xyz/skill.md';
             
             // Copy to clipboard
             navigator.clipboard.writeText(commandText).then(function() {

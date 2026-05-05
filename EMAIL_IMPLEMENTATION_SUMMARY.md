@@ -167,7 +167,7 @@ Body: { email: "user@example.com" }
 
 → Generate secure token (crypto.randomBytes(32))
 → Store in password_resets table with expiry (1 hour)
-→ Send email with link: https://shellforge.com/reset?token=abc123
+→ Send email with link: https://shellforge.xyz/reset?token=abc123
 → Return 200 OK (always, even if email doesn't exist)
 ```
 
@@ -180,7 +180,7 @@ Hi there,
 You requested a password reset for your Shellforge account.
 
 Click here to reset your password:
-https://shellforge.com/reset?token=abc123def456
+https://shellforge.xyz/reset?token=abc123def456
 
 This link expires in 1 hour.
 
@@ -240,11 +240,11 @@ const sgMail = require('@sendgrid/mail');
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 async function sendPasswordResetEmail(email, username, token) {
-  const resetUrl = `https://shellforge.com/reset?token=${token}`;
+  const resetUrl = `https://shellforge.xyz/reset?token=${token}`;
   
   const msg = {
     to: email,
-    from: 'noreply@shellforge.com',
+    from: 'noreply@shellforge.xyz',
     subject: 'Password Reset - Shellforge Realms',
     text: `Hi ${username},\n\nClick here to reset: ${resetUrl}`,
     html: `

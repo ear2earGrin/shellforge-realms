@@ -11,6 +11,9 @@ scripts
 .wrangler
 workers
 combat/
+backend
+*.backup
+*.bak
 alchemy/*.sql
 alchemy/build-*.js
 alchemy/seed.sql
