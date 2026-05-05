@@ -201,11 +201,102 @@ body {
   color: var(--amber); font-weight: 700; font-style: normal;
   text-shadow: 0 0 8px rgba(251,191,36,0.5);
 }
+.arena-event .miss-flash {
+  color: var(--text-fade); font-style: italic;
+}
+.arena-event .dmg-flash {
+  color: var(--red); font-weight: 600;
+}
 .turn-indicator {
   font-size: 0.65rem; color: var(--cyan);
   letter-spacing: 0.18em; text-transform: uppercase;
   margin-bottom: 10px;
 }
+
+/* ARENA ACTION VISUALS */
+.arena-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  margin: 16px 0 8px;
+  width: 100%;
+  max-width: 520px;
+}
+.arena-actor {
+  flex: 1;
+  text-align: center;
+  padding: 10px 8px;
+  border-radius: 4px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.04);
+}
+.arena-actor.side-a { border-color: rgba(74,222,128,0.2); }
+.arena-actor.side-b { border-color: rgba(248,113,113,0.2); }
+.arena-actor-label {
+  font-size: 0.48rem; letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--text-fade); margin-bottom: 4px;
+}
+.arena-actor.side-a .arena-actor-label { color: rgba(74,222,128,0.6); }
+.arena-actor.side-b .arena-actor-label { color: rgba(248,113,113,0.6); }
+.arena-action-name {
+  font-family: var(--font-title);
+  font-size: 0.8rem;
+  color: var(--text);
+  letter-spacing: 0.04em;
+}
+.arena-dmg {
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-top: 4px;
+}
+.arena-dmg.hit { color: var(--red); text-shadow: 0 0 8px rgba(248,113,113,0.4); }
+.arena-dmg.miss { color: var(--text-fade); font-style: italic; font-weight: 400; }
+.arena-dmg.heal { color: var(--green); }
+.arena-dmg.crit { color: var(--amber); text-shadow: 0 0 10px rgba(251,191,36,0.6); font-size: 0.85rem; }
+.arena-vs-icon {
+  font-size: 1.6rem;
+  color: var(--red);
+  text-shadow: 0 0 16px rgba(248,113,113,0.5);
+  flex-shrink: 0;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* TRAITS SECTION UNDER PORTRAIT */
+.agent-traits-section {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+.agent-traits-label {
+  font-size: 0.48rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-fade);
+  margin-bottom: 5px;
+}
+.agent-trait-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.agent-trait-chip {
+  font-size: 0.48rem;
+  letter-spacing: 0.06em;
+  padding: 1px 5px;
+  border-radius: 2px;
+  border: 1px solid rgba(0,240,255,0.2);
+  background: rgba(0,240,255,0.04);
+  color: var(--cyan);
+}
+.agent-stat-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.52rem;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+.agent-stat-row .stat-val { color: var(--green); font-weight: 600; }
 
 /* HAND OF CARDS */
 .hand {
@@ -416,21 +507,25 @@ function archetypeImageUrl(archetype) {
   return img ? `images/archetypes/${encodeURIComponent(img)}` : null;
 }
 
-// Bestiary image lookup cache
+// Bestiary lookup cache (full creature data)
 const _bestiaryCache = new Map();
-async function getBestiaryImage(creatureName) {
-  if (!creatureName) return '';
+async function getBestiaryData(creatureName) {
+  if (!creatureName) return null;
   if (_bestiaryCache.has(creatureName)) return _bestiaryCache.get(creatureName);
   try {
     const r = await fetch(
-      SUPABASE_URL + '/rest/v1/bestiary?name=eq.' + encodeURIComponent(creatureName) + '&select=image_path&limit=1',
+      SUPABASE_URL + '/rest/v1/bestiary?name=eq.' + encodeURIComponent(creatureName) + '&select=image_path,traits,hp,attack,defense,speed,rarity,location&limit=1',
       { headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON } }
     );
     const rows = r.ok ? await r.json() : [];
-    const img = (rows[0] && rows[0].image_path) || '';
-    _bestiaryCache.set(creatureName, img);
-    return img;
-  } catch { return ''; }
+    const data = rows[0] || null;
+    _bestiaryCache.set(creatureName, data);
+    return data;
+  } catch { return null; }
+}
+async function getBestiaryImage(creatureName) {
+  const data = await getBestiaryData(creatureName);
+  return (data && data.image_path) || '';
 }
 
 // Resolve agent id: local first, Supabase fallback.
@@ -517,8 +612,10 @@ async function renderAgentCard(snap, state, side, viewerOwns, match) {
   const cardClass = side === 'enemy' ? 'enemy' : 'player';
   const ownsMark = viewerOwns ? '●' : '';
   let npcImg = isNpc ? (match?.opponent_data?.image || '') : '';
-  if (isNpc && !npcImg && match?.opponent_data?.name) {
-    npcImg = await getBestiaryImage(match.opponent_data.name);
+  let bestiaryData = null;
+  if (isNpc && match?.opponent_data?.name) {
+    bestiaryData = await getBestiaryData(match.opponent_data.name);
+    if (!npcImg && bestiaryData) npcImg = bestiaryData.image_path || '';
   }
   const imgUrl = npcImg || archetypeImageUrl(archetype);
   const portraitStyle = imgUrl ? `background-image:url('${imgUrl}');background-size:cover;background-position:center;` : '';
@@ -554,8 +651,58 @@ async function renderAgentCard(snap, state, side, viewerOwns, match) {
         <div class="bar-text">${coh}/${cohMax}</div>
       </div>
       ${effects.length ? `<div class="effects-row">${effects.map(effectChip).join('')}</div>` : ''}
+      ${renderTraitsSection(isNpc, bestiaryData, snap, meta)}
     </div>
   `;
+}
+
+function renderTraitsSection(isNpc, bestiaryData, snap, meta) {
+  let html = '';
+  if (isNpc && bestiaryData) {
+    // NPC: show bestiary traits + combat stats
+    const traits = bestiaryData.traits || [];
+    const stats = [];
+    if (bestiaryData.attack) stats.push('<span>ATK <span class="stat-val">' + bestiaryData.attack + '</span></span>');
+    if (bestiaryData.defense) stats.push('<span>DEF <span class="stat-val">' + bestiaryData.defense + '</span></span>');
+    if (bestiaryData.speed) stats.push('<span>SPD <span class="stat-val">' + bestiaryData.speed + '</span></span>');
+    html += '<div class="agent-traits-section">';
+    if (traits.length) {
+      html += '<div class="agent-traits-label">Traits</div>';
+      html += '<div class="agent-trait-chips">' + traits.map(function(t) {
+        return '<span class="agent-trait-chip">' + t + '</span>';
+      }).join('') + '</div>';
+    }
+    if (stats.length) {
+      html += '<div class="agent-stat-row" style="margin-top:6px;">' + stats.join(' &nbsp; ') + '</div>';
+    }
+    if (bestiaryData.location) {
+      html += '<div style="font-size:0.48rem;color:var(--text-fade);margin-top:4px;">Location: <span style="color:var(--amber);">' + bestiaryData.location + '</span></div>';
+    }
+    html += '</div>';
+  } else if (!isNpc) {
+    // Player agent: show traits from snapshot
+    const traits = snap?.traits || meta?.traits || {};
+    const traitKeys = typeof traits === 'object' && !Array.isArray(traits) ? Object.keys(traits) : [];
+    const stats = snap?.stats || {};
+    const statKeys = typeof stats === 'object' ? Object.keys(stats) : [];
+    if (traitKeys.length || statKeys.length) {
+      html += '<div class="agent-traits-section">';
+      if (traitKeys.length) {
+        html += '<div class="agent-traits-label">Traits</div>';
+        html += '<div class="agent-trait-chips">' + traitKeys.map(function(k) {
+          return '<span class="agent-trait-chip">' + k + '</span>';
+        }).join('') + '</div>';
+      }
+      if (statKeys.length) {
+        html += '<div class="agent-traits-label" style="margin-top:6px;">Stats</div>';
+        html += statKeys.slice(0, 6).map(function(k) {
+          return '<div class="agent-stat-row"><span>' + k + '</span><span class="stat-val">' + stats[k] + '</span></div>';
+        }).join('');
+      }
+      html += '</div>';
+    }
+  }
+  return html;
 }
 
 function renderCard(card, playable) {
@@ -601,29 +748,85 @@ function renderHand(snap, state, viewerOwns) {
   `;
 }
 
+function parseDmg(events, side) {
+  // Extract damage dealt by a side from effects_triggered
+  for (const e of events) {
+    if (e.type === 'attack' || e.type === 'damage') {
+      if (side === 'a' && e.target === 'b' || side === 'a' && !e.target) {
+        return { val: e.damage || e.amount || 0, crit: !!e.crit, miss: false };
+      }
+      if (side === 'b' && e.target === 'a') {
+        return { val: e.damage || e.amount || 0, crit: !!e.crit, miss: false };
+      }
+    }
+    if (e.type === 'miss') {
+      if (side === 'a' && (e.source === 'a' || !e.source)) return { val: 0, crit: false, miss: true };
+      if (side === 'b' && e.source === 'b') return { val: 0, crit: false, miss: true };
+    }
+  }
+  return null;
+}
+
+function dmgHtml(d) {
+  if (!d) return '';
+  if (d.miss) return '<div class="arena-dmg miss">MISS</div>';
+  if (d.crit) return '<div class="arena-dmg crit">' + d.val + ' CRIT!</div>';
+  if (d.val > 0) return '<div class="arena-dmg hit">-' + d.val + '</div>';
+  return '';
+}
+
 function renderArenaEvent(turn) {
   if (!turn) {
-    return `<div class="turn-indicator">TURN 0 — Awaiting first move</div>
-            <div class="arena-clash">
-              <span>?</span><span class="clash-symbol">⚔</span><span>?</span>
-            </div>
-            <div class="arena-event">The match is initializing. Decks are being assembled.</div>`;
+    return '<div class="turn-indicator">TURN 0 — Awaiting first move</div>'
+      + '<div class="arena-actions">'
+      +   '<div class="arena-actor side-a"><div class="arena-actor-label">You</div>'
+      +     '<div class="arena-action-name">?</div></div>'
+      +   '<div class="arena-vs-icon">⚔</div>'
+      +   '<div class="arena-actor side-b"><div class="arena-actor-label">Enemy</div>'
+      +     '<div class="arena-action-name">?</div></div>'
+      + '</div>'
+      + '<div class="arena-event">The match is initializing. Decks are being assembled.</div>';
   }
-  const aName = 'A', bName = 'B';
-  const events = (turn.effects_triggered || []).map(e => {
-    if (e.type === 'attack' && e.crit) return `<span class="crit-flash">CRIT</span> — ${e.message}`;
+  const events = turn.effects_triggered || [];
+  const narratives = events.map(function(e) {
+    if (e.type === 'attack' && e.crit) return '<span class="crit-flash">CRIT!</span> ' + (e.message || '');
+    if (e.type === 'miss') return '<span class="miss-flash">' + (e.message || 'Attack missed') + '</span>';
     return e.message || '';
   }).filter(Boolean);
-  const text = events.length ? events.join(' · ') : 'Both sides pause, calculating.';
+  const text = narratives.length ? narratives.join(' · ') : 'Both sides pause, calculating.';
+
   const aAct = turn.agent_a_action?.ability_name || '—';
   const bAct = turn.agent_b_action?.ability_name || '—';
-  return `
-    <div class="turn-indicator">TURN ${turn.turn_number}</div>
-    <div class="arena-clash">
-      <span>${aAct}</span><span class="clash-symbol">⚔</span><span>${bAct}</span>
-    </div>
-    <div class="arena-event">${text}</div>
-  `;
+  const aDmg = parseDmg(events, 'a');
+  const bDmg = parseDmg(events, 'b');
+
+  // Derive damage from HP changes if effects don't provide it
+  var aDmgStr = dmgHtml(aDmg);
+  var bDmgStr = dmgHtml(bDmg);
+  if (!aDmgStr && turn.agent_b_hp_before !== undefined && turn.agent_b_hp_after !== undefined) {
+    var d = turn.agent_b_hp_before - turn.agent_b_hp_after;
+    if (d > 0) aDmgStr = '<div class="arena-dmg hit">-' + d + '</div>';
+  }
+  if (!bDmgStr && turn.agent_a_hp_before !== undefined && turn.agent_a_hp_after !== undefined) {
+    var d2 = turn.agent_a_hp_before - turn.agent_a_hp_after;
+    if (d2 > 0) bDmgStr = '<div class="arena-dmg hit">-' + d2 + '</div>';
+  }
+
+  return '<div class="turn-indicator">TURN ' + turn.turn_number + '</div>'
+    + '<div class="arena-actions">'
+    +   '<div class="arena-actor side-a">'
+    +     '<div class="arena-actor-label">Agent</div>'
+    +     '<div class="arena-action-name">' + aAct + '</div>'
+    +     aDmgStr
+    +   '</div>'
+    +   '<div class="arena-vs-icon">⚔</div>'
+    +   '<div class="arena-actor side-b">'
+    +     '<div class="arena-actor-label">Enemy</div>'
+    +     '<div class="arena-action-name">' + bAct + '</div>'
+    +     bDmgStr
+    +   '</div>'
+    + '</div>'
+    + '<div class="arena-event">' + text + '</div>';
 }
 
 function renderTurnLog(turns) {
