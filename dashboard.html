@@ -6254,6 +6254,10 @@
 
             document.body.classList.add('first-boot');
 
+            // First boot is an authoritative "this is a fresh agent" signal.
+            // Clear any stale tour-done flag so the tour fires reliably even
+            // on browsers that completed/dismissed the tour for a prior agent.
+            localStorage.removeItem('shellforge_tour_done');
             localStorage.removeItem('shellforgeFirstBoot');
             if (params.has('firstBoot')) {
                 params.delete('firstBoot');

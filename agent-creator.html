@@ -825,6 +825,12 @@
                 localStorage.setItem('shellforgeLoggedIn', username);
                 localStorage.setItem('shellforge_agent_deployed', 'true');
 
+                // Reset onboarding flags so the boot sequence + dashboard tour
+                // reliably fire for this new agent, even on a browser that
+                // dismissed them previously.
+                localStorage.removeItem('shellforge_tour_done');
+                localStorage.removeItem('shellforgeBootCompleted');
+
                 sessionStorage.removeItem('shellforgeEmail');
                 sessionStorage.removeItem('shellforgeUsername');
                 sessionStorage.removeItem('shellforgePassword');
@@ -1184,9 +1190,15 @@
                 }, 1200);
             }
 
-            // Skip on any key or touch (not in the first 2 lines)
+            // Skip on any key or touch — but only after enough of the
+            // sequence has played that the user has actually seen something.
+            // The 1.2s grace period prevents an incidental tap right after
+            // pressing "deploy" from blowing through the whole boot screen
+            // before the user perceives it.
+            const skipReadyAt = Date.now() + 1200;
             const skipHandler = (e) => {
-                if (currentLine < 2) return;
+                if (currentLine < 3) return;
+                if (Date.now() < skipReadyAt) return;
                 skipAll();
                 document.removeEventListener('keydown', skipHandler);
                 document.removeEventListener('touchstart', skipHandler);
