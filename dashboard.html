@@ -1718,42 +1718,57 @@
 
         .agent-marker {
             position: absolute;
-            width: 8px;
-            height: 8px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
-            background: #00ff00;
-            border: 1px solid #00ff00;
-            box-shadow: 0 0 6px rgba(0, 255, 0, 0.6);
+            background: #ff2020;
+            border: none;
+            box-shadow: 0 0 6px rgba(255, 32, 32, 0.8), 0 0 2px rgba(255, 32, 32, 1);
             z-index: 10;
             transform: translate(-50%, -50%);
             cursor: pointer;
-            transition: all 0.3s ease;
+            animation: radar-blink 3s ease-in-out infinite;
+        }
+        /* Radar ping ring */
+        .agent-marker::before {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 32, 32, 0.6);
+            transform: translate(-50%, -50%);
+            animation: radar-ping 3s ease-out infinite;
+            pointer-events: none;
+        }
+        @keyframes radar-blink {
+            0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(255,32,32,0.8), 0 0 2px rgba(255,32,32,1); }
+            15% { opacity: 1; box-shadow: 0 0 12px rgba(255,32,32,1), 0 0 4px rgba(255,32,32,1); }
+            50% { opacity: 0.2; box-shadow: 0 0 2px rgba(255,32,32,0.3); }
+            65% { opacity: 0.2; }
+            80% { opacity: 0.8; }
+        }
+        @keyframes radar-ping {
+            0% { width: 10px; height: 10px; opacity: 0.7; }
+            70% { width: 36px; height: 36px; opacity: 0; }
+            100% { width: 36px; height: 36px; opacity: 0; }
         }
 
         /* Smaller dot when traveling */
         .agent-marker.traveling {
-            width: 5px;
-            height: 5px;
-            box-shadow: 0 0 4px rgba(0, 255, 0, 0.5);
+            width: 6px;
+            height: 6px;
         }
 
-        /* Cluster-based colors (for future multi-agent support) */
+        /* Cluster-based colors */
         .agent-marker.cluster-p2p {
-            background: #88ff88;
-            border-color: #88ff88;
-            box-shadow: 0 0 6px rgba(136, 255, 136, 0.6);
+            background: #ff2020;
         }
-
         .agent-marker.cluster-governmental {
-            background: #0088ff;
-            border-color: #0088ff;
-            box-shadow: 0 0 6px rgba(0, 136, 255, 0.6);
+            background: #ff2020;
         }
-
         .agent-marker.cluster-corporate {
-            background: #ff9900;
-            border-color: #ff9900;
-            box-shadow: 0 0 6px rgba(255, 153, 0, 0.6);
+            background: #ff2020;
         }
 
         /* Agent Tooltip */
