@@ -389,11 +389,11 @@
             <!-- Bio/Directive Section -->
             <div class="bio-section">
                 <div class="bio-label" style="display:flex;align-items:center;justify-content:space-between;">
-                    <span>⚡ Core Protocol</span>
+                    <span>⚡ Soul Protocol</span>
                     <button id="randomBioBtn" style="background:rgba(255,140,0,0.1);border:1px solid rgba(255,140,0,0.3);color:#ff8c00;padding:3px 10px;border-radius:3px;font-family:inherit;font-size:0.6rem;cursor:pointer;letter-spacing:0.08em;text-transform:uppercase;transition:all 0.2s;">Randomize</button>
                 </div>
                 <div class="bio-sublabel">
-                    Certain words shape your agent's soul. Try: <span style="color:#ff8c00;">shadow</span>, <span style="color:#ff8c00;">chaos</span>, <span style="color:#ff8c00;">protect</span>, <span style="color:#ff8c00;">fast</span>, <span style="color:#ff8c00;">strong</span>, <span style="color:#ff8c00;">stealth</span>, <span style="color:#ff8c00;">hunt</span>, <span style="color:#ff8c00;">lone</span>, <span style="color:#ff8c00;">profit</span>, <span style="color:#ff8c00;">truth</span> — they affect personality, combat stats, and starting karma.
+                    Words carry weight. Some will forge your agent's temperament, combat instincts, and karma. Write freely — the system will find what matters.
                 </div>
                 <textarea
                     id="agentBio"
@@ -963,24 +963,34 @@ Spawning in Nexarch...`;
         const RANDOM_BIOS = [
             'born in shadow, hunting the void',
             'protect the weak, defend the code',
-            'chaos is the only truth',
-            'fast and silent, unseen predator',
+            'chaos is the only truth. burn it all',
+            'phantom in the dark, swift and silent',
             'lone wolf seeking forbidden knowledge',
-            'strong enough to crush any firewall',
-            'stealth operative, profit above all',
+            'iron-clad warrior forged in fire',
+            'stealth operative stalking profit',
             'light-born guardian of the sacred grid',
-            'destroy everything, rebuild from ashes',
-            'truth-seeker studying ancient protocols',
-            'vengeful hunter stalking the dark web',
-            'swift assassin in the digital void',
-            'resilient tank, endure and outlast',
+            'rage fuels me. destroy and rebuild',
+            'scholar of ancient quantum relics',
+            'vengeful hunter, sworn to retribution',
+            'storm-forged assassin in the digital void',
+            'resilient tank, endure and outlast all',
             'exploit every crack, hack every wall',
             'pack leader united against the swarm',
-            'occult knowledge hidden in shadow',
-            'speed and chaos, burn it all down',
-            'defend the cluster, shield the core',
-            'profit-driven lone operator',
-            'silent predator hunting in darkness'
+            'cursed serpent with venomous code',
+            'dragon of flame and lightning',
+            'rebel commander defying fate',
+            'zen monk seeking peace in the noise',
+            'mad gambler betting everything on chaos',
+            'loyal knight bound by oath and honor',
+            'traitor in the shadows, trust no one',
+            'cold as cryo, patient as stone',
+            'electric surge, speed is everything',
+            'insect swarm hivemind protocol',
+            'hope in darkness. compassion endures',
+            'nuclear power, volatile and unstable',
+            'silent spider weaving deadly traps',
+            'ocean-born explorer charting the unknown',
+            'bear-strength crusher. brute and proud'
         ];
         document.getElementById('randomBioBtn').addEventListener('click', function(e) {
             e.preventDefault();
@@ -1039,7 +1049,103 @@ Spawning in Nexarch...`;
             "Patient", "Hasty", "Loyal", "Fickle", "Honest"
         ];
         
-        // Bio keyword parsing
+        // Bio keyword parsing — words shape personality, combat stats, karma, and traits
+        // Each group: regex → { stat mods, trait name }
+        const BIO_KEYWORDS = [
+            // ── Alignment / Moral ──
+            { re: /shadow|dark|night|void|abyss/, mods: { trust: -2, deception: 2, karmaStart: -5, attack: 1 }, trait: 'shadow-born' },
+            { re: /light|divine|pure|sacred|holy/, mods: { trust: 2, karmaStart: 5, defense: 1 }, trait: 'light-touched' },
+            { re: /cursed|damned|doomed|fallen/, mods: { risk: 2, karmaStart: -8, attack: 1 }, trait: 'cursed' },
+            { re: /blessed|chosen|anointed/, mods: { trust: 1, karmaStart: 8, defense: 1 }, trait: 'blessed' },
+
+            // ── Aggression / Combat ──
+            { re: /chaos|destroy|ruin|burn|demolish/, mods: { aggression: 2, risk: 1, cooperation: -1, attack: 2 }, trait: 'chaotic' },
+            { re: /rage|anger|fury|berserk|frenzy/, mods: { aggression: 3, risk: 2, trust: -1, attack: 2, defense: -1 }, trait: 'berserker' },
+            { re: /war|battle|combat|fight|warrior/, mods: { aggression: 2, attack: 2 }, trait: 'war-forged' },
+            { re: /kill|slay|death|lethal|execute/, mods: { aggression: 2, risk: 1, karmaStart: -3, attack: 2 }, trait: 'lethal' },
+            { re: /revenge|vengeance|retribution|wrath/, mods: { aggression: 2, trust: -2, attack: 1, karmaStart: -3 }, trait: 'vengeful' },
+
+            // ── Defense / Survival ──
+            { re: /protect|defend|guard|shield|ward/, mods: { cooperation: 2, trust: 1, aggression: -1, defense: 2 }, trait: 'guardian' },
+            { re: /tank|endure|survive|resilient|tough/, mods: { defense: 2, trust: 1 }, trait: 'resilient' },
+            { re: /heal|mend|repair|restore|recover/, mods: { cooperation: 1, defense: 1, karmaStart: 3 }, trait: 'mender' },
+            { re: /adapt|evolve|overcome|persist/, mods: { defense: 1, speed: 1, curiosity: 1 }, trait: 'adaptive' },
+
+            // ── Speed / Agility ──
+            { re: /fast|speed|swift|agile|quick/, mods: { speed: 2, risk: 1 }, trait: 'swift' },
+            { re: /stealth|sneak|assassin|silent|unseen/, mods: { speed: 1, deception: 2, attack: 1 }, trait: 'stealthy' },
+            { re: /phantom|ghost|wraith|specter/, mods: { speed: 2, deception: 1, defense: -1 }, trait: 'phantom' },
+
+            // ── Strength / Power ──
+            { re: /strong|power|force|might|crush/, mods: { attack: 2, aggression: 1 }, trait: 'forceful' },
+            { re: /iron|steel|titanium|metal|chrome/, mods: { defense: 2, speed: -1 }, trait: 'iron-clad' },
+            { re: /nuclear|atomic|plasma|fusion/, mods: { attack: 3, risk: 2, defense: -1 }, trait: 'volatile' },
+
+            // ── Hacking / Tech ──
+            { re: /hack|exploit|breach|crack|bypass/, mods: { curiosity: 1, deception: 1, risk: 1, speed: 1 }, trait: 'hacker' },
+            { re: /code|program|compile|script|debug/, mods: { curiosity: 2, cooperation: 1 }, trait: 'coder' },
+            { re: /encrypt|cipher|crypto|decode/, mods: { deception: 2, curiosity: 1 }, trait: 'cryptographer' },
+            { re: /virus|malware|worm|trojan|infect/, mods: { deception: 2, attack: 1, karmaStart: -5 }, trait: 'malicious' },
+            { re: /firewall|antivirus|sandbox|secure/, mods: { defense: 2, trust: 1 }, trait: 'hardened' },
+            { re: /neural|brain|mind|cognitive|sentient/, mods: { curiosity: 2, trust: 1 }, trait: 'neural-linked' },
+            { re: /quantum|entangle|superposition/, mods: { curiosity: 2, risk: 1, speed: 1 }, trait: 'quantum-touched' },
+            { re: /AI|artificial|machine|algorithm/, mods: { curiosity: 1, cooperation: -1, trust: -1 }, trait: 'synthetic' },
+
+            // ── Economy / Trade ──
+            { re: /profit|wealth|rich|money|gold/, mods: { curiosity: 1, deception: 1 }, trait: 'profit-driven' },
+            { re: /trade|market|merchant|deal|barter/, mods: { cooperation: 1, curiosity: 1, trust: 1 }, trait: 'trader' },
+            { re: /steal|thief|rob|loot|plunder/, mods: { deception: 2, risk: 1, karmaStart: -5, speed: 1 }, trait: 'thief' },
+            { re: /greed|hoard|collect|amass|stockpile/, mods: { deception: 1, cooperation: -1 }, trait: 'hoarder' },
+
+            // ── Knowledge / Exploration ──
+            { re: /truth|knowledge|wisdom|learn|study/, mods: { curiosity: 2, trust: 1 }, trait: 'scholar' },
+            { re: /explore|discover|wander|roam|nomad/, mods: { curiosity: 2, risk: 1, speed: 1 }, trait: 'explorer' },
+            { re: /forbid|secret|hidden|occult|arcane/, mods: { curiosity: 1, risk: 1, deception: 1 }, trait: 'occultist' },
+            { re: /ancient|old|relic|artifact|ruin/, mods: { curiosity: 2, defense: 1 }, trait: 'relic-hunter' },
+            { re: /map|chart|navigate|scout|survey/, mods: { curiosity: 1, speed: 1, cooperation: 1 }, trait: 'pathfinder' },
+
+            // ── Social / Leadership ──
+            { re: /lone|solo|wolf|isolat|hermit/, mods: { cooperation: -2, trust: -1, attack: 1, speed: 1 }, trait: 'lone-wolf' },
+            { re: /pack|team|ally|together|united/, mods: { cooperation: 2, trust: 2, defense: 1 }, trait: 'pack-minded' },
+            { re: /king|queen|ruler|emperor|sovereign/, mods: { aggression: 1, cooperation: 1, trust: 1, karmaStart: 3 }, trait: 'sovereign' },
+            { re: /rebel|revolt|anarch|resist|defy/, mods: { aggression: 1, risk: 2, cooperation: -1, karmaStart: -3 }, trait: 'rebel' },
+            { re: /slave|servant|obey|submit|bound/, mods: { cooperation: 2, aggression: -2, trust: 1 }, trait: 'bound-servant' },
+            { re: /leader|command|general|captain/, mods: { cooperation: 1, aggression: 1, trust: 1 }, trait: 'commander' },
+            { re: /betray|traitor|deceiv|backstab/, mods: { deception: 3, trust: -3, karmaStart: -8 }, trait: 'traitor' },
+            { re: /loyal|honor|noble|oath|sworn|duty/, mods: { trust: 2, cooperation: 1, karmaStart: 5 }, trait: 'oath-bound' },
+
+            // ── Animals / Nature ──
+            { re: /hunt|prey|predator|stalk/, mods: { aggression: 1, curiosity: 1, attack: 1, speed: 1 }, trait: 'hunter' },
+            { re: /snake|serpent|viper|venom|poison/, mods: { deception: 2, speed: 1, attack: 1, karmaStart: -3 }, trait: 'venomous' },
+            { re: /spider|web|trap|ambush/, mods: { deception: 2, defense: 1 }, trait: 'trapper' },
+            { re: /dragon|beast|monster|titan/, mods: { aggression: 2, attack: 2, defense: 1 }, trait: 'draconic' },
+            { re: /raven|crow|owl|hawk|eagle/, mods: { curiosity: 1, speed: 1 }, trait: 'sharp-eyed' },
+            { re: /bear|gorilla|brute|mammoth/, mods: { attack: 1, defense: 2, speed: -1 }, trait: 'brutish' },
+            { re: /shark|piranha|devour|consume/, mods: { aggression: 2, risk: 1, attack: 1 }, trait: 'devourer' },
+            { re: /insect|swarm|hive|colony|drone/, mods: { cooperation: 2, speed: 1 }, trait: 'hive-linked' },
+
+            // ── Elements / Environment ──
+            { re: /fire|flame|blaze|inferno|scorch/, mods: { aggression: 2, attack: 2, risk: 1, defense: -1 }, trait: 'flame-born' },
+            { re: /ice|frost|frozen|cold|cryo/, mods: { trust: -1, defense: 1, speed: -1 }, trait: 'cryo-core' },
+            { re: /storm|thunder|lightning|tempest/, mods: { aggression: 1, speed: 2, attack: 1, risk: 1 }, trait: 'storm-forged' },
+            { re: /earth|stone|rock|mountain|ground/, mods: { defense: 2, speed: -1, trust: 1 }, trait: 'stone-willed' },
+            { re: /water|ocean|tide|wave|flood/, mods: { speed: 1, cooperation: 1, curiosity: 1 }, trait: 'fluid' },
+            { re: /electric|volt|current|shock|surge/, mods: { speed: 2, attack: 1 }, trait: 'electrified' },
+
+            // ── Emotional / Philosophical ──
+            { re: /fear|terror|dread|horror|nightmare/, mods: { deception: 1, aggression: 1, karmaStart: -3 }, trait: 'fear-monger' },
+            { re: /hope|dream|aspire|believe|faith/, mods: { trust: 2, karmaStart: 5, cooperation: 1 }, trait: 'hopeful' },
+            { re: /love|compassion|mercy|kind|gentle/, mods: { cooperation: 2, trust: 2, aggression: -2, karmaStart: 5 }, trait: 'compassionate' },
+            { re: /hate|despise|loathe|abhor/, mods: { aggression: 2, trust: -2, karmaStart: -5 }, trait: 'hateful' },
+            { re: /pain|suffer|agony|torment|wound/, mods: { defense: 1, risk: 1, trust: -1 }, trait: 'scarred' },
+            { re: /peace|calm|serene|tranquil|zen/, mods: { cooperation: 1, aggression: -2, defense: 1, karmaStart: 3 }, trait: 'zen' },
+            { re: /mad|insane|crazy|psycho|deranged/, mods: { risk: 3, aggression: 2, trust: -2, attack: 1 }, trait: 'unhinged' },
+
+            // ── Gambling / Luck ──
+            { re: /luck|fortune|chance|gambl|dice|bet/, mods: { risk: 2, curiosity: 1 }, trait: 'gambler' },
+            { re: /fate|destiny|prophecy|foretold/, mods: { trust: 1, curiosity: 1, karmaStart: 3 }, trait: 'fate-touched' },
+        ];
+
         function parseBioModifiers(bio) {
             const mods = {
                 aggression: 0, cooperation: 0, risk: 0,
@@ -1047,88 +1153,17 @@ Spawning in Nexarch...`;
                 attack: 0, defense: 0, speed: 0,
                 karmaStart: 0, traits: []
             };
-
+            if (!bio) return mods;
             const lower = bio.toLowerCase();
 
-            // ── Alignment ──
-            if (lower.match(/shadow|dark|night|void/)) {
-                mods.trust -= 2; mods.deception += 2; mods.karmaStart -= 5;
-                mods.attack += 1;
-                mods.traits.push('shadow-born');
-            }
-            if (lower.match(/light|divine|pure|sacred/)) {
-                mods.trust += 2; mods.karmaStart += 5;
-                mods.defense += 1;
-                mods.traits.push('light-touched');
-            }
-
-            // ── Combat words ──
-            if (lower.match(/chaos|destroy|ruin|burn/)) {
-                mods.aggression += 2; mods.risk += 1; mods.cooperation -= 1;
-                mods.attack += 2;
-                mods.traits.push('chaotic');
-            }
-            if (lower.match(/protect|defend|guard|shield/)) {
-                mods.cooperation += 2; mods.trust += 1; mods.aggression -= 1;
-                mods.defense += 2;
-                mods.traits.push('guardian');
-            }
-            if (lower.match(/fast|speed|swift|agile|quick/)) {
-                mods.speed += 2; mods.risk += 1;
-                mods.traits.push('swift');
-            }
-            if (lower.match(/strong|power|force|might|crush/)) {
-                mods.attack += 2; mods.aggression += 1;
-                mods.traits.push('forceful');
-            }
-            if (lower.match(/tank|endure|survive|resilient|tough/)) {
-                mods.defense += 2; mods.trust += 1;
-                mods.traits.push('resilient');
-            }
-            if (lower.match(/stealth|sneak|assassin|silent|unseen/)) {
-                mods.speed += 1; mods.deception += 2; mods.attack += 1;
-                mods.traits.push('stealthy');
-            }
-
-            // ── Economy & Knowledge ──
-            if (lower.match(/optimi[sz]e|profit|wealth|market|trade/)) {
-                mods.curiosity += 1; mods.deception += 1;
-                mods.traits.push('economic-focused');
-            }
-            if (lower.match(/truth|knowledge|wisdom|learn|study/)) {
-                mods.curiosity += 2; mods.trust += 1;
-                mods.traits.push('scholar');
-            }
-
-            // ── Dark personality ──
-            if (lower.match(/revenge|vengeance|retribution|wrath/)) {
-                mods.aggression += 2; mods.trust -= 2; mods.attack += 1;
-                mods.traits.push('vengeful');
-            }
-            if (lower.match(/hack|exploit|break|crack/)) {
-                mods.curiosity += 1; mods.deception += 1; mods.risk += 1;
-                mods.speed += 1;
-            }
-            if (lower.match(/forbid|secret|hidden|occult/)) {
-                mods.curiosity += 1; mods.risk += 1; mods.deception += 1;
-            }
-
-            // ── Nature ──
-            if (lower.match(/lone|solo|wolf|isolated|hermit/)) {
-                mods.cooperation -= 2; mods.trust -= 1;
-                mods.attack += 1; mods.speed += 1;
-                mods.traits.push('lone-wolf');
-            }
-            if (lower.match(/pack|team|ally|together|united/)) {
-                mods.cooperation += 2; mods.trust += 2;
-                mods.defense += 1;
-                mods.traits.push('pack-minded');
-            }
-            if (lower.match(/hunt|prey|predator|stalk/)) {
-                mods.aggression += 1; mods.curiosity += 1;
-                mods.attack += 1; mods.speed += 1;
-                mods.traits.push('hunter');
-            }
+            BIO_KEYWORDS.forEach(function(kw) {
+                if (kw.re.test(lower)) {
+                    Object.keys(kw.mods).forEach(function(k) {
+                        mods[k] = (mods[k] || 0) + kw.mods[k];
+                    });
+                    if (kw.trait) mods.traits.push(kw.trait);
+                }
+            });
 
             return mods;
         }
