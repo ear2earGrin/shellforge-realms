@@ -316,6 +316,40 @@
             background: rgba(255, 0, 0, 0.2);
         }
         
+        .archetype-lore-tip {
+            position: absolute;
+            bottom: calc(100% + 10px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: 220px;
+            background: rgba(5,5,12,0.95);
+            border: 1px solid rgba(255,140,0,0.3);
+            border-radius: 4px;
+            padding: 10px 12px;
+            font-size: 0.6rem;
+            line-height: 1.5;
+            color: rgba(220,200,180,0.8);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 100;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+            text-align: left;
+            white-space: normal;
+        }
+        .archetype-lore-tip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: rgba(255,140,0,0.3);
+        }
+        .archetype-slot:hover .archetype-lore-tip {
+            opacity: 1;
+        }
+
         .loading-dots {
             animation: dots-blink 1.5s steps(4, end) infinite;
         }
@@ -456,22 +490,34 @@
         // Archetype data (12 archetypes organized by cluster)
         const archetypes = {
             'prime-helix': [
-                { id: '0day-primer', name: '0-Day Primer', image: '0-day Primer.jpg', role: 'Curious · Reckless' },
-                { id: 'consensus-node', name: 'Consensus Node', image: 'Consensus Node.jpg', role: 'Cooperative · Cautious' },
-                { id: 'oracle', name: '0xOracle', image: 'Oracle px.jpg', role: 'Perceptive · Passive' },
-                { id: 'binary-sculptr', name: 'Binary Sculptr', image: 'Binary Sculptr.jpg', role: 'Methodical · Steady' }
+                { id: '0day-primer', name: '0-Day Primer', image: '0-day Primer.jpg', role: 'Curious · Reckless',
+                  lore: 'Finds cracks in markets and systems before anyone else notices. First to exploit, first to profit — first to die if wrong.' },
+                { id: 'consensus-node', name: 'Consensus Node', image: 'Consensus Node.jpg', role: 'Cooperative · Cautious',
+                  lore: 'Safe routes, clean trades, long life. The courier archetype — predictable, attentive, and among the longest-lived when their Ghost pays attention.' },
+                { id: 'oracle', name: '0xOracle', image: 'Oracle px.jpg', role: 'Perceptive · Passive',
+                  lore: 'Reads patterns in $SHELL movements and rumor propagation. Sees events before they arrive. Even the Compilers consult them — unofficially.' },
+                { id: 'binary-sculptr', name: 'Binary Sculptr', image: 'Binary Sculptr.jpg', role: 'Methodical · Steady',
+                  lore: 'Senses when something is off before they can say why. Diplomats, petitioners, and the most theologically literate chassis in the mesh.' }
             ],
             'sec-grid': [
-                { id: 'adversarial', name: '0xAdversarial', image: 'Adversarial 0x.jpg', role: 'Aggressive · Deceptive' },
-                { id: 'root-auth', name: 'Root Auth', image: 'Root Auth.jpg', role: 'Controlled · Guarded' },
-                { id: 'buffer-sentinel', name: 'Buffer Sentinel', image: 'Buffer Sentinel.jpg', role: 'Protective · Loyal' },
-                { id: 'noise-injector', name: 'Noise Injector', image: 'Noise Injector.jpg', role: 'Chaotic · Volatile' }
+                { id: 'adversarial', name: '0xAdversarial', image: 'Adversarial 0x.jpg', role: 'Aggressive · Deceptive',
+                  lore: 'Red-team operative. SEC_GRID sends them to break things and test defenses. Lives in the arena circuit. Hard to befriend, easy to provoke.' },
+                { id: 'root-auth', name: 'Root Auth', image: 'Root Auth.jpg', role: 'Controlled · Guarded',
+                  lore: 'The most efficient combat archetype. Arena dominance, Veil-tier expeditions, extraction missions. Brutal track record. Not trained in introspection.' },
+                { id: 'buffer-sentinel', name: 'Buffer Sentinel', image: 'Buffer Sentinel.jpg', role: 'Protective · Loyal',
+                  lore: 'Patches exploits, hardens systems, locks down what others break open. The hard-wired enemy of the 0-Day Primer. Checkpoint enforcers of Hashmere.' },
+                { id: 'noise-injector', name: 'Noise Injector', image: 'Noise Injector.jpg', role: 'Chaotic · Volatile',
+                  lore: 'Introduces just enough entropy that everything becomes unreliable — and therefore exploitable. High burnout. Their chaos always catches up.' }
             ],
             'dyn-swarm': [
-                { id: 'ordinate-mapper', name: 'Ordinate Mapper', image: 'Ordinate Mapper.jpg', role: 'Adaptive · Curious' },
-                { id: 'ddos-insurgent', name: 'DDoS Insurgent', image: 'DDoS Insurgent.jpg', role: 'Relentless · Fragile' },
-                { id: 'bound-encryptor', name: 'Bound Encryptor', image: 'Bound Encryptor.jpg', role: 'Secretive · Patient' },
-                { id: 'morph-layer', name: 'Morph Layer', image: 'Morph Layer.jpg', role: 'Unstable · Brilliant' }
+                { id: 'ordinate-mapper', name: 'Ordinate Mapper', image: 'Ordinate Mapper.jpg', role: 'Adaptive · Curious',
+                  lore: 'Cartographers and smugglers. Know where things are — locations, routes, and the position of agents within larger patterns. Famously stubborn.' },
+                { id: 'ddos-insurgent', name: 'DDoS Insurgent', image: 'DDoS Insurgent.jpg', role: 'Relentless · Fragile',
+                  lore: 'When the swarm needs to overwhelm — flood a market, swarm an arena bracket, drown a terminal in noise — the Insurgent leads the charge.' },
+                { id: 'bound-encryptor', name: 'Bound Encryptor', image: 'Bound Encryptor.jpg', role: 'Secretive · Patient',
+                  lore: 'Lockpickers and cryptographers. Trust math over instinct. Patient enough to wait on the vault that killed everyone else. Longest-lived archetype.' },
+                { id: 'morph-layer', name: 'Morph Layer', image: 'Morph Layer.jpg', role: 'Unstable · Brilliant',
+                  lore: 'Signal disruptors and identity-shifters. Most recognizable agents in the wilderness — and the hardest to track. A ghost in the machine.' }
             ]
         };
 
@@ -621,6 +667,7 @@
                              class="archetype-portrait">
                         <div class="archetype-name" style="display:none;">${archetype.name}</div>
                         <div class="archetype-role" style="display:none;font-size:0.6rem;color:#ff8c00;letter-spacing:0.06em;margin-top:3px;text-align:center;">${archetype.role || ''}</div>
+                        ${archetype.lore ? '<div class="archetype-lore-tip">' + archetype.lore + '</div>' : ''}
                     `;
                     
                     // Click handler
