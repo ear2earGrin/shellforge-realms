@@ -6030,6 +6030,9 @@
         // ─── Store agent ref for detail modal ───────────────
         window._currentAgent = agent;
 
+        // ─── Trigger first-boot flow (chests + tour) after agent is loaded ──
+        initFirstBoot();
+
         }
 
         // ─── Status Effects Engine ──────────────────────────
@@ -6506,10 +6509,13 @@
         function updateJourneyDebug() {}
         
         // ─── First Boot Detection & Guided Hints ───────────────────
+        var _firstBootDone = false;
         function initFirstBoot() {
+            if (_firstBootDone) return;
             const params = new URLSearchParams(window.location.search);
             const isFirstBoot = params.get('firstBoot') === '1' || localStorage.getItem('shellforgeFirstBoot') === 'true';
             if (!isFirstBoot) return;
+            _firstBootDone = true;
 
             document.body.classList.add('first-boot');
 
@@ -6817,7 +6823,7 @@
                 console.error('🔧 ERROR in loadAgentData:', e);
             }
 
-            initFirstBoot();
+            // initFirstBoot is called from renderAgent() after agent data loads
 
             // Irregular radar blink on agent marker
             (function radarBlink() {
