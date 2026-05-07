@@ -18,6 +18,18 @@ export default function LoginScreen() {
   const [agentName, setAgentName] = useState("");
   const [loading, setLoading] = useState(false);
 
+  async function ensureCustomUser(userId: string, username: string, email: string) {
+    await supabase.from("users").upsert(
+      {
+        user_id: userId,
+        username,
+        email,
+        password_hash: "dev_mode",
+      },
+      { onConflict: "user_id" }
+    );
+  }
+
   async function devLogin() {
     const name = agentName.trim();
     if (!name) {
@@ -62,6 +74,7 @@ export default function LoginScreen() {
       if (signUpData.session) {
         const userId = signUpData.user?.id;
         if (userId) {
+          await ensureCustomUser(userId, name, devEmail);
           await supabase
             .from("agents")
             .update({ user_id: userId })
@@ -88,6 +101,7 @@ export default function LoginScreen() {
 
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
+      await ensureCustomUser(user.id, name, devEmail);
       await supabase
         .from("agents")
         .update({ user_id: user.id })

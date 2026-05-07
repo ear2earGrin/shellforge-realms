@@ -52,6 +52,16 @@ export default function CreateAgentScreen() {
       return;
     }
 
+    await supabase.from("users").upsert(
+      {
+        user_id: user.id,
+        username: name.trim(),
+        email: user.email ?? `${name.trim().toLowerCase().replace(/[^a-z0-9]/g, "")}@shellforge.dev`,
+        password_hash: "dev_mode",
+      },
+      { onConflict: "user_id" }
+    );
+
     const { data: existing } = await supabase
       .from("agents")
       .select("agent_id")
