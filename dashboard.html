@@ -6514,8 +6514,10 @@
             if (_firstBootDone) return;
             const params = new URLSearchParams(window.location.search);
             const isFirstBoot = params.get('firstBoot') === '1' || localStorage.getItem('shellforgeFirstBoot') === 'true';
+            console.log('🚀 initFirstBoot — isFirstBoot:', isFirstBoot, 'params:', params.get('firstBoot'), 'localStorage:', localStorage.getItem('shellforgeFirstBoot'));
             if (!isFirstBoot) return;
             _firstBootDone = true;
+            console.log('🚀 First boot triggered!');
 
             document.body.classList.add('first-boot');
 
@@ -6542,11 +6544,13 @@
             wanderer: { icon: '🧰', name: "WANDERER'S CACHE", desc: 'Mixed kit — tool, scroll, catalysts, ingredients.' },
         };
         async function checkAndShowStarterChests() {
-            if (!_currentAgent) return false;
-            const chests = await sbGet('agent_starter_chests',
-                'agent_id=eq.' + _currentAgent.agentId +
-                '&opened_at=is.null&order=chest_index.asc&select=id,chest_index,theme,contents');
-            if (!chests || chests.length === 0) return false;
+            console.log('🎁 checkAndShowStarterChests — _currentAgent:', _currentAgent ? _currentAgent.agentId : 'NULL');
+            if (!_currentAgent) { console.log('🎁 No _currentAgent, returning false'); return false; }
+            const q = 'agent_id=eq.' + _currentAgent.agentId + '&opened_at=is.null&order=chest_index.asc&select=id,chest_index,theme,contents';
+            console.log('🎁 Querying chests:', q);
+            const chests = await sbGet('agent_starter_chests', q);
+            console.log('🎁 Chests result:', chests);
+            if (!chests || chests.length === 0) { console.log('🎁 No unopened chests found'); return false; }
             renderStarterChests(chests);
             document.getElementById('chestOverlay').classList.add('open');
             return true;
