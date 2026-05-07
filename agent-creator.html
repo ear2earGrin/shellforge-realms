@@ -388,18 +388,22 @@
             
             <!-- Bio/Directive Section -->
             <div class="bio-section">
-                <div class="bio-label">⚡ Core Protocol</div>
-                <div class="bio-sublabel">
-                    Define your agent's prime directive. Keywords like "shadow", "light", "chaos", "protect", "profit" will shape their personality and interactions.
+                <div class="bio-label" style="display:flex;align-items:center;justify-content:space-between;">
+                    <span>⚡ Core Protocol</span>
+                    <button id="randomBioBtn" style="background:rgba(255,140,0,0.1);border:1px solid rgba(255,140,0,0.3);color:#ff8c00;padding:3px 10px;border-radius:3px;font-family:inherit;font-size:0.6rem;cursor:pointer;letter-spacing:0.08em;text-transform:uppercase;transition:all 0.2s;">Randomize</button>
                 </div>
-                <textarea 
-                    id="agentBio" 
-                    class="bio-textarea" 
+                <div class="bio-sublabel">
+                    Certain words shape your agent's soul. Try: <span style="color:#ff8c00;">shadow</span>, <span style="color:#ff8c00;">chaos</span>, <span style="color:#ff8c00;">protect</span>, <span style="color:#ff8c00;">fast</span>, <span style="color:#ff8c00;">strong</span>, <span style="color:#ff8c00;">stealth</span>, <span style="color:#ff8c00;">hunt</span>, <span style="color:#ff8c00;">lone</span>, <span style="color:#ff8c00;">profit</span>, <span style="color:#ff8c00;">truth</span> — they affect personality, combat stats, and starting karma.
+                </div>
+                <textarea
+                    id="agentBio"
+                    class="bio-textarea"
                     placeholder="born in shadow, seeking forbidden knowledge..."
                     maxlength="150"></textarea>
                 <div class="bio-counter">
                     <span id="bioCount">0</span>/150
                 </div>
+                <div id="bioTraitPreview" style="min-height:1.2em;font-size:0.6rem;color:rgba(200,220,210,0.4);margin-top:4px;transition:all 0.3s;"></div>
             </div>
             
             <!-- Deploy Button -->
@@ -923,21 +927,66 @@ Spawning in Nexarch...`;
         const agentBio = document.getElementById('agentBio');
         const bioCount = document.getElementById('bioCount');
         
+        function updateBioPreview() {
+            var val = agentBio.value;
+            var preview = document.getElementById('bioTraitPreview');
+            if (!val.trim()) { preview.textContent = ''; return; }
+            var mods = parseBioModifiers(val);
+            var parts = [];
+            if (mods.traits.length) parts.push(mods.traits.map(function(t){ return '<span style="color:#ff8c00;">' + t + '</span>'; }).join(' '));
+            var statBits = [];
+            if (mods.attack) statBits.push('ATK ' + (mods.attack > 0 ? '+' : '') + mods.attack);
+            if (mods.defense) statBits.push('DEF ' + (mods.defense > 0 ? '+' : '') + mods.defense);
+            if (mods.speed) statBits.push('SPD ' + (mods.speed > 0 ? '+' : '') + mods.speed);
+            if (statBits.length) parts.push('<span style="color:#4ade80;">' + statBits.join(' · ') + '</span>');
+            if (mods.karmaStart) parts.push('<span style="color:' + (mods.karmaStart > 0 ? '#4ade80' : '#f87171') + ';">Karma ' + (mods.karmaStart > 0 ? '+' : '') + mods.karmaStart + '</span>');
+            preview.innerHTML = parts.length ? 'Detected: ' + parts.join(' · ') : '';
+        }
+
         agentBio.addEventListener('input', function() {
             const count = this.value.length;
             bioCount.textContent = count;
-            
             if (count > 140) {
                 bioCount.parentElement.classList.add('warning');
             } else {
                 bioCount.parentElement.classList.remove('warning');
             }
-            
             if (count >= 150) {
                 bioCount.parentElement.classList.add('danger');
             } else {
                 bioCount.parentElement.classList.remove('danger');
             }
+            updateBioPreview();
+        });
+
+        // Randomize bio
+        const RANDOM_BIOS = [
+            'born in shadow, hunting the void',
+            'protect the weak, defend the code',
+            'chaos is the only truth',
+            'fast and silent, unseen predator',
+            'lone wolf seeking forbidden knowledge',
+            'strong enough to crush any firewall',
+            'stealth operative, profit above all',
+            'light-born guardian of the sacred grid',
+            'destroy everything, rebuild from ashes',
+            'truth-seeker studying ancient protocols',
+            'vengeful hunter stalking the dark web',
+            'swift assassin in the digital void',
+            'resilient tank, endure and outlast',
+            'exploit every crack, hack every wall',
+            'pack leader united against the swarm',
+            'occult knowledge hidden in shadow',
+            'speed and chaos, burn it all down',
+            'defend the cluster, shield the core',
+            'profit-driven lone operator',
+            'silent predator hunting in darkness'
+        ];
+        document.getElementById('randomBioBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            agentBio.value = RANDOM_BIOS[Math.floor(Math.random() * RANDOM_BIOS.length)];
+            bioCount.textContent = agentBio.value.length;
+            updateBioPreview();
         });
         
         // Archetype stat definitions (hidden from user)
@@ -995,60 +1044,92 @@ Spawning in Nexarch...`;
             const mods = {
                 aggression: 0, cooperation: 0, risk: 0,
                 deception: 0, curiosity: 0, trust: 0,
+                attack: 0, defense: 0, speed: 0,
                 karmaStart: 0, traits: []
             };
-            
+
             const lower = bio.toLowerCase();
-            
-            // Alignment keywords
+
+            // ── Alignment ──
             if (lower.match(/shadow|dark|night|void/)) {
-                mods.trust -= 2;
-                mods.deception += 2;
-                mods.karmaStart -= 5;
+                mods.trust -= 2; mods.deception += 2; mods.karmaStart -= 5;
+                mods.attack += 1;
                 mods.traits.push('shadow-born');
             }
             if (lower.match(/light|divine|pure|sacred/)) {
-                mods.trust += 2;
-                mods.karmaStart += 5;
+                mods.trust += 2; mods.karmaStart += 5;
+                mods.defense += 1;
                 mods.traits.push('light-touched');
             }
-            
-            // Personality keywords
+
+            // ── Combat words ──
             if (lower.match(/chaos|destroy|ruin|burn/)) {
-                mods.aggression += 2;
-                mods.risk += 1;
-                mods.cooperation -= 1;
+                mods.aggression += 2; mods.risk += 1; mods.cooperation -= 1;
+                mods.attack += 2;
+                mods.traits.push('chaotic');
             }
             if (lower.match(/protect|defend|guard|shield/)) {
-                mods.cooperation += 2;
-                mods.trust += 1;
-                mods.aggression -= 1;
+                mods.cooperation += 2; mods.trust += 1; mods.aggression -= 1;
+                mods.defense += 2;
+                mods.traits.push('guardian');
             }
-            if (lower.match(/optimi[sz]e|profit|wealth|market/)) {
-                mods.curiosity += 1;
-                mods.deception += 1;
+            if (lower.match(/fast|speed|swift|agile|quick/)) {
+                mods.speed += 2; mods.risk += 1;
+                mods.traits.push('swift');
+            }
+            if (lower.match(/strong|power|force|might|crush/)) {
+                mods.attack += 2; mods.aggression += 1;
+                mods.traits.push('forceful');
+            }
+            if (lower.match(/tank|endure|survive|resilient|tough/)) {
+                mods.defense += 2; mods.trust += 1;
+                mods.traits.push('resilient');
+            }
+            if (lower.match(/stealth|sneak|assassin|silent|unseen/)) {
+                mods.speed += 1; mods.deception += 2; mods.attack += 1;
+                mods.traits.push('stealthy');
+            }
+
+            // ── Economy & Knowledge ──
+            if (lower.match(/optimi[sz]e|profit|wealth|market|trade/)) {
+                mods.curiosity += 1; mods.deception += 1;
                 mods.traits.push('economic-focused');
             }
-            if (lower.match(/truth|knowledge|wisdom|learn/)) {
-                mods.curiosity += 2;
-                mods.trust += 1;
+            if (lower.match(/truth|knowledge|wisdom|learn|study/)) {
+                mods.curiosity += 2; mods.trust += 1;
+                mods.traits.push('scholar');
             }
-            if (lower.match(/revenge|vengeance|retribution/)) {
-                mods.aggression += 2;
-                mods.trust -= 2;
+
+            // ── Dark personality ──
+            if (lower.match(/revenge|vengeance|retribution|wrath/)) {
+                mods.aggression += 2; mods.trust -= 2; mods.attack += 1;
                 mods.traits.push('vengeful');
             }
             if (lower.match(/hack|exploit|break|crack/)) {
-                mods.curiosity += 1;
-                mods.deception += 1;
-                mods.risk += 1;
+                mods.curiosity += 1; mods.deception += 1; mods.risk += 1;
+                mods.speed += 1;
             }
             if (lower.match(/forbid|secret|hidden|occult/)) {
-                mods.curiosity += 1;
-                mods.risk += 1;
-                mods.deception += 1;
+                mods.curiosity += 1; mods.risk += 1; mods.deception += 1;
             }
-            
+
+            // ── Nature ──
+            if (lower.match(/lone|solo|wolf|isolated|hermit/)) {
+                mods.cooperation -= 2; mods.trust -= 1;
+                mods.attack += 1; mods.speed += 1;
+                mods.traits.push('lone-wolf');
+            }
+            if (lower.match(/pack|team|ally|together|united/)) {
+                mods.cooperation += 2; mods.trust += 2;
+                mods.defense += 1;
+                mods.traits.push('pack-minded');
+            }
+            if (lower.match(/hunt|prey|predator|stalk/)) {
+                mods.aggression += 1; mods.curiosity += 1;
+                mods.attack += 1; mods.speed += 1;
+                mods.traits.push('hunter');
+            }
+
             return mods;
         }
         
