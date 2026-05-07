@@ -10,62 +10,91 @@ import {
   Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as AppleAuthentication from "expo-apple-authentication";
 import { supabase } from "../lib/supabase";
 import { colors, spacing } from "../lib/theme";
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [agentName, setAgentName] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function signIn() {
-    if (!email || !password) {
-      Alert.alert("Error", "Enter email and password");
+  async function devLogin() {
+    const name = agentName.trim();
+    if (!name) {
+      Alert.alert("Error", "Enter your agent name");
       return;
     }
-    setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
-    setLoading(false);
-    if (error) {
-      Alert.alert("Sign In Failed", error.message);
-    }
-  }
 
-  async function signInWithApple() {
-    try {
-      const credential = await AppleAuthentication.signInAsync({
-        requestedScopes: [
-          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-          AppleAuthentication.AppleAuthenticationScope.EMAIL,
-        ],
+    setLoading(true);
+
+    const { data: agents } = await supabase
+      .from("agents")
+      .select("agent_id, agent_name")
+      .eq("agent_name", name)
+      .limit(1);
+
+    if (!agents || agents.length === 0) {
+      Alert.alert("Not Found", `No agent named "${name}" exists.`);
+      setLoading(false);
+      return;
+    }
+
+    const devEmail = `${name.toLowerCase().replace(/[^a-z0-9]/g, "")}@shellforge.dev`;
+    const devPassword = "shellforge2024dev";
+
+    let { error } = await supabase.auth.signInWithPassword({
+      email: devEmail,
+      password: devPassword,
+    });
+
+    if (error) {
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: devEmail,
+        password: devPassword,
       });
 
-      if (!credential.identityToken) {
-        Alert.alert("Error", "No identity token received from Apple");
+      if (signUpError) {
+        Alert.alert("Error", signUpError.message);
+        setLoading(false);
         return;
       }
 
-      setLoading(true);
-      const { error } = await supabase.auth.signInWithIdToken({
-        provider: "apple",
-        token: credential.identityToken,
-      });
-      setLoading(false);
-
-      if (error) {
-        Alert.alert("Apple Sign In Failed", error.message);
+      if (signUpData.session) {
+        const userId = signUpData.user?.id;
+        if (userId) {
+          await supabase
+            .from("agents")
+            .update({ user_id: userId })
+            .eq("agent_id", agents[0].agent_id);
+        }
+        setLoading(false);
+        return;
       }
-    } catch (e: unknown) {
-      const err = e as { code?: string };
-      if (err.code !== "ERR_REQUEST_CANCELED") {
-        Alert.alert("Error", "Apple Sign In failed. Try email instead.");
+
+      const { error: retryError } = await supabase.auth.signInWithPassword({
+        email: devEmail,
+        password: devPassword,
+      });
+
+      if (retryError) {
+        Alert.alert(
+          "Almost There",
+          "Account created. If email confirmation is enabled in Supabase, disable it in Dashboard → Auth → Settings → Email Confirmations → OFF, then try again."
+        );
+        setLoading(false);
+        return;
       }
     }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase
+        .from("agents")
+        .update({ user_id: user.id })
+        .eq("agent_id", agents[0].agent_id);
+    }
+
+    setLoading(false);
   }
 
   return (
@@ -74,7 +103,6 @@ export default function LoginScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <View style={[styles.inner, { paddingTop: insets.top + 40 }]}>
-        {/* Branding */}
         <View style={styles.header}>
           <View style={styles.logoGlow} />
           <Text style={styles.title}>SHELLFORGE</Text>
@@ -83,65 +111,34 @@ export default function LoginScreen() {
           <Text style={styles.tagline}>Companion Terminal</Text>
         </View>
 
-        {/* Form */}
         <View style={styles.form}>
-          <Text style={styles.label}>EMAIL</Text>
+          <Text style={styles.label}>AGENT NAME</Text>
           <TextInput
             style={styles.input}
-            value={email}
-            onChangeText={setEmail}
-            placeholder="operator@shellforge.com"
+            value={agentName}
+            onChangeText={setAgentName}
+            placeholder="Seth07"
             placeholderTextColor={colors.textMuted}
-            keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
           />
 
-          <Text style={styles.label}>PASSWORD</Text>
-          <TextInput
-            style={styles.input}
-            value={password}
-            onChangeText={setPassword}
-            placeholder={"••••••••"}
-            placeholderTextColor={colors.textMuted}
-            secureTextEntry
-          />
-
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={signIn}
+            onPress={devLogin}
             disabled={loading}
           >
             <Text style={styles.buttonText}>
-              {loading ? "AUTHENTICATING..." : "CONNECT"}
+              {loading ? "CONNECTING..." : "CONNECT"}
             </Text>
           </TouchableOpacity>
-
-          {Platform.OS === "ios" && (
-            <>
-              <View style={styles.dividerRow}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>OR</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              <AppleAuthentication.AppleAuthenticationButton
-                buttonType={
-                  AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
-                }
-                buttonStyle={
-                  AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
-                }
-                cornerRadius={12}
-                style={styles.appleBtn}
-                onPress={signInWithApple}
-              />
-            </>
-          )}
         </View>
 
         <Text style={styles.footer}>
-          Use your shellforge.com credentials
+          Enter your agent name to connect
+        </Text>
+        <Text style={[styles.footer, { marginTop: 8, fontSize: 9, color: colors.textMuted }]}>
+          DEV MODE — password auth disabled
         </Text>
       </View>
     </KeyboardAvoidingView>
@@ -230,27 +227,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "800",
     letterSpacing: 2,
-  },
-  dividerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 20,
-    marginBottom: 4,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.border,
-  },
-  dividerText: {
-    color: colors.textMuted,
-    fontSize: 10,
-    letterSpacing: 2,
-    marginHorizontal: 12,
-  },
-  appleBtn: {
-    width: "100%" as unknown as number,
-    height: 52,
   },
   footer: {
     textAlign: "center",
