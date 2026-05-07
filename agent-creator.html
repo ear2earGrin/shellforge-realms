@@ -115,7 +115,7 @@
             opacity: 0.3;
             filter: grayscale(90%);
             max-width: 140px;
-            margin: 0 auto;
+            margin: 0 auto 28px;
         }
         
         .archetype-slot:hover {
@@ -167,17 +167,18 @@
             transform: translateX(-50%);
             font-family: var(--font-main);
             color: var(--color-primary);
-            font-size: 0.75rem;
+            font-size: 0.8rem;
             white-space: nowrap;
             text-align: center;
-            opacity: 0;
+            opacity: 1;
             transition: opacity 0.3s ease;
         }
-        
-        .archetype-slot:hover .archetype-name,
-        .archetype-slot.active .archetype-name,
-        .archetype-slot.selected .archetype-name {
-            opacity: 1;
+        .archetype-role {
+            position: absolute;
+            bottom: -42px;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
         }
         
         .cluster-buttons {
@@ -315,11 +316,22 @@
             background: rgba(255, 0, 0, 0.2);
         }
         
+        .loading-dots {
+            animation: dots-blink 1.5s steps(4, end) infinite;
+        }
+        @keyframes dots-blink {
+            0% { content: ''; opacity: 0.3; }
+            25% { opacity: 0.6; }
+            50% { opacity: 1; }
+            75% { opacity: 0.6; }
+            100% { opacity: 0.3; }
+        }
+
         @media (max-width: 768px) {
             .creator-container {
                 padding: 20px 15px;
             }
-            
+
             .archetypes-grid {
                 grid-template-columns: repeat(3, 1fr);
                 gap: 12px;
@@ -372,7 +384,7 @@
                 <button class="cluster-btn" data-cluster="sec-grid">SEC-Grid</button>
                 <button class="cluster-btn" data-cluster="dyn-swarm">DYN_Swarm</button>
             </div>
-            <div id="clusterDesc" style="text-align:center;font-size:0.65rem;color:rgba(200,220,210,0.4);font-style:italic;padding:4px 20px 8px;min-height:1.5em;transition:opacity 0.3s;">Three factions reached the singularity. Each shapes its agents differently.</div>
+            <div id="clusterDesc" style="text-align:center;font-size:0.85rem;color:#ff2020;font-style:italic;padding:8px 20px 12px;min-height:1.8em;transition:opacity 0.3s;letter-spacing:0.04em;line-height:1.5;">Three factions reached the singularity. Each shapes its agents differently<span class="loading-dots">...</span></div>
             
             <!-- Bio/Directive Section -->
             <div class="bio-section">
@@ -603,8 +615,8 @@
                         <img src="images/archetypes/${archetype.image}"
                              alt="${archetype.name}"
                              class="archetype-portrait">
-                        <div class="archetype-name">${archetype.name}</div>
-                        <div style="font-size:0.5rem;color:rgba(200,220,210,0.45);letter-spacing:0.06em;margin-top:3px;">${archetype.role || ''}</div>
+                        <div class="archetype-name" style="display:none;">${archetype.name}</div>
+                        <div class="archetype-role" style="display:none;font-size:0.6rem;color:#ff8c00;letter-spacing:0.06em;margin-top:3px;text-align:center;">${archetype.role || ''}</div>
                     `;
                     
                     // Click handler
@@ -675,26 +687,34 @@
                 }
             });
             
-            // Update visual states for portraits
+            // Update visual states for portraits + show/hide name & role
             document.querySelectorAll('.archetype-slot').forEach(slot => {
                 const slotCluster = slot.getAttribute('data-cluster');
                 const slotId = slot.getAttribute('data-archetype');
-                
+                const nameEl = slot.querySelector('.archetype-name');
+                const roleEl = slot.querySelector('.archetype-role');
+
                 if (slotId === id) {
-                    // Selected portrait
                     slot.classList.add('selected');
                     slot.classList.add('active');
-                } else if (slotCluster === cluster) {
-                    // Same cluster but not selected
-                    slot.classList.remove('selected');
-                    slot.classList.add('active');
+                    if (nameEl) nameEl.style.display = '';
+                    if (roleEl) roleEl.style.display = '';
                 } else {
-                    // Different cluster
                     slot.classList.remove('selected');
-                    slot.classList.remove('active');
+                    if (slotCluster === cluster) {
+                        slot.classList.add('active');
+                    } else {
+                        slot.classList.remove('active');
+                    }
+                    if (nameEl) nameEl.style.display = 'none';
+                    if (roleEl) roleEl.style.display = 'none';
                 }
             });
-            
+
+            // Update cluster description
+            var descEl = document.getElementById('clusterDesc');
+            if (descEl && clusterDescs[cluster]) descEl.textContent = clusterDescs[cluster];
+
             updateDeployButton();
         }
         
