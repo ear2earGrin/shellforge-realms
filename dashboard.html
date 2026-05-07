@@ -3547,15 +3547,8 @@
                     </div>
                 </div>
 
-                <div class="stat-bar coherence-bar">
-                    <div class="stat-label">
-                        <span><span class="stat-icon">◈</span>Coherence</span>
-                        <span class="stat-value" id="coherenceValue">--/100</span>
-                    </div>
-                    <div class="bar-container">
-                        <div class="bar-fill coherence" id="coherenceBar" style="width: 100%;"></div>
-                    </div>
-                </div>
+                <!-- Coherence shown via the 3D Coherence Lock instead -->
+                <div style="display:none;"><span id="coherenceValue"></span><div id="coherenceBar"></div></div>
             </div>
 
             <!-- Hidden spans for JS that still references these -->
@@ -3631,7 +3624,7 @@
             </div>
             <div class="map-container" id="mapContainer">
                 <div class="dna-readout" id="dnaReadout">
-                    <div class="dna-readout-label">[ COHERENCE LOCK ]</div>
+                    <div class="dna-readout-label" id="coherenceLockToggle" style="cursor:pointer;user-select:none;" title="Click to minimize">[ COHERENCE LOCK ]</div>
                     <model-viewer
                         class="map-dna"
                         src="images/3d/dna-hologram-anim.glb"
@@ -6863,6 +6856,36 @@
             }
 
             // initFirstBoot is called from renderAgent() after agent data loads
+
+            // Coherence Lock toggle — minimize/expand the 3D model
+            (function() {
+                var btn = document.getElementById('coherenceLockToggle');
+                var readout = document.getElementById('dnaReadout');
+                if (!btn || !readout) return;
+                var model = readout.querySelector('model-viewer');
+                var valEl = document.getElementById('dnaCoherenceVal');
+                var minimized = false;
+                btn.addEventListener('click', function() {
+                    minimized = !minimized;
+                    if (minimized) {
+                        if (model) model.style.display = 'none';
+                        if (valEl) valEl.style.display = 'none';
+                        readout.style.minHeight = '0';
+                        readout.style.height = 'auto';
+                        readout.style.padding = '0';
+                        btn.textContent = '[ COHERENCE LOCK ] ▸';
+                        btn.title = 'Click to expand';
+                    } else {
+                        if (model) model.style.display = '';
+                        if (valEl) valEl.style.display = '';
+                        readout.style.minHeight = '';
+                        readout.style.height = '';
+                        readout.style.padding = '';
+                        btn.textContent = '[ COHERENCE LOCK ]';
+                        btn.title = 'Click to minimize';
+                    }
+                });
+            })();
 
             // Irregular radar blink on agent marker
             (function radarBlink() {
