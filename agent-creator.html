@@ -859,7 +859,16 @@
                             location:      'Nexarch'
                         });
                     } else {
-                        console.warn('\u26a0\ufe0f Agent DB write failed — saved to localStorage only');
+                        // Check if it's because they already have a living agent
+                        const existing = await sbGet('agents', 'user_id=eq.' + userId + '&is_alive=eq.true&select=agent_name&limit=1');
+                        if (existing && existing.length > 0) {
+                            terminalNotify.error('You already have a living agent: ' + existing[0].agent_name + '. It must die before you can deploy a new one.');
+                        } else {
+                            terminalNotify.error('Agent deployment failed. Please try again.');
+                        }
+                        btn.disabled = false;
+                        btn.textContent = 'deploy agent';
+                        return;
                     }
                 }
 
