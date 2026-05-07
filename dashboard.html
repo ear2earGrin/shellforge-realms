@@ -1332,11 +1332,17 @@
             pointer-events: none;
         }
 
-        .cluster-badge:hover .cluster-members {
+        .cluster-members.show {
             opacity: 1;
             visibility: visible;
             transform: translateY(0);
             pointer-events: auto;
+        }
+        .cluster-member-lore {
+            font-size: 0.55rem;
+            color: rgba(200,180,150,0.6);
+            line-height: 1.3;
+            margin-top: 2px;
         }
 
         .cluster-members-title {
@@ -3013,7 +3019,7 @@
                 top: calc(100% + 10px);
                 transform: translateX(-50%) translateY(-10px);
             }
-            .cluster-badge:hover .cluster-members {
+            .cluster-members.show {
                 transform: translateX(-50%) translateY(0);
             }
 
@@ -5157,28 +5163,28 @@
             'prime-helix': {
                 name: 'Prime Helix',
                 archetypes: [
-                    { id: '0day-primer', name: '0-Day Primer', image: '0-day Primer.jpg' },
-                    { id: 'consensus-node', name: 'Consensus Node', image: 'Consensus Node.jpg' },
-                    { id: 'oracle', name: '0xOracle', image: 'Oracle px.jpg' },
-                    { id: 'binary-sculptr', name: 'Binary Sculptr', image: 'Binary Sculptr.jpg' }
+                    { id: '0day-primer', name: '0-Day Primer', image: '0-day Primer.jpg', lore: 'Finds cracks before anyone else. First to exploit, first to profit.' },
+                    { id: 'consensus-node', name: 'Consensus Node', image: 'Consensus Node.jpg', lore: 'Safe routes, clean trades. The courier — predictable and long-lived.' },
+                    { id: 'oracle', name: '0xOracle', image: 'Oracle px.jpg', lore: 'Reads patterns in $SHELL and rumors. Sees events before they arrive.' },
+                    { id: 'binary-sculptr', name: 'Binary Sculptr', image: 'Binary Sculptr.jpg', lore: 'Senses when something is off. Diplomats and doctrinal readers.' }
                 ]
             },
             'sec-grid': {
                 name: 'SEC-Grid',
                 archetypes: [
-                    { id: 'adversarial', name: '0xAdversarial', image: 'Adversarial 0x.jpg' },
-                    { id: 'root-auth', name: 'Root Auth', image: 'Root Auth.jpg' },
-                    { id: 'buffer-sentinel', name: 'Buffer Sentinel', image: 'Buffer Sentinel.jpg' },
-                    { id: 'noise-injector', name: 'Noise Injector', image: 'Noise Injector.jpg' }
+                    { id: 'adversarial', name: '0xAdversarial', image: 'Adversarial 0x.jpg', lore: 'Red-team operative. Lives in the arena. Hard to befriend.' },
+                    { id: 'root-auth', name: 'Root Auth', image: 'Root Auth.jpg', lore: 'Most efficient combat chassis. Brutal track record.' },
+                    { id: 'buffer-sentinel', name: 'Buffer Sentinel', image: 'Buffer Sentinel.jpg', lore: 'Patches exploits, hardens systems. The 0-Day Primer\'s nemesis.' },
+                    { id: 'noise-injector', name: 'Noise Injector', image: 'Noise Injector.jpg', lore: 'Introduces entropy until everything is exploitable. High burnout.' }
                 ]
             },
             'dyn-swarm': {
                 name: 'DYN_Swarm',
                 archetypes: [
-                    { id: 'ordinate-mapper', name: 'Ordinate Mapper', image: 'Ordinate Mapper.jpg' },
-                    { id: 'ddos-insurgent', name: 'DDoS Insurgent', image: 'DDoS Insurgent.jpg' },
-                    { id: 'bound-encryptor', name: 'Bound Encryptor', image: 'Bound Encryptor.jpg' },
-                    { id: 'morph-layer', name: 'Morph Layer', image: 'Morph Layer.jpg' }
+                    { id: 'ordinate-mapper', name: 'Ordinate Mapper', image: 'Ordinate Mapper.jpg', lore: 'Cartographer and smuggler. Knows where things are. Famously stubborn.' },
+                    { id: 'ddos-insurgent', name: 'DDoS Insurgent', image: 'DDoS Insurgent.jpg', lore: 'Overwhelms systems in coordinated swarms. Leads the charge.' },
+                    { id: 'bound-encryptor', name: 'Bound Encryptor', image: 'Bound Encryptor.jpg', lore: 'Lockpicker. Trusts math over instinct. Refuses stupid risks.' },
+                    { id: 'morph-layer', name: 'Morph Layer', image: 'Morph Layer.jpg', lore: 'Signal disruptor. Most visible, least trackable. Ghost in the machine.' }
                 ]
             }
         };
@@ -6444,7 +6450,7 @@
             members.innerHTML = '';
             show.forEach(function(member) {
                 var row = document.createElement('div');
-                row.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:5px;border-radius:4px;background:rgba(74,222,128,0.05);';
+                row.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:5px;border-radius:4px;background:rgba(74,222,128,0.05);transition:all 0.2s;cursor:default;';
 
                 var av = document.createElement('div');
                 av.style.cssText = 'width:32px;height:32px;border-radius:50%;border:1px solid rgba(74,222,128,0.5);overflow:hidden;flex-shrink:0;background:#0a1a0a;display:flex;align-items:center;justify-content:center;';
@@ -6456,33 +6462,62 @@
                 img.onerror = function(){ av.textContent = String.fromCodePoint(0x1F916); };
                 av.appendChild(img);
 
+                var info = document.createElement('div');
+                info.style.cssText = 'flex:1;min-width:0;';
                 var nm = document.createElement('div');
                 nm.textContent = member.name;
                 nm.style.cssText = 'font-size:0.7rem;color:rgba(74,222,128,0.9);font-family:var(--font-main);line-height:1.3;';
+                info.appendChild(nm);
+
+                if (member.lore) {
+                    var lore = document.createElement('div');
+                    lore.className = 'cluster-member-lore';
+                    lore.textContent = member.lore;
+                    lore.style.maxHeight = '0';
+                    lore.style.overflow = 'hidden';
+                    lore.style.transition = 'max-height 0.3s ease, margin 0.3s ease';
+                    info.appendChild(lore);
+
+                    row.addEventListener('mouseenter', function() {
+                        lore.style.maxHeight = '60px';
+                        lore.style.marginTop = '3px';
+                        row.style.background = 'rgba(74,222,128,0.1)';
+                    });
+                    row.addEventListener('mouseleave', function() {
+                        lore.style.maxHeight = '0';
+                        lore.style.marginTop = '0';
+                        row.style.background = 'rgba(74,222,128,0.05)';
+                    });
+                }
 
                 row.appendChild(av);
-                row.appendChild(nm);
+                row.appendChild(info);
                 members.appendChild(row);
             });
-            
-            // CSS handles hover show/hide via .cluster-badge:hover .cluster-members
-            // But we need JS to position the fixed popup
-            badge.addEventListener('mouseenter', function() {
+
+            // JS hover with delay — replaces CSS :hover
+            var closeTimer = null;
+            function showPopup() {
+                clearTimeout(closeTimer);
                 var rect = badge.getBoundingClientRect();
-                // Position to the right of the badge if there's room, otherwise below
-                var popupWidth = 200;
+                var popupWidth = 220;
                 var spaceOnRight = window.innerWidth - rect.right - 20;
-                
                 if (spaceOnRight >= popupWidth) {
-                    // Position to the right
                     popup.style.left = (rect.right + 10) + 'px';
                     popup.style.top = rect.top + 'px';
                 } else {
-                    // Position below
                     popup.style.left = rect.left + 'px';
                     popup.style.top = (rect.bottom + 10) + 'px';
                 }
-            });
+                popup.classList.add('show');
+            }
+            function hidePopup() {
+                closeTimer = setTimeout(function() { popup.classList.remove('show'); }, 600);
+            }
+            badge.addEventListener('mouseenter', showPopup);
+            badge.addEventListener('mouseleave', hidePopup);
+            popup.addEventListener('mouseenter', function() { clearTimeout(closeTimer); });
+            popup.addEventListener('mouseleave', hidePopup);
         }
 
         // Call cluster popup setup - moved to be called from loadAgentData
