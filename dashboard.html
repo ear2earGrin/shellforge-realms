@@ -1718,46 +1718,33 @@
 
         .agent-marker {
             position: absolute;
-            width: 10px;
-            height: 10px;
+            width: 5px;
+            height: 5px;
             border-radius: 50%;
             background: #ff2020;
             border: none;
-            box-shadow: 0 0 6px rgba(255, 32, 32, 0.8), 0 0 2px rgba(255, 32, 32, 1);
+            box-shadow: 0 0 4px rgba(255, 32, 32, 0.9);
             z-index: 10;
             transform: translate(-50%, -50%);
             cursor: pointer;
-            animation: radar-blink 3s ease-in-out infinite;
         }
-        /* Radar ping ring */
-        .agent-marker::before {
+        /* Vertical signal line going up */
+        .agent-marker::after {
             content: '';
             position: absolute;
-            top: 50%; left: 50%;
-            width: 10px; height: 10px;
-            border-radius: 50%;
-            border: 1px solid rgba(255, 32, 32, 0.6);
-            transform: translate(-50%, -50%);
-            animation: radar-ping 3s ease-out infinite;
+            bottom: 100%;
+            left: 50%;
+            width: 1px;
+            height: 10px;
+            background: linear-gradient(to top, rgba(255,32,32,0.7), rgba(255,32,32,0));
+            transform: translateX(-50%);
             pointer-events: none;
-        }
-        @keyframes radar-blink {
-            0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(255,32,32,0.8), 0 0 2px rgba(255,32,32,1); }
-            15% { opacity: 1; box-shadow: 0 0 12px rgba(255,32,32,1), 0 0 4px rgba(255,32,32,1); }
-            50% { opacity: 0.2; box-shadow: 0 0 2px rgba(255,32,32,0.3); }
-            65% { opacity: 0.2; }
-            80% { opacity: 0.8; }
-        }
-        @keyframes radar-ping {
-            0% { width: 10px; height: 10px; opacity: 0.7; }
-            70% { width: 36px; height: 36px; opacity: 0; }
-            100% { width: 36px; height: 36px; opacity: 0; }
         }
 
         /* Smaller dot when traveling */
         .agent-marker.traveling {
-            width: 6px;
-            height: 6px;
+            width: 4px;
+            height: 4px;
         }
 
         /* Cluster-based colors */
@@ -6831,6 +6818,37 @@
             }
 
             initFirstBoot();
+
+            // Irregular radar blink on agent marker
+            (function radarBlink() {
+                var m = document.getElementById('agentMarker');
+                if (!m) return;
+                // Random interval: 1.5–5 seconds between blinks
+                var delay = 1500 + Math.random() * 3500;
+                setTimeout(function() {
+                    if (!m.parentNode) return;
+                    // Blink off for a random short duration (100–400ms)
+                    m.style.opacity = '0';
+                    m.style.transition = 'opacity 0.08s';
+                    var offTime = 100 + Math.random() * 300;
+                    setTimeout(function() {
+                        m.style.opacity = '1';
+                        m.style.transition = 'opacity 0.15s';
+                        // Sometimes double-blink (30% chance)
+                        if (Math.random() < 0.3) {
+                            setTimeout(function() {
+                                m.style.opacity = '0';
+                                setTimeout(function() {
+                                    m.style.opacity = '1';
+                                    radarBlink();
+                                }, 80 + Math.random() * 120);
+                            }, 120 + Math.random() * 80);
+                        } else {
+                            radarBlink();
+                        }
+                    }, offTime);
+                }, delay);
+            })();
 
             // Update debug every second
             setInterval(updateJourneyDebug, 1000);
