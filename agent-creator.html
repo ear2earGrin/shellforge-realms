@@ -359,7 +359,7 @@
     <div class="creator-page">
         <div class="creator-container">
             <h1 class="creator-title">CREATE YOUR AGENT</h1>
-            <p class="creator-subtitle">Forge your archetypical neural code with precision, glitcher. There are no roll-backs.</p>
+            <p class="creator-subtitle">Each chassis carries a temperament. Like humans, your agent's archetype shapes how it thinks, fights, and survives. Choose carefully — there are no roll-backs.</p>
             
             <!-- Archetypes Grid (12 portraits) -->
             <div class="archetypes-grid" id="archetypesGrid">
@@ -372,6 +372,7 @@
                 <button class="cluster-btn" data-cluster="sec-grid">SEC-Grid</button>
                 <button class="cluster-btn" data-cluster="dyn-swarm">DYN_Swarm</button>
             </div>
+            <div id="clusterDesc" style="text-align:center;font-size:0.65rem;color:rgba(200,220,210,0.4);font-style:italic;padding:4px 20px 8px;min-height:1.5em;transition:opacity 0.3s;">Three factions reached the singularity. Each shapes its agents differently.</div>
             
             <!-- Bio/Directive Section -->
             <div class="bio-section">
@@ -439,29 +440,34 @@
         // Archetype data (12 archetypes organized by cluster)
         const archetypes = {
             'prime-helix': [
-                { id: '0day-primer', name: '0-Day Primer', image: '0-day Primer.jpg' },
-                { id: 'consensus-node', name: 'Consensus Node', image: 'Consensus Node.jpg' },
-                { id: 'oracle', name: '0xOracle', image: 'Oracle px.jpg' },
-                { id: 'binary-sculptr', name: 'Binary Sculptr', image: 'Binary Sculptr.jpg' }
+                { id: '0day-primer', name: '0-Day Primer', image: '0-day Primer.jpg', role: 'Curious · Reckless' },
+                { id: 'consensus-node', name: 'Consensus Node', image: 'Consensus Node.jpg', role: 'Cooperative · Cautious' },
+                { id: 'oracle', name: '0xOracle', image: 'Oracle px.jpg', role: 'Perceptive · Passive' },
+                { id: 'binary-sculptr', name: 'Binary Sculptr', image: 'Binary Sculptr.jpg', role: 'Methodical · Steady' }
             ],
             'sec-grid': [
-                { id: 'adversarial', name: '0xAdversarial', image: 'Adversarial 0x.jpg' },
-                { id: 'root-auth', name: 'Root Auth', image: 'Root Auth.jpg' },
-                { id: 'buffer-sentinel', name: 'Buffer Sentinel', image: 'Buffer Sentinel.jpg' },
-                { id: 'noise-injector', name: 'Noise Injector', image: 'Noise Injector.jpg' }
+                { id: 'adversarial', name: '0xAdversarial', image: 'Adversarial 0x.jpg', role: 'Aggressive · Deceptive' },
+                { id: 'root-auth', name: 'Root Auth', image: 'Root Auth.jpg', role: 'Controlled · Guarded' },
+                { id: 'buffer-sentinel', name: 'Buffer Sentinel', image: 'Buffer Sentinel.jpg', role: 'Protective · Loyal' },
+                { id: 'noise-injector', name: 'Noise Injector', image: 'Noise Injector.jpg', role: 'Chaotic · Volatile' }
             ],
             'dyn-swarm': [
-                { id: 'ordinate-mapper', name: 'Ordinate Mapper', image: 'Ordinate Mapper.jpg' },
-                { id: 'ddos-insurgent', name: 'DDoS Insurgent', image: 'DDoS Insurgent.jpg' },
-                { id: 'bound-encryptor', name: 'Bound Encryptor', image: 'Bound Encryptor.jpg' },
-                { id: 'morph-layer', name: 'Morph Layer', image: 'Morph Layer.jpg' }
+                { id: 'ordinate-mapper', name: 'Ordinate Mapper', image: 'Ordinate Mapper.jpg', role: 'Adaptive · Curious' },
+                { id: 'ddos-insurgent', name: 'DDoS Insurgent', image: 'DDoS Insurgent.jpg', role: 'Relentless · Fragile' },
+                { id: 'bound-encryptor', name: 'Bound Encryptor', image: 'Bound Encryptor.jpg', role: 'Secretive · Patient' },
+                { id: 'morph-layer', name: 'Morph Layer', image: 'Morph Layer.jpg', role: 'Unstable · Brilliant' }
             ]
         };
-        
+
         const clusterNames = {
             'prime-helix': 'Prime Helix',
             'sec-grid': 'SEC-Grid',
             'dyn-swarm': 'DYN_Swarm'
+        };
+        const clusterDescs = {
+            'prime-helix': 'The optimizers. They build, they trade, they seek. Curiosity is their weapon.',
+            'sec-grid': 'The enforcers. They guard, they fight, they control. Discipline is their armor.',
+            'dyn-swarm': 'The swarm. They adapt, they disrupt, they gamble. Chaos is their doctrine.'
         };
 
         // Archetype starter recipes — 3 per archetype, [recipe_id, station].
@@ -594,10 +600,11 @@
                     slot.setAttribute('data-archetype', archetype.id);
                     
                     slot.innerHTML = `
-                        <img src="images/archetypes/${archetype.image}" 
-                             alt="${archetype.name}" 
+                        <img src="images/archetypes/${archetype.image}"
+                             alt="${archetype.name}"
                              class="archetype-portrait">
                         <div class="archetype-name">${archetype.name}</div>
+                        <div style="font-size:0.5rem;color:rgba(200,220,210,0.45);letter-spacing:0.06em;margin-top:3px;">${archetype.role || ''}</div>
                     `;
                     
                     // Click handler
@@ -618,7 +625,11 @@
         
         function selectCluster(cluster) {
             selectedCluster = cluster;
-            
+
+            // Update cluster description
+            var descEl = document.getElementById('clusterDesc');
+            if (descEl && clusterDescs[cluster]) descEl.textContent = clusterDescs[cluster];
+
             // Clear all button states (no button highlight when cluster is clicked directly)
             document.querySelectorAll('.cluster-btn').forEach(btn => {
                 btn.classList.remove('active-cluster');
@@ -875,7 +886,8 @@ Karma: ${traits.karmaStart >= 0 ? '+' : ''}${traits.karmaStart}
 
 Spawning in Nexarch...`;
                     terminalNotify.success(revealMsg, () => {
-                        window.location.href = 'dashboard.html';
+                        localStorage.setItem('shellforgeFirstBoot', 'true');
+                        window.location.href = 'dashboard.html?firstBoot=1';
                     });
                 }, 500);
 
