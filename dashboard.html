@@ -5906,16 +5906,10 @@
         if (agent.health <= 20) { healthBarEl.classList.add('critical'); healthStatEl.classList.add('critical'); }
         else if (agent.health <= 40) { healthBarEl.classList.add('low'); healthStatEl.classList.add('low'); }
 
-        // Coherence bar
+        // Coherence — bar removed, value shown on 3D Coherence Lock only
         var coherence = agent.coherence ?? 100;
-        document.getElementById('coherenceValue').textContent = `${coherence}/100`;
-        document.getElementById('coherenceBar').style.width = `${coherence}%`;
-        var cohBarEl = document.getElementById('coherenceBar');
-        var cohStatEl = cohBarEl.closest('.stat-bar');
-        cohBarEl.classList.remove('low', 'critical');
-        cohStatEl.classList.remove('low', 'critical');
-        if (coherence <= 20) { cohBarEl.classList.add('critical'); cohStatEl.classList.add('critical'); }
-        else if (coherence <= 40) { cohBarEl.classList.add('low'); cohStatEl.classList.add('low'); }
+        var cohValEl = document.getElementById('coherenceValue');
+        if (cohValEl) cohValEl.textContent = coherence + '/100';
         var dnaReadoutEl = document.getElementById('dnaReadout');
         var dnaCohEl = document.getElementById('dnaCoherenceVal');
         if (dnaCohEl) dnaCohEl.textContent = `${coherence}/100`;
