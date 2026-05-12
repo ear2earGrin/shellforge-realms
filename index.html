@@ -748,6 +748,8 @@
             .agent-pip-lg { width: 6px; height: 6px; }
         }
     </style>
+    <!-- Lore tooltip helper (location + action descriptions) -->
+    <script src="lore-tooltips.js"></script>
 </head>
 <body>
 
@@ -1373,7 +1375,15 @@
                     div.appendChild(mkSpan(null, 'color:'+tc+';', cleanDetail));
                 }
                 if (location) {
-                    div.appendChild(mkSpan(null, 'color:rgba(120,120,140,0.7);font-size:0.75em;', ' [' + location + ']'));
+                    var locWrap = mkSpan(null, 'color:rgba(120,120,140,0.7);font-size:0.75em;margin-left:6px;', ' [');
+                    var locTagEl = document.createElement('span');
+                    locTagEl.className = 'needs-loc-tip';
+                    locTagEl.dataset.tipKey = location;
+                    locTagEl.textContent = location;
+                    locWrap.appendChild(locTagEl);
+                    locWrap.appendChild(document.createTextNode(']'));
+                    div.appendChild(locWrap);
+                    if (window.LORE_TOOLTIPS) window.LORE_TOOLTIPS.attach(locTagEl, location, 'location');
                 }
                 feed.appendChild(div);
                 while (feed.children.length > 80) feed.removeChild(feed.firstChild);
@@ -1696,11 +1706,12 @@
                             +   '<div class="agent-bar bar-coherence"><div class="agent-bar-fill" style="width:' + co + '%;background:' + coColor + ';"></div></div>'
                             + '</div>';
 
+                        var locMetaHtml = '<span class="needs-loc-tip" data-tip-key="' + loc.replace(/"/g,'&quot;') + '">' + loc + '</span>' + (dead ? ' · terminated' : '');
                         row.innerHTML = ''
                             + '<div class="agent-pip-lg" style="background:' + col + ';box-shadow:0 0 6px ' + col + ';"></div>'
                             + '<div class="agent-info">'
                             +   '<div class="agent-row-name" style="color:' + col + ';">' + a.agent_name + '</div>'
-                            +   '<div class="agent-row-meta">' + (dead ? loc + ' · terminated' : loc) + '</div>'
+                            +   '<div class="agent-row-meta">' + locMetaHtml + '</div>'
                             + '</div>'
                             + barsHtml;
 
@@ -1713,6 +1724,8 @@
 
                         panel.appendChild(row);
                     });
+                    // Wire lore tooltips on the newly-rendered location text.
+                    if (window.LORE_TOOLTIPS) window.LORE_TOOLTIPS.wireAll(panel);
                 } catch(e) { console.warn('Agent status: failed', e); }
             }
 
