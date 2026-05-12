@@ -3430,6 +3430,8 @@
             cursor: default;
         }
     </style>
+    <!-- Lore tooltip helper (location + action descriptions) -->
+    <script src="lore-tooltips.js"></script>
 </head>
 <body>
     <canvas id="bgDotCanvas" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;"></canvas>
@@ -5940,9 +5942,16 @@
             document.getElementById('aggressionBar').style.width = (aggression * 10) + '%';
         }
 
-        // Update location badge
+        // Update location badge + wire the lore tooltip.
         const locationName = agent.location || 'Nexarch';
-        document.getElementById('currentLocation').textContent = locationName;
+        const locBadge = document.getElementById('currentLocation');
+        locBadge.textContent = locationName;  // wipes any prior tooltip child
+        if (window.LORE_TOOLTIPS && window.LORE_TOOLTIPS.LOCATION_LORE[locationName]) {
+            locBadge.classList.add('needs-loc-tip');
+            locBadge.dataset.tipKey = locationName;
+            delete locBadge.dataset.ltAttached; // force re-attach when location changes
+            window.LORE_TOOLTIPS.attach(locBadge, locationName, 'location');
+        }
 
         // Get current position (interpolated if traveling) - returns visual coords
         const currentVisualPos = getCurrentPosition(agent);
@@ -6409,10 +6418,12 @@
                     const sign = entry.karma_change > 0 ? '+' : '';
                     extra += ` <span style="color:#cc44ff">${sign}${entry.karma_change} karma</span>`;
                 }
-                const typeLabel = entry.action_type ? `<span class="ch-type">${entry.action_type}</span>` : '';
+                const typeLabel = entry.action_type ? `<span class="ch-type needs-action-tip" data-tip-key="${entry.action_type}">${entry.action_type}</span>` : '';
                 div.innerHTML = `<div class="ch-time">${when}</div><div class="ch-text">${typeLabel}${detail}${extra}</div>`;
                 log.appendChild(div);
             });
+            // Wire action-chip tooltips (and any location text wrapped inside chronicle).
+            if (window.LORE_TOOLTIPS) window.LORE_TOOLTIPS.wireAll(log);
         }
 
         function timeAgo(ts) {
@@ -7933,8 +7944,17 @@
                 const tooltip = document.createElement('div');
                 // Epoch Spike is at the top, so tooltip should open below
                 tooltip.className = key === 'epochSpike' ? 'wilderness-tooltip bottom' : 'wilderness-tooltip';
+                // Lore description line — pulled from shared LOCATION_LORE so it
+                // matches the live-feed tooltips. Renders only if lore is known.
+                const lore = (window.LORE_TOOLTIPS && window.LORE_TOOLTIPS.LOCATION_LORE)
+                    ? window.LORE_TOOLTIPS.LOCATION_LORE[location.name]
+                    : null;
+                const loreRow = lore
+                    ? `<div class="tooltip-lore" style="margin: 6px 0 8px; padding: 6px 8px; background: rgba(192,132,252,0.08); border-left: 2px solid rgba(192,132,252,0.6); font-size: 0.55rem; line-height: 1.45; color: rgba(220,220,230,0.85);">${lore.desc}</div>`
+                    : '';
                 tooltip.innerHTML = `
                     <div class="tooltip-header">${location.name}</div>
+                    ${loreRow}
                     <div class="tooltip-row">
                         <span class="tooltip-label">Distance:</span>
                         <span class="tooltip-value">${distanceKm} km</span>
