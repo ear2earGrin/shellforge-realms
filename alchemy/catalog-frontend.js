@@ -1026,6 +1026,16 @@ window.ALCHEMY_ITEMS = {
     "rarity": "Uncommon",
     "desc": "+5% reaction speed, -2% stability."
   },
+  "unknown_slag": {
+    "name": "Unknown Slag",
+    "kind": "junk",
+    "cat": "Junk",
+    "type": null,
+    "station": null,
+    "cluster_exclusive": "any",
+    "rarity": "Common",
+    "desc": "Worthless residue from a failed alchemical reaction. The crafting_attempts table records this when no recipe matched."
+  },
   "flow_sigil": {
     "name": "!Flow Sigil",
     "kind": "scroll",

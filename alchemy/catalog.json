@@ -2616,6 +2616,22 @@
     "craft_affinity": "hardware"
   },
   {
+    "id": "unknown_slag",
+    "kind": "junk",
+    "name": "Unknown Slag",
+    "rarity": "Common",
+    "icon": "images/items/unknown-slag.jpg",
+    "description": "Worthless residue from a failed alchemical reaction. The crafting_attempts table records this when no recipe matched.",
+    "type": null,
+    "station": null,
+    "cluster_exclusive": "any",
+    "effect_text": null,
+    "effect_modifiers": null,
+    "category": null,
+    "subcategory": null,
+    "craft_affinity": null
+  },
+  {
     "id": "flow_sigil",
     "kind": "scroll",
     "name": "!Flow Sigil",
