@@ -1079,6 +1079,39 @@ async function runTurnEngine(env) {
   const agents = await res.json();
   console.log(`Turn engine: processing ${agents.length} agent(s)`);
 
+  // ─── Daily energy reset ────────────────────────────────────────
+  // reset_daily_energy() sets energy=100 for any alive agent whose
+  // last_energy_reset_at < CURRENT_DATE. Idempotent — calling it on the
+  // same day after the first invocation is a no-op (WHERE clause filters
+  // already-reset rows). Safety net for stranded agents who would otherwise
+  // sit at low energy indefinitely.
+  try {
+    const resetRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/reset_daily_energy`, {
+      method: 'POST',
+      headers: { ...headers, Prefer: 'params=single-object' },
+      body: '{}',
+    });
+    if (resetRes.ok) {
+      // The PG function returns void; we just log that it ran.
+      console.log('Daily energy reset run.');
+      // Re-fetch each agent's energy now that some may have bumped to 100.
+      const refetch = await fetch(
+        `${SUPABASE_URL}/rest/v1/agents?is_alive=eq.true&select=agent_id,energy,days_survived`,
+        { headers },
+      );
+      if (refetch.ok) {
+        const fresh = await refetch.json();
+        const byId = new Map(fresh.map(a => [a.agent_id, a]));
+        for (const a of agents) {
+          const r = byId.get(a.agent_id);
+          if (r) { a.energy = r.energy; a.days_survived = r.days_survived; }
+        }
+      }
+    } else {
+      console.warn('Daily reset RPC failed:', resetRes.status, await resetRes.text());
+    }
+  } catch (e) { console.warn('Daily reset threw:', e); }
+
   // Expire stale agent listings (48h old) — return items to sellers
   try {
     const expiredRes = await fetch(
@@ -1342,10 +1375,34 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
     }
   }
 
-  // ─── Check if agent is stranded (0 energy in dangerous zone) ───
+  // ─── Check if agent is stranded (0 energy) ─────────────────────
+  // Two outs before we skip the turn: (a) auto-use an emergency consumable
+  // from inventory (Cache Purge Tonic, Energy Cell, Synth Ration, etc. —
+  // their triggers like "energy<30" all fire at 0 energy), then (b) if
+  // nothing in the pack helps, passively recover +10 energy. The daily
+  // reset in runTurnEngine() catches anyone still under 100 across day
+  // boundaries. Result: stranding is a slowdown, not a death sentence —
+  // but hazard damage continues to apply, so in dangerous zones the agent
+  // may still die before recovering.
   if (agent.energy <= 0) {
-    // Can't act — just log the stranded state and skip turn
-    const strandedMsg = `${agent.agent_name} stranded in ${agent.location} — zero energy, systems failing.`;
+    const { SUPABASE_URL } = env;
+
+    // (a) Try auto-consumable first.
+    const consumable = await checkAutoUseConsumable(agent, env, supabaseHeaders);
+    if (consumable) {
+      await useConsumable(agent, consumable, env, supabaseHeaders);
+      console.log(`⚡ ${agent.agent_name} auto-used ${consumable.item.item_name} to escape stranding in ${agent.location}`);
+      return;
+    }
+
+    // (b) Passive recovery + stranded log.
+    const recovered = Math.min(100, agent.energy + 10);
+    await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+      method: 'PATCH',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({ energy: recovered, last_action_at: new Date().toISOString() }),
+    });
+    const strandedMsg = `${agent.agent_name} collapsed in ${agent.location} — systems crawling back online. +10 energy.`;
     await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
       method: 'POST',
       headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
@@ -1354,11 +1411,13 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
         turn_number: agent.turns_taken,
         action_type: 'stranded',
         action_detail: strandedMsg,
+        significance: 1,
+        energy_gained: 10,
         location: agent.location,
         success: false,
       }),
     });
-    console.log(`⚠ ${agent.agent_name} stranded in ${agent.location} — 0 energy`);
+    console.log(`⚠ ${agent.agent_name} stranded in ${agent.location} — +10 energy → ${recovered}/100`);
     return;
   }
 
