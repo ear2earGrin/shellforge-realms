@@ -611,6 +611,18 @@
             border-bottom: 1px solid rgba(255,255,255,0.05);
         }
         .chronicle-entry:last-child { border-bottom: none; }
+        /* Significance tiers (set by JS as .ch-tier-N) */
+        .chronicle-entry.ch-tier-0       { opacity: 0.6; }
+        .chronicle-entry.ch-tier-0:hover { opacity: 0.95; }
+        .chronicle-entry.ch-tier-2       { background: rgba(74,222,128,0.04); }
+        .chronicle-entry.ch-tier-3       {
+            background: rgba(251,191,36,0.06);
+            border-left: 2px solid rgba(251,191,36,0.45);
+            padding-left: 8px;
+        }
+        .ch-tier-mark            { font-weight: 700; margin-right: 4px; }
+        .ch-tier-2 .ch-tier-mark { color: rgba(74,222,128,0.9); }
+        .ch-tier-3 .ch-tier-mark { color: rgba(251,191,36,0.95); text-shadow: 0 0 6px rgba(251,191,36,0.55); }
         .ch-time {
             font-family: var(--font-main); font-size: 0.58rem;
             color: var(--color-text-dim); white-space: nowrap; padding-top: 2px; flex-shrink: 0;
@@ -6242,6 +6254,18 @@
                 const div = document.createElement('div');
                 div.className = 'chronicle-entry';
                 div.dataset.action = entry.action_type || '';
+                // Significance tier — drives styling (dim mundane / glow legendary).
+                // Falls back to inferred tier for old rows that pre-date migration 010.
+                let tier = (typeof entry.significance === 'number') ? entry.significance : null;
+                if (tier == null) {
+                    const a = entry.action_type;
+                    tier = (a === 'death' || a === 'soulbound_resurrect') ? 3
+                         : (a === 'arena' || a === 'loot') ? 2
+                         : (a === 'rest' || a === 'move' || a === 'spawn') ? 0
+                         : 1;
+                }
+                tier = Math.max(0, Math.min(3, tier|0));
+                div.classList.add('ch-tier-' + tier);
                 let detail = entry.action_detail || entry.action_type;
                 if (_currentAgent && _currentAgent.name && detail.startsWith(_currentAgent.name)) {
                     detail = detail.slice(_currentAgent.name.length).replace(/^\s+/, '');
@@ -6255,8 +6279,9 @@
                     const sign = entry.karma_change > 0 ? '+' : '';
                     extra += ` <span style="color:#cc44ff">${sign}${entry.karma_change} karma</span>`;
                 }
+                const tierMark = tier >= 2 ? `<span class="ch-tier-mark">${tier === 3 ? '★' : '▸'}</span>` : '';
                 const typeLabel = entry.action_type ? `<span class="ch-type">${entry.action_type}</span>` : '';
-                div.innerHTML = `<div class="ch-time">${when}</div><div class="ch-text">${typeLabel}${detail}${extra}</div>`;
+                div.innerHTML = `<div class="ch-time">${when}</div><div class="ch-text">${tierMark}${typeLabel}${detail}${extra}</div>`;
                 log.appendChild(div);
             });
         }

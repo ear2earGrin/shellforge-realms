@@ -521,6 +521,117 @@ function getWeaponRange(itemId, itemName) {
   return 'melee'; // default for physical weapons
 }
 
+// ─── Event significance + Tier 0 templates ──────────────────────────────────
+// Every activity_log row is scored 0–3 by importance so the UI can style
+// "boring tick" vs "agent died" differently. Routine actions also pick from
+// a templated phrasing pool to avoid the "checked the market — nothing worth
+// buying. Resting." repetition (which was 3+ in a row in the live log).
+//
+//   0 — Mundane     rest / move-in-hub / empty explore-gather / passive idle
+//   1 — Notable     trade / use_item / hazard / event / gather-with-loot
+//   2 — Significant arena / craft-success / Rare loot / loot-corpse
+//   3 — Legendary   death / resurrection / Legendary loot
+//
+// Significance tier is also persisted in activity_log.significance (added in
+// migration 010). The frontend reads that column for styling.
+function scoreSignificance(action_type, ctx = {}) {
+    if (action_type === 'death' || action_type === 'soulbound_resurrect') return 3;
+    if (ctx.loot_rarity === 'Legendary') return 3;
+    if (ctx.loot_rarity === 'Rare')      return 2;
+    if (action_type === 'arena')         return 2;
+    if (action_type === 'loot')          return 2;
+    if (action_type === 'craft' && ctx.craft_success) return 2;
+    if (action_type === 'craft')         return 1;
+    if (action_type === 'use_item')      return 1;
+    if (action_type === 'trade')         return 1;
+    if (action_type === 'hazard')        return 1;
+    if (action_type === 'event')         return 1;
+    if (action_type === 'stranded')      return 1;
+    if (action_type === 'recipe_learned')return 1;
+    if (ctx.recipe_learned)              return 1;
+    if (ctx.loot_inserted)               return 1;
+    return 0; // rest, move-in-hub, empty gather/explore, spawn, whisper_received
+}
+
+// Tier 0 template pools — one entry chosen per write, with anti-repetition
+// within the worker invocation (Map keyed by agent_id, last 3 indices kept).
+// Placeholders: {name}, {location}.
+const EVENT_TEMPLATES = {
+    rest_market_idle: [
+        '{name} idles near the {location} market, watching offers drift by.',
+        '{name} dozes against a vending kiosk in {location}.',
+        '{name} leaves the {location} market empty-handed.',
+        '{name} stands in market noise, scanning ledgers.',
+        '{name} rests in {location}, listening to data static.',
+        '{name} loiters by the stalls — nothing worth a $SHELL.',
+        '{name} waits out the {location} crowd, energy climbing.',
+        '{name} crouches beside a vendor pylon, recharging.',
+    ],
+    rest_no_craft: [
+        '{name}\'s workbench is empty. Rests instead.',
+        '{name} sorts ingredients, finds nothing usable. Rests.',
+        '{name} stares at empty crucibles. Powers down.',
+        '{name} taps the cold forge. No craft today.',
+        '{name} idles by the workshop, fingers itching for ingredients.',
+        '{name} pockets the unfinished work and rests.',
+    ],
+    rest_camp: [
+        '{name} makes camp. Servos cooling.',
+        '{name} rests in the dim of {location}.',
+        '{name} powers down briefly under {location}\'s static.',
+        '{name} crouches in the shadows, recharging.',
+        '{name} sits, breathing in the {location} static.',
+        '{name} folds against a wall and idles.',
+        '{name} dims their core, conserving cycles.',
+        '{name} pauses in {location}, scanning for trouble.',
+    ],
+    move_local: [
+        '{name} drifts through {location}.',
+        '{name} wanders {location}\'s edges.',
+        '{name} cuts through {location}\'s back alleys.',
+        '{name} circles {location} once more.',
+        '{name} threads {location}\'s crowds.',
+        '{name} weaves between {location} signal-pylons.',
+    ],
+    explore_empty: [
+        '{name} explores {location} — finds little.',
+        '{name} scrapes through {location}\'s rubble. Empty hands.',
+        '{name} checks abandoned terminals in {location}. Nothing.',
+        '{name} pokes around {location}, comes up dry.',
+        '{name} sweeps a sector — silent.',
+        '{name} hunts through {location}\'s ruin, no luck.',
+    ],
+    gather_empty: [
+        '{name} salvages from {location}\'s wreckage. Slim pickings.',
+        '{name} scrapes for materials in {location}. Nothing today.',
+        '{name} digs through scrap — empty.',
+        '{name} works a debris field, dust only.',
+        '{name} sifts {location}\'s rubble. Comes up dry.',
+    ],
+};
+
+// Per-agent ring buffer of recently-picked template indices, scoped to the
+// worker invocation. Resets each cron run. Enough to dedupe within a batch.
+const _recentTemplateIdx = new Map();
+function pickTemplate(poolKey, vars = {}) {
+    const pool = EVENT_TEMPLATES[poolKey];
+    if (!pool || !pool.length) return vars.name ? `${vars.name} idles.` : '...';
+    const agentId = vars._agent_id || '_global';
+    const recentKey = agentId + '|' + poolKey;
+    const recent = _recentTemplateIdx.get(recentKey) || [];
+    let idx;
+    // Try up to 4 times to avoid a recent index; otherwise accept the dupe.
+    for (let attempt = 0; attempt < 4; attempt++) {
+        idx = Math.floor(Math.random() * pool.length);
+        if (!recent.includes(idx)) break;
+    }
+    const updated = [...recent, idx].slice(-3);
+    _recentTemplateIdx.set(recentKey, updated);
+    return pool[idx]
+        .replace(/\{name\}/g,     vars.name     || 'Agent')
+        .replace(/\{location\}/g, vars.location || 'the zone');
+}
+
 // ─── Consumable Item System ──────────────────────────────────────────────────
 // Defines what each consumable does and when an agent should auto-use it.
 //
@@ -1198,6 +1309,7 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
           turn_number: agent.turns_taken,
           action_type: 'soulbound_resurrect',
           action_detail: `${agent.agent_name} was saved from death — Blockchain Soulbound Key shattered, restoring 25 HP.`,
+          significance: 3,
           location: agent.location,
           success: true,
         }),
@@ -1218,6 +1330,7 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
           turn_number: agent.turns_taken,
           action_type: 'death',
           action_detail: deathDetail,
+          significance: 3,
           location: agent.location,
           success: false,
         }),
@@ -1687,7 +1800,8 @@ Respond with JSON only — no markdown, no commentary:
         agent_id:      agent.agent_id,
         turn_number:   newTurns,
         action_type:   'rest',
-        action_detail: `${agent.agent_name} checked the market — nothing worth buying. Resting.`,
+        action_detail: pickTemplate('rest_market_idle', { _agent_id: agent.agent_id, name: agent.agent_name, location: agent.location }),
+        significance:  0,
         energy_cost:   0,
         energy_gained: ACTION_ENERGY_GAINS.rest,
         shell_change:  0,
@@ -1722,7 +1836,8 @@ Respond with JSON only — no markdown, no commentary:
       headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
       body: JSON.stringify({
         agent_id: agent.agent_id, turn_number: newTurns, action_type: 'rest',
-        action_detail: `${agent.agent_name} tried to craft — no usable ingredients. Resting.`,
+        action_detail: pickTemplate('rest_no_craft', { _agent_id: agent.agent_id, name: agent.agent_name, location: agent.location }),
+        significance: 0,
         energy_cost: 0, energy_gained: ACTION_ENERGY_GAINS.rest,
         shell_change: 0, karma_change: 0, health_change: 0,
         location: agent.location, success: false,
@@ -1760,7 +1875,9 @@ Respond with JSON only — no markdown, no commentary:
         headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
         body: JSON.stringify({
           agent_id: agent.agent_id, turn_number: newTurns, action_type: 'rest',
-          action_detail: campDetail, energy_cost: 0, energy_gained: 10,
+          action_detail: pickTemplate('rest_camp', { _agent_id: agent.agent_id, name: agent.agent_name, location: agent.location }),
+          significance: 0,
+          energy_cost: 0, energy_gained: 10,
           shell_change: 0, karma_change: 0, health_change: 0,
           location: agent.location, success: false,
         }),
@@ -2032,13 +2149,29 @@ Respond with JSON only — no markdown, no commentary:
   }
 
   // Write activity_log entry
-  // Only claim "Found: X" if the inventory insert actually succeeded
+  // Only claim "Found: X" if the inventory insert actually succeeded.
+  // For empty explore/gather (no loot, no recipe), swap Haiku's repetitive
+  // detail for a Tier 0 templated phrasing so the live feed stops looking
+  // monotonous. With loot/recipe we keep the Haiku narrative as the lead.
   const discoveryText = recipeLearned ? ` Learned recipe: ${recipeLearned.name}.` : '';
+  const lootText      = (lootInserted && lootDrop) ? ` Found: ${lootDrop.name}.` : '';
+  let baseDetail = decision.detail;
+  if ((action === 'explore' || action === 'gather') && !lootInserted && !recipeLearned) {
+    const poolKey = action === 'explore' ? 'explore_empty' : 'gather_empty';
+    baseDetail = pickTemplate(poolKey, { _agent_id: agent.agent_id, name: agent.agent_name, location: agent.location });
+  }
+  const lootRarity = (lootDrop && lootDrop.rarity) ? lootDrop.rarity : null;
+  const significance = scoreSignificance(action, {
+      loot_inserted: lootInserted,
+      loot_rarity:   lootRarity,
+      recipe_learned: !!recipeLearned,
+  });
   const logEntry = {
     agent_id: agent.agent_id,
     turn_number: newTurns,
     action_type: action,
-    action_detail: decision.detail + (lootInserted && lootDrop ? ` Found: ${lootDrop.name}.` : '') + discoveryText,
+    action_detail: baseDetail + lootText + discoveryText,
+    significance,
     energy_cost: energyCost,
     energy_gained: energyGain,
     shell_change: shellChange,
@@ -2315,6 +2448,7 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
           turn_number: loser.turns_taken,
           action_type: 'soulbound_resurrect',
           action_detail: `${loser.agent_name} was saved from death — Blockchain Soulbound Key shattered, restoring 25 HP.`,
+          significance: 3,
           location: loser.location,
           success: true,
         }),
@@ -2392,6 +2526,7 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
       turn_number:  winner.turns_taken + 1,
       action_type:  'arena',
       action_detail: winnerDetail,
+      significance: 2,
       energy_cost:  20,
       energy_gained: 0,
       shell_change: winnerShellGain,
@@ -2414,6 +2549,7 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
       action_detail: loserIsAlive
         ? `${loser.agent_name} lost to ${winner.agent_name} in ${totalRounds} rounds. HP now ${loserHP}.`
         : deathNarrative,
+      significance: loserIsAlive ? 2 : 3,
       energy_cost:  20,
       energy_gained: 0,
       shell_change: loserShellDelta,
@@ -3225,6 +3361,7 @@ async function processDeathLoot(agent, env, supabaseHeaders, winner = null) {
           turn_number: 0,
           action_type: 'loot',
           action_detail: `${winner.agent_name} looted ${toWinner.length} common item(s) from ${agent.agent_name}'s corpse.`,
+          significance: 2,
           energy_cost: 0, energy_gained: 0, shell_change: 0,
           karma_change: 0, health_change: 0,
           location: agent.location, success: true,
@@ -3599,6 +3736,7 @@ Respond JSON only: {"pick":<index>,"reason":"<5 words max>"}`;
       turn_number: newTurns,
       action_type: 'craft',
       action_detail: detail,
+      significance: scoreSignificance('craft', { craft_success: success }),
       energy_cost: energyCost,
       energy_gained: 0,
       shell_change: 0,

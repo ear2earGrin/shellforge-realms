@@ -452,6 +452,20 @@
         .feed-time { color: rgba(74,222,128,0.28); font-size: 0.58rem; margin-right: 5px; }
         @keyframes feedIn { from { opacity:0; transform:translateX(-5px); } to { opacity:1; transform:translateX(0); } }
         .feed-line.new-entry { animation: feedIn 0.35s ease; }
+
+        /* ── Significance tiers ──
+           0 — Mundane     dim, no marker
+           1 — Notable     default, no marker
+           2 — Significant slight glow + ▸ marker
+           3 — Legendary   strong glow + ★ marker (death/arena classes win if also matched) */
+        .feed-line.feed-tier-0       { opacity: 0.55; }
+        .feed-line.feed-tier-0:hover { opacity: 0.85; }
+        .feed-line.feed-tier-2       { background: rgba(74,222,128,0.04); }
+        .feed-line.feed-tier-3       { background: rgba(251,191,36,0.06); border-left: 2px solid rgba(251,191,36,0.45); padding-left: 8px; }
+        .feed-tier-mark              { font-weight: 700; margin-right: 4px; }
+        .feed-line.feed-tier-2 .feed-tier-mark { color: rgba(74,222,128,0.85); }
+        .feed-line.feed-tier-3 .feed-tier-mark { color: rgba(251,191,36,0.95); text-shadow: 0 0 6px rgba(251,191,36,0.5); }
+
         .feed-line.feed-arena {
             background: rgba(255, 140, 0, 0.06);
             border-left: 2px solid rgba(255, 140, 0, 0.5);
@@ -1340,20 +1354,36 @@
                 return 'neutral';
             }
 
-            function renderLine(agentName, actionType, detail, location, timestamp, animate) {
+            // Significance tier (0=mundane, 1=notable, 2=significant, 3=legendary).
+            // Comes from activity_log.significance when present; otherwise inferred
+            // from action_type so old rows degrade gracefully.
+            function inferTier(actionType) {
+                if (actionType === 'death' || actionType === 'soulbound_resurrect') return 3;
+                if (actionType === 'arena' || actionType === 'loot') return 2;
+                if (actionType === 'rest'  || actionType === 'move' || actionType === 'spawn') return 0;
+                return 1;
+            }
+            var TIER_PREFIX = { 0: '', 1: '', 2: '▸', 3: '★' };
+
+            function renderLine(agentName, actionType, detail, location, timestamp, animate, significance) {
                 var col = AGENT_COLORS[agentName] || DEFAULT_COLOR;
                 var icon = ACTION_ICONS[actionType] || '›';
                 var cleanDetail = detail;
                 if (cleanDetail && cleanDetail.toLowerCase().startsWith(agentName.toLowerCase())) {
                     cleanDetail = cleanDetail.slice(agentName.length).replace(/^\s+/, '');
                 }
+                var tier = (significance == null) ? inferTier(actionType) : Math.max(0, Math.min(3, significance|0));
                 var isDeath = actionType === 'death' || /died|death|killed|succumbed|terminated|fell in the arena|was slain/i.test(cleanDetail);
                 var isArena = !isDeath && (actionType === 'arena' || /arena|defeated.*in/i.test(cleanDetail));
                 var cls = isDeath ? 'death' : classifyText(cleanDetail);
                 var tc = cls==='death'?'#f43f5e':isArena?'#ff8c00':cls==='good'?'#4ade80':cls==='bad'?'#fb923c':'rgba(200,200,200,0.82)';
                 var locTag = location ? '<span style="color:rgba(120,120,140,0.7);font-size:0.75em;"> [' + location + ']</span>' : '';
+                var tierPrefix = TIER_PREFIX[tier] || '';
                 var div = document.createElement('div');
-                div.className = 'feed-line' + (animate ? ' new-entry' : '') + (isDeath ? ' feed-death' : '') + (isArena ? ' feed-arena' : '');
+                div.className = 'feed-line feed-tier-' + tier
+                    + (animate ? ' new-entry' : '')
+                    + (isDeath ? ' feed-death' : '')
+                    + (isArena ? ' feed-arena' : '');
                 if (isDeath) {
                     div.innerHTML = '<span class="feed-time">' + formatTime(timestamp) + '</span>'
                         + '<span class="feed-prefix" style="color:#f43f5e;">☠</span>'
@@ -1362,6 +1392,7 @@
                         + locTag;
                 } else {
                     div.innerHTML = '<span class="feed-time">' + formatTime(timestamp) + '</span>'
+                        + (tierPrefix ? '<span class="feed-tier-mark">' + tierPrefix + '</span>' : '')
                         + '<span class="feed-prefix">' + icon + '</span>'
                         + '<span style="color:'+col+';font-weight:500;">' + agentName + '</span> '
                         + '<span style="color:'+tc+';">' + cleanDetail + '</span>'
@@ -1470,12 +1501,13 @@
                     var name = agentCache[row.agent_id] || 'Unknown';
                     var detail = row.action_detail || row.action_type;
                     var location = row.location || '';
+                    var sig = (typeof row.significance === 'number') ? row.significance : null;
                     if (initial) {
                         setTimeout(function() {
-                            renderLine(name, row.action_type, detail, location, row.timestamp, true);
+                            renderLine(name, row.action_type, detail, location, row.timestamp, true, sig);
                         }, idx * 60);
                     } else {
-                        renderLine(name, row.action_type, detail, location, row.timestamp, true);
+                        renderLine(name, row.action_type, detail, location, row.timestamp, true, sig);
                     }
                 });
                 if (rows.length) {
@@ -1487,7 +1519,7 @@
             async function loadActivity(initial) {
                 // Fast path: load activity_log and render IMMEDIATELY.
                 try {
-                    var query = 'select=agent_id,action_type,action_detail,location,timestamp&order=timestamp.desc&limit=' + (initial ? 40 : 10);
+                    var query = 'select=agent_id,action_type,action_detail,location,timestamp,significance&order=timestamp.desc&limit=' + (initial ? 40 : 10);
                     if (lastSeenTime && !initial) {
                         query += '&timestamp=gt.' + lastSeenTime;
                     }
