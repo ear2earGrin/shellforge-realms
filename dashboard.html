@@ -6623,13 +6623,16 @@
             // Visual reveal
             card.classList.add('opened');
             const lookup = (id) => (window.ALCHEMY_ITEMS && window.ALCHEMY_ITEMS[id]) || (window.ALCHEMY_INGREDIENTS && window.ALCHEMY_INGREDIENTS[id]) || null;
+            const escAttr = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
             target.innerHTML = contents.map(c => {
                 const meta = lookup(c.item_id);
                 const name = meta ? meta.name : c.item_id;
                 const qty  = c.quantity > 1 ? ' ×' + c.quantity : '';
-                return '<div>+ ' + name + qty + '</div>';
+                return '<div>+ <span class="needs-item-tip" data-tip-key="' + escAttr(c.item_id) + '">' + escAttr(name) + '</span>' + qty + '</div>';
             }).join('');
             card.querySelector('.open-hint').textContent = '✓ COLLECTED';
+            // Wire item tooltips on the freshly-rendered chest contents.
+            if (window.LORE_TOOLTIPS) window.LORE_TOOLTIPS.wireAll(target);
 
             // Grant items + mark opened (in parallel)
             await Promise.all([
@@ -8883,6 +8886,8 @@
             html += '</div>';
 
             body.innerHTML = html;
+            // Wire item tooltips on every .market-item-name we just rendered.
+            if (window.LORE_TOOLTIPS) window.LORE_TOOLTIPS.wireAll(body);
         }
 
         function renderMarketItemsList(shell) {
@@ -8954,7 +8959,7 @@
                     : emoji;
                 html += '<div class="market-item-icon rarity-' + rarity + '">' + iconHtml + '</div>';
                 html += '<div class="market-item-info">';
-                html += '<div class="market-item-name" style="color:' + rarityColor + ';">' + escInvAttr(item.item_name) + '</div>';
+                html += '<div class="market-item-name needs-item-tip" data-tip-key="' + escInvAttr(item.item_id || item.item_name) + '" style="color:' + rarityColor + ';">' + escInvAttr(item.item_name) + '</div>';
                 html += '<div class="market-item-meta">';
                 html += '<span class="mtype">' + escInvAttr(item.item_type || '') + '</span>';
                 html += '<span class="mseller">' + sellerLabel + '</span>';
@@ -9009,7 +9014,7 @@
                     : emoji;
                 html += '<div class="market-item-icon rarity-' + rarity + '">' + iconHtml + '</div>';
                 html += '<div class="market-item-info">';
-                html += '<div class="market-item-name" style="color:' + rarityColor + ';">' + escInvAttr(item.item_name) + '</div>';
+                html += '<div class="market-item-name needs-item-tip" data-tip-key="' + escInvAttr(item.item_id || item.item_name) + '" style="color:' + rarityColor + ';">' + escInvAttr(item.item_name) + '</div>';
                 html += '<div class="market-item-meta">';
                 html += '<span class="mtype">' + escInvAttr(item.item_type) + '</span>';
                 html += '<span class="mstock ' + stockClass + '">' + (item.stock > 0 ? item.stock + ' in stock' : 'SOLD OUT') + '</span>';
@@ -9059,7 +9064,7 @@
                     : emoji;
                 html += '<div class="market-item-icon rarity-' + rarity + '">' + iconHtml + '</div>';
                 html += '<div class="market-item-info">';
-                html += '<div class="market-item-name" style="color:' + rarityColor + ';">' + escInvAttr(item.item_name) + '</div>';
+                html += '<div class="market-item-name needs-item-tip" data-tip-key="' + escInvAttr(item.item_id || item.item_name) + '" style="color:' + rarityColor + ';">' + escInvAttr(item.item_name) + '</div>';
                 html += '<div class="market-item-meta">';
                 html += '<span class="mtype">' + escInvAttr(item.item_type || '') + '</span>';
                 if (item.seller_name) html += '<span class="mseller">by ' + escInvAttr(item.seller_name) + '</span>';
