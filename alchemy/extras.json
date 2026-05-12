@@ -244,6 +244,12 @@
     "effect_modifiers": [
       { "kind": "buff", "effect": "next_attack_echo", "magnitude": 0.50, "duration": 1, "scope": "on_use", "target": "self" }
     ]
+  },
+
+  { "_section": "── System / fallback items ──" },
+  { "id": "unknown_slag", "kind": "junk", "name": "Unknown Slag", "rarity": "Common", "icon": "images/items/unknown-slag.jpg",
+    "description": "Worthless residue from a failed alchemical reaction. The crafting_attempts table records this when no recipe matched.",
+    "effect_text": null
   }
 ]
 
