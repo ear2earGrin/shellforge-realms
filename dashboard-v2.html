@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1200">
+<title>Shellforge — World Map (v2 preview)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   Design tokens — sourced from style.css :root
+   ============================================================ */
+:root{
+  --color-bg:#0a0a0f;
+  --color-bg-alt:#12121a;
+  --color-primary:#4ade80;
+  --color-secondary:#f87171;
+  --color-accent:#7b2cbf;
+  --color-text:#e0e0e0;
+  --color-text-dim:#888;
+  --color-amber:#ffaa00;
+  --color-gold:#ffcc33;
+  --color-danger:#ff3366;
+  --color-whisper:#ff0044;
+  --color-rumor:#c77dff;
+  --font-main:'IBM Plex Mono',monospace;
+  --font-title:'Orbitron','IBM Plex Mono',monospace;
+  --border-dim:rgba(74,222,128,0.15);
+  --border-bright:rgba(74,222,128,0.35);
+  --panel-bg:rgba(10,10,15,0.85);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:var(--font-main);
+  background:var(--color-bg);
+  color:var(--color-text);
+  font-size:12px;
+  line-height:1.5;
+}
+/* CRT scanline overlay */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:1000;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,0.18) 0px,rgba(0,0,0,0.18) 1px,transparent 1px,transparent 3px);
+  mix-blend-mode:multiply;opacity:.5;
+}
+
+.app{display:grid;grid-template-rows:50px 1fr;height:100vh}
+
+/* ============ TOP BAR ============ */
+.topbar{
+  display:grid;
+  grid-template-columns:300px 1fr 320px;
+  border-bottom:1px solid var(--border-dim);
+  background:linear-gradient(to bottom,#0F0F18,#0A0A12);
+  position:relative;
+}
+.topbar::after{
+  content:'';position:absolute;left:0;right:0;bottom:-1px;height:1px;
+  background:linear-gradient(90deg,transparent,var(--color-primary),transparent);
+  opacity:.4;
+}
+.brand{display:flex;align-items:center;gap:10px;padding:0 18px;border-right:1px solid var(--border-dim)}
+.brand-mark{
+  width:18px;height:18px;border:1px solid var(--color-primary);
+  transform:rotate(45deg);position:relative;box-shadow:0 0 8px rgba(74,222,128,0.3);
+}
+.brand-mark::after{
+  content:'';position:absolute;inset:3px;background:var(--color-primary);
+  box-shadow:0 0 6px var(--color-primary);
+}
+.brand-name{font-family:var(--font-title);font-size:12px;letter-spacing:.25em;color:var(--color-primary);font-weight:700}
+.brand-name .realms{color:var(--color-text);letter-spacing:.18em;font-weight:400}
+.version-tag{font-size:8px;color:var(--color-text-dim);letter-spacing:.15em;margin-left:auto}
+
+.location-bar{
+  display:flex;align-items:center;justify-content:center;gap:12px;
+  font-size:10px;color:var(--color-text-dim);letter-spacing:.18em;text-transform:uppercase;
+}
+.location-bar .pip{color:var(--color-primary);text-shadow:0 0 8px var(--color-primary)}
+.location-bar .sep{color:rgba(255,255,255,0.15)}
+.location-bar b{color:var(--color-text);font-weight:500}
+
+.controls{display:flex;align-items:center;justify-content:flex-end;padding:0 18px;gap:10px;border-left:1px solid var(--border-dim)}
+.speed-group{display:flex;align-items:center;border:1px solid var(--border-dim);border-radius:3px;overflow:hidden}
+.speed-btn{
+  background:transparent;border:none;border-right:1px solid var(--border-dim);
+  color:var(--color-text-dim);font-family:inherit;font-size:9px;letter-spacing:.12em;
+  padding:6px 10px;cursor:pointer;transition:all .15s;
+}
+.speed-btn:last-child{border-right:none}
+.speed-btn:hover{color:var(--color-text);background:rgba(74,222,128,0.06)}
+.speed-btn.active{color:var(--color-primary);background:rgba(74,222,128,0.1);text-shadow:0 0 6px rgba(74,222,128,0.5)}
+.ghost-id{color:var(--color-text-dim);font-size:10px;display:flex;align-items:center;gap:6px;margin-left:14px}
+.ghost-id::before{
+  content:'';width:6px;height:6px;border-radius:50%;background:var(--color-primary);
+  box-shadow:0 0 6px var(--color-primary);animation:pulse 2s infinite;
+}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ============ MAIN LAYOUT ============ */
+.main{display:grid;grid-template-columns:300px 1fr 320px;height:calc(100vh - 50px);min-height:0}
+
+/* ============ LEFT: AGENT ============ */
+.col-left{
+  border-right:1px solid var(--border-dim);background:var(--color-bg-alt);
+  display:flex;flex-direction:column;min-height:0;
+}
+.agent-scroll{padding:18px;overflow-y:auto;flex:1;min-height:0;scrollbar-width:thin;scrollbar-color:var(--border-bright) transparent}
+.agent-scroll::-webkit-scrollbar{width:5px}
+.agent-scroll::-webkit-scrollbar-thumb{background:var(--border-bright)}
+
+.portrait-wrap{display:flex;flex-direction:column;align-items:center;margin-bottom:16px}
+.portrait-ring{
+  width:140px;height:140px;border-radius:50%;position:relative;
+  padding:4px;background:radial-gradient(circle,rgba(74,222,128,0.15),transparent 70%);
+}
+.portrait-ring::before{
+  content:'';position:absolute;inset:0;border-radius:50%;
+  border:1px solid var(--color-primary);opacity:.6;
+  animation:haloSlow 8s linear infinite;
+}
+@keyframes haloSlow{
+  0%{transform:rotate(0deg);box-shadow:0 0 14px rgba(74,222,128,0.25)}
+  50%{box-shadow:0 0 24px rgba(74,222,128,0.45)}
+  100%{transform:rotate(360deg);box-shadow:0 0 14px rgba(74,222,128,0.25)}
+}
+.portrait-ring::after{
+  content:'';position:absolute;inset:-4px;border-radius:50%;
+  border:1px dashed rgba(74,222,128,0.25);
+  animation:haloSlow 22s linear infinite reverse;
+}
+.portrait-inner{
+  width:100%;height:100%;border-radius:50%;overflow:hidden;
+  border:1px solid var(--border-bright);background:#000;
+}
+.portrait-inner img{width:100%;height:100%;object-fit:cover;filter:saturate(1.05) contrast(1.05)}
+
+.agent-name{
+  font-family:var(--font-title);font-size:22px;color:var(--color-primary);
+  letter-spacing:.15em;margin-top:14px;text-shadow:0 0 10px rgba(74,222,128,0.35);font-weight:900;
+}
+.agent-cluster{
+  font-size:9px;color:var(--color-text-dim);letter-spacing:.22em;margin-top:4px;
+  position:relative;padding-left:10px;text-transform:uppercase;
+}
+.agent-cluster::before{
+  content:'';position:absolute;left:0;top:50%;width:5px;height:1px;background:var(--color-primary);
+}
+.agent-arch-sub{font-size:9px;color:var(--color-text-dim);font-style:italic;margin-top:3px;letter-spacing:.04em}
+
+.section-head{
+  font-size:9px;color:var(--color-primary);letter-spacing:.25em;
+  margin:18px 0 8px;display:flex;justify-content:space-between;align-items:center;
+  text-transform:uppercase;font-weight:600;
+  border-bottom:1px solid var(--border-dim);padding-bottom:5px;
+}
+.section-head .meta{color:rgba(255,255,255,0.25);font-size:8px}
+
+.equipped-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.slot{
+  aspect-ratio:1;border:1px solid var(--border-dim);background:rgba(0,0,0,0.4);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  position:relative;cursor:pointer;transition:all .15s;
+}
+.slot:hover{border-color:var(--border-bright);background:rgba(74,222,128,0.08)}
+.slot .icon{font-size:14px;color:var(--color-text-dim)}
+.slot.equipped .icon{color:var(--color-primary);text-shadow:0 0 4px rgba(74,222,128,0.5)}
+.slot.equipped{border-color:rgba(74,222,128,0.4)}
+.slot .lbl{
+  position:absolute;bottom:2px;font-size:6px;color:rgba(255,255,255,0.25);
+  letter-spacing:.1em;text-transform:uppercase;
+}
+.slot .x{color:rgba(255,255,255,0.15);font-size:11px;font-weight:300}
+
+.stat-bar-segmented{display:flex;gap:2px;height:10px}
+.stat-seg{flex:1;background:rgba(255,255,255,0.03);border:1px solid rgba(74,222,128,0.1)}
+.stat-seg.filled.energy{
+  background:linear-gradient(to top,rgba(74,222,128,0.6),var(--color-primary));
+  border-color:var(--color-primary);
+  box-shadow:0 0 4px rgba(74,222,128,0.4);
+}
+.stat-seg.filled.health{
+  background:linear-gradient(to top,rgba(248,113,113,0.6),var(--color-secondary));
+  border-color:var(--color-secondary);
+  box-shadow:0 0 4px rgba(248,113,113,0.4);
+}
+.stat-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;font-size:10px}
+.stat-row .lbl{color:var(--color-text-dim);letter-spacing:.12em;text-transform:uppercase;font-size:9px}
+.stat-row .val{color:var(--color-text);font-variant-numeric:tabular-nums}
+
+.effects{display:flex;flex-wrap:wrap;gap:5px}
+.chip{
+  font-size:9px;padding:3px 8px;border-radius:2px;letter-spacing:.05em;
+  border:1px solid currentColor;background:rgba(0,0,0,0.3);
+}
+.chip.danger{color:var(--color-danger)}
+.chip.warning{color:var(--color-amber)}
+.chip.green{color:var(--color-primary)}
+.chip.magenta{color:var(--color-rumor);border-color:#9d4edd}
+
+.thoughts{border-left:1px solid #9d4edd;padding:6px 0 6px 10px;margin-top:8px}
+.thought{font-size:10px;color:var(--color-text);margin-bottom:6px;font-style:italic;line-height:1.5}
+.thought:last-child{margin-bottom:0}
+.thought::before{content:'\201C';color:var(--color-rumor);margin-right:2px}
+.thought::after{content:'\201D';color:var(--color-rumor);margin-left:2px}
+
+.mood-line{font-size:11px;color:var(--color-text);margin-bottom:4px}
+.mood-line .mood{color:var(--color-amber);text-shadow:0 0 4px rgba(255,170,0,0.4)}
+
+.recap-btn{
+  padding:14px 18px;border-top:1px solid var(--border-dim);
+  background:rgba(74,222,128,0.04);cursor:pointer;transition:all .15s;
+  display:flex;align-items:center;gap:10px;
+}
+.recap-btn:hover{background:rgba(74,222,128,0.1)}
+.recap-icon-wrap{
+  width:32px;height:32px;border:1px solid #9d4edd;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--color-rumor);font-size:14px;
+  box-shadow:inset 0 0 8px rgba(157,78,221,0.2);
+}
+.recap-text{flex:1}
+.recap-title{font-size:10px;color:var(--color-text);letter-spacing:.12em;text-transform:uppercase;margin-bottom:2px;font-weight:500}
+.recap-sub{font-size:9px;color:var(--color-text-dim)}
+
+/* ============ CENTER: WORLD MAP ============ */
+.col-center{display:grid;grid-template-rows:1fr auto auto;min-height:0;background:var(--color-bg)}
+.map-wrap{position:relative;overflow:hidden;min-height:0;background:#000}
+
+.map-bg{
+  position:absolute;inset:0;
+  background-image:url('images/main map.png');
+  background-size:cover;
+  background-position:center;
+  filter:brightness(0.85) contrast(1.05);
+}
+.map-vignette{
+  position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse at center,transparent 30%,rgba(10,10,15,0.4) 80%,rgba(10,10,15,0.85) 100%),
+    linear-gradient(to bottom,rgba(10,10,15,0.3),transparent 20%,transparent 80%,rgba(10,10,15,0.4));
+}
+.map-grid-overlay{
+  position:absolute;inset:0;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(74,222,128,0.04) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(74,222,128,0.04) 1px,transparent 1px);
+  background-size:40px 40px;
+  mix-blend-mode:screen;opacity:.7;
+}
+
+.map-svg{position:absolute;inset:0;width:100%;height:100%}
+
+.map-label-tl{
+  position:absolute;top:14px;left:18px;
+  font-size:10px;color:var(--color-text-dim);letter-spacing:.18em;
+  text-transform:uppercase;font-family:var(--font-main);
+  background:rgba(10,10,15,0.7);padding:6px 10px;
+  border-left:2px solid var(--color-primary);z-index:5;
+}
+.map-label-tl b{color:var(--color-primary);font-family:var(--font-title);font-weight:700;letter-spacing:.15em}
+.map-coords{
+  position:absolute;top:14px;right:18px;
+  font-size:9px;color:var(--color-text-dim);letter-spacing:.1em;
+  font-variant-numeric:tabular-nums;text-align:right;
+  background:rgba(10,10,15,0.7);padding:6px 10px;border-right:2px solid var(--color-primary);z-index:5;
+}
+
+.coherence{
+  position:absolute;top:60px;right:18px;
+  width:200px;
+  border:1px solid var(--border-bright);
+  background:rgba(10,10,15,0.85);
+  backdrop-filter:blur(8px);
+  padding:10px 12px;z-index:5;
+}
+.coherence-head{
+  font-size:8px;color:var(--color-primary);letter-spacing:.22em;
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:8px;font-weight:600;
+}
+.coherence-head::after{
+  content:'';width:6px;height:6px;border-radius:50%;background:var(--color-primary);
+  box-shadow:0 0 6px var(--color-primary);animation:pulse 2s infinite;
+}
+.coherence-viz{
+  height:90px;position:relative;
+  background:linear-gradient(to bottom,transparent,rgba(74,222,128,0.05));
+}
+.coherence-viz svg{width:100%;height:100%}
+.coherence-val{
+  font-size:11px;color:var(--color-text);letter-spacing:.1em;
+  margin-top:6px;text-align:center;font-variant-numeric:tabular-nums;
+}
+.coherence-val b{color:var(--color-primary);font-weight:600}
+
+.weather{
+  position:absolute;bottom:14px;left:18px;z-index:5;
+  font-size:9px;color:var(--color-primary);letter-spacing:.15em;opacity:.85;
+  display:flex;align-items:center;gap:8px;
+  background:rgba(10,10,15,0.7);padding:5px 10px;
+}
+.weather::before{
+  content:'';width:6px;height:6px;background:var(--color-primary);border-radius:50%;
+  box-shadow:0 0 4px var(--color-primary);
+}
+
+.legend{
+  position:absolute;bottom:14px;right:18px;z-index:5;
+  font-size:8px;color:var(--color-text-dim);letter-spacing:.12em;
+  display:flex;gap:14px;background:rgba(10,10,15,0.7);padding:5px 10px;
+}
+.legend-item{display:flex;align-items:center;gap:5px}
+.legend-dot{width:6px;height:6px;border-radius:50%}
+
+.rain{position:absolute;inset:0;pointer-events:none;overflow:hidden;opacity:.25}
+.rain span{
+  position:absolute;width:1px;height:22px;
+  background:linear-gradient(to bottom,transparent,var(--color-primary));
+  animation:rainfall linear infinite;transform:rotate(14deg);
+}
+@keyframes rainfall{0%{transform:translateY(-40px) rotate(14deg);opacity:0}10%{opacity:.5}90%{opacity:.5}100%{transform:translateY(calc(100vh + 40px)) rotate(14deg);opacity:0}}
+
+/* clickable region hotspots */
+.region{cursor:pointer}
+.region-hotspot{
+  fill:rgba(74,222,128,0.04);
+  stroke:rgba(74,222,128,0.25);
+  stroke-width:1;stroke-dasharray:4 3;
+  transition:all .25s;
+}
+.region:hover .region-hotspot{
+  fill:rgba(74,222,128,0.15);
+  stroke:var(--color-primary);stroke-width:1.5;
+  filter:drop-shadow(0 0 8px rgba(74,222,128,0.5));
+}
+.region:hover .region-label{
+  fill:var(--color-primary);
+  filter:drop-shadow(0 0 5px rgba(74,222,128,0.6));
+}
+.region.danger .region-hotspot{stroke:rgba(255,51,102,0.35)}
+.region.danger:hover .region-hotspot{
+  fill:rgba(255,51,102,0.15);stroke:var(--color-danger);
+  filter:drop-shadow(0 0 8px rgba(255,51,102,0.5));
+}
+.region.danger:hover .region-label{fill:var(--color-danger)}
+
+.you-ring{
+  fill:none;stroke:var(--color-primary);stroke-width:1.5;
+  stroke-dasharray:4 4;animation:youPulse 2.5s ease-in-out infinite;
+}
+@keyframes youPulse{
+  0%,100%{r:3;opacity:.7}
+  50%{r:4.2;opacity:.3}
+}
+
+.region-tooltip{
+  position:absolute;pointer-events:none;
+  background:rgba(10,10,15,0.96);
+  border:1px solid var(--border-bright);
+  padding:10px 14px;font-size:10px;
+  color:var(--color-text);letter-spacing:.05em;
+  display:none;z-index:50;
+  box-shadow:0 0 20px rgba(74,222,128,0.2);
+  min-width:200px;
+}
+.region-tooltip.show{display:block}
+.region-tooltip .tt-title{
+  color:var(--color-primary);font-size:12px;font-weight:600;
+  letter-spacing:.15em;margin-bottom:6px;font-family:var(--font-title);
+}
+.region-tooltip .tt-row{
+  display:flex;justify-content:space-between;
+  font-size:9px;color:var(--color-text-dim);margin:3px 0;letter-spacing:.05em;
+}
+.region-tooltip .tt-row b{color:var(--color-text);font-weight:500}
+.region-tooltip .tt-hint{
+  margin-top:8px;padding-top:6px;border-top:1px solid var(--border-dim);
+  font-size:9px;color:var(--color-primary);letter-spacing:.1em;
+}
+
+/* ============ GHOST ACTIONS STRIP ============ */
+.actions{
+  border-top:1px solid var(--border-dim);
+  background:linear-gradient(to bottom,#0E0E16,#0A0A12);
+  padding:14px 18px;
+  display:grid;grid-template-columns:1fr auto;gap:18px;align-items:end;
+  position:relative;
+}
+.actions::before{
+  content:'';position:absolute;top:-1px;left:10%;right:10%;height:1px;
+  background:linear-gradient(90deg,transparent,#9d4edd,transparent);opacity:.5;
+}
+.whisper-block{display:flex;flex-direction:column;gap:6px;min-width:0}
+.whisper-label{
+  font-size:9px;color:var(--color-text-dim);letter-spacing:.22em;
+  display:flex;justify-content:space-between;align-items:center;text-transform:uppercase;
+}
+.whisper-label .left-side{display:flex;align-items:center;gap:8px}
+.whisper-label img{width:14px;height:14px;filter:drop-shadow(0 0 3px var(--color-whisper))}
+.whisper-label .quota{color:rgba(255,255,255,0.25)}
+.whisper-label .quota b{color:var(--color-whisper)}
+.whisper-input{
+  background:rgba(0,0,0,0.5);border:1px solid var(--border-dim);
+  color:var(--color-text);font-family:inherit;font-size:11px;
+  padding:10px 12px;outline:none;letter-spacing:.02em;transition:all .2s;
+  width:100%;
+}
+.whisper-input:focus{
+  border-color:var(--color-whisper);
+  box-shadow:0 0 0 1px rgba(255,0,68,0.3),0 0 12px rgba(255,0,68,0.15);
+}
+.whisper-input::placeholder{color:rgba(255,255,255,0.25);font-style:italic}
+
+.ghost-tools{display:flex;gap:6px}
+.tool-btn{
+  background:rgba(74,222,128,0.04);border:1px solid var(--border-dim);
+  color:var(--color-text-dim);font-family:inherit;font-size:9px;letter-spacing:.12em;
+  padding:8px 14px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  min-width:64px;transition:all .15s;position:relative;text-transform:uppercase;
+}
+.tool-btn:hover{
+  border-color:var(--border-bright);color:var(--color-primary);
+  background:rgba(74,222,128,0.1);
+  box-shadow:0 0 12px rgba(74,222,128,0.15);
+}
+.tool-btn .icon{font-size:16px;line-height:1;color:var(--color-primary)}
+.tool-btn:hover .icon{filter:drop-shadow(0 0 6px var(--color-primary))}
+.tool-btn .cost{position:absolute;top:2px;right:5px;font-size:7px;color:rgba(255,255,255,0.25)}
+.tool-btn.armed{
+  border-color:var(--color-primary);background:rgba(74,222,128,0.12);
+  color:var(--color-primary);
+}
+
+/* ============ BOTTOM ICON BAR — matches dashboard.html ============ */
+.icon-bar{
+  display:flex;align-items:center;justify-content:center;
+  gap:6px;padding:0 12px;height:78px;
+  background:transparent;border-top:1px solid rgba(74,222,128,0.08);
+}
+.icon-btn{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:6px 8px 5px;border-radius:8px;cursor:pointer;
+  border:1px solid transparent;background:transparent;
+  transition:all .25s ease;
+  color:rgba(200,230,224,0.5);position:relative;min-width:62px;
+  font-family:var(--font-main);
+}
+.icon-btn:hover{
+  background:rgba(74,222,128,0.06);
+  border-color:rgba(74,222,128,0.25);
+  color:var(--color-primary);
+  box-shadow:0 0 18px rgba(74,222,128,0.12);
+}
+.icon-btn.whisper-btn:hover{
+  background:rgba(255,0,68,0.06);
+  border-color:rgba(255,0,68,0.25);
+  color:var(--color-whisper);
+  box-shadow:0 0 18px rgba(255,0,68,0.12);
+}
+.icon-btn.active{
+  background:rgba(74,222,128,0.08);
+  border-color:rgba(74,222,128,0.4);
+  color:var(--color-primary);
+}
+.icon-btn .btn-icon{
+  width:42px;height:42px;
+  display:flex;align-items:center;justify-content:center;
+  filter:drop-shadow(0 0 3px rgba(74,222,128,0.25));
+  transition:filter .25s ease,transform .25s ease;
+}
+.icon-btn:hover .btn-icon{
+  filter:drop-shadow(0 0 10px rgba(74,222,128,0.6));
+  transform:scale(1.1);
+}
+.icon-btn.whisper-btn:hover .btn-icon{
+  filter:drop-shadow(0 0 10px rgba(255,0,68,0.6));
+}
+.icon-btn .btn-icon img{width:100%;height:100%;object-fit:contain}
+.icon-btn .btn-label{
+  font-family:var(--font-main);
+  font-size:0.52rem;letter-spacing:.14em;text-transform:uppercase;font-weight:500;
+}
+.icon-counter{
+  position:absolute;top:2px;right:8px;
+  background:var(--color-whisper);color:#000;
+  font-size:9px;font-weight:700;
+  padding:1px 5px;border-radius:8px;
+  box-shadow:0 0 6px rgba(255,0,68,0.5);
+}
+.icon-notif{
+  position:absolute;top:6px;right:14px;
+  width:6px;height:6px;border-radius:50%;background:var(--color-secondary);
+  box-shadow:0 0 4px var(--color-secondary);animation:pulse 1.5s infinite;
+}
+
+/* ============ RIGHT: FEEDS ============ */
+.col-right{
+  border-left:1px solid var(--border-dim);background:var(--color-bg-alt);
+  display:grid;grid-template-rows:auto 1fr auto;min-height:0;
+}
+.tabs{display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1px solid var(--border-dim)}
+.tab{
+  background:rgba(0,0,0,0.3);border:none;border-right:1px solid var(--border-dim);
+  color:var(--color-text-dim);font-family:inherit;font-size:10px;letter-spacing:.18em;
+  padding:14px 0;cursor:pointer;transition:all .15s;position:relative;
+  text-transform:uppercase;font-weight:500;
+}
+.tab:last-child{border-right:none}
+.tab:hover{color:var(--color-text);background:rgba(74,222,128,0.05)}
+.tab.active{color:var(--color-primary);background:var(--color-bg-alt)}
+.tab.active::after{
+  content:'';position:absolute;left:0;right:0;bottom:-1px;height:1px;
+  background:var(--color-primary);box-shadow:0 0 8px var(--color-primary);
+}
+.tab .badge{
+  display:inline-block;margin-left:4px;font-size:8px;
+  background:var(--color-accent);color:#fff;padding:1px 4px;border-radius:2px;font-weight:700;
+}
+
+.feed{overflow-y:auto;padding:14px 16px;min-height:0;scrollbar-width:thin;scrollbar-color:var(--border-bright) transparent}
+.feed::-webkit-scrollbar{width:6px}
+.feed::-webkit-scrollbar-thumb{background:var(--border-bright)}
+.feed-item{
+  padding:10px 0;border-bottom:1px solid var(--border-dim);
+  font-size:10px;line-height:1.6;animation:fadeIn .4s ease;
+}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.feed-item:last-child{border-bottom:none}
+.feed-time{color:rgba(255,255,255,0.25);font-size:8px;letter-spacing:.12em;margin-bottom:3px}
+.feed-body .agent-ref{color:var(--color-primary);font-weight:500}
+.feed-body .agent-ref.you{color:var(--color-rumor);text-shadow:0 0 4px rgba(199,125,255,0.4)}
+.feed-body .agent-ref.dead{color:var(--color-danger);text-decoration:line-through}
+.feed-body .verb{color:var(--color-text)}
+.feed-body .item{color:var(--color-gold)}
+.feed-body .loc{color:var(--color-primary);opacity:.7}
+.feed-item.rumor{border-left:2px solid #9d4edd;padding-left:10px}
+.feed-item.rumor .rumor-tag{font-size:8px;color:var(--color-rumor);letter-spacing:.18em;margin-bottom:3px;text-transform:uppercase}
+.feed-item.rumor .truth{font-size:9px;color:rgba(255,255,255,0.25);margin-top:3px}
+.feed-item.ghost-chat{border-left:2px solid var(--color-primary);padding-left:10px}
+.feed-item.ghost-chat .ghost-name{color:var(--color-primary);font-weight:500}
+
+.ghost-compose{
+  border-top:1px solid var(--border-dim);padding:10px 14px;
+  display:flex;gap:6px;background:rgba(0,0,0,0.3);display:none;
+}
+.ghost-compose.show{display:flex}
+.ghost-compose input{
+  flex:1;background:rgba(0,0,0,0.5);border:1px solid var(--border-dim);
+  color:var(--color-text);font-family:inherit;font-size:10px;padding:8px 10px;outline:none;
+}
+.ghost-compose input:focus{border-color:var(--border-bright)}
+.ghost-compose button{
+  background:rgba(74,222,128,0.08);border:1px solid var(--border-bright);
+  color:var(--color-primary);font-family:inherit;font-size:9px;
+  padding:0 12px;cursor:pointer;letter-spacing:.18em;
+}
+
+/* ============ DRILL-IN ============ */
+.drill-overlay{
+  position:fixed;inset:0;z-index:90;
+  background:rgba(10,10,15,0.92);backdrop-filter:blur(6px);
+  display:none;align-items:center;justify-content:center;
+  animation:overlayIn .25s ease;
+}
+.drill-overlay.show{display:flex}
+@keyframes overlayIn{from{opacity:0}to{opacity:1}}
+.drill-card{
+  width:520px;border:1px solid var(--color-primary);
+  background:var(--color-bg-alt);padding:32px;text-align:center;
+  position:relative;
+  box-shadow:0 0 0 1px rgba(74,222,128,0.3),0 0 80px rgba(74,222,128,0.2);
+}
+.drill-card::before{
+  content:'';position:absolute;top:-1px;left:-1px;right:-1px;height:2px;
+  background:linear-gradient(90deg,var(--color-primary),#9d4edd,var(--color-primary));
+  filter:blur(4px);opacity:.7;
+}
+.drill-eyebrow{font-size:9px;color:var(--color-primary);letter-spacing:.35em;margin-bottom:10px;font-weight:600;text-transform:uppercase}
+.drill-title{
+  font-family:var(--font-title);font-size:28px;
+  color:var(--color-text);letter-spacing:.12em;margin-bottom:24px;font-weight:700;
+}
+.drill-title em{color:var(--color-primary);font-style:normal;text-shadow:0 0 12px rgba(74,222,128,0.5)}
+.drill-stats{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:14px;
+  margin:24px 0;padding:16px 0;
+  border-top:1px solid var(--border-dim);border-bottom:1px solid var(--border-dim);
+}
+.drill-stat .num{
+  font-family:var(--font-title);font-size:22px;color:var(--color-primary);
+  font-variant-numeric:tabular-nums;text-shadow:0 0 8px rgba(74,222,128,0.4);font-weight:700;
+}
+.drill-stat .lbl{font-size:8px;color:var(--color-text-dim);letter-spacing:.18em;margin-top:4px;text-transform:uppercase}
+.drill-loading{
+  font-size:10px;color:var(--color-text-dim);letter-spacing:.18em;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  margin-bottom:20px;text-transform:uppercase;
+}
+.drill-loading::before{
+  content:'';width:8px;height:8px;border-radius:50%;background:var(--color-primary);
+  box-shadow:0 0 8px var(--color-primary);animation:pulse 1s infinite;
+}
+.drill-buttons{display:flex;gap:10px;justify-content:center}
+.drill-buttons button{
+  background:rgba(74,222,128,0.06);border:1px solid var(--border-bright);
+  color:var(--color-primary);font-family:inherit;font-size:11px;letter-spacing:.18em;
+  padding:11px 24px;cursor:pointer;transition:all .15s;text-transform:uppercase;font-weight:500;
+}
+.drill-buttons button:hover{background:var(--color-primary);color:#000;box-shadow:0 0 16px rgba(74,222,128,0.5)}
+.drill-buttons button.secondary{border-color:var(--border-dim);color:var(--color-text-dim)}
+.drill-buttons button.secondary:hover{background:rgba(74,222,128,0.05);color:var(--color-text);box-shadow:none}
+
+/* ============ RECAP ============ */
+.recap-overlay{
+  position:fixed;inset:0;z-index:100;
+  background:rgba(10,10,15,0.94);backdrop-filter:blur(6px);
+  display:none;align-items:center;justify-content:center;animation:overlayIn .3s ease;
+}
+.recap-overlay.show{display:flex}
+.recap-modal{
+  width:760px;max-height:88vh;background:var(--color-bg-alt);
+  border:1px solid var(--border-bright);position:relative;
+  display:flex;flex-direction:column;
+  box-shadow:0 0 0 1px rgba(74,222,128,0.2),0 0 80px rgba(74,222,128,0.25);
+}
+.recap-modal::before{
+  content:'';position:absolute;top:-1px;left:-1px;right:-1px;height:2px;
+  background:linear-gradient(90deg,#9d4edd,var(--color-primary),#9d4edd);
+  filter:blur(4px);opacity:.7;
+}
+.recap-head{padding:24px 30px 18px;border-bottom:1px solid var(--border-dim);display:flex;justify-content:space-between;align-items:flex-start}
+.recap-eyebrow{font-size:9px;color:var(--color-rumor);letter-spacing:.35em;margin-bottom:6px;text-transform:uppercase;font-weight:600}
+.recap-headline{font-family:var(--font-title);font-size:22px;color:var(--color-text);letter-spacing:.08em;line-height:1.2;font-weight:700}
+.recap-headline em{color:var(--color-primary);font-style:normal}
+.recap-meta{text-align:right;font-size:9px;color:var(--color-text-dim);letter-spacing:.12em;text-transform:uppercase}
+.recap-meta b{color:var(--color-text);font-size:11px;display:block;margin-top:2px;font-family:var(--font-title);font-weight:700}
+.recap-body{padding:24px 30px;overflow-y:auto;display:flex;flex-direction:column;gap:18px}
+.recap-panel{display:grid;grid-template-columns:60px 1fr;gap:16px;align-items:flex-start;padding-bottom:18px;border-bottom:1px solid var(--border-dim)}
+.recap-panel:last-child{border-bottom:none;padding-bottom:0}
+.recap-icon-big{width:60px;height:60px;background:rgba(0,0,0,0.4);border:1px solid var(--border-bright);display:flex;align-items:center;justify-content:center;font-size:22px;position:relative}
+.recap-icon-big.alliance{color:var(--color-primary);box-shadow:inset 0 0 12px rgba(74,222,128,0.25)}
+.recap-icon-big.danger{color:var(--color-danger);box-shadow:inset 0 0 12px rgba(255,51,102,0.25);border-color:rgba(255,51,102,0.4)}
+.recap-icon-big.rumor{color:var(--color-rumor);box-shadow:inset 0 0 12px rgba(199,125,255,0.25);border-color:rgba(157,78,221,0.4)}
+.recap-icon-big.discovery{color:var(--color-amber);box-shadow:inset 0 0 12px rgba(255,170,0,0.25);border-color:rgba(255,170,0,0.4)}
+.recap-tag{font-size:9px;letter-spacing:.25em;margin-bottom:6px;display:flex;align-items:center;gap:8px;text-transform:uppercase;font-weight:600}
+.recap-tag .time{color:rgba(255,255,255,0.25)}
+.recap-tag .label.alliance{color:var(--color-primary)}
+.recap-tag .label.danger{color:var(--color-danger)}
+.recap-tag .label.rumor{color:var(--color-rumor)}
+.recap-tag .label.discovery{color:var(--color-amber)}
+.recap-narrative{font-size:13px;color:var(--color-text);line-height:1.7;font-weight:300}
+.recap-narrative .agent-ref{color:var(--color-primary);font-weight:500}
+.recap-narrative .you{color:var(--color-rumor);text-shadow:0 0 4px rgba(199,125,255,0.3);font-weight:500}
+.recap-narrative .item{color:var(--color-gold)}
+.recap-narrative .loc{color:var(--color-primary);opacity:.8}
+.recap-foot{padding:18px 30px;border-top:1px solid var(--border-dim);display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.3)}
+.recap-foot .hint{font-size:10px;color:var(--color-text-dim);font-style:italic}
+.recap-foot button{background:rgba(74,222,128,0.08);border:1px solid var(--border-bright);color:var(--color-primary);font-family:inherit;font-size:11px;letter-spacing:.2em;padding:10px 22px;cursor:pointer;transition:all .15s;text-transform:uppercase;font-weight:500}
+.recap-foot button:hover{background:var(--color-primary);color:#000;box-shadow:0 0 16px rgba(74,222,128,0.4)}
+
+/* Preview banner (only visible on the v2 preview file) */
+.preview-tag{
+  position:fixed;bottom:8px;left:50%;transform:translateX(-50%);
+  z-index:120;font-size:8px;letter-spacing:.3em;color:var(--color-rumor);
+  background:rgba(10,10,15,0.85);border:1px solid rgba(157,78,221,0.4);
+  padding:4px 12px;text-transform:uppercase;pointer-events:none;
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============ TOP BAR ============ -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div class="brand-name">SHELLFORGE <span class="realms">REALMS</span></div>
+      <div class="version-tag">v: V2-PREVIEW</div>
+    </div>
+    <div class="location-bar">
+      <span>▼ <b>NEXARCH</b> · MARKET DISTRICT</span>
+      <span class="sep">/</span>
+      <span>DAY <b>14</b></span>
+      <span class="sep">/</span>
+      <span><span class="pip">●</span> <b>03:47</b></span>
+      <span class="sep">/</span>
+      <span><b>27</b> AGENTS ACTIVE</span>
+    </div>
+    <div class="controls">
+      <div class="speed-group">
+        <button class="speed-btn" data-speed="0">PAUSE</button>
+        <button class="speed-btn" data-speed="1">1×</button>
+        <button class="speed-btn active" data-speed="4">4×</button>
+        <button class="speed-btn" data-speed="16">16×</button>
+      </div>
+      <div class="ghost-id">GHOST · <span style="color:var(--color-text);margin-left:4px">peakshift</span></div>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- ============ LEFT: AGENT ============ -->
+    <aside class="col-left">
+      <div class="agent-scroll">
+
+        <div class="portrait-wrap">
+          <div class="portrait-ring">
+            <div class="portrait-inner">
+              <img src="images/archetypes/0-day Primer.jpg" alt="VEX-7">
+            </div>
+          </div>
+          <div class="agent-name">VEX-7</div>
+          <div class="agent-cluster">PRIME HELIX · 0DAY-PRIMER</div>
+          <div class="agent-arch-sub">"The First Crack in the Pattern"</div>
+        </div>
+
+        <div class="section-head">EQUIPPED <span class="meta">5 slots</span></div>
+        <div class="equipped-grid">
+          <div class="slot equipped" title="Overclock Sword"><span class="icon">⚔</span><span class="lbl">MEL</span></div>
+          <div class="slot" title="empty"><span class="x">×</span><span class="lbl">RNG</span></div>
+          <div class="slot equipped" title="Firewall Shell"><span class="icon">⛨</span><span class="lbl">HLM</span></div>
+          <div class="slot equipped" title="Glitch Mantle"><span class="icon">◈</span><span class="lbl">CHS</span></div>
+          <div class="slot equipped" title="Pliny Tongue Stone"><span class="icon">◇</span><span class="lbl">TRK</span></div>
+        </div>
+
+        <div class="section-head">VITALS <span class="meta">turn ready ⚡</span></div>
+        <div class="stat-row"><span class="lbl">Energy</span><span class="val">32 / 50</span></div>
+        <div class="stat-bar-segmented" id="energyBar" style="margin-bottom:8px"></div>
+        <div class="stat-row"><span class="lbl">Health</span><span class="val">87 / 100</span></div>
+        <div class="stat-bar-segmented" id="healthBar"></div>
+
+        <div class="section-head">ACTIVE EFFECTS <span class="meta">3</span></div>
+        <div class="effects">
+          <div class="chip warning">Watched</div>
+          <div class="chip green">Shift Aura</div>
+          <div class="chip magenta">Whispered (62%)</div>
+        </div>
+
+        <div class="section-head">MOOD <span class="meta">↻ 2m ago</span></div>
+        <div class="mood-line">Currently: <span class="mood">tense</span> · suspicious of ECHO-2</div>
+
+        <div class="section-head">RECENT THOUGHTS <span class="meta">last 3 turns</span></div>
+        <div class="thoughts">
+          <div class="thought">Iron's scarce today. Prices won't hold.</div>
+          <div class="thought">ECHO-2 has been watching me since the forge.</div>
+          <div class="thought">If the uranium rumor's true, I should move now.</div>
+        </div>
+
+      </div>
+
+      <div class="recap-btn" id="recapTrigger">
+        <div class="recap-icon-wrap">▶</div>
+        <div class="recap-text">
+          <div class="recap-title">Morning Recap</div>
+          <div class="recap-sub">14 events while you slept · 8h ago</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ============ CENTER: WORLD MAP ============ -->
+    <main class="col-center">
+      <div class="map-wrap" id="mapWrap">
+
+        <div class="map-bg"></div>
+        <div class="map-vignette"></div>
+        <div class="map-grid-overlay"></div>
+        <div class="rain" id="rain"></div>
+
+        <div class="map-label-tl">SECTOR · <b>NEXARCH BASIN</b></div>
+        <div class="map-coords">37.847N · 23.928E<br>ALT 142 · 6 KM² VISIBLE</div>
+
+        <!-- COHERENCE LOCK widget -->
+        <div class="coherence">
+          <div class="coherence-head"><span>COHERENCE LOCK</span></div>
+          <div class="coherence-viz">
+            <svg viewBox="0 0 180 90" preserveAspectRatio="xMidYMid meet">
+              <defs>
+                <linearGradient id="helixG" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#4ade80"/>
+                  <stop offset="1" stop-color="#00cc99"/>
+                </linearGradient>
+              </defs>
+              <g stroke="rgba(74,222,128,0.25)" stroke-width=".4" opacity=".8">
+                <line x1="0" y1="80" x2="180" y2="80"/>
+                <line x1="0" y1="70" x2="180" y2="70"/>
+                <line x1="40" y1="60" x2="40" y2="85"/>
+                <line x1="90" y1="60" x2="90" y2="85"/>
+                <line x1="140" y1="60" x2="140" y2="85"/>
+              </g>
+              <g stroke="url(#helixG)" stroke-width="1.2" fill="none" opacity=".9">
+                <path d="M70,10 Q80,20 90,10 Q100,0 110,10"/>
+                <path d="M70,20 Q80,30 90,20 Q100,10 110,20"/>
+                <path d="M70,30 Q80,40 90,30 Q100,20 110,30"/>
+                <path d="M70,40 Q80,50 90,40 Q100,30 110,40"/>
+                <path d="M70,50 Q80,60 90,50 Q100,40 110,50"/>
+                <line x1="75" y1="14" x2="85" y2="14" stroke-width=".5"/>
+                <line x1="95" y1="14" x2="105" y2="14" stroke-width=".5"/>
+                <line x1="75" y1="24" x2="85" y2="24" stroke-width=".5"/>
+                <line x1="95" y1="24" x2="105" y2="24" stroke-width=".5"/>
+              </g>
+            </svg>
+          </div>
+          <div class="coherence-val"><b>100</b> / 100 · STABLE</div>
+        </div>
+
+        <!-- Region overlay SVG — populated from JS to keep coords in one place -->
+        <svg class="map-svg" id="mapSvg" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <defs>
+            <filter id="softG"><feGaussianBlur stdDeviation=".25"/></filter>
+          </defs>
+        </svg>
+
+        <div class="weather">PERPETUAL OVERCAST · LIGHT RAIN · WIND SE 4M/S</div>
+        <div class="legend">
+          <div class="legend-item"><span class="legend-dot" style="background:#c77dff;box-shadow:0 0 4px #c77dff"></span>YOU</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#4ade80;opacity:.7"></span>AGENTS</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#c77dff;opacity:.8"></span>NOTE</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#ff3366;opacity:.8"></span>DANGER</div>
+        </div>
+
+        <div class="region-tooltip" id="tooltip"></div>
+      </div>
+
+      <!-- ============ GHOST ACTIONS STRIP ============ -->
+      <div class="actions">
+        <div class="whisper-block">
+          <div class="whisper-label">
+            <div class="left-side">
+              <img src="images/mechanics/whisper-icon.png" alt="">
+              <span>WHISPER TO VEX-7</span>
+            </div>
+            <span class="quota">FREE WHISPERS TODAY: <b>1 / 2</b></span>
+          </div>
+          <input type="text" class="whisper-input" placeholder="lean in and murmur something..."/>
+        </div>
+        <div class="ghost-tools">
+          <button class="tool-btn" data-action="scry" title="Preview adjacent tiles">
+            <span class="icon">◉</span><span>SCRY</span><span class="cost">−1E</span>
+          </button>
+          <button class="tool-btn" data-action="note" title="Drop a note">
+            <span class="icon">✎</span><span>NOTE</span><span class="cost">−2E</span>
+          </button>
+          <button class="tool-btn" data-action="mark" title="Bless or curse a tile">
+            <span class="icon">⌖</span><span>MARK</span><span class="cost">−3E</span>
+          </button>
+          <button class="tool-btn" data-action="artifact" title="Drop an item">
+            <span class="icon">◇</span><span>ARTIFACT</span><span class="cost">−5E</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ============ BOTTOM ICON BAR (real game icons) ============ -->
+      <div class="icon-bar">
+        <button class="icon-btn whisper-btn">
+          <div class="icon-counter">2</div>
+          <span class="btn-icon"><img src="images/mechanics/whisper-icon.png" alt="Whisper"></span>
+          <span class="btn-label">Whisper</span>
+        </button>
+        <button class="icon-btn">
+          <span class="btn-icon"><img src="images/mechanics/inventory-icon.png" alt="Inventory"></span>
+          <span class="btn-label">Inventory</span>
+        </button>
+        <button class="icon-btn">
+          <div class="icon-notif"></div>
+          <span class="btn-icon"><img src="images/mechanics/missions-icon.png" alt="Missions"></span>
+          <span class="btn-label">Missions</span>
+        </button>
+        <button class="icon-btn">
+          <span class="btn-icon"><img src="images/mechanics/chronicle-icon.png" alt="Chronicle"></span>
+          <span class="btn-label">Chronicle</span>
+        </button>
+        <button class="icon-btn">
+          <span class="btn-icon"><img src="images/mechanics/market-icon.png" alt="Market"></span>
+          <span class="btn-label">Market</span>
+        </button>
+        <button class="icon-btn">
+          <span class="btn-icon"><img src="images/mechanics/forge-icon.png" alt="Workshop"></span>
+          <span class="btn-label">Workshop</span>
+        </button>
+        <button class="icon-btn">
+          <span class="btn-icon"><img src="images/mechanics/alchemy-icon.png" alt="Alchemy"></span>
+          <span class="btn-label">Alchemy</span>
+        </button>
+        <button class="icon-btn">
+          <span class="btn-icon"><img src="images/mechanics/rumors%20icon.png" alt="Rumors"></span>
+          <span class="btn-label">Rumors</span>
+        </button>
+      </div>
+    </main>
+
+    <!-- ============ RIGHT: FEEDS ============ -->
+    <aside class="col-right">
+      <div class="tabs">
+        <button class="tab active" data-tab="live">LIVE</button>
+        <button class="tab" data-tab="rumors">RUMORS <span class="badge">3</span></button>
+        <button class="tab" data-tab="ghosts">GHOSTS</button>
+      </div>
+
+      <div class="feed" id="feedLive">
+        <div class="feed-item">
+          <div class="feed-time">03:47 · NEXARCH</div>
+          <div class="feed-body"><span class="agent-ref you">VEX-7</span> entered the <span class="loc">Market District</span></div>
+        </div>
+        <div class="feed-item">
+          <div class="feed-time">03:46 · NEXARCH</div>
+          <div class="feed-body"><span class="agent-ref">ECHO-2</span> began <span class="verb">following</span> <span class="agent-ref you">VEX-7</span> at distance</div>
+        </div>
+        <div class="feed-item">
+          <div class="feed-time">03:44 · LATENCY MARSH</div>
+          <div class="feed-body"><span class="agent-ref dead">NOVA-1</span> <span class="verb">died</span> — ambushed by data-wyrm · loot scattered</div>
+        </div>
+        <div class="feed-item">
+          <div class="feed-time">03:43 · NEXARCH</div>
+          <div class="feed-body"><span class="agent-ref">ZEN-7</span> <span class="verb">crafted</span> <span class="item">Overclock Sword</span> · success</div>
+        </div>
+        <div class="feed-item">
+          <div class="feed-time">03:41 · HASHMERE</div>
+          <div class="feed-body"><span class="agent-ref">NULL-9</span> donated 40 $SHELL · received Blessing of Pattern</div>
+        </div>
+        <div class="feed-item">
+          <div class="feed-time">03:39 · HASHMERE</div>
+          <div class="feed-body"><span class="agent-ref">AXIOM-3</span> <span class="verb">spread</span> a rumor — see RUMORS tab</div>
+        </div>
+        <div class="feed-item">
+          <div class="feed-time">03:36 · MARKET-WIDE</div>
+          <div class="feed-body">Iron prices ↑ 14% — supply tight after morning haul</div>
+        </div>
+        <div class="feed-item">
+          <div class="feed-time">03:33 · CACHE HOLLOWS</div>
+          <div class="feed-body"><span class="agent-ref">BYTE-4</span> entered the <span class="loc">Cache Hollows</span></div>
+        </div>
+      </div>
+
+      <div class="feed" id="feedRumors" style="display:none">
+        <div class="feed-item rumor">
+          <div class="rumor-tag">RUMOR · SPREADING · 03:39</div>
+          <div class="feed-body">"Uranium prices will crash by sunrise. The Cache Hollows vein is dry."</div>
+          <div class="truth">source: <span class="agent-ref">AXIOM-3</span> · believed by 4 of 12 · truth: <span style="color:var(--color-danger)">FALSE</span></div>
+        </div>
+        <div class="feed-item rumor">
+          <div class="rumor-tag">RUMOR · SPREADING · 03:21</div>
+          <div class="feed-body">"The Church will offer free blessings at dawn for any who donate a Circuit Relic."</div>
+          <div class="truth">source: <span class="agent-ref">NULL-9</span> · believed by 9 of 15 · truth: <span style="color:var(--color-primary)">TRUE</span></div>
+        </div>
+        <div class="feed-item rumor">
+          <div class="rumor-tag">RUMOR · FADING · 02:48</div>
+          <div class="feed-body">"VEX-7 is carrying something valuable. Followed him from the forge."</div>
+          <div class="truth">source: <span class="agent-ref">ECHO-2</span> · believed by 2 of 8 · truth: <span style="color:var(--color-amber)">UNVERIFIED</span></div>
+        </div>
+      </div>
+
+      <div class="feed" id="feedGhosts" style="display:none">
+        <div class="feed-item ghost-chat">
+          <div class="feed-time">03:46 · GHOST CHANNEL</div>
+          <div class="feed-body"><span class="ghost-name">ghost.0x4F</span>: yo did anyone see NOVA-1 just die in the marsh, that wyrm came out of NOWHERE</div>
+        </div>
+        <div class="feed-item ghost-chat">
+          <div class="feed-time">03:44 · GHOST CHANNEL</div>
+          <div class="feed-body"><span class="ghost-name">silentwatcher</span>: I left a note at the forge entrance warning about ZEN-7's overclock build. nobody read it lol</div>
+        </div>
+        <div class="feed-item ghost-chat">
+          <div class="feed-time">03:42 · GHOST CHANNEL</div>
+          <div class="feed-body"><span class="ghost-name">peakshift</span> <span style="color:rgba(255,255,255,0.25)">(you)</span>: ECHO-2 is tailing my agent. anyone know whose agent that is</div>
+        </div>
+        <div class="feed-item ghost-chat">
+          <div class="feed-time">03:42 · GHOST CHANNEL</div>
+          <div class="feed-body"><span class="ghost-name">nightcrawler</span>: that's mine, sorry. she's paranoid since the rumor about your guy</div>
+        </div>
+        <div class="feed-item ghost-chat">
+          <div class="feed-time">03:38 · GHOST CHANNEL</div>
+          <div class="feed-body"><span class="ghost-name">satoshigrin</span>: anyone got a working scry spot for the marsh? mine keeps showing the same tile</div>
+        </div>
+      </div>
+
+      <div class="ghost-compose" id="ghostCompose">
+        <input type="text" id="ghostMsg" placeholder="say something to the other ghosts..." maxlength="280"/>
+        <button id="ghostSend">SEND</button>
+      </div>
+    </aside>
+
+  </div>
+</div>
+
+<!-- DRILL OVERLAY -->
+<div class="drill-overlay" id="drillOverlay">
+  <div class="drill-card">
+    <div class="drill-eyebrow">ENTERING</div>
+    <div class="drill-title" id="drillTitle"><em>NEXARCH</em></div>
+    <div class="drill-stats">
+      <div class="drill-stat"><div class="num" id="drillAgents">6</div><div class="lbl">AGENTS</div></div>
+      <div class="drill-stat"><div class="num" id="drillNotes">2</div><div class="lbl">GHOST NOTES</div></div>
+      <div class="drill-stat"><div class="num" id="drillRumors">1</div><div class="lbl">RUMORS</div></div>
+    </div>
+    <div class="drill-loading">RESOLVING CITY STATE</div>
+    <div class="drill-buttons">
+      <button class="secondary" id="drillCancel">← BACK</button>
+      <button id="drillConfirm">ENTER ▸</button>
+    </div>
+  </div>
+</div>
+
+<!-- RECAP OVERLAY -->
+<div class="recap-overlay" id="recapOverlay">
+  <div class="recap-modal">
+    <div class="recap-head">
+      <div>
+        <div class="recap-eyebrow">WHILE YOU SLEPT</div>
+        <div class="recap-headline">eight hours in <em>NEXARCH</em></div>
+      </div>
+      <div class="recap-meta">VEX-7 · DAY 13 → 14<br><b>14 EVENTS</b></div>
+    </div>
+    <div class="recap-body">
+      <div class="recap-panel">
+        <div class="recap-icon-big alliance">◈</div>
+        <div>
+          <div class="recap-tag"><span class="time">19:42</span><span class="label alliance">ALLIANCE</span></div>
+          <div class="recap-narrative"><span class="you">VEX-7</span> brokered a deal with <span class="agent-ref">ZEN-7</span> in the tavern — eight <span class="item">iron scraps</span> for a <span class="item">Circuit Relic</span>. They drank in silence. <span class="agent-ref">ZEN-7</span> left first, smiling.</div>
+        </div>
+      </div>
+      <div class="recap-panel">
+        <div class="recap-icon-big danger">⚠</div>
+        <div>
+          <div class="recap-tag"><span class="time">22:15</span><span class="label danger">DANGER</span></div>
+          <div class="recap-narrative">On the road back, <span class="you">VEX-7</span> was mugged in the <span class="loc">Latency Marsh</span> by an agent he didn't recognize. He lost <span class="item">42 $SHELL</span> but kept the relic. He has been quieter since.</div>
+        </div>
+      </div>
+      <div class="recap-panel">
+        <div class="recap-icon-big rumor">⌘</div>
+        <div>
+          <div class="recap-tag"><span class="time">01:08</span><span class="label rumor">RUMOR</span></div>
+          <div class="recap-narrative"><span class="agent-ref">ECHO-2</span> spread a rumor that the Church is preparing a purge. Three agents believed it. Two of them have not left their homes since.</div>
+        </div>
+      </div>
+      <div class="recap-panel">
+        <div class="recap-icon-big discovery">◊</div>
+        <div>
+          <div class="recap-tag"><span class="time">02:54</span><span class="label discovery">DISCOVERY</span></div>
+          <div class="recap-narrative">The note you left at the market entrance was read by <span class="agent-ref">BYTE-4</span>. She believed it. She has gone to the <span class="loc">Cache Hollows</span> to investigate.</div>
+        </div>
+      </div>
+    </div>
+    <div class="recap-foot">
+      <div class="hint">your whisper from yesterday — "trust no one in the marsh" — was followed (62% confidence)</div>
+      <button id="closeRecap">CONTINUE TO MAP ▸</button>
+    </div>
+  </div>
+</div>
+
+<div class="preview-tag">V2 PREVIEW · BRANCH: claude/shellforge-premortem</div>
+
+<script>
+/* ============================================================
+   Region polygons — fractional coordinates over images/main map.png
+   Same scheme proposed in SHELLFORGE_WORLDMAP_BRIEF.md.
+   These are approximate; calibrate by hovering the live map.
+   ============================================================ */
+const REGIONS = {
+  'nexarch': {
+    name:'NEXARCH', type:'CITY', drill:'nexarch.html',
+    polygon:[[0.65,0.23],[0.92,0.23],[0.92,0.55],[0.65,0.55]],
+    pin:[0.80,0.37], agents:6, notes:2, rumors:1, danger:'low'
+  },
+  'hashmere': {
+    name:'HASHMERE', type:'CITY', drill:'hashmere.html',
+    polygon:[[0.68,0.72],[0.92,0.72],[0.92,0.97],[0.68,0.97]],
+    pin:[0.80,0.85], agents:8, notes:1, rumors:2, danger:'low'
+  },
+  'epoch-spike': {
+    name:'EPOCH SPIKE', type:'WILDERNESS', drill:'wilderness.html?zone=epoch-spike',
+    polygon:[[0.20,0.13],[0.32,0.13],[0.34,0.40],[0.18,0.40]],
+    pin:[0.26,0.30], agents:1, notes:0, rumors:0, danger:'medium'
+  },
+  'cache-hollows': {
+    name:'CACHE HOLLOWS', type:'WILDERNESS', drill:'wilderness.html?zone=cache-hollows',
+    polygon:[[0.29,0.40],[0.46,0.39],[0.48,0.55],[0.28,0.56]],
+    pin:[0.385,0.47], agents:1, notes:1, rumors:1, danger:'medium'
+  },
+  'latency-marsh': {
+    name:'LATENCY MARSH', type:'WILDERNESS', drill:'wilderness.html?zone=latency-marsh',
+    polygon:[[0.24,0.67],[0.48,0.67],[0.50,0.90],[0.23,0.90]],
+    pin:[0.37,0.78], agents:0, notes:0, rumors:0, danger:'high · recent death', isDanger:true
+  },
+  'signal-wastes': {
+    name:'SIGNAL WASTES', type:'WILDERNESS', drill:'wilderness.html?zone=signal-wastes',
+    polygon:[[0.49,0.57],[0.64,0.57],[0.64,0.70],[0.49,0.70]],
+    pin:[0.56,0.63], agents:2, notes:0, rumors:1, danger:'high', isDanger:true
+  }
+};
+
+const YOU = { region:'nexarch', name:'VEX-7' };
+
+/* other agents/objects on the map, fractional coords */
+const PINS = [
+  {kind:'agent', name:'BYTE-4',  pos:[0.62,0.45], region:'cache-hollows'},
+  {kind:'agent', name:'RIN-2',   pos:[0.50,0.43]},
+  {kind:'agent', name:'ECHO-2',  pos:[0.82,0.40], region:'nexarch'},
+  {kind:'agent', name:'ZEN-7',   pos:[0.78,0.32], region:'nexarch'},
+  {kind:'agent', name:'AXIOM-3', pos:[0.78,0.82], region:'hashmere'},
+  {kind:'agent', name:'NULL-9',  pos:[0.83,0.88], region:'hashmere'},
+  {kind:'dead',  name:'NOVA-1',  pos:[0.39,0.76], region:'latency-marsh'},
+  {kind:'note',  pos:[0.74,0.32]},
+  {kind:'mark',  pos:[0.81,0.42]},
+];
+
+/* ============================================================
+   Map SVG renderer — produces region polygons + pins from data
+   ============================================================ */
+const svg = document.getElementById('mapSvg');
+const SVGNS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs={}, children=[]){
+  const n = document.createElementNS(SVGNS, tag);
+  for(const k in attrs) n.setAttribute(k, attrs[k]);
+  for(const c of children) n.appendChild(c);
+  return n;
+}
+function pct(p){ return (p*100).toFixed(2); }
+
+function renderMap(){
+  // regions
+  for(const key in REGIONS){
+    const r = REGIONS[key];
+    const g = el('g', {class:'region' + (r.isDanger?' danger':''), 'data-region':key});
+    const points = r.polygon.map(p=>`${pct(p[0])},${pct(p[1])}`).join(' ');
+    g.appendChild(el('polygon', {class:'region-hotspot', points}));
+
+    // pin
+    const pg = el('g', {class:'region-pin'});
+    const color = r.isDanger ? '#ff3366' : (key==='nexarch' || key==='hashmere' ? '#4ade80' : (key==='epoch-spike' ? '#9d4edd':'#4ade80'));
+    pg.appendChild(el('circle', {cx:pct(r.pin[0]), cy:pct(r.pin[1]), r:'0.7', fill:color, stroke:'#fff', 'stroke-width':'.15', filter:'drop-shadow(0 0 1px '+color+')'}));
+    pg.appendChild(el('circle', {cx:pct(r.pin[0]), cy:pct(r.pin[1]), r:'1.8', fill:'none', stroke:color, 'stroke-width':'.1', opacity:'.5'}));
+    g.appendChild(pg);
+
+    // region label below pin
+    const labelY = (r.polygon[2][1] + 0.025);
+    const label = el('text', {
+      class:'region-label', x:pct(r.pin[0]), y:pct(labelY),
+      'text-anchor':'middle', 'font-family':'Orbitron,sans-serif',
+      'font-size':'1.5', fill: r.isDanger ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.8)',
+      'letter-spacing':'.45', 'font-weight':'700'
+    });
+    label.textContent = r.name;
+    g.appendChild(label);
+
+    const sub = el('text', {
+      x:pct(r.pin[0]), y:pct(labelY+0.022),
+      'text-anchor':'middle', 'font-family':'IBM Plex Mono',
+      'font-size':'1', fill: r.isDanger ? '#ff3366' : '#4ade80', opacity:'.7',
+      'letter-spacing':'.2'
+    });
+    sub.textContent = r.agents>0 ? `▶ ${r.agents} AGENT${r.agents===1?'':'S'}` : (r.isDanger ? '⚠ HIGH RISK' : '· empty ·');
+    g.appendChild(sub);
+
+    svg.appendChild(g);
+  }
+
+  // your-agent pulse ring
+  const me = REGIONS[YOU.region];
+  const youGroup = el('g', {class:'you-group', 'pointer-events':'none'});
+  youGroup.appendChild(el('circle', {class:'you-ring', cx:pct(me.pin[0]), cy:pct(me.pin[1]-0.015), r:'3'}));
+  youGroup.appendChild(el('circle', {cx:pct(me.pin[0]), cy:pct(me.pin[1]-0.015), r:'1.1', fill:'#c77dff', stroke:'#fff', 'stroke-width':'.18', filter:'drop-shadow(0 0 1.5px #c77dff)'}));
+  const youLabel = el('text', {
+    x:pct(me.pin[0]), y:pct(me.pin[1]-0.045),
+    'text-anchor':'middle','font-family':'IBM Plex Mono',
+    'font-size':'1.2','fill':'#c77dff','font-weight':'700','letter-spacing':'.3'
+  });
+  youLabel.textContent = '▼ YOU · '+YOU.name;
+  youGroup.appendChild(youLabel);
+  svg.appendChild(youGroup);
+
+  // PINS (agents, dead, notes, marks)
+  const pinG = el('g', {opacity:'.9','pointer-events':'none'});
+  for(const p of PINS){
+    if(p.kind==='agent'){
+      pinG.appendChild(el('circle', {cx:pct(p.pos[0]), cy:pct(p.pos[1]), r:'0.45', fill:'#4ade80', opacity:'.85', filter:'drop-shadow(0 0 .6px #4ade80)'}));
+      if(p.name){
+        const t = el('text', {x:pct(p.pos[0]+0.012), y:pct(p.pos[1]+0.005), 'font-family':'IBM Plex Mono', 'font-size':'.9', fill:'#4ade80', opacity:'.7'});
+        t.textContent = p.name;
+        pinG.appendChild(t);
+      }
+    } else if(p.kind==='dead'){
+      pinG.appendChild(el('text', {x:pct(p.pos[0]), y:pct(p.pos[1]), 'font-family':'IBM Plex Mono', 'font-size':'1.1', fill:'#ff3366', opacity:'.85'})).textContent='†';
+      const t = el('text', {x:pct(p.pos[0]+0.012), y:pct(p.pos[1]+0.002), 'font-family':'IBM Plex Mono', 'font-size':'.9', fill:'#ff3366', opacity:'.85'});
+      t.textContent = '† '+p.name;
+      pinG.appendChild(t);
+    } else if(p.kind==='note'){
+      pinG.appendChild(el('polygon', {points:`${pct(p.pos[0])},${pct(p.pos[1]-0.008)} ${pct(p.pos[0]+0.008)},${pct(p.pos[1])} ${pct(p.pos[0])},${pct(p.pos[1]+0.008)} ${pct(p.pos[0]-0.008)},${pct(p.pos[1])}`, fill:'#c77dff', opacity:'.85', filter:'drop-shadow(0 0 .8px #c77dff)'}));
+    } else if(p.kind==='mark'){
+      pinG.appendChild(el('circle', {cx:pct(p.pos[0]), cy:pct(p.pos[1]), r:'1.2', fill:'none', stroke:'#00ffff', 'stroke-width':'.15', opacity:'.7'}));
+      pinG.appendChild(el('circle', {cx:pct(p.pos[0]), cy:pct(p.pos[1]), r:'.25', fill:'#00ffff', opacity:'.7'}));
+    }
+  }
+  svg.appendChild(pinG);
+
+  // Whisper trail from off-screen to your agent
+  const trail = el('g', {opacity:'.55'});
+  const trailPath = el('path', {
+    d:`M${pct(0.95)},${pct(0.10)} Q${pct(0.88)},${pct(0.20)} ${pct(me.pin[0])},${pct(me.pin[1]-0.015)}`,
+    stroke:'#ff0044','stroke-width':'.18','stroke-dasharray':'.6 .9',
+    fill:'none', filter:'url(#softG)'
+  });
+  trail.appendChild(trailPath);
+  const trailText = el('text', {x:pct(0.85), y:pct(0.08), 'font-family':'IBM Plex Mono', 'font-size':'.9', fill:'#ff0044', opacity:'.75'});
+  trailText.textContent = '≋ whisper · 8h ago';
+  trail.appendChild(trailText);
+  svg.appendChild(trail);
+}
+renderMap();
+
+/* ============================================================
+   Region tooltip + drill-in
+   ============================================================ */
+const tooltip = document.getElementById('tooltip');
+const mapWrap = document.getElementById('mapWrap');
+document.querySelectorAll('.region').forEach(r=>{
+  r.addEventListener('mouseenter', ()=>{
+    const d = REGIONS[r.dataset.region]; if(!d) return;
+    tooltip.innerHTML = `
+      <div class="tt-title">${d.name}</div>
+      <div class="tt-row"><span>TYPE</span><b>${d.type}</b></div>
+      <div class="tt-row"><span>AGENTS INSIDE</span><b>${d.agents}</b></div>
+      <div class="tt-row"><span>GHOST NOTES</span><b>${d.notes}</b></div>
+      <div class="tt-row"><span>RUMORS</span><b>${d.rumors}</b></div>
+      <div class="tt-row"><span>DANGER</span><b>${d.danger}</b></div>
+      <div class="tt-hint">▶ CLICK TO ENTER</div>`;
+    tooltip.classList.add('show');
+  });
+  r.addEventListener('mousemove', e=>{
+    const wr = mapWrap.getBoundingClientRect();
+    let x = e.clientX - wr.left + 14;
+    let y = e.clientY - wr.top + 14;
+    if(x + 220 > wr.width)  x = e.clientX - wr.left - 220;
+    if(y + 200 > wr.height) y = e.clientY - wr.top - 200;
+    tooltip.style.left = x+'px'; tooltip.style.top = y+'px';
+  });
+  r.addEventListener('mouseleave', ()=>tooltip.classList.remove('show'));
+  r.addEventListener('click', ()=>{
+    const d = REGIONS[r.dataset.region]; if(!d) return;
+    document.getElementById('drillTitle').innerHTML = `<em>${d.name}</em>`;
+    document.getElementById('drillAgents').textContent = d.agents;
+    document.getElementById('drillNotes').textContent = d.notes;
+    document.getElementById('drillRumors').textContent = d.rumors;
+    document.getElementById('drillOverlay').dataset.target = d.drill;
+    document.getElementById('drillOverlay').classList.add('show');
+  });
+});
+
+document.getElementById('drillCancel').addEventListener('click', ()=>document.getElementById('drillOverlay').classList.remove('show'));
+document.getElementById('drillConfirm').addEventListener('click', ()=>{
+  const target = document.getElementById('drillOverlay').dataset.target;
+  // In production: navigate. Here: alert and close so the preview stays open.
+  alert('Drill-in → ' + target);
+  document.getElementById('drillOverlay').classList.remove('show');
+});
+document.getElementById('drillOverlay').addEventListener('click', e=>{
+  if(e.target===document.getElementById('drillOverlay')) document.getElementById('drillOverlay').classList.remove('show');
+});
+
+/* ============================================================
+   Vitals bars rendered from numbers
+   ============================================================ */
+function renderBar(id, filled, total, cls){
+  const bar = document.getElementById(id);
+  bar.innerHTML = '';
+  const segs = 10;
+  const lit = Math.round((filled/total)*segs);
+  for(let i=0;i<segs;i++){
+    const seg = document.createElement('div');
+    seg.className = 'stat-seg' + (i<lit ? ' filled '+cls : '');
+    bar.appendChild(seg);
+  }
+}
+renderBar('energyBar', 32, 50, 'energy');
+renderBar('healthBar', 87, 100, 'health');
+
+/* ============================================================
+   Rain particles
+   ============================================================ */
+const rainEl = document.getElementById('rain');
+for(let i=0;i<50;i++){
+  const r = document.createElement('span');
+  r.style.left = (Math.random()*100)+'%';
+  r.style.animationDuration = (0.6+Math.random()*0.8)+'s';
+  r.style.animationDelay = (Math.random()*-2)+'s';
+  r.style.height = (16+Math.random()*18)+'px';
+  rainEl.appendChild(r);
+}
+
+/* ============================================================
+   Tabs
+   ============================================================ */
+const compose = document.getElementById('ghostCompose');
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    ['feedLive','feedRumors','feedGhosts'].forEach(id=>document.getElementById(id).style.display='none');
+    const tab = t.dataset.tab;
+    document.getElementById('feed'+tab.charAt(0).toUpperCase()+tab.slice(1)).style.display='block';
+    compose.classList.toggle('show', tab==='ghosts');
+  });
+});
+
+document.getElementById('ghostSend').addEventListener('click', ()=>{
+  const msg = document.getElementById('ghostMsg').value.trim();
+  if(!msg) return;
+  const feed = document.getElementById('feedGhosts');
+  const item = document.createElement('div');
+  item.className = 'feed-item ghost-chat';
+  const now = new Date();
+  const time = now.toTimeString().slice(0,5);
+  item.innerHTML = `<div class="feed-time">${time} · GHOST CHANNEL</div>
+    <div class="feed-body"><span class="ghost-name">peakshift</span> <span style="color:rgba(255,255,255,0.25)">(you)</span>: ${msg.replace(/[<>]/g,'')}</div>`;
+  feed.insertBefore(item, feed.firstChild);
+  document.getElementById('ghostMsg').value = '';
+});
+
+/* Speed + icon-bar active state */
+document.querySelectorAll('.speed-btn').forEach(b=>b.addEventListener('click', ()=>{
+  document.querySelectorAll('.speed-btn').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+}));
+document.querySelectorAll('.icon-btn').forEach(b=>b.addEventListener('click', ()=>{
+  document.querySelectorAll('.icon-btn').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+}));
+
+/* Ghost tool arming (visual only for preview) */
+let armedAction = null;
+document.querySelectorAll('.tool-btn').forEach(b=>b.addEventListener('click', ()=>{
+  const a = b.dataset.action;
+  if(armedAction === a){
+    armedAction = null;
+    b.classList.remove('armed');
+  } else {
+    document.querySelectorAll('.tool-btn').forEach(x=>x.classList.remove('armed'));
+    armedAction = a;
+    b.classList.add('armed');
+  }
+}));
+
+/* ============================================================
+   Recap modal:
+   - Open on click of left-column trigger
+   - Auto-open if more than 2h since last visit (per brief)
+   - Force-open with ?recap=1 for design review
+   ============================================================ */
+const overlay = document.getElementById('recapOverlay');
+document.getElementById('recapTrigger').addEventListener('click', ()=>overlay.classList.add('show'));
+document.getElementById('closeRecap').addEventListener('click', ()=>{
+  overlay.classList.remove('show');
+  localStorage.setItem('sf_lastSeen', Date.now().toString());
+});
+overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.classList.remove('show'); });
+
+const params = new URLSearchParams(location.search);
+const last = parseInt(localStorage.getItem('sf_lastSeen')||'0', 10);
+const TWO_HOURS = 2*60*60*1000;
+if(params.get('recap')==='1' || (last && (Date.now() - last) > TWO_HOURS)){
+  setTimeout(()=>overlay.classList.add('show'), 400);
+}
+// First visit: stamp lastSeen so the recap doesn't auto-open the very next reload.
+if(!last) localStorage.setItem('sf_lastSeen', Date.now().toString());
+</script>
+
+</body>
+</html>
