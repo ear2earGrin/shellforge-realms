@@ -1054,11 +1054,11 @@
 
         /* Agent Status Card */
         .agent-status-card {
-            background: rgba(0, 0, 0, 0.8);
-            border: 2px solid var(--color-primary);
+            background: rgba(8, 10, 14, 0.85);
+            border: 1px solid rgba(74, 222, 128, 0.10);
             border-radius: 8px;
             padding: 20px 18px 18px;
-            box-shadow: 0 0 20px rgba(74, 222, 128, 0.3);
+            box-shadow: none;
             height: 100%;
             overflow-y: auto;
             box-sizing: border-box;
@@ -1571,6 +1571,69 @@
             background: rgba(192, 132, 252, 0.07);
             border-color: rgba(192, 132, 252, 0.55);
             color: rgba(220, 180, 255, 0.95);
+        }
+
+        /* ── MOOD section ─────────────────────────────────────────── */
+        .mood-section {
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(74, 222, 128, 0.18);
+        }
+        .mood-content {
+            font-family: var(--font-main);
+            font-size: 0.72rem;
+            color: rgba(220, 220, 230, 0.85);
+            line-height: 1.5;
+        }
+        .mood-content .mood-prefix { color: rgba(200, 200, 200, 0.45); }
+        .mood-content .mood-state {
+            color: rgba(255, 170, 60, 0.95);
+            font-weight: 600;
+        }
+        .mood-content .mood-state.calm     { color: rgba(74, 222, 128, 0.90); }
+        .mood-content .mood-state.wary     { color: rgba(251, 191, 36, 0.95); }
+        .mood-content .mood-state.tense    { color: rgba(255, 170, 60, 0.95); }
+        .mood-content .mood-state.wounded  { color: rgba(255, 90, 90, 0.95); }
+        .mood-content .mood-state.exhausted{ color: rgba(255, 90, 90, 0.90); }
+        .mood-content .mood-state.elated   { color: rgba(0, 240, 255, 0.95); }
+        .mood-content .mood-state.suspicious { color: rgba(192, 132, 252, 0.95); }
+        .mood-content .mood-sep { color: rgba(74, 222, 128, 0.45); margin: 0 4px; }
+        .mood-content .mood-context { color: rgba(200, 200, 200, 0.7); }
+
+        /* ── RECENT THOUGHTS section ──────────────────────────────── */
+        .thoughts-section {
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(74, 222, 128, 0.12);
+        }
+        .thoughts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .thought-line {
+            font-family: var(--font-main);
+            font-size: 0.7rem;
+            color: rgba(220, 220, 230, 0.78);
+            font-style: italic;
+            line-height: 1.45;
+            padding: 7px 9px;
+            background: rgba(74, 222, 128, 0.03);
+            border-left: 2px solid rgba(74, 222, 128, 0.30);
+            border-radius: 0 4px 4px 0;
+        }
+        .thought-line.empty {
+            color: rgba(200, 200, 200, 0.35);
+            font-style: normal;
+            font-size: 0.62rem;
+            border-left-color: rgba(74, 222, 128, 0.12);
+        }
+        .thought-line .thought-when {
+            font-style: normal;
+            font-size: 0.55rem;
+            color: rgba(180, 180, 200, 0.4);
+            letter-spacing: 0.04em;
+            margin-right: 6px;
         }
         .status-tag {
             position: relative;
@@ -3686,6 +3749,29 @@
                 </div>
                 <div class="status-tags" id="statusEffects">
                     <!-- Populated dynamically by updateStatusEffects() -->
+                </div>
+            </div>
+
+            <!-- Mood (derived from health/energy/recent activity) -->
+            <div class="mood-section">
+                <div class="panel-section-head">
+                    <span>Mood</span>
+                    <span class="head-meta" id="moodTimestamp">— ago</span>
+                </div>
+                <div class="mood-content" id="moodContent">
+                    <span class="mood-prefix">Currently:</span>
+                    <span class="mood-state">calm</span>
+                </div>
+            </div>
+
+            <!-- Recent Thoughts (last 3 turns from activity_log) -->
+            <div class="thoughts-section">
+                <div class="panel-section-head">
+                    <span>Recent Thoughts</span>
+                    <span class="head-meta">last 3 turns</span>
+                </div>
+                <div class="thoughts-list" id="thoughtsList">
+                    <div class="thought-line empty">No actions logged yet — your agent is still waking up.</div>
                 </div>
             </div>
         </div>
@@ -6159,6 +6245,10 @@
         // ─── Load equipped items into panel ─────────────────
         updateEquippedItems(agent.agentId);
 
+        // ─── Mood + Recent Thoughts (panel sections) ────────
+        updateMood(agent);
+        updateRecentThoughts(agent);
+
         // ─── Store agent ref for detail modal ───────────────
         window._currentAgent = agent;
 
@@ -6237,6 +6327,118 @@
             // Effect count for the section heading meta chip.
             var countEl = document.getElementById('activeEffectCount');
             if (countEl) countEl.textContent = tags.length;
+        }
+
+        // ─── Mood derivation ────────────────────────────────
+        // Pure local function — pulls from agent.health / energy / karma /
+        // recent activity to infer a one-word state + a short context tag
+        // ("suspicious of ECHO-2", "watching the streets", etc.). No LLM.
+        function deriveMood(agent, recent) {
+            var state = 'calm';
+            var contextBits = [];
+            var hp = agent.health || 0;
+            var en = agent.energy || 0;
+
+            if (hp <= 20)        state = 'wounded';
+            else if (en <= 15)   state = 'exhausted';
+            else if (hp >= 90 && en >= 70) state = 'elated';
+            else if ((agent.karma || 0) <= -5) state = 'suspicious';
+            else if (hp <= 50)   state = 'wary';
+            else if (en <= 35)   state = 'tense';
+            else                 state = 'calm';
+
+            // Build a short context phrase from the most recent meaningful event.
+            if (recent && recent.length) {
+                var top = recent[0];
+                var t = (top.action_type || '').toLowerCase();
+                if (t === 'arena' || t === 'combat') {
+                    // Find the opponent name from the detail text if present.
+                    var m = /defeated by ([A-Za-z0-9_-]+)|lost to ([A-Za-z0-9_-]+)|fought ([A-Za-z0-9_-]+)/i.exec(top.action_detail || '');
+                    var foe = m ? (m[1] || m[2] || m[3]) : null;
+                    contextBits.push(foe ? 'suspicious of ' + foe : 'still tasting the fight');
+                } else if (t === 'craft') {
+                    contextBits.push('mind on the forge');
+                } else if (t === 'trade' || t === 'market_buy' || t === 'market_sell') {
+                    contextBits.push('counting the ledger');
+                } else if (t === 'gather' || t === 'explore') {
+                    contextBits.push('watching the streets');
+                } else if (t === 'church') {
+                    contextBits.push('after the prayer');
+                } else if (t === 'rest' && state === 'tense') {
+                    contextBits.push('forced to rest');
+                } else if (t === 'hazard') {
+                    contextBits.push('shaken by the zone');
+                } else if (t === 'stranded') {
+                    contextBits.push('drifting offline');
+                } else if (top.location && state !== 'calm') {
+                    contextBits.push('idling in ' + top.location);
+                }
+            }
+            return { state: state, context: contextBits.join(' · ') };
+        }
+        function relTime(ts) {
+            if (!ts) return '';
+            var iso = (ts && !ts.endsWith('Z') && ts.indexOf('+') === -1) ? ts + 'Z' : ts;
+            var diff = Math.floor((Date.now() - new Date(iso)) / 1000);
+            if (diff < 60)   return diff + 's ago';
+            if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+            if (diff < 86400)return Math.floor(diff/3600) + 'h ago';
+            return Math.floor(diff/86400) + 'd ago';
+        }
+        async function updateMood(agent) {
+            var recent = await sbGet('activity_log',
+                'agent_id=eq.' + agent.agentId +
+                '&order=timestamp.desc&limit=3' +
+                '&select=action_type,action_detail,significance,timestamp,location') || [];
+            var mood = deriveMood(agent, recent);
+            var content = document.getElementById('moodContent');
+            var ts = document.getElementById('moodTimestamp');
+            if (content) {
+                var ctxHtml = mood.context
+                    ? '<span class="mood-sep">·</span><span class="mood-context">' + mood.context + '</span>'
+                    : '';
+                content.innerHTML = '<span class="mood-prefix">Currently:</span> ' +
+                    '<span class="mood-state ' + mood.state + '">' + mood.state + '</span>' + ctxHtml;
+            }
+            if (ts) ts.textContent = recent.length ? relTime(recent[0].timestamp) : '— ago';
+        }
+
+        // ─── Recent Thoughts ────────────────────────────────
+        // Renders the last 3 activity_log lines as italic quotes. Strips
+        // the leading agent name and the verbose location tag from each
+        // entry so the panel reads more like an inner monologue than a
+        // newsfeed. Uses significance to skip the dullest "rest" lines
+        // when there are more interesting ones available.
+        async function updateRecentThoughts(agent) {
+            var list = document.getElementById('thoughtsList');
+            if (!list) return;
+            var rows = await sbGet('activity_log',
+                'agent_id=eq.' + agent.agentId +
+                '&order=timestamp.desc&limit=8' +
+                '&select=action_detail,action_type,significance,timestamp,location') || [];
+
+            // Prefer rows with significance ≥ 1; fall back to anything if
+            // the recent feed is all Tier-0 idle ticks.
+            var picked = rows.filter(function(r) {
+                return (typeof r.significance === 'number') ? r.significance >= 1 : true;
+            });
+            if (picked.length < 3) picked = rows; // fallback — show what we have
+            picked = picked.slice(0, 3);
+
+            if (!picked.length) {
+                list.innerHTML = '<div class="thought-line empty">No actions logged yet — your agent is still waking up.</div>';
+                return;
+            }
+
+            var name = (agent.username || '').toLowerCase();
+            list.innerHTML = picked.map(function(r) {
+                var d = String(r.action_detail || '').trim();
+                if (d.toLowerCase().startsWith(name)) {
+                    d = d.slice(name.length).replace(/^[\s.,:;—-]+/, '');
+                }
+                return '<div class="thought-line"><span class="thought-when">' + relTime(r.timestamp) + '</span>' +
+                       '"' + d.replace(/"/g, '“') + '"' + '</div>';
+            }).join('');
         }
 
         // ─── Load & render equipped items ────────────────────
