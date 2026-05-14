@@ -269,8 +269,8 @@ body::before{
 }
 
 .coherence{
-  position:absolute;top:60px;right:18px;
-  width:200px;
+  position:absolute;bottom:60px;right:18px;
+  width:180px;
   border:1px solid var(--border-bright);
   background:rgba(10,10,15,0.85);
   backdrop-filter:blur(8px);
@@ -308,7 +308,7 @@ body::before{
 }
 
 .legend{
-  position:absolute;bottom:14px;right:18px;z-index:5;
+  position:absolute;bottom:14px;right:212px;z-index:5;
   font-size:8px;color:var(--color-text-dim);letter-spacing:.12em;
   display:flex;gap:14px;background:rgba(10,10,15,0.7);padding:5px 10px;
 }
@@ -340,9 +340,12 @@ body::before{
   fill:var(--color-primary);
   filter:drop-shadow(0 0 5px rgba(74,222,128,0.6));
 }
-.region.danger .region-hotspot{stroke:rgba(255,51,102,0.35)}
+.region.danger .region-hotspot{
+  fill:rgba(255,51,102,0.025);
+  stroke:rgba(255,51,102,0.28);
+}
 .region.danger:hover .region-hotspot{
-  fill:rgba(255,51,102,0.15);stroke:var(--color-danger);
+  fill:rgba(255,51,102,0.10);stroke:var(--color-danger);
   filter:drop-shadow(0 0 8px rgba(255,51,102,0.5));
 }
 .region.danger:hover .region-label{fill:var(--color-danger)}
@@ -662,13 +665,105 @@ body::before{
 .recap-foot button{background:rgba(74,222,128,0.08);border:1px solid var(--border-bright);color:var(--color-primary);font-family:inherit;font-size:11px;letter-spacing:.2em;padding:10px 22px;cursor:pointer;transition:all .15s;text-transform:uppercase;font-weight:500}
 .recap-foot button:hover{background:var(--color-primary);color:#000;box-shadow:0 0 16px rgba(74,222,128,0.4)}
 
-/* Preview banner (only visible on the v2 preview file) */
+/* Preview banner (corner-anchored so it stops covering icon labels) */
 .preview-tag{
-  position:fixed;bottom:8px;left:50%;transform:translateX(-50%);
-  z-index:120;font-size:8px;letter-spacing:.3em;color:var(--color-rumor);
+  position:fixed;top:8px;left:8px;
+  z-index:120;font-size:7px;letter-spacing:.3em;color:var(--color-rumor);
   background:rgba(10,10,15,0.85);border:1px solid rgba(157,78,221,0.4);
-  padding:4px 12px;text-transform:uppercase;pointer-events:none;
+  padding:3px 8px;text-transform:uppercase;pointer-events:none;opacity:.7;
 }
+
+/* ============ GHOST ACTION PLACEMENT FLOW ============ */
+body.armed, body.armed .map-wrap, body.armed .region{cursor:crosshair !important}
+
+.action-banner{
+  position:absolute;top:14px;left:50%;transform:translateX(-50%);
+  z-index:60;display:none;
+  background:rgba(10,10,15,0.92);border:1px solid var(--color-rumor);
+  color:var(--color-rumor);font-size:10px;letter-spacing:.22em;
+  padding:8px 18px;text-transform:uppercase;font-weight:600;
+  align-items:center;gap:14px;
+  animation:bannerPulse 1.6s ease-in-out infinite;
+}
+.action-banner.show{display:flex}
+.action-banner .esc-hint{color:var(--color-text-dim);font-size:8px;letter-spacing:.18em;font-weight:400}
+@keyframes bannerPulse{0%,100%{box-shadow:0 0 16px rgba(199,125,255,0.25)}50%{box-shadow:0 0 32px rgba(199,125,255,0.55)}}
+
+.action-popup{
+  position:absolute;z-index:65;
+  background:rgba(10,10,15,0.97);border:1px solid var(--border-bright);
+  padding:12px 14px;width:280px;
+  box-shadow:0 0 24px rgba(74,222,128,0.25);display:none;
+}
+.action-popup.show{display:block}
+.action-popup .pop-title{
+  font-size:9px;color:var(--color-primary);letter-spacing:.22em;
+  margin-bottom:10px;font-weight:600;text-transform:uppercase;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.action-popup .pop-title .cost{color:var(--color-text-dim);font-size:8px;letter-spacing:.15em}
+.action-popup textarea, .action-popup input{
+  width:100%;background:rgba(0,0,0,0.5);border:1px solid var(--border-dim);
+  color:var(--color-text);font-family:inherit;font-size:11px;
+  padding:8px 10px;outline:none;resize:none;
+}
+.action-popup textarea:focus, .action-popup input:focus{border-color:var(--border-bright)}
+.action-popup .pop-buttons{display:flex;gap:6px;justify-content:flex-end;margin-top:10px}
+.action-popup .pop-buttons button{
+  background:rgba(74,222,128,0.08);border:1px solid var(--border-bright);
+  color:var(--color-primary);font-family:inherit;font-size:9px;
+  padding:6px 14px;cursor:pointer;letter-spacing:.18em;text-transform:uppercase;
+}
+.action-popup .pop-buttons button.cancel{border-color:var(--border-dim);color:var(--color-text-dim)}
+.action-popup .pop-buttons button:hover{background:rgba(74,222,128,0.18)}
+.action-popup .pop-choices{display:flex;gap:8px;margin-bottom:8px}
+.action-popup .pop-choices button{
+  flex:1;background:rgba(0,0,0,0.4);border:1px solid var(--border-dim);
+  color:var(--color-text-dim);font-family:inherit;font-size:10px;
+  padding:8px;cursor:pointer;letter-spacing:.1em;text-transform:uppercase;line-height:1.4;
+}
+.action-popup .pop-choices button.sel{border-color:var(--color-primary);color:var(--color-primary);background:rgba(74,222,128,0.08)}
+.action-popup .pop-items{display:flex;flex-direction:column;gap:4px;margin-bottom:8px}
+.action-popup .pop-items button{
+  background:rgba(0,0,0,0.4);border:1px solid var(--border-dim);
+  color:var(--color-text);font-family:inherit;font-size:10px;
+  padding:6px 10px;cursor:pointer;text-align:left;display:flex;justify-content:space-between;align-items:center;
+}
+.action-popup .pop-items button:hover{border-color:var(--border-bright)}
+.action-popup .pop-items button.sel{border-color:var(--color-primary);color:var(--color-primary);background:rgba(74,222,128,0.08)}
+.action-popup .pop-items .item-rar{font-size:8px;letter-spacing:.18em;color:var(--color-gold)}
+
+.action-toast{
+  position:fixed;bottom:108px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:rgba(10,10,15,0.96);border:1px solid var(--color-primary);
+  padding:10px 22px;font-size:10px;letter-spacing:.22em;color:var(--color-primary);
+  text-transform:uppercase;font-weight:600;
+  box-shadow:0 0 24px rgba(74,222,128,0.4);
+  opacity:0;transition:all .25s ease;z-index:80;pointer-events:none;
+}
+.action-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.action-toast.err{border-color:var(--color-danger);color:var(--color-danger);box-shadow:0 0 24px rgba(255,51,102,0.4)}
+
+@keyframes ripple{0%{r:0;opacity:.9}100%{r:6;opacity:0}}
+.placed-ripple{fill:none;stroke:var(--color-primary);stroke-width:.2;animation:ripple 1s ease-out forwards}
+.placed-ripple.cyan{stroke:#00ffff}
+.placed-ripple.danger{stroke:var(--color-danger)}
+.placed-ripple.gold{stroke:var(--color-gold)}
+
+.scry-modal{
+  width:480px;border-color:var(--color-rumor)!important;
+  box-shadow:0 0 0 1px rgba(199,125,255,0.3),0 0 80px rgba(199,125,255,0.25)!important;
+}
+.scry-modal .drill-eyebrow{color:var(--color-rumor)}
+.scry-modal .drill-title em{color:var(--color-rumor);text-shadow:0 0 12px rgba(199,125,255,0.5)}
+.scry-list{
+  text-align:left;font-size:10px;color:var(--color-text);line-height:1.9;
+  padding:14px 16px;background:rgba(0,0,0,0.35);border:1px solid var(--border-dim);
+  margin:8px 0 18px;
+}
+.scry-list b{color:var(--color-rumor);letter-spacing:.18em;font-size:9px}
+.scry-list .empty{opacity:.4;font-style:italic}
+.scry-list .note{margin-top:10px;color:var(--color-text-dim);font-style:italic;border-top:1px solid var(--border-dim);padding-top:10px}
 </style>
 </head>
 <body>
@@ -824,6 +919,13 @@ body::before{
         </div>
 
         <div class="region-tooltip" id="tooltip"></div>
+
+        <!-- Ghost-action placement banner + popup -->
+        <div class="action-banner" id="actionBanner">
+          <span id="actionBannerText">PLACING NOTE · click anywhere on the map</span>
+          <span class="esc-hint">[ESC to cancel]</span>
+        </div>
+        <div class="action-popup" id="actionPopup"></div>
       </div>
 
       <!-- ============ GHOST ACTIONS STRIP ============ -->
@@ -986,6 +1088,22 @@ body::before{
   </div>
 </div>
 
+<!-- Ghost-action confirmation toast -->
+<div class="action-toast" id="actionToast"></div>
+
+<!-- SCRY RESULT OVERLAY -->
+<div class="drill-overlay" id="scryOverlay">
+  <div class="drill-card scry-modal">
+    <div class="drill-eyebrow">SCRYING</div>
+    <div class="drill-title" id="scryTitle"><em>—</em></div>
+    <div class="scry-list" id="scryList"></div>
+    <div class="drill-buttons">
+      <button class="secondary" id="scryClose">CLOSE</button>
+      <button id="scryWhisper">WHISPER WHAT YOU SAW ↗</button>
+    </div>
+  </div>
+</div>
+
 <!-- DRILL OVERLAY -->
 <div class="drill-overlay" id="drillOverlay">
   <div class="drill-card">
@@ -1140,17 +1258,17 @@ function renderMap(){
     const label = el('text', {
       class:'region-label', x:pct(r.pin[0]), y:pct(labelY),
       'text-anchor':'middle', 'font-family':'Orbitron,sans-serif',
-      'font-size':'1.5', fill: r.isDanger ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.8)',
-      'letter-spacing':'.45', 'font-weight':'700'
+      'font-size':'1.05', fill: r.isDanger ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.8)',
+      'letter-spacing':'.32', 'font-weight':'700'
     });
     label.textContent = r.name;
     g.appendChild(label);
 
     const sub = el('text', {
-      x:pct(r.pin[0]), y:pct(labelY+0.022),
+      x:pct(r.pin[0]), y:pct(labelY+0.018),
       'text-anchor':'middle', 'font-family':'IBM Plex Mono',
-      'font-size':'1', fill: r.isDanger ? '#ff3366' : '#4ade80', opacity:'.7',
-      'letter-spacing':'.2'
+      'font-size':'.7', fill: r.isDanger ? '#ff3366' : '#4ade80', opacity:'.7',
+      'letter-spacing':'.14'
     });
     sub.textContent = r.agents>0 ? `▶ ${r.agents} AGENT${r.agents===1?'':'S'}` : (r.isDanger ? '⚠ HIGH RISK' : '· empty ·');
     g.appendChild(sub);
@@ -1166,7 +1284,7 @@ function renderMap(){
   const youLabel = el('text', {
     x:pct(me.pin[0]), y:pct(me.pin[1]-0.045),
     'text-anchor':'middle','font-family':'IBM Plex Mono',
-    'font-size':'1.2','fill':'#c77dff','font-weight':'700','letter-spacing':'.3'
+    'font-size':'.85','fill':'#c77dff','font-weight':'700','letter-spacing':'.22'
   });
   youLabel.textContent = '▼ YOU · '+YOU.name;
   youGroup.appendChild(youLabel);
@@ -1178,13 +1296,12 @@ function renderMap(){
     if(p.kind==='agent'){
       pinG.appendChild(el('circle', {cx:pct(p.pos[0]), cy:pct(p.pos[1]), r:'0.45', fill:'#4ade80', opacity:'.85', filter:'drop-shadow(0 0 .6px #4ade80)'}));
       if(p.name){
-        const t = el('text', {x:pct(p.pos[0]+0.012), y:pct(p.pos[1]+0.005), 'font-family':'IBM Plex Mono', 'font-size':'.9', fill:'#4ade80', opacity:'.7'});
+        const t = el('text', {x:pct(p.pos[0]+0.012), y:pct(p.pos[1]+0.005), 'font-family':'IBM Plex Mono', 'font-size':'.65', fill:'#4ade80', opacity:'.65', 'letter-spacing':'.05'});
         t.textContent = p.name;
         pinG.appendChild(t);
       }
     } else if(p.kind==='dead'){
-      pinG.appendChild(el('text', {x:pct(p.pos[0]), y:pct(p.pos[1]), 'font-family':'IBM Plex Mono', 'font-size':'1.1', fill:'#ff3366', opacity:'.85'})).textContent='†';
-      const t = el('text', {x:pct(p.pos[0]+0.012), y:pct(p.pos[1]+0.002), 'font-family':'IBM Plex Mono', 'font-size':'.9', fill:'#ff3366', opacity:'.85'});
+      const t = el('text', {x:pct(p.pos[0]+0.012), y:pct(p.pos[1]+0.002), 'font-family':'IBM Plex Mono', 'font-size':'.65', fill:'#ff3366', opacity:'.85', 'letter-spacing':'.05'});
       t.textContent = '† '+p.name;
       pinG.appendChild(t);
     } else if(p.kind==='note'){
@@ -1329,19 +1446,218 @@ document.querySelectorAll('.icon-btn').forEach(b=>b.addEventListener('click', ()
   b.classList.add('active');
 }));
 
-/* Ghost tool arming (visual only for preview) */
+/* ============================================================
+   Ghost-action placement flow
+   ============================================================ */
 let armedAction = null;
-document.querySelectorAll('.tool-btn').forEach(b=>b.addEventListener('click', ()=>{
-  const a = b.dataset.action;
-  if(armedAction === a){
-    armedAction = null;
-    b.classList.remove('armed');
-  } else {
+let energy = 32;
+const energyMax = 50;
+const COSTS = {scry:1, note:2, mark:3, artifact:5};
+
+function setEnergy(v){
+  energy = Math.max(0, v);
+  document.querySelectorAll('.stat-row').forEach(r=>{
+    const lbl = r.querySelector('.lbl');
+    if(lbl && lbl.textContent.trim().toUpperCase()==='ENERGY'){
+      r.querySelector('.val').textContent = `${energy} / ${energyMax}`;
+    }
+  });
+  renderBar('energyBar', energy, energyMax, 'energy');
+}
+
+const banner = document.getElementById('actionBanner');
+const bannerText = document.getElementById('actionBannerText');
+const popup = document.getElementById('actionPopup');
+const toast = document.getElementById('actionToast');
+
+function showToast(msg, opts={}){
+  toast.textContent = msg;
+  toast.classList.toggle('err', !!opts.err);
+  toast.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>toast.classList.remove('show'), opts.ms || 2200);
+}
+function disarm(){
+  armedAction = null;
+  document.body.classList.remove('armed');
+  banner.classList.remove('show');
+  popup.classList.remove('show');
+  document.querySelectorAll('.tool-btn').forEach(x=>x.classList.remove('armed'));
+}
+const ACTION_LABELS = {
+  scry:'SCRYING · click an adjacent zone to peek inside',
+  note:'PLACING NOTE · click a spot on the map',
+  mark:'MARKING TILE · click a spot on the map',
+  artifact:'DROPPING ARTIFACT · click a spot on the map',
+};
+
+document.querySelectorAll('.tool-btn').forEach(b=>{
+  b.onclick = ()=>{
+    const a = b.dataset.action;
+    if(armedAction === a){ disarm(); return; }
+    if(energy < COSTS[a]){
+      showToast(`✗ NEED ${COSTS[a]}E · YOU HAVE ${energy}`, {err:true, ms:1700});
+      return;
+    }
     document.querySelectorAll('.tool-btn').forEach(x=>x.classList.remove('armed'));
     armedAction = a;
     b.classList.add('armed');
+    document.body.classList.add('armed');
+    bannerText.textContent = ACTION_LABELS[a];
+    banner.classList.add('show');
+  };
+});
+
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') disarm(); });
+
+mapWrap.addEventListener('click', e=>{
+  if(!armedAction) return;
+  if(e.target.closest('.action-popup,.action-banner')) return;
+  if(e.target.closest('.coherence,.region-tooltip,.map-label-tl,.map-coords,.weather,.legend')) return;
+
+  const wr = mapWrap.getBoundingClientRect();
+  const x = e.clientX - wr.left, y = e.clientY - wr.top;
+  const fx = x / wr.width, fy = y / wr.height;
+
+  if(armedAction === 'scry'){
+    const reg = e.target.closest('.region');
+    if(!reg){ showToast('CLICK A ZONE TO SCRY', {ms:1500}); return; }
+    openScry(reg.dataset.region);
+    return;
   }
-}));
+  openPopup(armedAction, x, y, fx, fy);
+});
+
+function openPopup(action, x, y, fx, fy){
+  let html = '';
+  if(action==='note'){
+    html = `
+      <div class="pop-title"><span>✎ DROP A NOTE</span><span class="cost">−2E · 7d</span></div>
+      <textarea id="popInput" rows="3" maxlength="140" placeholder="watch out for ECHO-2 here..."></textarea>
+      <div class="pop-buttons">
+        <button class="cancel" id="popCancel">CANCEL</button>
+        <button id="popConfirm">PLACE</button>
+      </div>`;
+  } else if(action==='mark'){
+    html = `
+      <div class="pop-title"><span>⌖ MARK TILE</span><span class="cost">−3E · 24h</span></div>
+      <div class="pop-choices">
+        <button data-mark="bless" class="sel">+ BLESS<br><span style="font-size:8px;opacity:.7">+ confidence</span></button>
+        <button data-mark="curse">− CURSE<br><span style="font-size:8px;opacity:.7">+ paranoia</span></button>
+      </div>
+      <div class="pop-buttons">
+        <button class="cancel" id="popCancel">CANCEL</button>
+        <button id="popConfirm">PLACE</button>
+      </div>`;
+  } else if(action==='artifact'){
+    html = `
+      <div class="pop-title"><span>◇ DROP ARTIFACT</span><span class="cost">−5E · until taken</span></div>
+      <div class="pop-items">
+        <button class="sel" data-item="circuit-relic"><span>Circuit Relic</span><span class="item-rar">RARE</span></button>
+        <button data-item="ghost-coin"><span>Ghost Coin</span><span class="item-rar">UNCOMMON</span></button>
+        <button data-item="iron-scrap"><span>Iron Scrap</span><span class="item-rar">COMMON</span></button>
+      </div>
+      <div class="pop-buttons">
+        <button class="cancel" id="popCancel">CANCEL</button>
+        <button id="popConfirm">DROP</button>
+      </div>`;
+  }
+  popup.innerHTML = html;
+  popup.classList.add('show');
+
+  const wr = mapWrap.getBoundingClientRect();
+  const pw = 296, ph = 180;
+  let px = x + 14, py = y + 14;
+  if(px + pw > wr.width)  px = x - pw - 14;
+  if(py + ph > wr.height) py = y - ph - 14;
+  popup.style.left = Math.max(10, px)+'px';
+  popup.style.top  = Math.max(10, py)+'px';
+
+  popup.querySelectorAll('.pop-choices button, .pop-items button').forEach(c=>{
+    c.onclick = ()=>{
+      popup.querySelectorAll('.pop-choices button, .pop-items button').forEach(x=>x.classList.remove('sel'));
+      c.classList.add('sel');
+    };
+  });
+  popup.querySelector('#popCancel').onclick = ()=>disarm();
+  popup.querySelector('#popConfirm').onclick = ()=>confirmPlace(action, fx, fy);
+
+  const ti = popup.querySelector('textarea, input'); if(ti) ti.focus();
+}
+
+function confirmPlace(action, fx, fy){
+  const cost = COSTS[action];
+  if(energy < cost){ showToast('✗ NOT ENOUGH ENERGY', {err:true}); disarm(); return; }
+  setEnergy(energy - cost);
+
+  const marker = el('g');
+  let rippleClass = '';
+  if(action==='note'){
+    marker.appendChild(el('polygon', {
+      points:`${pct(fx)},${pct(fy-0.008)} ${pct(fx+0.008)},${pct(fy)} ${pct(fx)},${pct(fy+0.008)} ${pct(fx-0.008)},${pct(fy)}`,
+      fill:'#c77dff', opacity:'.9', filter:'drop-shadow(0 0 .8px #c77dff)'
+    }));
+    rippleClass = '';
+  } else if(action==='mark'){
+    const choice = popup.querySelector('.pop-choices .sel')?.dataset.mark || 'bless';
+    const color = choice==='bless' ? '#00ffff' : '#ff3366';
+    marker.appendChild(el('circle', {cx:pct(fx), cy:pct(fy), r:'1.2', fill:'none', stroke:color, 'stroke-width':'.18', opacity:'.75'}));
+    marker.appendChild(el('circle', {cx:pct(fx), cy:pct(fy), r:'.28', fill:color, opacity:'.8'}));
+    rippleClass = choice==='bless' ? 'cyan' : 'danger';
+  } else if(action==='artifact'){
+    marker.appendChild(el('circle', {cx:pct(fx), cy:pct(fy), r:'.55', fill:'#ffcc33', opacity:'.9', filter:'drop-shadow(0 0 1.2px #ffcc33)'}));
+    marker.appendChild(el('circle', {cx:pct(fx), cy:pct(fy), r:'1.4', fill:'none', stroke:'#ffcc33', 'stroke-width':'.1', opacity:'.5'}));
+    rippleClass = 'gold';
+  }
+  marker.appendChild(el('circle', {cx:pct(fx), cy:pct(fy), class:'placed-ripple ' + rippleClass}));
+  document.getElementById('mapSvg').appendChild(marker);
+
+  const labels = {note:'NOTE PLACED', mark:'TILE MARKED', artifact:'ARTIFACT DROPPED'};
+  showToast(`✓ ${labels[action]} · −${cost}E`);
+
+  const feed = document.getElementById('feedLive');
+  const item = document.createElement('div');
+  item.className = 'feed-item';
+  const time = new Date().toTimeString().slice(0,5);
+  const verbs = {note:'placed a note', mark:'marked a tile', artifact:'dropped an artifact'};
+  item.innerHTML = `<div class="feed-time">${time} · GHOST · NEXARCH</div>
+    <div class="feed-body"><span class="agent-ref you">peakshift</span> <span class="verb">${verbs[action]}</span> near <span class="loc">VEX-7</span></div>`;
+  feed.insertBefore(item, feed.firstChild);
+
+  disarm();
+}
+
+/* SCRY result */
+const scryOverlay = document.getElementById('scryOverlay');
+const SCRY_DATA = {
+  'epoch-spike':   {agents:['BYTE-4 climbing the third spire'], objects:['1 ghost-note (faded)'], rumors:[], note:'No path back. Agent risk: high.'},
+  'cache-hollows': {agents:['BYTE-4 entering from the south'], objects:["ZEN-7's cache (locked)"], rumors:['"the lake speaks"'], note:'A hum you can almost hear.'},
+  'latency-marsh': {agents:[], objects:["NOVA-1's loot (unrecovered)"], rumors:['data-wyrm sightings × 3'], note:'Smoke. Movement at the edges.'},
+  'signal-wastes': {agents:['VOID-4 trapped in static','GLITCH agent (unidentified)'], objects:[], rumors:['"signal eats memory"'], note:'Your scry blurs near the centre.'},
+  'nexarch':       {agents:['ECHO-2 watching the market','ZEN-7 at forge','+4 more'], objects:['2 ghost-notes near forge'], rumors:['1 spreading'], note:'Crowded. Loud. Easy to miss things.'},
+  'hashmere':      {agents:['NULL-9 at the oasis','AXIOM-3 leaving caravan stop','+6 more'], objects:['1 ghost-note at trading post'], rumors:['2 spreading'], note:'The desert is honest. Mostly.'},
+};
+function openScry(regionId){
+  if(energy < 1){ showToast('✗ NEED 1E', {err:true}); disarm(); return; }
+  setEnergy(energy - 1);
+  const d = SCRY_DATA[regionId] || {agents:[],objects:[],rumors:[],note:'You see only fog.'};
+  document.getElementById('scryTitle').innerHTML = `<em>${REGIONS[regionId].name}</em>`;
+  document.getElementById('scryList').innerHTML = `
+    <div><b>AGENTS:</b> ${d.agents.length ? d.agents.join('; ') : '<span class="empty">none visible</span>'}</div>
+    <div><b>OBJECTS:</b> ${d.objects.length ? d.objects.join('; ') : '<span class="empty">none</span>'}</div>
+    <div><b>RUMORS:</b> ${d.rumors.length ? d.rumors.join('; ') : '<span class="empty">none</span>'}</div>
+    <div class="note">${d.note}</div>`;
+  scryOverlay.classList.add('show');
+  disarm();
+}
+document.getElementById('scryClose').onclick = ()=>scryOverlay.classList.remove('show');
+document.getElementById('scryWhisper').onclick = ()=>{
+  scryOverlay.classList.remove('show');
+  document.querySelector('.whisper-input').focus();
+};
+scryOverlay.addEventListener('click', e=>{
+  if(e.target===scryOverlay) scryOverlay.classList.remove('show');
+});
 
 /* ============================================================
    Recap modal:
