@@ -1057,7 +1057,7 @@
             background: rgba(0, 0, 0, 0.8);
             border: 2px solid var(--color-primary);
             border-radius: 8px;
-            padding: 20px;
+            padding: 20px 18px 18px;
             box-shadow: 0 0 20px rgba(74, 222, 128, 0.3);
             height: 100%;
             overflow-y: auto;
@@ -1070,32 +1070,41 @@
             align-items: center;
             text-align: center;
             gap: 10px;
-            margin-bottom: 16px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid rgba(74, 222, 128, 0.3);
+            margin-bottom: 14px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid rgba(74, 222, 128, 0.18);
         }
 
         .agent-avatar {
-            width: 110px;
-            height: 110px;
-            min-width: 110px;
-            min-height: 110px;
+            width: 156px;
+            height: 156px;
+            min-width: 156px;
+            min-height: 156px;
             border-radius: 50%;
             border: 3px solid var(--color-primary);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
-            box-shadow: 0 0 20px rgba(74, 222, 128, 0.6);
+            font-size: 2.4rem;
+            box-shadow: 0 0 32px rgba(74, 222, 128, 0.45), inset 0 0 18px rgba(74, 222, 128, 0.15);
             overflow: hidden;
             cursor: pointer;
             transition: all 0.3s ease;
             aspect-ratio: 1 / 1;
+            position: relative;
+        }
+        .agent-avatar::after {
+            content: '';
+            position: absolute;
+            inset: -6px;
+            border-radius: 50%;
+            border: 1px solid rgba(74, 222, 128, 0.25);
+            pointer-events: none;
         }
 
         .agent-avatar:hover {
-            transform: scale(1.08);
-            box-shadow: 0 0 30px rgba(74, 222, 128, 0.8);
+            transform: scale(1.04);
+            box-shadow: 0 0 40px rgba(74, 222, 128, 0.7), inset 0 0 22px rgba(74, 222, 128, 0.18);
             border-color: var(--color-secondary);
         }
 
@@ -1155,24 +1164,36 @@
         .agent-info h2 {
             font-family: var(--font-title);
             color: var(--color-primary);
-            font-size: 1.2rem;
-            margin-bottom: 4px;
-            letter-spacing: 0.08em;
+            font-size: 1.55rem;
+            font-weight: 700;
+            margin: 4px 0 6px;
+            letter-spacing: 0.10em;
             word-break: break-word;
+            text-shadow: 0 0 14px rgba(74, 222, 128, 0.45);
         }
 
         .agent-archetype {
-            color: var(--color-secondary);
-            font-size: 0.72rem;
+            color: rgba(220, 220, 230, 0.65);
+            font-size: 0.62rem;
+            font-weight: 500;
             text-transform: uppercase;
-            letter-spacing: 0.06em;
+            letter-spacing: 0.22em;
+            margin-bottom: 6px;
+        }
+        .agent-archetype .arch-sep {
+            color: rgba(74, 222, 128, 0.55);
+            margin: 0 6px;
+        }
+        .agent-archetype .arch-name {
+            color: rgba(74, 222, 128, 0.85);
         }
 
         .agent-quirk {
-            color: #ff9900;
+            color: rgba(255, 200, 200, 0.75);
             font-size: 0.7rem;
-            margin-top: 3px;
+            margin-top: 2px;
             font-style: italic;
+            letter-spacing: 0.02em;
         }
 
         .agent-bio {
@@ -1187,11 +1208,37 @@
             line-height: 1.4;
         }
 
+        /* ── Section heading shared across EQUIPPED / VITALS / ACTIVE EFFECTS ── */
+        .panel-section-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: var(--font-main);
+            font-size: 0.65rem;
+            color: var(--color-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            margin: 0 0 8px;
+        }
+        .panel-section-head .head-meta {
+            color: rgba(200, 200, 200, 0.4);
+            font-size: 0.55rem;
+            letter-spacing: 0.18em;
+            font-weight: 500;
+        }
+        .panel-section-head .head-meta.turn-ready {
+            color: rgba(74, 222, 128, 0.8);
+        }
+        .panel-section-head .head-meta.turn-ready::after {
+            content: ' ▸';
+            color: rgba(74, 222, 128, 0.7);
+        }
+
         .stat-bars-group {
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            margin-bottom: 12px;
+            gap: 8px;
+            margin-bottom: 14px;
         }
         .stat-bar {
             margin-bottom: 0;
@@ -1201,23 +1248,24 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 4px;
-            font-size: 0.72rem;
-            color: var(--color-text-dim);
+            font-size: 0.68rem;
+            color: rgba(220, 220, 230, 0.55);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
         }
         .stat-label .stat-icon {
-            font-size: 0.65rem;
-            margin-right: 4px;
-            opacity: 0.7;
+            display: none; /* segmented bars carry the visual weight; emoji icons removed */
         }
         .stat-value {
-            font-weight: bold;
-            font-size: 0.72rem;
+            font-weight: 700;
+            font-size: 0.78rem;
+            letter-spacing: 0.04em;
         }
         .bar-container {
             width: 100%;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 3px;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 2px;
             overflow: hidden;
             position: relative;
         }
@@ -1260,15 +1308,19 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
         }
-        /* Segmented overlay on all bars */
+        /* Segmented overlay — 8 cells across each bar, matches the
+           mockup's cell-style energy/health readout. */
         .bar-container::after {
             content: '';
             position: absolute;
             inset: 0;
-            background-image:
-                linear-gradient(90deg, transparent 24.5%, rgba(10,10,15,0.6) 24.5%, rgba(10,10,15,0.6) 25.5%, transparent 25.5%),
-                linear-gradient(90deg, transparent 49.5%, rgba(10,10,15,0.6) 49.5%, rgba(10,10,15,0.6) 50.5%, transparent 50.5%),
-                linear-gradient(90deg, transparent 74.5%, rgba(10,10,15,0.6) 74.5%, rgba(10,10,15,0.6) 75.5%, transparent 75.5%);
+            background-image: repeating-linear-gradient(
+                90deg,
+                transparent 0,
+                transparent calc(12.5% - 2px),
+                rgba(10, 10, 15, 0.85) calc(12.5% - 2px),
+                rgba(10, 10, 15, 0.85) 12.5%
+            );
             pointer-events: none;
             z-index: 2;
         }
@@ -1294,31 +1346,38 @@
             font-weight: bold;
         }
 
-        /* Cluster Badge */
+        /* Cluster Badge — compact "see other archetypes in this cluster"
+           button. The big cluster + archetype line is now in the header,
+           so this button is just the gateway to the popup. */
         .cluster-badge {
-            margin-top: 15px;
-            padding: 8px 12px;
-            background: rgba(74, 222, 128, 0.1);
-            border: 1px solid rgba(74, 222, 128, 0.3);
-            border-radius: 6px;
+            margin-top: 14px;
+            padding: 7px 12px;
+            background: rgba(74, 222, 128, 0.04);
+            border: 1px solid rgba(74, 222, 128, 0.22);
+            border-radius: 4px;
             text-align: center;
             position: relative;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
         }
 
         .cluster-badge:hover {
-            background: rgba(74, 222, 128, 0.15);
-            border-color: var(--color-primary);
-            box-shadow: 0 0 15px rgba(74, 222, 128, 0.3);
+            background: rgba(74, 222, 128, 0.10);
+            border-color: rgba(74, 222, 128, 0.55);
+            box-shadow: 0 0 12px rgba(74, 222, 128, 0.18);
         }
 
         .cluster-name {
             font-family: var(--font-main);
-            color: var(--color-primary);
-            font-size: 0.8rem;
-            letter-spacing: 0.05em;
+            color: rgba(74, 222, 128, 0.85);
+            font-size: 0.65rem;
+            font-weight: 600;
+            letter-spacing: 0.18em;
             text-transform: uppercase;
+        }
+        .cluster-name::after {
+            content: ' ▸';
+            color: rgba(74, 222, 128, 0.55);
         }
 
         /* Cluster Members Popup */
@@ -1453,46 +1512,65 @@
 
         /* Status Effects */
         .status-effects {
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid rgba(74, 222, 128, 0.2);
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(74, 222, 128, 0.18);
         }
 
         .status-effects-title {
+            /* Legacy class; the new .panel-section-head supersedes when used. */
             font-family: var(--font-main);
             color: var(--color-primary);
-            font-size: 0.85rem;
+            font-size: 0.65rem;
             margin-bottom: 8px;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.18em;
         }
 
         .status-tags {
             display: flex;
             flex-wrap: wrap;
-            gap: 6px;
+            gap: 7px;
         }
 
         .status-tag {
-            font-size: 0.7rem;
-            padding: 3px 8px;
-            border-radius: 10px;
             font-family: var(--font-main);
-            background: rgba(74, 222, 128, 0.1);
-            border: 1px solid rgba(74, 222, 128, 0.3);
-            color: var(--color-primary);
+            font-size: 0.62rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            padding: 4px 10px;
+            border-radius: 4px;
+            background: rgba(74, 222, 128, 0.07);
+            border: 1px solid rgba(74, 222, 128, 0.5);
+            color: rgba(74, 222, 128, 0.95);
         }
 
+        /* Positive (cyan/green) — Well Rested, Peak Condition, archetype auras, etc. */
         .status-tag.positive {
-            background: rgba(0, 255, 0, 0.1);
-            border-color: rgba(0, 255, 0, 0.3);
-            color: #00ff00;
+            background: rgba(0, 240, 255, 0.06);
+            border-color: rgba(0, 240, 255, 0.55);
+            color: rgba(0, 240, 255, 0.95);
         }
 
+        /* Negative (red/orange) — Exhausted, Wounded, Outcast, etc. */
         .status-tag.negative {
-            background: rgba(255, 0, 0, 0.1);
-            border-color: rgba(255, 0, 0, 0.3);
-            color: #ff6666;
+            background: rgba(255, 90, 90, 0.06);
+            border-color: rgba(255, 90, 90, 0.55);
+            color: rgba(255, 130, 130, 0.95);
+        }
+
+        /* Watcher / surveillance flavor — orange, used for "Watched" etc. */
+        .status-tag.watcher {
+            background: rgba(255, 140, 0, 0.06);
+            border-color: rgba(255, 140, 0, 0.55);
+            color: rgba(255, 170, 60, 0.95);
+        }
+
+        /* Whisper-related — violet */
+        .status-tag.whisper {
+            background: rgba(192, 132, 252, 0.07);
+            border-color: rgba(192, 132, 252, 0.55);
+            color: rgba(220, 180, 255, 0.95);
         }
         .status-tag {
             position: relative;
@@ -1517,39 +1595,50 @@
 
         /* Equipped Items */
         .equipped-items {
-            margin-bottom: 12px;
-            padding-bottom: 10px;
+            margin-bottom: 16px;
+            padding-bottom: 14px;
             border-bottom: 1px solid rgba(74, 222, 128, 0.12);
         }
         .equipped-grid {
             display: flex;
-            gap: 4px;
+            gap: 6px;
         }
         .equipped-slot {
             flex: 1;
-            background: rgba(74,222,128,0.04);
-            border: 1px solid rgba(74,222,128,0.15);
+            background: rgba(74, 222, 128, 0.03);
+            border: 1px solid rgba(74, 222, 128, 0.18);
             border-radius: 4px;
-            padding: 3px;
+            padding: 6px 3px;
             text-align: center;
-            font-size: 0.5rem;
-            color: rgba(200,200,200,0.5);
+            color: rgba(200, 200, 200, 0.55);
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 1px;
-            min-height: 36px;
+            gap: 3px;
+            min-height: 46px;
             justify-content: center;
             position: relative;
             cursor: default;
+            transition: border-color 0.15s ease, background 0.15s ease;
         }
-        .equipped-slot .slot-icon { font-size: 0.75rem; opacity: 0.3; }
-        .equipped-slot .slot-icon-sm { width: 28px; height: 28px; border-radius: 3px; object-fit: cover; }
-        .equipped-slot .slot-label { font-size: 0.38rem; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.4; }
+        .equipped-slot .slot-icon {
+            font-size: 0.95rem;
+            opacity: 0.42;
+            line-height: 1;
+        }
+        .equipped-slot .slot-icon-sm { width: 30px; height: 30px; border-radius: 3px; object-fit: cover; }
+        .equipped-slot .slot-label {
+            font-size: 0.42rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            opacity: 0.55;
+        }
         .equipped-slot.filled {
-            border-color: rgba(74,222,128,0.35);
-            background: rgba(74,222,128,0.08);
+            border-color: rgba(74, 222, 128, 0.55);
+            background: rgba(74, 222, 128, 0.10);
             color: var(--color-primary);
+            box-shadow: inset 0 0 8px rgba(74, 222, 128, 0.12);
         }
         .equipped-slot.filled .slot-icon { opacity: 1; }
         .equipped-slot.filled .slot-label { display: none; }
@@ -3524,7 +3613,10 @@
 
             <!-- Equipped Items -->
             <div class="equipped-items" id="equippedItems">
-                <div style="font-size:0.65rem;color:rgba(74,222,128,0.5);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:6px;">Equipped</div>
+                <div class="panel-section-head">
+                    <span>Equipped</span>
+                    <span class="head-meta" id="equippedSlotCount">5 slots</span>
+                </div>
                 <div class="equipped-grid" id="equippedGrid">
                     <div class="equipped-slot empty" data-slot="weapon"><span class="slot-icon">⚔</span><span class="slot-label">Melee</span></div>
                     <div class="equipped-slot empty" data-slot="ranged"><span class="slot-icon">🔫</span><span class="slot-label">Ranged</span></div>
@@ -3535,9 +3627,14 @@
             </div>
 
             <div class="stat-bars-group">
+                <div class="panel-section-head">
+                    <span>Vitals</span>
+                    <span class="head-meta" id="turnReadyIndicator">turn ready</span>
+                </div>
+
                 <div class="stat-bar energy-bar">
                     <div class="stat-label">
-                        <span><span class="stat-icon">⚡</span>Energy</span>
+                        <span>Energy</span>
                         <span class="stat-value" id="energyValue">--/100</span>
                     </div>
                     <div class="bar-container">
@@ -3547,7 +3644,7 @@
 
                 <div class="stat-bar health-bar">
                     <div class="stat-label">
-                        <span><span class="stat-icon">❤</span>Health</span>
+                        <span>Health</span>
                         <span class="stat-value" id="healthValue">100/100</span>
                     </div>
                     <div class="bar-container">
@@ -3583,7 +3680,10 @@
 
             <!-- Status Effects -->
             <div class="status-effects">
-                <div class="status-effects-title">Active Effects</div>
+                <div class="panel-section-head">
+                    <span>Active Effects</span>
+                    <span class="head-meta" id="activeEffectCount">0</span>
+                </div>
                 <div class="status-tags" id="statusEffects">
                     <!-- Populated dynamically by updateStatusEffects() -->
                 </div>
@@ -5843,13 +5943,34 @@
 
         // Update UI with agent data
         document.getElementById('agentName').textContent = agent.username.toUpperCase();
-        document.getElementById('agentArchetype').textContent = agent.archetypeName || agent.archetype;
 
-        // Update quirk
-        if (agent.quirk) {
-            document.getElementById('agentQuirk').textContent = `• ${agent.quirk}`;
+        // Combined cluster + archetype line — e.g. PRIME HELIX · 0DAY-PRIMER
+        const archEl = document.getElementById('agentArchetype');
+        const clusterLabel = (agent.clusterName || '').toUpperCase();
+        const archLabel    = (agent.archetypeName || agent.archetype || '').toUpperCase();
+        if (clusterLabel && archLabel) {
+            archEl.innerHTML = clusterLabel + '<span class="arch-sep">·</span><span class="arch-name">' + archLabel + '</span>';
         } else {
-            document.getElementById('agentQuirk').style.display = 'none';
+            archEl.textContent = archLabel || clusterLabel;
+        }
+
+        // Update quirk (italic flavor line under the archetype row)
+        const quirkEl = document.getElementById('agentQuirk');
+        if (agent.quirk) {
+            quirkEl.textContent = `"${agent.quirk}"`;
+            quirkEl.style.display = '';
+        } else {
+            quirkEl.style.display = 'none';
+        }
+
+        // TURN READY indicator — visible while the agent has enough energy
+        // for at least a basic action and isn't waiting on a cooldown.
+        const turnReady = (agent.energy || 0) >= 10 &&
+            (!agent.next_turn_at || new Date(agent.next_turn_at) <= new Date());
+        const trEl = document.getElementById('turnReadyIndicator');
+        if (trEl) {
+            trEl.classList.toggle('turn-ready', !!turnReady);
+            trEl.textContent = turnReady ? 'turn ready' : 'resting';
         }
 
         // Update bio
@@ -6014,12 +6135,15 @@
 
         // Shell balance is shown only in inventory header and market footer
 
-        // Update cluster badge and populate other cluster members
+        // Update cluster badge and populate other cluster members.
+        // The cluster name is already in the agent-archetype header line,
+        // so the badge is now a discrete "View cluster" entry point that
+        // opens the popup with the other archetypes + their lore on hover.
         var clusterKey = agent.cluster || (agent.clusterName || '').toLowerCase().replace(/\s+/g, '-') || 'prime-helix';
         var clusterDisplayName = agent.clusterName || (CLUSTER_DATA[clusterKey] ? CLUSTER_DATA[clusterKey].name : null) || clusterKey;
         var clusterNameEl = document.getElementById('clusterName');
         if (clusterNameEl) {
-            clusterNameEl.textContent = clusterDisplayName;
+            clusterNameEl.textContent = 'View ' + clusterDisplayName;
         }
         console.log('🔧 Cluster:', clusterKey, 'Display:', clusterDisplayName);
         
@@ -6098,8 +6222,21 @@
             else if ((agent.shell || 0) <= 10) tags.push({ text: 'Broke', cls: 'negative', tip: '$SHELL ≤ 10 — can\'t trade' });
 
             el.innerHTML = tags.map(function(t) {
-                return '<span class="status-tag ' + t.cls + '" data-tooltip="' + (t.tip || '') + '">' + t.text + '</span>';
+                // Allow custom-variant overrides (watcher / whisper) — used by
+                // surveillance-flavor effects ("Watched") and whisper outcomes
+                // ("Whispered 62%"). Fall back to t.cls otherwise.
+                var variant = t.cls || '';
+                var label = (t.text || '').toLowerCase();
+                if (!variant) {
+                    if (/whisper|whispered/.test(label)) variant = 'whisper';
+                    else if (/watch|watched|observed/.test(label)) variant = 'watcher';
+                }
+                return '<span class="status-tag ' + variant + '" data-tooltip="' + (t.tip || '') + '">' + t.text + '</span>';
             }).join('');
+
+            // Effect count for the section heading meta chip.
+            var countEl = document.getElementById('activeEffectCount');
+            if (countEl) countEl.textContent = tags.length;
         }
 
         // ─── Load & render equipped items ────────────────────
@@ -6160,6 +6297,12 @@
                         (statsArr.length ? '<div class="eq-stats">' + statsArr.join(' ') + '</div>' : '') + '</div>';
                     slot.innerHTML = iconHtml + tooltipHtml;
                 });
+                // Update the "N slots" meta — show filled/total so the panel
+                // reads "2 / 5 slots" once gear is equipped, or "5 slots" empty.
+                var filled = grid.querySelectorAll('.equipped-slot.filled').length;
+                var total  = grid.querySelectorAll('.equipped-slot').length;
+                var meta = document.getElementById('equippedSlotCount');
+                if (meta) meta.textContent = filled > 0 ? (filled + ' / ' + total + ' slots') : (total + ' slots');
             });
         }
 
