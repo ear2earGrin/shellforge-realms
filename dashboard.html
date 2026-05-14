@@ -1123,9 +1123,9 @@
         .agent-orbit circle {
             fill: none;
             stroke: rgba(74, 222, 128, 0.85);
-            stroke-width: 5;
-            /* dash 4px + gap 22px → ~24 dots evenly spaced around the ring */
-            stroke-dasharray: 4 22;
+            stroke-width: 2.5;
+            /* dash 1.5px + gap 22px → ~24 small dots evenly spaced */
+            stroke-dasharray: 1.5 22;
             stroke-linecap: round;
             transform-origin: center;
         }
@@ -1134,9 +1134,9 @@
             animation-duration: 22s;
         }
         .agent-orbit.counter circle {
-            stroke: rgba(74, 222, 128, 0.45);
-            stroke-width: 3;
-            stroke-dasharray: 2 28;
+            stroke: rgba(74, 222, 128, 0.50);
+            stroke-width: 1.5;
+            stroke-dasharray: 1 30;
         }
         @keyframes avatar-orbit-spin {
             from { transform: rotate(0deg); }
