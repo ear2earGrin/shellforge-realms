@@ -1075,6 +1075,15 @@
             border-bottom: 1px solid rgba(74, 222, 128, 0.18);
         }
 
+        /* Wrapper hosts the orbital dots SVG outside the clipped circle. */
+        .agent-avatar-wrap {
+            position: relative;
+            width: 184px;
+            height: 184px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
         .agent-avatar {
             width: 156px;
             height: 156px;
@@ -1092,6 +1101,7 @@
             transition: all 0.3s ease;
             aspect-ratio: 1 / 1;
             position: relative;
+            z-index: 2;
         }
         .agent-avatar::after {
             content: '';
@@ -1100,6 +1110,37 @@
             border-radius: 50%;
             border: 1px solid rgba(74, 222, 128, 0.25);
             pointer-events: none;
+        }
+        /* Orbital dots ring — sits behind the avatar, rotates slowly. */
+        .agent-orbit {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 1;
+            animation: avatar-orbit-spin 16s linear infinite;
+            filter: drop-shadow(0 0 6px rgba(74, 222, 128, 0.45));
+        }
+        .agent-orbit circle {
+            fill: none;
+            stroke: rgba(74, 222, 128, 0.85);
+            stroke-width: 5;
+            /* dash 4px + gap 22px → ~24 dots evenly spaced around the ring */
+            stroke-dasharray: 4 22;
+            stroke-linecap: round;
+            transform-origin: center;
+        }
+        .agent-orbit.counter {
+            animation-direction: reverse;
+            animation-duration: 22s;
+        }
+        .agent-orbit.counter circle {
+            stroke: rgba(74, 222, 128, 0.45);
+            stroke-width: 3;
+            stroke-dasharray: 2 28;
+        }
+        @keyframes avatar-orbit-spin {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
         }
 
         .agent-avatar:hover {
@@ -1639,39 +1680,40 @@
             position: relative;
             cursor: default;
         }
-        .status-tag:hover::after {
-            content: attr(data-tooltip);
-            position: absolute;
-            bottom: calc(100% + 8px);
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(8, 10, 14, 0.97);
-            border: 1px solid rgba(74, 222, 128, 0.35);
-            color: rgba(220, 220, 230, 0.92);
-            font-family: var(--font-main);
-            font-size: 0.58rem;
-            line-height: 1.45;
+        /* Floating tooltip element (#statusTagTip) is appended to body
+           and positioned via JS so it can escape .agent-status-card's
+           overflow-y:auto clipping. Style lives here for proximity. */
+        .floating-tip {
+            position: fixed;
+            display: none;
+            max-width: 220px;
             padding: 7px 10px;
+            background: rgba(8, 10, 14, 0.97);
+            border: 1px solid rgba(74, 222, 128, 0.40);
             border-radius: 4px;
-            white-space: normal;
-            width: max-content;
-            max-width: 200px;
+            font-family: var(--font-main);
+            font-size: 0.6rem;
+            line-height: 1.45;
+            color: rgba(220, 220, 230, 0.92);
             text-align: left;
-            box-shadow: 0 0 16px rgba(0, 0, 0, 0.55);
-            z-index: 100;
+            box-shadow: 0 0 22px rgba(0, 0, 0, 0.7);
+            z-index: 99999;
             pointer-events: none;
         }
-        /* Arrow pointing down to the chip */
-        .status-tag:hover::before {
+        .floating-tip::after {
             content: '';
             position: absolute;
-            bottom: calc(100% + 2px);
+            top: 100%;
             left: 50%;
             transform: translateX(-50%);
             border: 5px solid transparent;
-            border-top-color: rgba(74, 222, 128, 0.35);
-            z-index: 100;
-            pointer-events: none;
+            border-top-color: rgba(74, 222, 128, 0.40);
+        }
+        .floating-tip.flip-down::after {
+            top: auto;
+            bottom: 100%;
+            border-top-color: transparent;
+            border-bottom-color: rgba(74, 222, 128, 0.40);
         }
 
         /* Equipped Items */
@@ -3700,7 +3742,17 @@
         <!-- Agent Status Card -->
         <div class="agent-status-card">
             <div class="agent-header">
-                <div class="agent-avatar">🤖</div>
+                <div class="agent-avatar-wrap">
+                    <!-- Orbital dot rings around the portrait. Two layers with
+                         opposing spin directions for a subtle parallax. -->
+                    <svg class="agent-orbit" viewBox="0 0 184 184" aria-hidden="true">
+                        <circle cx="92" cy="92" r="88"/>
+                    </svg>
+                    <svg class="agent-orbit counter" viewBox="0 0 184 184" aria-hidden="true">
+                        <circle cx="92" cy="92" r="76"/>
+                    </svg>
+                    <div class="agent-avatar">🤖</div>
+                </div>
                 <div class="agent-info">
                     <h2 id="agentName">Loading...</h2>
                     <div class="agent-archetype" id="agentArchetype">---</div>
@@ -6364,6 +6416,62 @@
             var countEl = document.getElementById('activeEffectCount');
             if (countEl) countEl.textContent = tags.length;
         }
+
+        // ─── Floating tooltip for .status-tag chips ──────────
+        // The previous CSS pseudo tooltip was clipped by the panel's
+        // overflow-y:auto. A body-portal element escapes the clip and is
+        // positioned via JS using getBoundingClientRect, with viewport
+        // clamping so it never spills off-screen.
+        (function() {
+            var tip;
+            function ensureTip() {
+                if (tip) return tip;
+                tip = document.createElement('div');
+                tip.className = 'floating-tip';
+                tip.id = 'statusTagTip';
+                document.body.appendChild(tip);
+                return tip;
+            }
+            function showFor(chip) {
+                var t = chip.dataset.tooltip;
+                if (!t) return;
+                var el = ensureTip();
+                el.textContent = t;
+                el.classList.remove('flip-down');
+                el.style.display = 'block';
+                el.style.left = '-9999px'; // measure off-screen first
+                el.style.top = '0';
+                var tr = el.getBoundingClientRect();
+                var r = chip.getBoundingClientRect();
+                var left = r.left + (r.width - tr.width) / 2;
+                var top  = r.top - tr.height - 10;
+                // Clamp horizontally to viewport
+                left = Math.max(8, Math.min(window.innerWidth - tr.width - 8, left));
+                // Flip below if no room above
+                if (top < 8) {
+                    top = r.bottom + 10;
+                    el.classList.add('flip-down');
+                }
+                el.style.left = left + 'px';
+                el.style.top  = top + 'px';
+            }
+            function hide() {
+                if (tip) tip.style.display = 'none';
+            }
+            document.addEventListener('mouseover', function(e) {
+                var chip = e.target.closest('.status-tag');
+                if (chip) showFor(chip);
+            });
+            document.addEventListener('mouseout', function(e) {
+                var chip = e.target.closest('.status-tag');
+                if (!chip) return;
+                // Only hide when leaving the chip entirely
+                var to = e.relatedTarget;
+                if (!to || !to.closest || !to.closest('.status-tag')) hide();
+            });
+            window.addEventListener('scroll', hide, true);
+            window.addEventListener('resize', hide);
+        })();
 
         // ─── Mood derivation ────────────────────────────────
         // Pure local function — pulls from agent.health / energy / karma /
