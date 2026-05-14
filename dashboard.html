@@ -1123,9 +1123,9 @@
         .agent-orbit circle {
             fill: none;
             stroke: rgba(74, 222, 128, 0.85);
-            stroke-width: 2.5;
-            /* dash 1.5px + gap 22px → ~24 small dots evenly spaced */
-            stroke-dasharray: 1.5 22;
+            stroke-width: 2;
+            /* dash 1px + gap 13px → ~40 small dots evenly spaced */
+            stroke-dasharray: 1 13;
             stroke-linecap: round;
             transform-origin: center;
         }
@@ -1135,8 +1135,8 @@
         }
         .agent-orbit.counter circle {
             stroke: rgba(74, 222, 128, 0.50);
-            stroke-width: 1.5;
-            stroke-dasharray: 1 30;
+            stroke-width: 1;
+            stroke-dasharray: 0.8 14;
         }
         @keyframes avatar-orbit-spin {
             from { transform: rotate(0deg); }
