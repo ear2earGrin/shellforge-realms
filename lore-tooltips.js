@@ -191,7 +191,8 @@
                 letter-spacing: 0.05em;
             }
             .lt-row .lt-arrow { color: rgba(192,132,252,0.7); }
-            .lt-row .lt-chip {
+            .lt-row .lt-chip,
+            .lt-chip-row .lt-chip {
                 padding: 1px 6px;
                 border-radius: 3px;
                 font-size: 0.5rem;
@@ -199,6 +200,12 @@
                 letter-spacing: 0.12em;
                 text-transform: uppercase;
                 background: rgba(192,132,252,0.12);
+            }
+            .lt-chip-row {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px;
+                margin: 0 0 6px;
             }
         `;
         const style = document.createElement('style');
@@ -238,11 +245,75 @@
         </div>`;
     }
 
+    // ── Item tooltips (read from catalog-frontend.js globals) ────
+    // Accepts either a slug (silicon_wafer_dust) or a display name
+    // (Silicon Wafer Dust). Falls back through ALCHEMY_ITEMS, then
+    // ALCHEMY_INGREDIENTS, then null.
+    function slugifyName(name) {
+        return String(name || '').toLowerCase()
+            .replace(/['’]/g, '')
+            .replace(/[^a-z0-9]+/g, '_')
+            .replace(/^_+|_+$/g, '');
+    }
+    const RARITY_COLOR = {
+        Common:    'rgba(180,180,180,0.85)',
+        Uncommon:  'rgba(74,222,128,0.92)',
+        Rare:      'rgba(96,165,250,0.95)',
+        Legendary: 'rgba(251,191,36,0.95)',
+    };
+    function findItemMeta(key) {
+        const items = (window.ALCHEMY_ITEMS || {});
+        const ings  = (window.ALCHEMY_INGREDIENTS || {});
+        // Try direct id first.
+        if (items[key])             return { meta: items[key], kind: 'item' };
+        if (ings[key])              return { meta: ings[key],  kind: 'ingredient' };
+        // Try slugified display name.
+        const slug = slugifyName(key);
+        if (items[slug])            return { meta: items[slug], kind: 'item' };
+        if (ings[slug])             return { meta: ings[slug],  kind: 'ingredient' };
+        return null;
+    }
+    function buildItemPopHTML(key) {
+        const hit = findItemMeta(key);
+        if (!hit) return null;
+        const { meta, kind } = hit;
+        const rarityCol = RARITY_COLOR[meta.rarity] || RARITY_COLOR.Common;
+        const chips = [];
+        chips.push(`<span class="lt-chip" style="color:${rarityCol};">${escapeHtml(meta.rarity || 'Common')}</span>`);
+        if (kind === 'item') {
+            // weapon / armor / scroll / artifact / tool / consumable / deployable / implant
+            chips.push(`<span class="lt-chip">${escapeHtml((meta.cat || meta.kind || 'item').toUpperCase())}</span>`);
+            if (meta.type) chips.push(`<span class="lt-chip" style="color:rgba(192,132,252,0.85);">${escapeHtml(meta.type.toUpperCase())}</span>`);
+        } else {
+            chips.push(`<span class="lt-chip">${escapeHtml((meta.cat || 'Ingredient').toUpperCase())}</span>`);
+            if (meta.subcategory) chips.push(`<span class="lt-chip" style="opacity:0.7;">${escapeHtml(meta.subcategory)}</span>`);
+        }
+        const descText = meta.desc || meta.description || '';
+        // Cluster + station rows for items; affinity for ingredients.
+        const rows = [];
+        if (kind === 'item') {
+            if (meta.station) rows.push(`<span class="lt-arrow">▸</span>Crafted at <strong>${escapeHtml(meta.station.toUpperCase())}</strong>`);
+            if (meta.cluster_exclusive && meta.cluster_exclusive !== 'any')
+                rows.push(`<span class="lt-arrow">▸</span>Exclusive to <strong>${escapeHtml(meta.cluster_exclusive.replace(/_/g, ' ').toUpperCase())}</strong>`);
+        } else {
+            if (meta.craft_affinity) rows.push(`<span class="lt-arrow">▸</span>Crafts <strong>${escapeHtml(meta.craft_affinity.toUpperCase())}</strong>`);
+        }
+        return `<div class="lt-pop">
+            <div class="lt-title">${escapeHtml(meta.name)}</div>
+            <div class="lt-chip-row">${chips.join('')}</div>
+            ${descText ? `<div class="lt-desc">${escapeHtml(descText)}</div>` : ''}
+            ${rows.map(r => `<div class="lt-row">${r}</div>`).join('')}
+        </div>`;
+    }
+
     // ── public helper ────────────────────────────────────────────
     // Wrap an existing element as a tooltip anchor. Idempotent.
     function attachLoreTooltip(el, key, kind) {
         if (!el || !key || el.dataset.ltAttached === '1') return;
-        const html = (kind === 'action') ? buildActionPopHTML(key) : buildLocationPopHTML(key);
+        let html;
+        if (kind === 'action')       html = buildActionPopHTML(key);
+        else if (kind === 'item')    html = buildItemPopHTML(key);
+        else                         html = buildLocationPopHTML(key);
         if (!html) return;
         el.dataset.ltAttached = '1';
         el.classList.add('lt-anchor');
@@ -258,14 +329,17 @@
         }
     }
 
-    // Find all .needs-loc-tip / .needs-action-tip in the page and wire them.
-    // Each carries data-tip-key="<location|action_type>".
+    // Find all .needs-loc-tip / .needs-action-tip / .needs-item-tip in the
+    // page and wire them. Each carries data-tip-key="<location|action|item_id>".
     function wireAll(root = document) {
         root.querySelectorAll('.needs-loc-tip[data-tip-key]').forEach(el => {
             attachLoreTooltip(el, el.dataset.tipKey, 'location');
         });
         root.querySelectorAll('.needs-action-tip[data-tip-key]').forEach(el => {
             attachLoreTooltip(el, el.dataset.tipKey, 'action');
+        });
+        root.querySelectorAll('.needs-item-tip[data-tip-key]').forEach(el => {
+            attachLoreTooltip(el, el.dataset.tipKey, 'item');
         });
     }
 
