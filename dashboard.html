@@ -1387,6 +1387,66 @@
             font-weight: bold;
         }
 
+        /* Renown Badge — composite ranking score, links to leaderboard */
+        .renown-badge {
+            display: block;
+            margin-top: 14px;
+            padding: 9px 12px;
+            background: linear-gradient(135deg, rgba(74,222,128,0.06) 0%, rgba(56,189,248,0.06) 100%);
+            border: 1px solid rgba(74,222,128,0.28);
+            border-radius: 4px;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.2s ease;
+        }
+        .renown-badge:hover {
+            border-color: rgba(74,222,128,0.65);
+            box-shadow: 0 0 14px rgba(74,222,128,0.22);
+        }
+        .renown-badge-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .renown-badge-row + .renown-badge-row { margin-top: 5px; }
+        .renown-badge-label {
+            font-family: var(--font-main);
+            color: rgba(148,163,184,0.85);
+            font-size: 0.6rem;
+            font-weight: 600;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+        }
+        .renown-badge-rank {
+            font-family: var(--font-mono, monospace);
+            color: rgba(148,163,184,0.7);
+            font-size: 0.65rem;
+            letter-spacing: 0.08em;
+        }
+        .renown-badge-score {
+            font-family: var(--font-mono, monospace);
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #4ade80;
+        }
+        .renown-badge-tier {
+            font-family: var(--font-main);
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            padding: 3px 8px;
+            border: 1px solid currentColor;
+            border-radius: 3px;
+            background: rgba(0,0,0,0.3);
+            color: #6b7280;
+        }
+        .renown-badge-tier[data-tier="Operator"]    { color: #4ade80; }
+        .renown-badge-tier[data-tier="Ascendant"]   { color: #38bdf8; }
+        .renown-badge-tier[data-tier="Sovereign"]   { color: #a78bfa; }
+        .renown-badge-tier[data-tier="Archon"]      { color: #fbbf24; }
+        .renown-badge-tier[data-tier="Singularity"] { color: #ff66cc; text-shadow: 0 0 8px rgba(255,102,204,0.5); }
+
         /* Cluster Badge — compact "see other archetypes in this cluster"
            button. The big cluster + archetype line is now in the header,
            so this button is just the gateway to the popup. */
@@ -3690,6 +3750,7 @@
 
         <div class="nav-right">
             <span class="nav-user">Agent: <span id="navUsername">---</span></span>
+            <a href="leaderboard.html" class="nav-button">Leaderboard</a>
             <a href="index.html" class="nav-button">Home</a>
             <button class="nav-button logout" id="logoutBtn">Logout</button>
         </div>
@@ -3818,6 +3879,18 @@
             <div id="curiosityBar" style="display:none;"></div>
             <div id="trustBar" style="display:none;"></div>
             <div id="aggressionBar" style="display:none;"></div>
+
+            <!-- Renown Badge — composite ranking score, refreshed each turn -->
+            <a class="renown-badge" id="renownBadge" href="leaderboard.html" title="View full leaderboard">
+                <div class="renown-badge-row">
+                    <span class="renown-badge-label">Renown</span>
+                    <span class="renown-badge-rank" id="renownRank">#—</span>
+                </div>
+                <div class="renown-badge-row">
+                    <span class="renown-badge-score" id="renownScore">0</span>
+                    <span class="renown-badge-tier" id="renownTier" data-tier="Initiate">Initiate</span>
+                </div>
+            </a>
 
             <!-- Cluster Badge -->
             <div class="cluster-badge" id="clusterBadge">
@@ -7795,9 +7868,11 @@
         async function updateAgentStatus() {
             const lu = localStorage.getItem('shellforgeLoggedIn');
             if (!lu) return;
-            const rows = await sbGet('agents', 'agent_name=eq.' + encodeURIComponent(lu) + '&select=energy,health,karma,shell_balance,coherence,location,turns_taken,days_survived&limit=1');
+            const rows = await sbGet('agents', 'agent_name=eq.' + encodeURIComponent(lu) + '&select=energy,health,karma,shell_balance,coherence,location,turns_taken,days_survived,renown_score,renown_tier,is_alive&limit=1');
             if (!rows || rows.length === 0) return;
             const d = rows[0];
+            // Refresh Renown badge (score + tier + live rank among alive agents)
+            updateRenownBadge(d).catch(err => console.warn('[renown] badge update failed:', err));
             // Silently update stats if elements exist
             const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
             const setW = (id, pct) => { const el = document.getElementById(id); if (el) el.style.width = pct + '%'; };
@@ -7823,8 +7898,47 @@
             if (_currentAgent && _currentAgent.agentId) loadActivityLog(_currentAgent.agentId);
         }
 
+        // Renown badge: write score/tier, compute live rank among alive agents.
+        // Dead agents keep their final rank frozen (rank computed against alive
+        // peers only — ranking is for the living).
+        async function updateRenownBadge(d) {
+            const scoreEl = document.getElementById('renownScore');
+            const tierEl  = document.getElementById('renownTier');
+            const rankEl  = document.getElementById('renownRank');
+            if (!scoreEl || !tierEl || !rankEl) return;
+
+            const score = Math.max(0, Number(d.renown_score) || 0);
+            const tier  = d.renown_tier || 'Initiate';
+            scoreEl.textContent = score;
+            tierEl.textContent  = tier;
+            tierEl.dataset.tier = tier;
+
+            if (d.is_alive === false) {
+                rankEl.textContent = 'fallen †';
+                return;
+            }
+            // Live rank: count alive agents strictly above this score.
+            // Uses PostgREST Prefer: count=exact via Content-Range header.
+            try {
+                const r = await fetch(
+                    SUPABASE_URL + '/rest/v1/agents?select=agent_id&is_alive=eq.true&renown_score=gt.' + score,
+                    { headers: { ...SB_HEADERS, Prefer: 'count=exact', Range: '0-0' } },
+                );
+                const cr = r.headers.get('content-range') || '';
+                const m = cr.match(/\/(\d+)$/);
+                const above = m ? parseInt(m[1], 10) : 0;
+                rankEl.textContent = '#' + (above + 1);
+            } catch (e) {
+                rankEl.textContent = '#—';
+            }
+        }
+
         // Update every 25 seconds
         setInterval(updateAgentStatus, 25000);
+        // Kick off the first refresh so the badge isn't blank on load
+        // (the rest of updateAgentStatus is safe to call before _currentAgent
+        // is set — the inner DOM updates are all id-guarded).
+        setTimeout(updateAgentStatus, 600);
 
         // Inventory slot click events
         document.querySelectorAll('.inventory-slot:not(.empty)').forEach(slot => {

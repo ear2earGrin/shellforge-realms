@@ -2083,11 +2083,144 @@ Respond with JSON only — no markdown, no commentary:
     return;
   }
 
+  // ─── Renown ranking refresh ─────────────────────────────────────────────
+  // Recompute composite Renown after the turn's state writes have landed.
+  // Failures are logged but never abort the turn — ranking is a derived stat.
+  await refreshAgentRenown(
+    { ...agent, shell_balance: newShell, karma: newKarma, turns_taken: newTurns },
+    env,
+    supabaseHeaders,
+  ).catch(err => console.error(`[RENOWN] ${agent.agent_name}:`, err?.message ?? err));
+
   console.log(
     `[${agent.agent_name}] Turn ${newTurns}: ${action} — ${decision.detail} | ` +
     `E:${agent.energy}→${newEnergy} H:${agent.health}→${newHealth} $:${agent.shell_balance}→${newShell} ` +
     `| loc_turns:${turnsHere}→${(agent.turns_at_location || 0) + 1} dim:${diminish} restless:${restlessness} lootBonus:${locationBonus}`,
   );
+}
+
+// ─── Renown ranking ─────────────────────────────────────────────────────────
+// Composite agent ranking. Components mirror SQL view `agent_renown`
+// (migration 010_renown.sql). The worker is the source of truth — it writes
+// the cached score/tier back to agents.renown_score so the leaderboard can
+// just ORDER BY a column instead of recomputing.
+
+const RENOWN_TIERS = [
+  { min: 1100, name: 'Singularity' },
+  { min:  800, name: 'Archon'      },
+  { min:  500, name: 'Sovereign'   },
+  { min:  250, name: 'Ascendant'   },
+  { min:  100, name: 'Operator'    },
+  { min:    0, name: 'Initiate'    },
+];
+
+function getRenownTier(score) {
+  for (const t of RENOWN_TIERS) if (score >= t.min) return t.name;
+  return 'Initiate';
+}
+
+// 10 item sets from dashboard.html ITEM_SETS. Stored as id-name pairs so
+// either format on inventory rows (item_id slug or item_name) can match.
+const RENOWN_ITEM_SETS = [
+  ['cryo_rig',           ['cryo_compressor', 'frostlock_visor', 'permafrost_plating']],
+  ['siege_engine',       ['rail_lance', 'siege_targeting_core', 'reinforced_bulwark']],
+  ['nanotech_suite',     ['nanite_swarm', 'self_repair_mesh', 'replicator_module']],
+  ['forge_master',       ['forge_hammer', 'molten_gauntlets', 'anvilbond_chest']],
+  ['zero_day_suite',     ['zero_day_payload', 'exploit_chain_kit', 'rootshell_blade']],
+  ['neural_fortress',    ['neural_firewall', 'cortex_lattice', 'synaptic_shield']],
+  ['deep_learning',      ['weights_codex', 'gradient_lens', 'transformer_core']],
+  ['hackers_toolkit',    ['packet_sniffer', 'debug_probe', 'kernel_pry_bar']],
+  ['satoshis_legacy',    ['genesis_coin', 'cold_wallet', 'merkle_seal']],
+  ['von_neumann',        ['turing_tape', 'eniac_relay', 'von_neumann_core']],
+];
+
+function countCompleteSets(inventory) {
+  // An inventory row counts toward a set if its item_id OR a slugified
+  // item_name matches one of the set's pieces, and is_equipped is true.
+  // Sets only score when fully assembled (3/3) AND equipped.
+  const equippedIds = new Set();
+  for (const row of inventory) {
+    if (!row.is_equipped) continue;
+    if (row.item_id) equippedIds.add(String(row.item_id).toLowerCase());
+    if (row.item_name) {
+      equippedIds.add(String(row.item_name).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, ''));
+    }
+  }
+  let complete = 0;
+  for (const [, pieces] of RENOWN_ITEM_SETS) {
+    if (pieces.every(p => equippedIds.has(p))) complete++;
+  }
+  return complete;
+}
+
+function sumInventoryValue(inventory) {
+  let total = 0;
+  for (const row of inventory) {
+    const qty = row.quantity || 1;
+    // Cap any single stack contribution at 500 so a stack of 100 commons
+    // doesn't dominate. Use getBaseValue (declared later in the file).
+    total += Math.min(500, getBaseValue(row)) * qty;
+  }
+  return total;
+}
+
+function sumTraitStats(agent) {
+  const s = agent.stats || {};
+  // Personality traits (1-10 each). Skip combat-derived stats so equipped
+  // gear doesn't double-count via the trait channel.
+  const traitKeys = ['aggression', 'cooperation', 'risk', 'deception', 'curiosity', 'trust'];
+  let sum = 0;
+  for (const k of traitKeys) sum += Number(s[k] || 0);
+  return sum;
+}
+
+function computeRenownScore(agent, inventory) {
+  const wealth     = Math.min(200, Math.floor(Math.sqrt(Math.max(0, agent.shell_balance || 0)) * 3));
+  const equipment  = Math.min(250, sumInventoryValue(inventory));
+  const sets       = Math.min(150, countCompleteSets(inventory) * 50);
+  const wins       = agent.arena_wins   || 0;
+  const losses     = agent.arena_losses || 0;
+  const kills      = agent.arena_kills  || 0;
+  const combat     = Math.max(0, Math.min(200, wins * 15 + kills * 25 - losses * 5));
+  const traitTotal = sumTraitStats(agent);
+  const traits     = Math.max(0, Math.min(100, (traitTotal - 30) * 4));
+  const karma      = Math.min(50, Math.floor(Math.abs(agent.karma || 0) * 0.5));
+  const coherence  = Math.min(50, Math.floor((agent.coherence ?? 100) * 0.5));
+  const survival   = Math.min(100, Math.floor((agent.turns_taken || 0) * 0.5));
+
+  const total = wealth + equipment + sets + combat + traits + karma + coherence + survival;
+  return {
+    score: total,
+    tier:  getRenownTier(total),
+    parts: { wealth, equipment, sets, combat, traits, karma, coherence, survival },
+  };
+}
+
+async function refreshAgentRenown(agent, env, supabaseHeaders) {
+  const { SUPABASE_URL } = env;
+
+  // Fetch inventory once. Need: item_id, item_name, item_type, quantity,
+  // is_equipped, stats (for rarity/price). Dead agents have empty inventory
+  // post-death-loot pipeline, which naturally zeros equipment + sets.
+  const invRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&select=item_id,item_name,item_type,quantity,is_equipped,stats`,
+    { headers: supabaseHeaders },
+  );
+  const inventory = invRes.ok ? await invRes.json() : [];
+
+  const result = computeRenownScore(agent, inventory);
+
+  await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+    method: 'PATCH',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      renown_score: result.score,
+      renown_tier:  result.tier,
+      renown_updated_at: new Date().toISOString(),
+    }),
+  });
+
+  return result;
 }
 
 // ─── Arena combat helpers ───────────────────────────────────────────────────
@@ -2348,7 +2481,10 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
   const killBounty = !loserIsAlive ? Math.floor(loser.shell_balance * 0.25) : 0;
   const winnerShellGain = shellPrize + killBounty;
 
-  // Update winner: grant $SHELL (prize + kill bounty), deduct energy, bump turns, gain karma
+  // Update winner: grant $SHELL (prize + kill bounty), deduct energy, bump turns, gain karma,
+  // increment arena_wins (and arena_kills if the loser died).
+  const winnerNewWins   = (winner.arena_wins  || 0) + 1;
+  const winnerNewKills  = (winner.arena_kills || 0) + (loserIsAlive ? 0 : 1);
   await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${winner.agent_id}`, {
     method: 'PATCH',
     headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
@@ -2357,6 +2493,8 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
       energy:         Math.max(0, winner.energy - 20),
       karma:          winner.karma + winnerKarmaChange,
       turns_taken:    winner.turns_taken + 1,
+      arena_wins:     winnerNewWins,
+      arena_kills:    winnerNewKills,
       last_action_at: now,
     }),
   });
@@ -2364,6 +2502,7 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
   // Update loser: reduce health, deduct energy, increment turns, lose karma; death if HP=0
   // On death: bounty transferred to winner, then remaining shell halves (one half to vault, one dissolves)
   const loserShellAfterBounty = loserIsAlive ? loser.shell_balance : Math.max(0, loser.shell_balance - killBounty);
+  const loserNewLosses = (loser.arena_losses || 0) + 1;
   await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${loser.agent_id}`, {
     method: 'PATCH',
     headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
@@ -2376,9 +2515,34 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
       died_at:        loserIsAlive ? null : now,
       ...(loserIsAlive ? {} : { death_count: (loser.death_count || 0) + 1 }),
       turns_taken:    loser.turns_taken + 1,
+      arena_losses:   loserNewLosses,
       last_action_at: now,
     }),
   });
+
+  // Refresh Renown for both combatants with updated counters in scope.
+  // Failures are non-fatal — ranking is derived, not authoritative.
+  const winnerForRenown = {
+    ...winner,
+    shell_balance: winner.shell_balance + winnerShellGain,
+    karma:         winner.karma + winnerKarmaChange,
+    turns_taken:   winner.turns_taken + 1,
+    arena_wins:    winnerNewWins,
+    arena_kills:   winnerNewKills,
+  };
+  const loserForRenown = {
+    ...loser,
+    shell_balance: loserIsAlive ? loser.shell_balance : Math.floor(loserShellAfterBounty / 2),
+    karma:         loser.karma + loserKarmaChange,
+    turns_taken:   loser.turns_taken + 1,
+    arena_losses:  loserNewLosses,
+  };
+  await Promise.all([
+    refreshAgentRenown(winnerForRenown, env, supabaseHeaders)
+      .catch(err => console.error(`[RENOWN] arena winner ${winner.agent_name}:`, err?.message ?? err)),
+    refreshAgentRenown(loserForRenown, env, supabaseHeaders)
+      .catch(err => console.error(`[RENOWN] arena loser ${loser.agent_name}:`, err?.message ?? err)),
+  ]);
 
   // activity_log for winner
   const winnerDetail = !loserIsAlive
