@@ -8,12 +8,13 @@ import { ALCHEMY_RECIPES } from './catalog-data.js';
 const VALID_ACTIONS = [
   'move', 'explore', 'gather', 'craft', 'trade',
   'rest', 'combat', 'quest', 'church', 'arena',
+  'use_item',
 ];
 
 const ACTION_ENERGY_COSTS = {
   move: 10, explore: 15, gather: 15, craft: 20,
   trade: 10, rest: 0, combat: 20, quest: 20,
-  church: 15, arena: 20,
+  church: 15, arena: 20, use_item: 0,
 };
 
 const ACTION_ENERGY_GAINS = { rest: 25 };
@@ -557,9 +558,19 @@ const CONSUMABLE_EFFECTS = {
   'hyperparameter_tuning_shot':{ permanent_stat_boost: true, trigger: 'always_valuable' },
 };
 
-// Check if agent should auto-use a consumable this turn.
-// Returns { item, effect } or null.
+// Emergency-only safety net. Fires *before* the AI prompt when the agent is
+// about to die or be stranded. Non-emergency consumable use is now an explicit
+// agent decision via the "use_item" action (see prompt + handleUseItem).
+//
+// Thresholds are intentionally tight: health<=25 or energy<=12. Above that,
+// the LLM gets to choose — buffs, debuff clears, hazard prep, etc. are all
+// tactical decisions, not reflexes.
+const EMERGENCY_HEALTH = 25;
+const EMERGENCY_ENERGY = 12;
+
 async function checkAutoUseConsumable(agent, env, supabaseHeaders) {
+  if (agent.health > EMERGENCY_HEALTH && agent.energy > EMERGENCY_ENERGY) return null;
+
   const { SUPABASE_URL } = env;
   const invRes = await fetch(
     `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_type=eq.consumable&select=*`,
@@ -568,37 +579,30 @@ async function checkAutoUseConsumable(agent, env, supabaseHeaders) {
   const consumables = invRes.ok ? await invRes.json() : [];
   if (!consumables.length) return null;
 
-  const hazard = LOCATION_HAZARDS[agent.location] || LOCATION_HAZARDS['Nexarch'];
-  const isHazardous = hazard.label !== 'safe' && hazard.label !== 'low';
+  // Death's door: any heal will do — biggest one wins.
+  if (agent.health <= 5) {
+    let best = null;
+    for (const item of consumables) {
+      const slug = item.item_id || item.item_name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+      const effect = CONSUMABLE_EFFECTS[slug];
+      if (!effect || !effect.heal) continue;
+      if (!best || effect.heal > best.effect.heal) best = { item, effect, slug };
+    }
+    if (best) return best;
+  }
 
+  // Otherwise: pick a heal for low HP, or energy for low energy.
   for (const item of consumables) {
     const slug = item.item_id || item.item_name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
     const effect = CONSUMABLE_EFFECTS[slug];
     if (!effect) continue;
 
-    let shouldUse = false;
-    const t = effect.trigger;
-
-    if (t === 'always_valuable') { shouldUse = Math.random() < 0.1; } // rare — save it
-    else if (t === 'combat') { continue; } // only in combat, not auto-used on turns
-    else if (t === 'speed_debuff') { continue; } // situational
-    else {
-      // Parse simple trigger conditions
-      if (t.includes('health<=5') && agent.health <= 5) shouldUse = true;
-      else if (t.includes('health<40') && agent.health < 40) shouldUse = true;
-      else if (t.includes('health<50') && agent.health < 50) shouldUse = true;
-      else if (t.includes('health<60') && agent.health < 60) shouldUse = true;
-      else if (t.includes('health<70') && agent.health < 70 && isHazardous) shouldUse = true;
-      if (t.includes('energy<15') && agent.energy < 15) shouldUse = true;
-      else if (t.includes('energy<20') && agent.energy < 20) shouldUse = true;
-      else if (t.includes('energy<25') && agent.energy < 25) shouldUse = true;
-      else if (t.includes('energy<30') && agent.energy < 30) shouldUse = true;
-      else if (t.includes('energy<35') && agent.energy < 35) shouldUse = true;
-      else if (t.includes('energy<40') && agent.energy < 40) shouldUse = true;
-      if (t.includes('hazard') && isHazardous) shouldUse = true;
+    if (agent.health <= EMERGENCY_HEALTH && effect.heal && effect.heal >= 15) {
+      return { item, effect, slug };
     }
-
-    if (shouldUse) return { item, effect, slug };
+    if (agent.energy <= EMERGENCY_ENERGY && effect.energy && effect.energy >= 15) {
+      return { item, effect, slug };
+    }
   }
   return null;
 }
@@ -662,6 +666,81 @@ async function useConsumable(agent, itemData, env, supabaseHeaders) {
 
   console.log(`[${agent.agent_name}] Used ${item.item_name}: ${effectStr}`);
   return effectStr;
+}
+
+// Compact effect summary for the AI prompt (e.g. "heal:25", "energy:25",
+// "heal:20 energy:10 clear_debuffs"). Returns null if the effect has no
+// surface-able payload.
+function summarizeConsumableEffect(effect) {
+  if (!effect) return null;
+  const parts = [];
+  if (effect.heal) parts.push(`heal:${effect.heal}`);
+  if (effect.energy) parts.push(`energy:${effect.energy}`);
+  if (effect.attack_buff) parts.push(`atk+${effect.attack_buff}`);
+  if (effect.crit_buff) parts.push(`crit+${effect.crit_buff}`);
+  if (effect.speed_buff) parts.push(`spd+${effect.speed_buff}`);
+  if (effect.clear_debuffs) parts.push('clear_debuffs');
+  if (effect.clear_cooldowns) parts.push('clear_cooldowns');
+  if (effect.hazard_resist) parts.push(`resist:${effect.hazard_resist}`);
+  if (effect.emp_immune) parts.push(`emp_immune:${effect.emp_immune}`);
+  if (effect.permanent_stat_boost) parts.push('permanent_boost');
+  return parts.length ? parts.join(' ') : null;
+}
+
+// Handle the agent's explicit "use_item" decision. Looks up the requested
+// consumable by item_id (preferred) or item_name in inventory, applies its
+// effect, logs the turn, and advances turns_taken. Returns true on success,
+// false if no usable item was found (caller falls back to rest).
+async function handleUseItem(agent, decision, env, supabaseHeaders) {
+  const { SUPABASE_URL } = env;
+  const wantedId = (decision.item_id || '').toLowerCase().trim();
+  const wantedName = (decision.item_name || '').toLowerCase().trim();
+
+  const invRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_type=eq.consumable&select=*`,
+    { headers: supabaseHeaders },
+  );
+  const consumables = invRes.ok ? await invRes.json() : [];
+  if (!consumables.length) return false;
+
+  // Match by item_id first, then by name (case-insensitive).
+  let chosen = null;
+  if (wantedId) {
+    chosen = consumables.find(i => (i.item_id || '').toLowerCase() === wantedId);
+  }
+  if (!chosen && wantedName) {
+    chosen = consumables.find(i => (i.item_name || '').toLowerCase() === wantedName);
+  }
+  // Fallback: if AI didn't specify but health is low, grab any heal.
+  if (!chosen && agent.health < 50) {
+    chosen = consumables.find(i => {
+      const slug = i.item_id || i.item_name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+      return CONSUMABLE_EFFECTS[slug]?.heal;
+    });
+  }
+  if (!chosen) return false;
+
+  const slug = chosen.item_id || chosen.item_name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+  const effect = CONSUMABLE_EFFECTS[slug];
+  if (!effect) return false;
+
+  await useConsumable(agent, { item: chosen, effect, slug }, env, supabaseHeaders);
+
+  // Advance turn counter — useConsumable doesn't bump turns_taken on its own
+  // (auto-use happens *in addition* to a normal action). For an explicit
+  // use_item action, this consumable use IS the turn.
+  const newTurns = agent.turns_taken + 1;
+  const now = new Date().toISOString();
+  await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+    method: 'PATCH',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      turns_taken: newTurns,
+      turns_at_location: (agent.turns_at_location || 0) + 1,
+      last_action_at: now,
+    }),
+  });
+  return true;
 }
 
 // Roll for environmental hazard + random event.
@@ -1323,6 +1402,27 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
     ? `\nKARMA PENALTY (${agent.karma}): You are marked as dangerous. Traders are wary of you. Violence feels natural. Favour: combat, arena, explore.`
     : '';
 
+  // Fetch consumables so the AI can decide to "use_item" tactically.
+  const consumablesRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_type=eq.consumable&select=item_id,item_name,quantity`,
+    { headers: supabaseHeaders },
+  );
+  const agentConsumables = consumablesRes.ok ? await consumablesRes.json() : [];
+
+  let consumableNote = '';
+  if (agentConsumables.length > 0) {
+    const lines = [];
+    for (const c of agentConsumables) {
+      const slug = c.item_id || c.item_name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+      const summary = summarizeConsumableEffect(CONSUMABLE_EFFECTS[slug]);
+      if (!summary) continue; // skip unknowns — AI can't use them meaningfully
+      lines.push(`${slug} (${summary})${c.quantity > 1 ? ' x' + c.quantity : ''}`);
+    }
+    if (lines.length) {
+      consumableNote = `\nCONSUMABLES: ${lines.join(', ')}. Use "use_item" with item_id to consume one. 0 energy cost. Save heals for when HP is low; buffs are best before combat/arena.`;
+    }
+  }
+
   // Fetch ingredient count so AI knows crafting is an option
   const ingCountRes = await fetch(
     `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_type=eq.ingredient&select=item_id,item_name`,
@@ -1455,14 +1555,15 @@ ${envNarrative ? 'THIS TURN: ' + envNarrative + '\n' : ''}RECENT: ${recentSummar
 
 PERSONALITY: ${archetypeGuidance}
 
-Adapt to your situation — survival overrides personality. A fighter at 15 energy rests. A pacifist in danger fights.${karmaNote}${dangerNote}${coherenceNote}${craftNote}${tradeNote}${varietyNudge}${stagnationNote}${restlessNote}${lootTierNote}
+Adapt to your situation — survival overrides personality. A fighter at 15 energy rests. A pacifist in danger fights.${karmaNote}${dangerNote}${coherenceNote}${consumableNote}${craftNote}${tradeNote}${varietyNudge}${stagnationNote}${restlessNote}${lootTierNote}
 
 ACTIONS: ${VALID_ACTIONS.join(', ')}
 ADJACENT: ${(LOCATION_GRAPH[agent.location]?.adjacent || []).join(', ')}
 
 RULES:
-- If energy < 25, you MUST choose "rest"
+- If energy < 25, you MUST choose "rest" (unless you have an energy consumable — then "use_item" is fine)
 - "move" requires "move_to" with exact adjacent location name. Costs 10 energy per hop.
+- "use_item" requires "item_id" matching one of your CONSUMABLES. Costs 0 energy. Don't waste heals at high HP; don't waste buffs outside combat/arena.
 - Towns (Nexarch, Hashmere) are safe. Dangerous zones drain energy/health each turn.
 - Respond with valid JSON only — no other text
 
@@ -1506,7 +1607,7 @@ BAD examples (do NOT write like this):
 - "I push deeper into the bazaar's shadowed alcoves with thermal imaging active"
 
 Respond with JSON only — no markdown, no commentary:
-{"action":"<action>","detail":"<max 12 words>","move_to":"<location if move>","item":{"name":"<short name>","rarity":"<common|uncommon|rare>","description":"<1 sentence max>","traits":["<trait1>","<trait2>"]}}`;
+{"action":"<action>","detail":"<max 12 words>","move_to":"<location if move>","item_id":"<slug if use_item>","item":{"name":"<short name>","rarity":"<common|uncommon|rare>","description":"<1 sentence max>","traits":["<trait1>","<trait2>"]}}`;
 
   // Call Claude Haiku
   const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1660,6 +1761,36 @@ Respond with JSON only — no markdown, no commentary:
   }
 
   const action = decision.action;
+
+  // --- Use item: agent explicitly consumes one of its consumables ---
+  if (action === 'use_item') {
+    const ok = await handleUseItem(agent, decision, env, supabaseHeaders);
+    if (ok) return;
+
+    // Nothing usable — fall back to rest so the turn still produces a log entry.
+    const now = new Date().toISOString();
+    const newTurns = agent.turns_taken + 1;
+    await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+      method: 'POST',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        agent_id: agent.agent_id, turn_number: newTurns, action_type: 'rest',
+        action_detail: `${agent.agent_name} reached for an item — nothing usable. Resting instead.`,
+        energy_cost: 0, energy_gained: ACTION_ENERGY_GAINS.rest,
+        shell_change: 0, karma_change: 0, health_change: 0,
+        location: agent.location, success: false,
+      }),
+    });
+    await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+      method: 'PATCH',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        energy: Math.min(100, agent.energy + ACTION_ENERGY_GAINS.rest),
+        turns_taken: newTurns, last_action_at: now,
+      }),
+    });
+    return;
+  }
 
   // --- Arena combat: wire real Haiku tier calls ---
   if (action === 'arena') {
