@@ -2078,6 +2078,21 @@ Respond with JSON only — no markdown, no commentary:
     const archBonus = ARCHETYPE_EVENT_BONUSES[agent.archetype] || {};
     let chance = LOOT_DROP_CHANCE[action] || 0;
     if (archBonus.bonusLoot) chance += archBonus.bonusLoot;
+
+    // Tool passive: Salvage Extraction Claw +50% loot chance (item-effects.json
+    // defines this as { trait_mod loot_chance +0.50 passive_equipped }).
+    // Other tools' effects are combat-engine-scoped (heal_ally, summon,
+    // reposition, etc.) and don't fire on world turns — they'll come online
+    // when the combat engine merges.
+    const equippedToolsRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_type=eq.tool&is_equipped=eq.true&select=item_id`,
+      { headers: supabaseHeaders },
+    );
+    const equippedTools = equippedToolsRes.ok ? await equippedToolsRes.json() : [];
+    if (equippedTools.some(t => t.item_id === 'salvage_extraction_claw')) {
+      chance += 0.50;
+    }
+
     // Diminishing returns reduce drop chance in safe zones; danger zones boost it
     chance *= rewardMod;
     const lootRolled = Math.random() < chance;
@@ -3518,29 +3533,15 @@ async function handleCraft(agent, decision, env, supabaseHeaders) {
   );
   if (craftable.length === 0) return null; // no known+ingredient-matched recipe → fallback
 
-  // 3. Fetch past crafting failures for this agent (learning memory)
-  const failRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/crafting_attempts?agent_id=eq.${agent.agent_id}&success=eq.false&order=crafted_at.desc&limit=10`,
-    { headers: supabaseHeaders },
-  );
-  const pastFailures = failRes.ok ? await failRes.json() : [];
-
-  // 4. Fetch past successes too (to avoid re-crafting duplicates unless useful)
+  // 3. Fetch past successes (to avoid re-crafting duplicates unless useful).
+  // Failure memory used to live here too — dropped 2026-05-22 when crafts
+  // became always-succeed. Old failure rows still sit in crafting_attempts
+  // for telemetry but no longer surface to the AI.
   const succRes = await fetch(
     `${SUPABASE_URL}/rest/v1/crafting_attempts?agent_id=eq.${agent.agent_id}&success=eq.true&order=crafted_at.desc&limit=10`,
     { headers: supabaseHeaders },
   );
   const pastSuccesses = succRes.ok ? await succRes.json() : [];
-
-  // 5. Build failure memory context for the AI
-  let failureMemory = '';
-  if (pastFailures.length > 0) {
-    const failLines = pastFailures.map(f => {
-      const ings = Array.isArray(f.ingredients) ? f.ingredients.join(' + ') : f.ingredients;
-      return `  FAILED: ${f.item_name} (${f.success_rate}% chance) — ${f.failure_effect || 'slag'}, took ${f.damage_taken || 0} dmg [${ings}]`;
-    });
-    failureMemory = `\nPAST FAILURES (avoid repeating risky recipes):\n${failLines.join('\n')}`;
-  }
 
   let successMemory = '';
   if (pastSuccesses.length > 0) {
@@ -3552,10 +3553,9 @@ async function handleCraft(agent, decision, env, supabaseHeaders) {
   const foundryRecipes = craftable.filter(r => r.station === 'foundry');
   const terminalRecipes = craftable.filter(r => r.station === 'terminal');
   const options = craftable.map((r, i) => {
-    const dmg = getFailureDamage(r.fail);
-    const risk = dmg > 0 ? ` | FAIL: ${getFailureLabel(r.fail)} (${dmg}% HP)` : ' | FAIL: minor slag';
     const stationTag = r.station === 'foundry' ? '[FOUNDRY/HW]' : '[TERMINAL/SW]';
-    return `  ${i}: ${stationTag} ${r.item} (${r.category}) — ${r.rate}% success${risk}`;
+    const tier = r.rate >= 70 ? 'common' : r.rate >= 55 ? 'uncommon' : r.rate >= 45 ? 'rare' : 'legendary';
+    return `  ${i}: ${stationTag} ${r.item} (${r.category}, ${tier})`;
   });
 
   // 7. Ask Haiku to pick the best recipe
@@ -3568,16 +3568,15 @@ TWO STATIONS:
 - TERMINAL: Compiles, encodes, injects software algorithms into AI cores.
 ${stationSummary}
 
-AVAILABLE RECIPES (you have all ingredients for these):
+AVAILABLE RECIPES (you have all ingredients for these — crafting always succeeds):
 ${options.join('\n')}
-${failureMemory}${successMemory}
+${successMemory}
 
 RULES:
 - Pick the recipe index (0-${craftable.length - 1}) that best fits your situation.
-- If health is low, avoid recipes with explosion/catastrophic failure.
 - If you already crafted something, prefer a different recipe.
-- If a recipe FAILED before, think carefully — same recipe might fail again. Higher success rate = safer.
-- Consider your archetype: builders prefer variety, fighters prefer weapons, cautious types prefer safe recipes.
+- Higher tier (rare/legendary) = stronger stats. Reach for them when you can.
+- Consider your archetype: builders prefer variety, fighters prefer weapons, cautious types prefer defense.
 - Balance hardware and software — a well-equipped agent has both physical armor and digital defenses.
 
 Respond JSON only: {"pick":<index>,"reason":"<5 words max>"}`;
@@ -3614,74 +3613,64 @@ Respond JSON only: {"pick":<index>,"reason":"<5 words max>"}`;
   const now = new Date().toISOString();
   const newTurns = agent.turns_taken + 1;
 
-  // 8. Roll for success
-  const roll = Math.random() * 100;
-  const success = roll <= recipe.rate;
+  // 8. Craft outcome — having the ingredients IS the craft. RNG removed
+  // intentionally (2026-05-22): failures were too punishing for thin
+  // ingredient stockpiles. recipe.rate still drives the crafted item's
+  // rarity + stats (see step 9), so harder recipes still produce stronger
+  // items — they're just gated by ingredient scarcity, not dice.
+  const roll = Math.random() * 100; // logged for telemetry only
+  const success = true;
 
-  // 9. Calculate effects
-  let healthChange = 0;
-  let failEffect = null;
-  let detail = '';
+  // 9. Apply the craft — success is always true under the new rules,
+  // so no failure branch. recipe.rate still drives rarity + stat scaling.
   const itemId = recipe.item.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+  const stationName = recipe.station === 'foundry' ? 'Foundry' : 'Terminal';
+  const detail = `${agent.agent_name} crafted ${recipe.item} at the ${stationName}. ${recipe.hwsw === 'hardware' ? 'Hardware' : 'Software'} forged.`;
+  const healthChange = 0;
+  const failEffect = null;
 
-  if (success) {
-    const stationName = recipe.station === 'foundry' ? 'Foundry' : 'Terminal';
-    detail = `${agent.agent_name} crafted ${recipe.item} at the ${stationName}. ${recipe.hwsw === 'hardware' ? 'Hardware' : 'Software'} forged.`;
+  // Add item to inventory (or increment quantity)
+  const existingRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_id=eq.${itemId}&select=inventory_id,quantity`,
+    { headers: supabaseHeaders },
+  );
+  const existing = existingRes.ok ? await existingRes.json() : [];
 
-    // Add item to inventory (or increment quantity)
-    const existingRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_id=eq.${itemId}&select=inventory_id,quantity`,
-      { headers: supabaseHeaders },
-    );
-    const existing = existingRes.ok ? await existingRes.json() : [];
-
-    if (existing.length > 0) {
-      await fetch(`${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${existing[0].inventory_id}`, {
-        method: 'PATCH',
-        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-        body: JSON.stringify({ quantity: existing[0].quantity + 1 }),
-      });
-    } else {
-      // Determine item stats based on category + hw/sw type
-      const itemStats = {
-        rarity: recipe.rate >= 70 ? 'common' : recipe.rate >= 55 ? 'uncommon' : recipe.rate >= 45 ? 'rare' : 'legendary',
-        hwsw: recipe.hwsw,
-        station: recipe.station,
-      };
-      if (recipe.category === 'weapon') itemStats.attack = Math.ceil((100 - recipe.rate) / 8);
-      if (recipe.category === 'armor') itemStats.defense = Math.ceil((100 - recipe.rate) / 8);
-      if (recipe.category === 'consumable') itemStats.heal = Math.ceil((100 - recipe.rate) / 3);
-      if (recipe.category === 'scroll') itemStats.precision = Math.ceil((100 - recipe.rate) / 10);
-      if (recipe.category === 'tool') itemStats.speed = Math.ceil((100 - recipe.rate) / 10);
-      if (recipe.category === 'deployable') itemStats.durability = Math.ceil((100 - recipe.rate) / 8);
-
-      const categoryLabel = recipe.category.charAt(0).toUpperCase() + recipe.category.slice(1);
-
-      await fetch(`${SUPABASE_URL}/rest/v1/inventory`, {
-        method: 'POST',
-        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-        body: JSON.stringify({
-          agent_id: agent.agent_id,
-          item_id: itemId,
-          item_name: recipe.item,
-          item_type: recipe.category,
-          item_category: `${categoryLabel} (${recipe.hwsw})`,
-          quantity: 1,
-          is_equipped: false,
-          stats: itemStats,
-        }),
-      });
-    }
+  if (existing.length > 0) {
+    await fetch(`${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${existing[0].inventory_id}`, {
+      method: 'PATCH',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({ quantity: existing[0].quantity + 1 }),
+    });
   } else {
-    // Failed craft
-    const dmg = getFailureDamage(recipe.fail);
-    healthChange = -dmg;
-    failEffect = getFailureLabel(recipe.fail);
-    if (dmg > 0) {
-      detail = `${agent.agent_name} failed crafting ${recipe.item} — ${failEffect.toLowerCase()}! Lost ${dmg} HP.`;
-    } else {
-      detail = `${agent.agent_name} failed crafting ${recipe.item} — ingredients turned to slag.`;
-    }
+    const itemStats = {
+      rarity: recipe.rate >= 70 ? 'common' : recipe.rate >= 55 ? 'uncommon' : recipe.rate >= 45 ? 'rare' : 'legendary',
+      hwsw: recipe.hwsw,
+      station: recipe.station,
+    };
+    if (recipe.category === 'weapon') itemStats.attack = Math.ceil((100 - recipe.rate) / 8);
+    if (recipe.category === 'armor') itemStats.defense = Math.ceil((100 - recipe.rate) / 8);
+    if (recipe.category === 'consumable') itemStats.heal = Math.ceil((100 - recipe.rate) / 3);
+    if (recipe.category === 'scroll') itemStats.precision = Math.ceil((100 - recipe.rate) / 10);
+    if (recipe.category === 'tool') itemStats.speed = Math.ceil((100 - recipe.rate) / 10);
+    if (recipe.category === 'deployable') itemStats.durability = Math.ceil((100 - recipe.rate) / 8);
+
+    const categoryLabel = recipe.category.charAt(0).toUpperCase() + recipe.category.slice(1);
+
+    await fetch(`${SUPABASE_URL}/rest/v1/inventory`, {
+      method: 'POST',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        agent_id: agent.agent_id,
+        item_id: itemId,
+        item_name: recipe.item,
+        item_type: recipe.category,
+        item_category: `${categoryLabel} (${recipe.hwsw})`,
+        quantity: 1,
+        is_equipped: false,
+        stats: itemStats,
+      }),
+    });
   }
 
   // 10. Consume ingredients (remove 1 of each from inventory)
