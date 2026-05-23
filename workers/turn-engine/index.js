@@ -745,6 +745,102 @@ async function handleUseItem(agent, decision, env, supabaseHeaders) {
   return true;
 }
 
+// ─── Auto-equip: keep the agent's strongest gear in each slot ────────────────
+// Mirrors the dashboard's 5-slot loadout (migration 010_equip_slots.sql):
+// weapon (melee), ranged, helm, armor (chest), trinket. Combat slots are kept
+// at best-in-slot (a strictly better owned item swaps in, so a manual downgrade
+// is reverted next turn); the trinket slot is only filled when empty, so a
+// deliberately-equipped passive (e.g. the salvage claw) is never auto-swapped
+// for a higher-stat trinket.
+const AUTO_EQUIP_SWAP_SLOTS = new Set(['weapon', 'ranged', 'helm', 'armor']);
+const HELM_NAME_RE = /(helm|visor|crown|mask|goggles|optic|cowl|hood|veil|circlet|halo|headpiece|faceplate)/i;
+
+// Resolve which equip slot an inventory row belongs to. Prefers the row's
+// canonical equip_slot (backfilled from items_master); falls back to a
+// name/type heuristic. Returns null for items that can't be equipped.
+function resolveEquipSlot(item) {
+  if (item.equip_slot) return item.equip_slot;
+  const type = (item.item_type || '').toLowerCase();
+  if (type === 'weapon') return 'weapon';           // melee default; ranged needs an explicit equip_slot
+  if (type === 'armor') return HELM_NAME_RE.test(item.item_name || '') ? 'helm' : 'armor';
+  if (type === 'tool' || type === 'scroll' || type === 'artifact' || type === 'implant') return 'trinket';
+  return null;
+}
+
+// Sum of an item's combat-relevant stats — higher means better in its slot.
+// Matches the stats calcCombatStats() reads, so the gear we pick is the gear
+// that actually helps in the arena.
+function gearValue(item) {
+  const s = item.stats || {};
+  return (s.attack || 0) + (s.defense || 0) + (s.speed || 0)
+       + (s.precision || 0) + (s.critical || 0) + (s.dodge || 0);
+}
+
+async function autoEquipBestGear(agent, env, supabaseHeaders) {
+  const { SUPABASE_URL } = env;
+  const invRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&select=inventory_id,item_id,item_name,item_type,equip_slot,is_equipped,stats,quantity`,
+    { headers: supabaseHeaders },
+  );
+  if (!invRes.ok) return [];
+  const inventory = await invRes.json();
+
+  // Group equippable items by resolved slot.
+  const bySlot = {};
+  for (const item of inventory) {
+    if ((item.quantity || 1) < 1) continue;
+    const slot = resolveEquipSlot(item);
+    if (!slot) continue;
+    (bySlot[slot] = bySlot[slot] || []).push(item);
+  }
+
+  const notes = [];
+  for (const [slot, items] of Object.entries(bySlot)) {
+    // Best by combat value; prefer the already-equipped item on ties to avoid
+    // pointless swaps.
+    items.sort((a, b) => {
+      const d = gearValue(b) - gearValue(a);
+      if (d !== 0) return d;
+      return (b.is_equipped ? 1 : 0) - (a.is_equipped ? 1 : 0);
+    });
+    const best = items[0];
+    const equipped = items.filter(i => i.is_equipped);
+    const current = equipped[0] || null;
+
+    let target;
+    if (!current) {
+      target = best;                                                       // empty slot → equip best owned
+    } else if (AUTO_EQUIP_SWAP_SLOTS.has(slot) && gearValue(best) > gearValue(current)) {
+      target = best;                                                       // strictly better gear → swap up
+    } else {
+      target = current;                                                    // keep what's equipped
+    }
+
+    // Unequip anything in this slot that isn't the target (also clears any
+    // accidental duplicate equips so only one item occupies the slot).
+    for (const item of equipped) {
+      if (item.inventory_id === target.inventory_id) continue;
+      await fetch(`${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${item.inventory_id}`, {
+        method: 'PATCH',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({ is_equipped: false }),
+      });
+    }
+
+    // Equip the target, stamping its slot so future slot queries stay
+    // consistent even when equip_slot was previously null.
+    if (!target.is_equipped) {
+      await fetch(`${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${target.inventory_id}`, {
+        method: 'PATCH',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({ is_equipped: true, equip_slot: slot }),
+      });
+      notes.push(`equipped ${target.item_name}`);
+    }
+  }
+  return notes;
+}
+
 // Roll for environmental hazard + random event.
 // Factors in: location danger, karma, agent traits, archetype.
 function rollEnvironment(agent) {
@@ -1351,6 +1447,16 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
   if (autoUse) {
     await useConsumable(agent, autoUse, env, supabaseHeaders);
     envNarrative += `💊 ${agent.agent_name} used ${autoUse.item.item_name}.\n`;
+  }
+
+  // ─── Auto-equip best-in-slot gear before AI decision ───
+  // Equips the strongest gear the agent owns in each slot so acquired weapons,
+  // armor and tools actually count in combat, swapping up as better gear
+  // arrives. Combat slots are re-asserted to best-in-slot each turn; the
+  // trinket slot is left alone once filled (see autoEquipBestGear).
+  const equipNotes = await autoEquipBestGear(agent, env, supabaseHeaders);
+  if (equipNotes.length) {
+    envNarrative += `🛡 ${agent.agent_name} ${equipNotes.join(', ')}.\n`;
   }
 
   // Build prompt context
