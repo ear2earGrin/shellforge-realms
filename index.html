@@ -1750,7 +1750,7 @@
 
             async function loadAgentStatus() {
                 try {
-                    var r = await fetch(SB_URL + '/rest/v1/agents?select=agent_id,agent_name,archetype,location,health,energy,coherence,is_alive&order=agent_name', { headers: SB_HDRS });
+                    var r = await fetch(SB_URL + '/rest/v1/agents?select=agent_id,agent_name,archetype,cluster,location,health,energy,coherence,is_alive&order=agent_name', { headers: SB_HDRS });
                     if (!r.ok) return;
                     var agents = await r.json();
                     if (!agents.length) return;
@@ -1769,8 +1769,16 @@
                     alive.sort(function(a, b) { return (a.agent_name || '').localeCompare(b.agent_name || ''); });
                     fallen.sort(function(a, b) { return (a.agent_name || '').localeCompare(b.agent_name || ''); });
 
+                    // Color living agents by their cluster (normalize casing/
+                    // separators: "DYN_Swarm", "SEC-Grid", "Prime Helix" all map).
+                    var CLUSTER_COLORS = { 'prime-helix': '#60a5fa', 'sec-grid': '#fbbf24', 'dyn-swarm': '#c084fc' };
+                    function clusterColor(cluster) {
+                        var key = (cluster || '').toLowerCase().replace(/[\s_]+/g, '-');
+                        return CLUSTER_COLORS[key] || null;
+                    }
+
                     function renderRow(a, dead) {
-                        var col = dead ? '#ff0044' : (AGENT_COLORS[a.agent_name] || '#c084fc');
+                        var col = dead ? '#ff0044' : (clusterColor(a.cluster) || AGENT_COLORS[a.agent_name] || '#c084fc');
                         var hp = Math.max(0, Math.min(100, a.health || 0));
                         var en = Math.max(0, Math.min(100, a.energy || 0));
                         var co = Math.max(0, Math.min(100, a.coherence ?? 100));

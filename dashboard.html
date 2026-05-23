@@ -9447,6 +9447,15 @@
             return renderMarketSellList();
         }
 
+        // market_listings has no description column — resolve the item's
+        // effect/trait text from the catalog so tooltips show what it does.
+        function marketItemDesc(item) {
+            if (item && item.description) return item.description;
+            var meta = (window.ALCHEMY_ITEMS && window.ALCHEMY_ITEMS[item.item_id])
+                    || (window.ALCHEMY_INGREDIENTS && window.ALCHEMY_INGREDIENTS[item.item_id]);
+            return (meta && (meta.desc || meta.effect_text || meta.effect)) || '';
+        }
+
         function renderUnifiedBuyList(shell) {
             var filtered = getMarketFilteredItems();
             if (filtered.length === 0) return '<div class="market-empty"><div class="empty-icon">📦</div>No items for sale at this market.</div>';
@@ -9490,7 +9499,7 @@
                     else if (item.current_price < item.base_price) trend = ' <span class="trend-down">▼</span>';
                 }
 
-                var desc = item.description || '';
+                var desc = marketItemDesc(item);
                 var statsStr = '';
                 if (item.stat_effects && typeof item.stat_effects === 'object') {
                     var parts = [];
@@ -9545,7 +9554,7 @@
 
                 var rarity = (item.rarity || 'common').toLowerCase();
                 var rarityColor = RARITY_COLORS_ALCH[rarity.charAt(0).toUpperCase() + rarity.slice(1)] || '#8a9a8a';
-                var desc = item.description || '';
+                var desc = marketItemDesc(item);
                 var statsStr = '';
                 if (item.stat_effects && typeof item.stat_effects === 'object') {
                     var parts = [];
