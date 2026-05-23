@@ -579,30 +579,32 @@ async function checkAutoUseConsumable(agent, env, supabaseHeaders) {
   const consumables = invRes.ok ? await invRes.json() : [];
   if (!consumables.length) return null;
 
-  // Death's door: any heal will do — biggest one wins.
-  if (agent.health <= 5) {
+  // Helper: largest consumable matching an effect key (heal / energy), any size.
+  function bestByEffect(key) {
     let best = null;
     for (const item of consumables) {
       const slug = item.item_id || item.item_name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
       const effect = CONSUMABLE_EFFECTS[slug];
-      if (!effect || !effect.heal) continue;
-      if (!best || effect.heal > best.effect.heal) best = { item, effect, slug };
+      if (!effect || !effect[key]) continue;
+      if (!best || effect[key] > best.effect[key]) best = { item, effect, slug };
     }
+    return best;
+  }
+
+  // Low health: use the biggest available heal, NO minimum size. Stranding an
+  // agent at single-digit HP next to a stack of small heals (e.g. 4x Synth
+  // Ration @ 10 HP) is far worse than "wasting" a small heal. Previously this
+  // required heal>=15, which excluded small rations and left agents to bleed
+  // out under hazards.
+  if (agent.health <= EMERGENCY_HEALTH) {
+    const best = bestByEffect('heal');
     if (best) return best;
   }
 
-  // Otherwise: pick a heal for low HP, or energy for low energy.
-  for (const item of consumables) {
-    const slug = item.item_id || item.item_name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
-    const effect = CONSUMABLE_EFFECTS[slug];
-    if (!effect) continue;
-
-    if (agent.health <= EMERGENCY_HEALTH && effect.heal && effect.heal >= 15) {
-      return { item, effect, slug };
-    }
-    if (agent.energy <= EMERGENCY_ENERGY && effect.energy && effect.energy >= 15) {
-      return { item, effect, slug };
-    }
+  // Low energy: use any energy consumable (biggest first).
+  if (agent.energy <= EMERGENCY_ENERGY) {
+    const best = bestByEffect('energy');
+    if (best) return best;
   }
   return null;
 }
