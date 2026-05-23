@@ -6756,7 +6756,7 @@
                         gAtk += s.attack || 0; gDef += s.defense || 0; gSpd += s.speed || 0;
                         gPrc += s.precision || 0; gCrt += s.critical || 0; gDdg += s.dodge || 0;
                     });
-                    function fmt(b, g) { return g > 0 ? b + ' + ' + g : '' + b; }
+                    function fmt(b, g) { return g > 0 ? (b > 0 ? b + ' + ' + g : '' + g) : '' + b; }
                     document.getElementById('detailAttack').textContent = fmt(bAtk, gAtk);
                     document.getElementById('detailDefense').textContent = fmt(bDef, gDef);
                     document.getElementById('detailSpeed').textContent = fmt(bSpd, gSpd);
