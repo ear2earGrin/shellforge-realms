@@ -1407,6 +1407,13 @@
             // Track last seen timestamp to avoid duplicates
             var lastSeenTime = null;
             var agentCache = {};
+            // agent_id → cluster, for cluster-based name coloring (matches roster).
+            var agentClusterCache = {};
+            var CLUSTER_COLORS = { 'prime-helix': '#60a5fa', 'sec-grid': '#fbbf24', 'dyn-swarm': '#c084fc' };
+            function clusterColor(cluster) {
+                var key = (cluster || '').toLowerCase().replace(/[\s_]+/g, '-');
+                return CLUSTER_COLORS[key] || null;
+            }
 
             function formatTime(isoStr) {
                 // Supabase stores timestamps as "timestamp without time zone" but values are UTC.
@@ -1423,8 +1430,8 @@
                 return 'neutral';
             }
 
-            function renderLine(agentName, actionType, detail, location, timestamp, animate) {
-                var col = AGENT_COLORS[agentName] || DEFAULT_COLOR;
+            function renderLine(agentName, actionType, detail, location, timestamp, animate, agentId) {
+                var col = clusterColor(agentClusterCache[agentId]) || AGENT_COLORS[agentName] || DEFAULT_COLOR;
                 var icon = ACTION_ICONS[actionType] || '›';
                 var cleanDetail = detail;
                 if (cleanDetail && cleanDetail.toLowerCase().startsWith(agentName.toLowerCase())) {
@@ -1481,10 +1488,10 @@
             // Fetch agent names (so we can map agent_id → name)
             async function loadAgents() {
                 try {
-                    var r = await fetch(SB_URL + '/rest/v1/agents?select=agent_id,agent_name', { headers: SB_HDRS });
+                    var r = await fetch(SB_URL + '/rest/v1/agents?select=agent_id,agent_name,cluster', { headers: SB_HDRS });
                     if (!r.ok) return;
                     var agents = await r.json();
-                    agents.forEach(function(a) { agentCache[a.agent_id] = a.agent_name; });
+                    agents.forEach(function(a) { agentCache[a.agent_id] = a.agent_name; agentClusterCache[a.agent_id] = a.cluster; });
                 } catch(e) { console.warn('Feed: failed to load agents', e); }
             }
 
@@ -1571,10 +1578,10 @@
                     var location = row.location || '';
                     if (initial) {
                         setTimeout(function() {
-                            renderLine(name, row.action_type, detail, location, row.timestamp, true);
+                            renderLine(name, row.action_type, detail, location, row.timestamp, true, row.agent_id);
                         }, idx * 60);
                     } else {
-                        renderLine(name, row.action_type, detail, location, row.timestamp, true);
+                        renderLine(name, row.action_type, detail, location, row.timestamp, true, row.agent_id);
                     }
                 });
                 if (rows.length) {
