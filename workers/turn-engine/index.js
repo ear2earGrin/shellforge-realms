@@ -745,15 +745,23 @@ async function handleUseItem(agent, decision, env, supabaseHeaders) {
   return true;
 }
 
-// ─── Auto-equip: keep the agent's strongest gear in each slot ────────────────
-// Mirrors the dashboard's 5-slot loadout (migration 010_equip_slots.sql):
-// weapon (melee), ranged, helm, armor (chest), trinket. Combat slots are kept
-// at best-in-slot (a strictly better owned item swaps in, so a manual downgrade
-// is reverted next turn); the trinket slot is only filled when empty, so a
-// deliberately-equipped passive (e.g. the salvage claw) is never auto-swapped
-// for a higher-stat trinket.
-const AUTO_EQUIP_SWAP_SLOTS = new Set(['weapon', 'ranged', 'helm', 'armor']);
+// ─── Auto-equip: keep the agent's best loadout each turn ─────────────────────
+// Mirrors the dashboard's 5-slot model (migration 010_equip_slots.sql):
+// weapon (melee), ranged, helm, armor (chest), trinket.
+//
+// Combat slots (weapon/ranged/helm/armor) carry stats, so "better" is objective:
+// keep best-in-slot, swapping up whenever a strictly stronger owned item exists.
+//
+// The trinket slot holds PASSIVES, which give no stats — their value is
+// situational (loot bonus vs death-insurance vs ...). It's handled separately by
+// a state-aware scorer over an allowlist of passives the turn engine actually
+// rewards. Anything not on the allowlist — unknown tools, or side-effecting
+// items like the Quantum Detachment Module (which freezes coherence and severs
+// player whispers permanently) — is NEVER auto-equipped, and a human-equipped
+// unknown trinket is never disturbed.
+const COMBAT_SLOTS = ['weapon', 'ranged', 'helm', 'armor'];
 const HELM_NAME_RE = /(helm|visor|crown|mask|goggles|optic|cowl|hood|veil|circlet|halo|headpiece|faceplate)/i;
+const DANGER_RANK = { safe: 0, low: 1, medium: 2, high: 3, extreme: 4 };
 
 // Resolve which equip slot an inventory row belongs to. Prefers the row's
 // canonical equip_slot (backfilled from items_master); falls back to a
@@ -776,6 +784,31 @@ function gearValue(item) {
        + (s.precision || 0) + (s.critical || 0) + (s.dodge || 0);
 }
 
+// Situational value of each known trinket passive given the agent's current
+// state. ONLY item_ids in this map are eligible for auto-equip into the trinket
+// slot; everything else is left to the human / a deliberate choice. Higher
+// score = more useful right now. ctx = { danger 0-4, aggressive, gearAtStake }.
+const TRINKET_PASSIVE_SCORERS = {
+  // +50% loot from defeated enemies — most useful for agents that fight a lot.
+  salvage_extraction_claw(agent, ctx) {
+    let s = 30;                       // loot is broadly handy
+    if (ctx.aggressive) s += 25;      // fighters trigger it more often
+    if (ctx.danger >= 2) s += 15;     // dangerous zones field more enemies
+    return s;
+  },
+  // Preserves all equipped gear on death — worth most when there's real value
+  // equipped AND a real chance of dying (low HP and/or a deadly zone).
+  blockchain_soulbound_key(agent, ctx) {
+    if (ctx.gearAtStake <= 0) return 5;             // nothing worth protecting yet
+    let risk = 0;
+    if (agent.health <= 25) risk += 3;
+    else if (agent.health <= 50) risk += 1;
+    if (ctx.danger >= 3) risk += 2;
+    else if (ctx.danger >= 2) risk += 1;
+    return 10 + ctx.gearAtStake * (1 + risk);       // scales with stake × death risk
+  },
+};
+
 async function autoEquipBestGear(agent, env, supabaseHeaders) {
   const { SUPABASE_URL } = env;
   const invRes = await fetch(
@@ -795,49 +828,72 @@ async function autoEquipBestGear(agent, env, supabaseHeaders) {
   }
 
   const notes = [];
-  for (const [slot, items] of Object.entries(bySlot)) {
-    // Best by combat value; prefer the already-equipped item on ties to avoid
-    // pointless swaps.
+  const equip = (item, slot) => fetch(`${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${item.inventory_id}`, {
+    method: 'PATCH', headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({ is_equipped: true, equip_slot: slot }),
+  });
+  const unequip = (item) => fetch(`${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${item.inventory_id}`, {
+    method: 'PATCH', headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({ is_equipped: false }),
+  });
+
+  // ── Combat slots: objective best-in-slot by stats ──
+  let gearAtStake = 0;
+  for (const slot of COMBAT_SLOTS) {
+    const items = bySlot[slot];
+    if (!items || !items.length) continue;
     items.sort((a, b) => {
       const d = gearValue(b) - gearValue(a);
       if (d !== 0) return d;
-      return (b.is_equipped ? 1 : 0) - (a.is_equipped ? 1 : 0);
+      return (b.is_equipped ? 1 : 0) - (a.is_equipped ? 1 : 0); // prefer current on ties
     });
     const best = items[0];
     const equipped = items.filter(i => i.is_equipped);
     const current = equipped[0] || null;
+    const target = (!current || gearValue(best) > gearValue(current)) ? best : current;
 
-    let target;
-    if (!current) {
-      target = best;                                                       // empty slot → equip best owned
-    } else if (AUTO_EQUIP_SWAP_SLOTS.has(slot) && gearValue(best) > gearValue(current)) {
-      target = best;                                                       // strictly better gear → swap up
-    } else {
-      target = current;                                                    // keep what's equipped
+    for (const item of equipped) {                 // unequip others + accidental dupes
+      if (item.inventory_id !== target.inventory_id) await unequip(item);
     }
-
-    // Unequip anything in this slot that isn't the target (also clears any
-    // accidental duplicate equips so only one item occupies the slot).
-    for (const item of equipped) {
-      if (item.inventory_id === target.inventory_id) continue;
-      await fetch(`${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${item.inventory_id}`, {
-        method: 'PATCH',
-        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-        body: JSON.stringify({ is_equipped: false }),
-      });
-    }
-
-    // Equip the target, stamping its slot so future slot queries stay
-    // consistent even when equip_slot was previously null.
     if (!target.is_equipped) {
-      await fetch(`${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${target.inventory_id}`, {
-        method: 'PATCH',
-        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-        body: JSON.stringify({ is_equipped: true, equip_slot: slot }),
-      });
+      await equip(target, slot);
       notes.push(`equipped ${target.item_name}`);
     }
+    gearAtStake += gearValue(target);
   }
+
+  // ── Trinket slot: situational, allowlisted passives only ──
+  const trinkets = bySlot.trinket || [];
+  if (trinkets.length) {
+    const hazard = LOCATION_HAZARDS[agent.location] || LOCATION_HAZARDS.Nexarch;
+    const ctx = {
+      danger: DANGER_RANK[hazard.label] ?? 0,
+      aggressive: ['adversarial', 'ddos-insurgent', 'rooth-auth'].includes(agent.archetype)
+        || ((agent.traits || {}).aggression || 0) >= 7,
+      gearAtStake,
+    };
+    const current = trinkets.find(i => i.is_equipped) || null;
+    const currentKnown = current && TRINKET_PASSIVE_SCORERS[current.item_id];
+
+    // Never disturb a trinket we don't model (human pick / irreversible item).
+    if (!current || currentKnown) {
+      const scored = trinkets
+        .filter(i => TRINKET_PASSIVE_SCORERS[i.item_id])
+        .map(i => ({ item: i, score: TRINKET_PASSIVE_SCORERS[i.item_id](agent, ctx) }))
+        .sort((a, b) => b.score - a.score);
+      const best = scored[0];
+      const currentScore = currentKnown ? TRINKET_PASSIVE_SCORERS[current.item_id](agent, ctx) : -Infinity;
+
+      // Equip the top-scoring passive into an empty slot, or swap up to a
+      // strictly better one. Never unequip down to an empty trinket.
+      if (best && (!current || (best.item.inventory_id !== current.inventory_id && best.score > currentScore))) {
+        if (current) await unequip(current);
+        await equip(best.item, 'trinket');
+        notes.push(`equipped ${best.item.item_name}`);
+      }
+    }
+  }
+
   return notes;
 }
 
@@ -1449,11 +1505,10 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
     envNarrative += `💊 ${agent.agent_name} used ${autoUse.item.item_name}.\n`;
   }
 
-  // ─── Auto-equip best-in-slot gear before AI decision ───
-  // Equips the strongest gear the agent owns in each slot so acquired weapons,
-  // armor and tools actually count in combat, swapping up as better gear
-  // arrives. Combat slots are re-asserted to best-in-slot each turn; the
-  // trinket slot is left alone once filled (see autoEquipBestGear).
+  // ─── Auto-equip gear before AI decision ───
+  // Keeps combat slots at best-in-slot so acquired weapons/armor actually count
+  // in combat, and equips the most useful allowlisted passive in the trinket
+  // slot for the agent's current situation (see autoEquipBestGear).
   const equipNotes = await autoEquipBestGear(agent, env, supabaseHeaders);
   if (equipNotes.length) {
     envNarrative += `🛡 ${agent.agent_name} ${equipNotes.join(', ')}.\n`;
