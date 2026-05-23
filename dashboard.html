@@ -7151,6 +7151,14 @@
         }
         function renderStarterChests(chests) {
             const grid = document.getElementById('chestGrid');
+            // Copy adapts: new agents get a single cluster-matched cache; legacy
+            // agents created before that change may still have 3 unopened.
+            const _titleEl = document.querySelector('#chestOverlay .title');
+            const _subEl = document.querySelector('#chestOverlay .subtitle');
+            if (_titleEl) _titleEl.textContent = chests.length === 1 ? '[ STARTER CACHE ]' : '[ STARTER CACHES ]';
+            if (_subEl) _subEl.textContent = chests.length === 1
+                ? 'Your cluster-issued kit. Open it to begin.'
+                : 'Recovered from the launch silo. Open them all to begin.';
             grid.innerHTML = chests.map(c => {
                 const theme = CHEST_THEMES[c.theme] || { icon: '📦', name: c.theme.toUpperCase(), desc: '' };
                 return '<div class="chest-card" data-theme="' + c.theme + '" data-chest-id="' + c.id + '" onclick="openStarterChest(this)">' +
