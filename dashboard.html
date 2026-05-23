@@ -9507,7 +9507,7 @@
                 var isAgent = item._source === 'agent';
                 var price = isAgent ? (item.asking_price || 0) : (item.current_price || 0);
                 var emoji = MARKET_TYPE_EMOJI[item.item_type] || '📦';
-                var rarity = (item.rarity || 'common').toLowerCase();
+                var rarity = (item.rarity || item.item_rarity || 'common').toLowerCase();
                 var rarityColor = RARITY_COLORS_ALCH[rarity.charAt(0).toUpperCase() + rarity.slice(1)] || '#8a9a8a';
                 var canBuy = shell >= price && (isAgent || (item.stock || 0) > 0);
 
@@ -9593,7 +9593,7 @@
                     trend = ' <span class="trend-down">▼</span>';
                 }
 
-                var rarity = (item.rarity || 'common').toLowerCase();
+                var rarity = (item.rarity || item.item_rarity || 'common').toLowerCase();
                 var rarityColor = RARITY_COLORS_ALCH[rarity.charAt(0).toUpperCase() + rarity.slice(1)] || '#8a9a8a';
                 var desc = marketItemDesc(item);
                 var statsStr = '';
@@ -9638,7 +9638,7 @@
             var now = Date.now();
             filtered.forEach(function(item) {
                 var emoji = MARKET_TYPE_EMOJI[item.item_type] || '📦';
-                var rarity = (item.rarity || 'common').toLowerCase();
+                var rarity = (item.rarity || item.item_rarity || 'common').toLowerCase();
                 var rarityColor = RARITY_COLORS_ALCH[rarity.charAt(0).toUpperCase() + rarity.slice(1)] || '#8a9a8a';
                 var canBuy = shell >= (item.asking_price || 0);
 
@@ -9791,20 +9791,22 @@
             if (!invItem) return;
 
             var meta = getItemMeta(invItem);
-            // Create agent_listing
+            // Create agent_listing. Column names must match the table:
+            // seller_id (not agent_id) and item_rarity (not rarity). seller_name
+            // and inventory_id are NOT columns — omit them or the insert 400s.
             var expires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h from now
             var listing = await sbPost('agent_listings', {
-                agent_id: _currentAgent.agentId,
-                seller_name: _currentAgent.name || 'Unknown',
+                seller_id: _currentAgent.agentId,
                 item_name: invItem.item_name || meta.name,
                 item_type: invItem.item_type,
                 item_id: invItem.item_id,
-                rarity: meta.rarity || 'Common',
+                item_rarity: (meta.rarity || 'common').toLowerCase(),
                 asking_price: price,
+                base_value: getItemPrice(invItem),
                 location: _currentAgent.location,
                 status: 'active',
                 expires_at: expires,
-                inventory_id: inventoryId
+                stats: invItem.stats || {}
             });
 
             if (listing) {
