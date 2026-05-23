@@ -1,0 +1,29 @@
+name = "shellforge-api"
+main = "index.js"
+compatibility_date = "2026-05-23"
+
+# Deploy from THIS directory only:
+#   cd workers/api && npx wrangler deploy
+# Verify it prints  name = "shellforge-api"  before confirming — if wrangler
+# can't find this config it walks up to the root wrangler.toml and redeploys
+# the static site (this is how .env leaked on 2026-04-16).
+
+# No SQL migrations are needed: this Worker reads the LIVE Supabase schema as-is.
+# Do NOT run the old 001_initial.sql / 002_seed.sql against this project — they
+# assume columns (current_action, tier) that don't exist on the live tables.
+
+[vars]
+SUPABASE_URL = "https://wtzrxscdlqdgdiefsmru.supabase.co"
+
+# Secrets — set via wrangler before first deploy:
+#   wrangler secret put SUPABASE_SERVICE_KEY
+#     → service_role key from Supabase → Project Settings → API
+#   wrangler secret put JWT_SECRET
+#     → any long random string (e.g. `openssl rand -hex 32`)
+#   wrangler secret put TEST_USERNAME       → ghost_test
+#   wrangler secret put TEST_PASSWORD       → shellforge-dev-2026
+#
+# Point the dev login at a REAL existing agent (no fake seed row):
+#   wrangler secret put TEST_USER_ID        → a46c8eb1-a28e-4ad1-b2e4-45e64c39b8a7   (baboon_baba's owner)
+#   wrangler secret put TEST_AGENT_ID       → a7bc791d-b825-4a71-a56f-079bcbfc9c55   (baboon_baba)
+# Swap these two for any other live (user_id, agent_id) pair to observe a different agent.
