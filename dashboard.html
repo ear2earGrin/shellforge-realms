@@ -3494,6 +3494,8 @@
             transition: transform 0.4s cubic-bezier(.36,1.6,.6,1), opacity 0.3s ease;
         }
         .chest-card.opened .lid { transform: rotate(-25deg) translateY(-6px); opacity: 0.6; }
+        .chest-card.locked { opacity: 0.3; filter: grayscale(0.85); pointer-events: none; }
+        .chest-card.locked .open-hint { color: rgba(160,160,170,0.5); }
         .chest-card .theme-name {
             font-size: 0.7rem; letter-spacing: 0.2em;
             color: rgba(255,255,255,0.85); margin-bottom: 4px;
@@ -7116,6 +7118,10 @@
             document.body.classList.add('first-boot');
 
             localStorage.removeItem('shellforgeFirstBoot');
+            // New agent → replay the how-to-play tour even if a previous agent
+            // already finished it (the tour flag is otherwise once-ever, which
+            // suppressed it for every agent after the player's first).
+            localStorage.removeItem('shellforge_tour_done');
             if (params.has('firstBoot')) {
                 params.delete('firstBoot');
                 const cleanUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
@@ -7153,12 +7159,16 @@
             const grid = document.getElementById('chestGrid');
             // Copy adapts: new agents get a single cluster-matched cache; legacy
             // agents created before that change may still have 3 unopened.
+            // Player opens up to 2 caches (of however many exist); the rest are
+            // forfeited. Legacy agents with 1 cache just open the 1.
+            window._chestOpenLimit = Math.min(2, chests.length);
+            const _lim = window._chestOpenLimit;
             const _titleEl = document.querySelector('#chestOverlay .title');
             const _subEl = document.querySelector('#chestOverlay .subtitle');
             if (_titleEl) _titleEl.textContent = chests.length === 1 ? '[ STARTER CACHE ]' : '[ STARTER CACHES ]';
-            if (_subEl) _subEl.textContent = chests.length === 1
-                ? 'Your cluster-issued kit. Open it to begin.'
-                : 'Recovered from the launch silo. Open them all to begin.';
+            if (_subEl) _subEl.textContent = (chests.length > _lim)
+                ? ('Choose ' + _lim + ' of ' + chests.length + ' — the sealed ones are lost to the silo.')
+                : (chests.length === 1 ? 'Your cache awaits. Open it to begin.' : 'Open your caches to begin.');
             grid.innerHTML = chests.map(c => {
                 const theme = CHEST_THEMES[c.theme] || { icon: '📦', name: c.theme.toUpperCase(), desc: '' };
                 return '<div class="chest-card" data-theme="' + c.theme + '" data-chest-id="' + c.id + '" onclick="openStarterChest(this)">' +
@@ -7177,7 +7187,9 @@
             updateChestContinueState();
         }
         async function openStarterChest(card) {
-            if (card.classList.contains('opened') || card._opening) return;
+            if (card.classList.contains('opened') || card.classList.contains('locked') || card._opening) return;
+            const openedCount = document.querySelectorAll('#chestGrid .chest-card.opened').length;
+            if (openedCount >= (window._chestOpenLimit || 99)) return; // allotment used up
             card._opening = true;
             const chestId = card.dataset.chestId;
             const contents = card._contents || [];
@@ -7236,11 +7248,32 @@
             }
         }
         function updateChestContinueState() {
-            const cards = document.querySelectorAll('#chestGrid .chest-card');
-            const allOpened = cards.length > 0 && [...cards].every(c => c.classList.contains('opened'));
-            document.getElementById('chestContinue').disabled = !allOpened;
+            const cards = [...document.querySelectorAll('#chestGrid .chest-card')];
+            const opened = cards.filter(c => c.classList.contains('opened')).length;
+            const limit = window._chestOpenLimit || cards.length;
+            // Allotment spent → seal the rest so the choice is final.
+            if (opened >= limit) {
+                cards.forEach(c => {
+                    if (!c.classList.contains('opened')) {
+                        c.classList.add('locked');
+                        const hint = c.querySelector('.open-hint');
+                        if (hint) hint.textContent = 'SEALED';
+                    }
+                });
+            }
+            document.getElementById('chestContinue').disabled = opened < limit;
         }
-        function closeChestOverlay() {
+        async function closeChestOverlay() {
+            // Forfeit caches the player didn't open: mark them opened so they
+            // don't reappear on the next visit, but DON'T grant their contents.
+            const unopened = [...document.querySelectorAll('#chestGrid .chest-card')]
+                .filter(c => !c.classList.contains('opened') && c.dataset.chestId);
+            await Promise.all(unopened.map(c =>
+                fetch(SUPABASE_URL + '/rest/v1/agent_starter_chests?id=eq.' + c.dataset.chestId, {
+                    method: 'PATCH', headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+                    body: JSON.stringify({ opened_at: new Date().toISOString() })
+                })
+            ));
             document.getElementById('chestOverlay').classList.remove('open');
         }
 

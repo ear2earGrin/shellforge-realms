@@ -202,33 +202,40 @@
             filter: grayscale(0%);
         }
         
+        /* Per-cluster accent so the grid reads as three factions at a glance.
+           At rest the slot's grayscale filter mutes it; on hover/select the
+           cluster hue blooms in. */
+        .archetype-slot[data-cluster="prime-helix"] { --cluster-color: #60a5fa; }
+        .archetype-slot[data-cluster="sec-grid"]    { --cluster-color: #fbbf24; }
+        .archetype-slot[data-cluster="dyn-swarm"]   { --cluster-color: #c084fc; }
+
         .archetype-portrait {
             width: 100%;
             height: 100%;
             border-radius: 50%;
-            border: 3px solid rgba(74, 222, 128, 0.2);
+            border: 3px solid var(--cluster-color, rgba(74, 222, 128, 0.2));
             object-fit: cover;
             transition: all 0.3s ease;
         }
-        
+
         .archetype-slot.active .archetype-portrait {
-            border-color: rgba(74, 222, 128, 0.5);
-            box-shadow: 0 0 15px rgba(74, 222, 128, 0.25);
+            border-color: var(--cluster-color, rgba(74, 222, 128, 0.5));
+            box-shadow: 0 0 15px var(--cluster-color, rgba(74, 222, 128, 0.25));
         }
-        
+
         .archetype-slot.selected .archetype-portrait {
-            border-color: var(--color-primary);
-            box-shadow: 0 0 30px rgba(74, 222, 128, 0.9);
+            border-color: var(--cluster-color, var(--color-primary));
+            box-shadow: 0 0 30px var(--cluster-color, rgba(74, 222, 128, 0.9));
             filter: brightness(1.3);
         }
-        
+
         .archetype-name {
             position: absolute;
             bottom: -25px;
             left: 50%;
             transform: translateX(-50%);
             font-family: var(--font-main);
-            color: var(--color-primary);
+            color: var(--cluster-color, var(--color-primary));
             font-size: 0.8rem;
             white-space: nowrap;
             text-align: center;
@@ -1097,21 +1104,20 @@
                         ));
                         if (starters.length) console.log('✅ Granted', starters.length, 'starter recipes');
 
-                        // ── 2c. Roll + persist ONE starter cache matched to the
-                        // agent's cluster: sec-grid→Chassis (hardware enforcers),
-                        // prime-helix→Terminal (software/research), dyn-swarm→
-                        // Wanderer (scrappy mixed kit). ──
-                        const CLUSTER_CACHE_THEME = { 'sec-grid': 'chassis', 'prime-helix': 'terminal', 'dyn-swarm': 'wanderer' };
-                        const allCaches = rollChests(birthSeed);
-                        const wantTheme = CLUSTER_CACHE_THEME[selectedCluster] || 'wanderer';
-                        const cache = allCaches.find(c => c.theme === wantTheme) || allCaches[0];
-                        await sbPost('agent_starter_chests', {
-                            agent_id:    agentId,
-                            chest_index: 0,
-                            theme:       cache.theme,
-                            contents:    cache.contents
-                        });
-                        console.log('✅ Granted starter cache:', cache.theme, '(' + cache.contents.length + ' items)');
+                        // ── 2c. Roll + persist 3 starter caches. The player
+                        // opens 2 of the 3 on first boot (dashboard), forfeiting
+                        // the third — a real loadout choice. ──
+                        const chests = rollChests(birthSeed);
+                        await Promise.all(chests.map((chest, i) =>
+                            sbPost('agent_starter_chests', {
+                                agent_id:    agentId,
+                                chest_index: i,
+                                theme:       chest.theme,
+                                contents:    chest.contents
+                            })
+                        ));
+                        console.log('✅ Rolled', chests.length, 'starter caches:',
+                            chests.map(c => c.theme).join(', '));
 
                         // Write spawn log entry
                         await sbPost('activity_log', {
