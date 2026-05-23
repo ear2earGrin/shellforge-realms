@@ -2216,6 +2216,7 @@ async function refreshAgentRenown(agent, env, supabaseHeaders) {
     body: JSON.stringify({
       renown_score: result.score,
       renown_tier:  result.tier,
+      renown_parts: result.parts,
       renown_updated_at: new Date().toISOString(),
     }),
   });
