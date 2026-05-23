@@ -5756,8 +5756,10 @@
                     html += ' <span style="font-size:0.55rem;color:#00f0ff;border:1px solid #00f0ff;padding:1px 4px;margin-left:4px;border-radius:3px;letter-spacing:0.1em;vertical-align:middle;">AI</span>';
                 }
                 html += '</div>';
+                var SLOT_LABELS = { weapon: 'Melee', ranged: 'Ranged', helm: 'Helm', armor: 'Chest', trinket: 'Trinket' };
+                var slotTag = SLOT_LABELS[slot.dataset.equipSlot] ? '<span style="margin-right:8px;">&gt; Slot: ' + SLOT_LABELS[slot.dataset.equipSlot] + '</span>' : '';
                 html += '<div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;opacity:0.8;">' +
-                    '<span style="margin-right:8px;">&gt; Type: ' + (slot.dataset.type || 'Unknown') + '</span>' +
+                    '<span style="margin-right:8px;">&gt; Type: ' + (slot.dataset.type || 'Unknown') + '</span>' + slotTag +
                     '<span style="color:' + color + ';">&gt; ' + rarity.charAt(0).toUpperCase() + rarity.slice(1) + '</span></div>';
                 if (slot.dataset.desc) {
                     html += '<div style="font-size:0.75rem;color:#a0b0a8;line-height:1.5;margin-bottom:8px;font-style:italic;border-top:1px solid rgba(74,222,128,0.15);padding-top:8px;">' +
@@ -5913,13 +5915,17 @@
                 slot.style.opacity = '0.3';
             });
 
-            // Map item_type to valid equipped slot names
-            function itemTypeToSlot(itemType) {
-                if (!itemType) return null;
-                var t = itemType.toLowerCase();
+            // Which gear slot a dragged inventory tile targets. The tile carries
+            // data-equip-slot (resolved from the catalog/DB at render time); fall
+            // back to a coarse item_type map for tiles without it.
+            function dragSlotTarget(slotEl) {
+                if (!slotEl) return null;
+                var eq = slotEl.dataset.equipSlot;
+                if (eq) return eq;
+                var t = (slotEl.dataset.itemType || '').toLowerCase();
                 if (t === 'weapon') return 'weapon';
                 if (t === 'armor') return 'armor';
-                if (t === 'tool' || t === 'scroll') return 'tool';
+                if (t === 'tool' || t === 'scroll' || t === 'artifact' || t === 'implant') return 'trinket';
                 return null;
             }
 
@@ -5934,9 +5940,8 @@
                 // Check if hovering over an equipped slot
                 var eqTarget = e.target.closest('.equipped-slot');
                 if (eqTarget && _dragSlot) {
-                    var dragItemType = _dragSlot.dataset.itemType || '';
                     var slotName = eqTarget.getAttribute('data-slot');
-                    var mappedSlot = itemTypeToSlot(dragItemType);
+                    var mappedSlot = dragSlotTarget(_dragSlot);
                     if (mappedSlot === slotName) {
                         eqTarget.classList.add('drop-target');
                     } else {
@@ -5962,9 +5967,8 @@
                 // Check if dropped on an equipped slot
                 var eqTarget = e.target.closest('.equipped-slot');
                 if (eqTarget && _dragSlot) {
-                    var dragItemType = _dragSlot.dataset.itemType || '';
                     var slotName = eqTarget.getAttribute('data-slot');
-                    var mappedSlot = itemTypeToSlot(dragItemType);
+                    var mappedSlot = dragSlotTarget(_dragSlot);
                     if (mappedSlot === slotName) {
                         equipItemFromSlot(_dragSlot, eqTarget);
                         _dragSlot = null;
@@ -5988,18 +5992,15 @@
 
                 var itemId = invSlot.dataset.itemId;
                 var invId = invSlot.dataset.invId;
-                var itemType = (invSlot.dataset.itemType || '').toLowerCase();
                 var slotName = eqSlot.getAttribute('data-slot');
 
                 if (!itemId) return;
 
-                // 1. Unequip any currently equipped item in this slot
-                //    Find items of matching type that are currently equipped
-                var equipSlotType = slotName === 'tool' ? 'tool' : slotName;
+                // 1. Unequip whatever currently occupies this gear slot.
                 var currentEquipped = await sbGet('inventory',
                     'agent_id=eq.' + agent.agentId +
                     '&is_equipped=eq.true' +
-                    '&item_type=in.(' + (slotName === 'tool' ? 'tool,scroll' : slotName) + ')' +
+                    '&equip_slot=eq.' + slotName +
                     '&select=inventory_id,item_id'
                 );
 
@@ -6014,19 +6015,21 @@
                     }
                 }
 
-                // 2. Equip the new item
+                // 2. Equip the new item, stamping its resolved slot so future
+                //    slot queries stay consistent even if equip_slot was null.
+                var equipBody = JSON.stringify({ is_equipped: true, equip_slot: slotName });
                 if (invId) {
                     await fetch(SUPABASE_URL + '/rest/v1/inventory?inventory_id=eq.' + invId, {
                         method: 'PATCH',
                         headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                        body: JSON.stringify({ is_equipped: true })
+                        body: equipBody
                     });
                 } else {
                     // Fallback: use item_id + agent_id
                     await fetch(SUPABASE_URL + '/rest/v1/inventory?agent_id=eq.' + agent.agentId + '&item_id=eq.' + itemId, {
                         method: 'PATCH',
                         headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                        body: JSON.stringify({ is_equipped: true })
+                        body: equipBody
                     });
                 }
 
@@ -6043,9 +6046,10 @@
                     invSlot.appendChild(badge);
                 }
 
-                // Remove "E" badge from previously equipped slots of same type
+                // Remove "E" badge from the item previously in this same slot
+                var draggedSlot = invSlot.dataset.equipSlot || '';
                 document.querySelectorAll('.inventory-slot.equipped').forEach(function(s) {
-                    if (s !== invSlot && (s.dataset.itemType || '').toLowerCase() === itemType) {
+                    if (s !== invSlot && draggedSlot && (s.dataset.equipSlot || '') === draggedSlot) {
                         s.classList.remove('equipped');
                         var oldBadge = s.querySelector('.equipped-badge');
                         if (oldBadge) oldBadge.remove();
@@ -6585,9 +6589,68 @@
             }).join('');
         }
 
+        // ─── Canonical item catalog (items_master) ───────────
+        // Single source of truth for equip slot + passive combat bonuses.
+        // Fetched once and memoized; both the equipped panel and the agent
+        // detail modal read gear stats from here so seeded items (which carry
+        // empty inventory.stats) still contribute their bonuses.
+        var _itemMasterMap = null;
+        var _itemMasterPromise = null;
+        function ensureItemMaster() {
+            if (_itemMasterMap) return Promise.resolve(_itemMasterMap);
+            if (_itemMasterPromise) return _itemMasterPromise;
+            _itemMasterPromise = sbGet('items_master', 'select=id,equip_slot,effect_modifiers').then(function(rows) {
+                _itemMasterMap = {};
+                (rows || []).forEach(function(r) { _itemMasterMap[r.id] = r; });
+                return _itemMasterMap;
+            }).catch(function() { _itemMasterMap = {}; return _itemMasterMap; });
+            return _itemMasterPromise;
+        }
+
+        var PASSIVE_TRAITS = ['attack', 'defense', 'speed', 'precision', 'critical', 'dodge'];
+        var HELM_NAME_RE = /helm|visor|crown|mask|goggles|optic|cowl|hood|veil|circlet|halo|headpiece|faceplate/i;
+
+        // Sum passive_equipped trait_mods from the catalog; fall back to the
+        // per-row stats blob for crafted items not present in items_master.
+        function passiveStatsFor(item) {
+            var out = {};
+            var rec = _itemMasterMap && _itemMasterMap[item.item_id];
+            var mods = rec && rec.effect_modifiers;
+            var found = false;
+            if (Array.isArray(mods)) {
+                mods.forEach(function(m) {
+                    if (m && m.kind === 'trait_mod' && m.scope === 'passive_equipped' && PASSIVE_TRAITS.indexOf(m.trait) >= 0) {
+                        out[m.trait] = (out[m.trait] || 0) + (m.delta || 0);
+                        found = true;
+                    }
+                });
+            }
+            if (!found && item.stats) {
+                PASSIVE_TRAITS.forEach(function(t) { if (item.stats[t]) out[t] = item.stats[t]; });
+            }
+            return out;
+        }
+
+        // Resolve which gear slot an item occupies: catalog first, then the
+        // inventory row's own equip_slot, then a name/type heuristic.
+        function slotFor(item) {
+            var rec = _itemMasterMap && _itemMasterMap[item.item_id];
+            if (rec && rec.equip_slot) return rec.equip_slot;
+            if (item.equip_slot) return item.equip_slot;
+            var t = (item.item_type || '').toLowerCase();
+            if (t === 'weapon') {
+                var range = (item.weapon_range || '').toLowerCase();
+                return (range === 'ranged' || range === 'software') ? 'ranged' : 'weapon';
+            }
+            if (t === 'armor') return HELM_NAME_RE.test(item.item_name || '') ? 'helm' : 'armor';
+            if (t === 'tool' || t === 'scroll' || t === 'artifact' || t === 'implant') return 'trinket';
+            return null;
+        }
+
         // ─── Load & render equipped items ────────────────────
         function updateEquippedItems(agentId) {
             if (!agentId) return;
+            ensureItemMaster().then(function() {
             sbGet('inventory', 'agent_id=eq.' + agentId + '&is_equipped=eq.true&select=*').then(function(items) {
                 if (!items) return;
                 var grid = document.getElementById('equippedGrid');
@@ -6608,22 +6671,9 @@
                     var glyph = SLOT_GLYPHS[type] || '<span class="slot-icon">?</span>';
                     slot.innerHTML = '<span class="slot-icon">' + glyph + '</span><span class="slot-label">' + (slotLabels[type] || type) + '</span>';
                 });
-                // Fill equipped — use equip_slot from DB if set, otherwise infer from item_type + weapon_range
+                // Fill equipped — slot resolved from catalog/equip_slot/heuristic.
                 items.forEach(function(item) {
-                    var slotType = item.equip_slot; // DB slot assignment
-                    if (!slotType) {
-                        if (item.item_type === 'weapon') {
-                            var range = item.weapon_range || 'melee';
-                            if (range === 'ranged' || range === 'software') slotType = 'ranged';
-                            else slotType = 'weapon'; // melee
-                        } else if (item.item_type === 'armor') {
-                            // Check item name for helm keywords, otherwise chest
-                            var isHelm = /helm|visor|headpiece|neural|mask/i.test(item.item_name);
-                            slotType = isHelm ? 'helm' : 'armor';
-                        } else {
-                            slotType = 'trinket'; // artifacts, implants, relics, scrolls, tools
-                        }
-                    }
+                    var slotType = slotFor(item);
                     var slot = grid.querySelector('[data-slot="' + slotType + '"]');
                     if (!slot || slot.classList.contains('filled')) {
                         // Try any empty slot
@@ -6635,14 +6685,13 @@
                     slot.setAttribute('data-item-id', item.item_id || '');
                     slot.style.cursor = 'pointer';
                     var statsArr = [];
-                    if (item.stats) {
-                        if (item.stats.attack) statsArr.push('+' + item.stats.attack + ' ATK');
-                        if (item.stats.defense) statsArr.push('+' + item.stats.defense + ' DEF');
-                        if (item.stats.speed) statsArr.push('+' + item.stats.speed + ' SPD');
-                        if (item.stats.precision) statsArr.push('+' + item.stats.precision + ' PRC');
-                        if (item.stats.critical) statsArr.push('+' + item.stats.critical + ' CRT');
-                        if (item.stats.heal) statsArr.push('+' + item.stats.heal + ' HP');
-                    }
+                    var ps = passiveStatsFor(item);
+                    if (ps.attack) statsArr.push('+' + ps.attack + ' ATK');
+                    if (ps.defense) statsArr.push('+' + ps.defense + ' DEF');
+                    if (ps.speed) statsArr.push('+' + ps.speed + ' SPD');
+                    if (ps.precision) statsArr.push('+' + ps.precision + ' PRC');
+                    if (ps.critical) statsArr.push('+' + ps.critical + ' CRT');
+                    if (ps.dodge) statsArr.push('+' + ps.dodge + ' DDG');
                     var iconPath = resolveItemIcon(item.item_name);
                     // Onerror fallback uses a plain emoji because escaping
                     // SVG into an inline onerror string is quoting hell. The
@@ -6661,6 +6710,7 @@
                 var total  = grid.querySelectorAll('.equipped-slot').length;
                 var meta = document.getElementById('equippedSlotCount');
                 if (meta) meta.textContent = filled > 0 ? (filled + ' / ' + total + ' slots') : (total + ' slots');
+            });
             });
         }
 
@@ -6694,11 +6744,15 @@
                 var bAtk = base.attack || 0, bDef = base.defense || 0, bSpd = base.speed || 0;
                 var bPrc = base.precision || 0, bCrt = base.critical || 0, bDdg = base.dodge || 0;
 
-                // Fetch equipped items to add gear bonuses
-                sbGet('inventory', 'agent_id=eq.' + a.agentId + '&is_equipped=eq.true&select=stats').then(function(items) {
+                // Fetch equipped items; gear bonuses come from the catalog
+                // (items_master passive_equipped trait_mods), falling back to
+                // per-row stats for crafted items.
+                ensureItemMaster().then(function() {
+                return sbGet('inventory', 'agent_id=eq.' + a.agentId + '&is_equipped=eq.true&select=item_id,item_name,item_type,stats,equip_slot,weapon_range');
+                }).then(function(items) {
                     var gAtk=0, gDef=0, gSpd=0, gPrc=0, gCrt=0, gDdg=0;
                     if (items) items.forEach(function(it) {
-                        var s = it.stats || {};
+                        var s = passiveStatsFor(it);
                         gAtk += s.attack || 0; gDef += s.defense || 0; gSpd += s.speed || 0;
                         gPrc += s.precision || 0; gCrt += s.critical || 0; gDdg += s.dodge || 0;
                     });
@@ -8986,6 +9040,8 @@
             html += ' data-item-id="' + item.item_id + '"';
             if (item.inventory_id) html += ' data-inv-id="' + item.inventory_id + '"';
             html += ' data-item-type="' + (item.item_type || '') + '"';
+            var _eqSlot = slotFor(item);
+            if (_eqSlot) html += ' data-equip-slot="' + _eqSlot + '"';
             // Set membership
             var _setId = _ITEM_TO_SET[item.item_id];
             if (_setId) {
