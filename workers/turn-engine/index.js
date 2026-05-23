@@ -4,6 +4,7 @@
 
 // Generated catalog data — see alchemy/build-catalog.js. Don't hand-edit.
 import { ALCHEMY_RECIPES } from './catalog-data.js';
+import { evaluateMission } from './missions-eval.js';
 
 const VALID_ACTIONS = [
   'move', 'explore', 'gather', 'craft', 'trade',
@@ -1019,6 +1020,13 @@ async function runTurnEngine(env) {
       await processAgentTurn(agent, env, headers, agents, foughtAgents);
     } catch (err) {
       console.error(`Error processing agent ${agent.agent_name}:`, err.message);
+    }
+    // Mission evaluation runs after the turn and is fully isolated — a failure
+    // here must never affect the turn that already completed.
+    try {
+      await evaluateAgentMissions(agent, env, headers);
+    } catch (err) {
+      console.error(`[missions] eval failed for ${agent.agent_name}:`, err.message);
     }
   }
 }
@@ -3626,4 +3634,121 @@ Respond JSON only: {"pick":<index>,"reason":"<5 words max>"}`;
 
   console.log(`[${agent.agent_name}] Turn ${newTurns}: craft ${recipe.item} [${recipe.station}/${recipe.hwsw}] — ${success ? 'SUCCESS' : 'FAILED (' + failEffect + ')'} | roll:${roll.toFixed(1)} vs ${recipe.rate}%`);
   return true; // handled
+}
+
+// ─── Mission Evaluation ──────────────────────────────────────────────────────
+// Walks the active mission catalog for one agent, lazily creating any missing
+// agent_missions rows, then evaluates each still-active mission's predicate
+// against fresh DB state. Completed missions flip active -> ready_to_claim;
+// the player claims rewards separately via the missions worker. Rewards are
+// NOT granted here — only the status changes — so this stays read-mostly and
+// safe to run every turn.
+
+// Collect every action_type referenced by a predicate tree (so we only query
+// the activity_log rows we actually need).
+function collectMissionActionTypes(predicate, set) {
+  if (!predicate || typeof predicate !== 'object') return;
+  if (predicate.type === 'action_count_gte' && predicate.action_type) set.add(predicate.action_type);
+  if (predicate.type === 'all' && Array.isArray(predicate.of)) {
+    for (const p of predicate.of) collectMissionActionTypes(p, set);
+  }
+}
+
+async function evaluateAgentMissions(agent, env, supabaseHeaders) {
+  const { SUPABASE_URL } = env;
+  const agentId = agent.agent_id;
+
+  // 1. Active mission catalog
+  const mRes = await fetch(`${SUPABASE_URL}/rest/v1/missions?is_active=eq.true&select=*`, { headers: supabaseHeaders });
+  if (!mRes.ok) return;
+  const missions = await mRes.json();
+  if (!missions.length) return;
+
+  // 2. Fresh agent stats (the in-memory agent may be stale after the turn)
+  const aRes = await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agentId}&select=karma,days_survived,agent_name&limit=1`, { headers: supabaseHeaders });
+  const [fresh] = aRes.ok ? await aRes.json() : [];
+  if (!fresh) return;
+  const karma = fresh.karma || 0;
+  const daysSurvived = fresh.days_survived || 0;
+  const agentName = fresh.agent_name || agent.agent_name;
+
+  // 3. Existing agent_missions rows
+  const amRes = await fetch(`${SUPABASE_URL}/rest/v1/agent_missions?agent_id=eq.${agentId}&select=*`, { headers: supabaseHeaders });
+  const agentMissions = amRes.ok ? await amRes.json() : [];
+  const byId = {};
+  for (const am of agentMissions) byId[am.mission_id] = am;
+
+  // 4. Lazy-ensure rows for any newly added / never-seen missions.
+  //    Baseline karma is captured now so karma_delta predicates measure gains
+  //    from the moment the mission became visible to this agent.
+  for (const m of missions) {
+    if (byId[m.mission_id]) continue;
+    const insRes = await fetch(`${SUPABASE_URL}/rest/v1/agent_missions`, {
+      method: 'POST',
+      headers: { ...supabaseHeaders, Prefer: 'return=representation' },
+      body: JSON.stringify({
+        agent_id: agentId,
+        mission_id: m.mission_id,
+        status: 'active',
+        progress: { fraction: 0, label: '', start_karma: karma },
+      }),
+    });
+    if (insRes.ok) {
+      const [created] = await insRes.json();
+      if (created) byId[created.mission_id] = created;
+    } else {
+      // Likely a race with the missions worker's lazy-ensure (duplicate PK) —
+      // harmless, the row exists. Skip evaluating it this tick.
+      console.warn(`[missions] ensure insert skipped for ${agentName}/${m.mission_id}: HTTP ${insRes.status}`);
+    }
+  }
+
+  // 5. Which missions still need evaluating?
+  const active = missions.filter((m) => byId[m.mission_id] && byId[m.mission_id].status === 'active');
+  if (!active.length) return;
+
+  // 6. Build evaluation context (inventory + only the action types we need)
+  const inventory = {};
+  const invRes = await fetch(`${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agentId}&select=item_id,quantity`, { headers: supabaseHeaders });
+  if (invRes.ok) {
+    for (const r of await invRes.json()) inventory[r.item_id] = (inventory[r.item_id] || 0) + (r.quantity || 0);
+  }
+
+  const neededActions = new Set();
+  for (const m of active) collectMissionActionTypes(m.predicate, neededActions);
+  const actionCounts = {};
+  if (neededActions.size) {
+    const alRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/activity_log?agent_id=eq.${agentId}&action_type=in.(${[...neededActions].join(',')})&select=action_type`,
+      { headers: supabaseHeaders },
+    );
+    if (alRes.ok) {
+      for (const r of await alRes.json()) actionCounts[r.action_type] = (actionCounts[r.action_type] || 0) + 1;
+    }
+  }
+
+  // 7. Evaluate + persist progress / completion
+  const now = new Date().toISOString();
+  for (const m of active) {
+    const am = byId[m.mission_id];
+    const result = evaluateMission(m.predicate, {
+      inventory,
+      actionCounts,
+      karma,
+      startKarma: (am.progress && am.progress.start_karma) || 0,
+      daysSurvived,
+    });
+
+    const patch = { progress: { ...(am.progress || {}), fraction: result.fraction, label: result.label } };
+    if (result.complete) {
+      patch.status = 'ready_to_claim';
+      patch.completed_at = now;
+      console.log(`[missions] ${agentName} completed ${m.mission_id} -> ready_to_claim`);
+    }
+    await fetch(`${SUPABASE_URL}/rest/v1/agent_missions?agent_id=eq.${agentId}&mission_id=eq.${m.mission_id}`, {
+      method: 'PATCH',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify(patch),
+    });
+  }
 }

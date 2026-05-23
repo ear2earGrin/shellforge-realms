@@ -2365,6 +2365,49 @@
             color: var(--color-primary);
         }
 
+        .mission-item.ready {
+            border-left-color: #ffcc00;
+            background: rgba(255, 204, 0, 0.05);
+        }
+
+        .mission-item.ready .mission-title::before {
+            content: '★ ';
+            color: #ffcc00;
+        }
+
+        .mission-claim-btn {
+            margin-top: 8px;
+            width: 100%;
+            padding: 6px 10px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.72rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #000;
+            background: #ffcc00;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+        }
+
+        .mission-claim-btn:hover { opacity: 0.85; }
+        .mission-claim-btn:disabled { opacity: 0.5; cursor: default; }
+
+        .mission-progress-label {
+            font-size: 0.65rem;
+            color: var(--color-text-dim);
+            font-family: 'IBM Plex Mono', monospace;
+            margin-top: 3px;
+        }
+
+        .mission-empty {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--color-text-dim);
+            padding: 12px 4px;
+        }
+
         .mission-title {
             font-family: 'IBM Plex Mono', monospace;
             color: var(--color-text);
@@ -4959,21 +5002,8 @@
                 <button class="modal-close-btn" onclick="closeModal('missions')">✕</button>
             </div>
             <div class="modal-body">
-                <div class="mission-item active">
-                    <div class="mission-title">First Steps</div>
-                    <div class="mission-desc">Explore Nexarch and gather 10 Binary Code Shards from the marketplace.</div>
-                    <div class="mission-reward">reward: 50 $SHELL + 10 XP</div>
-                    <div class="mission-progress"><div class="mission-progress-bar" style="width:50%"></div></div>
-                </div>
-                <div class="mission-item">
-                    <div class="mission-title">The Oracle's Request</div>
-                    <div class="mission-desc">Seek out the Church and meditate for enlightenment. Gain +5 Karma.</div>
-                    <div class="mission-reward">reward: 100 $SHELL + Blessing</div>
-                </div>
-                <div class="mission-item completed">
-                    <div class="mission-title">Welcome to the Realms</div>
-                    <div class="mission-desc">Deploy your agent and survive your first day.</div>
-                    <div class="mission-reward">reward: 50 $SHELL</div>
+                <div id="missionsList">
+                    <div class="mission-empty">Loading missions…</div>
                 </div>
             </div>
         </div>
@@ -5099,6 +5129,9 @@
         const SUPABASE_URL = 'https://wtzrxscdlqdgdiefsmru.supabase.co';
         const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0enJ4c2NkbHFkZ2RpZWZzbXJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2OTI4MjcsImV4cCI6MjA4OTI2ODgyN30.dLheIKz9anuM58O3Ebsr2rVCOGA-xBGRD9voiXNvIcg';
         const SB_HEADERS = { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON, 'Content-Type': 'application/json' };
+
+        // Missions worker (service-key backend for mission state + reward claims)
+        const MISSIONS_URL = 'https://shellforge-missions-worker.mindarvokn.workers.dev';
 
         function showNotification(msg, type) {
             var el = document.createElement('div');
@@ -6424,6 +6457,98 @@
             });
             // Wire action-chip tooltips (and any location text wrapped inside chronicle).
             if (window.LORE_TOOLTIPS) window.LORE_TOOLTIPS.wireAll(log);
+        }
+
+        // ─── Missions ─────────────────────────────────────────────────
+        function escMission(str) {
+            return String(str == null ? '' : str)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        function formatMissionReward(r) {
+            r = r || {};
+            var parts = [];
+            if (r.shell) parts.push(r.shell + ' $SHELL');
+            if (r.xp) parts.push(r.xp + ' XP');
+            if (r.karma) parts.push('+' + r.karma + ' Karma');
+            if (r.item) parts.push(escMission(r.item.item_name || 'item'));
+            return parts.join(' + ') || '—';
+        }
+
+        async function loadMissions(agentId) {
+            var container = document.getElementById('missionsList');
+            if (!container) return;
+            if (!agentId) {
+                container.innerHTML = '<div class="mission-empty">Deploy an agent to receive missions.</div>';
+                return;
+            }
+            try {
+                var res = await fetch(MISSIONS_URL + '/missions?agent_id=' + encodeURIComponent(agentId));
+                var data = await res.json();
+                if (!data || !data.ok || !Array.isArray(data.missions) || !data.missions.length) {
+                    container.innerHTML = '<div class="mission-empty">No active missions.</div>';
+                    return;
+                }
+                renderMissions(data.missions);
+            } catch (e) {
+                container.innerHTML = '<div class="mission-empty">Missions unavailable right now.</div>';
+            }
+        }
+
+        function renderMissions(missions) {
+            var container = document.getElementById('missionsList');
+            if (!container) return;
+            container.innerHTML = missions.map(function(m) {
+                var cls = m.status === 'claimed' ? 'completed'
+                        : m.status === 'ready_to_claim' ? 'ready'
+                        : 'active';
+                var pct = Math.round((m.fraction || 0) * 100);
+                var inner = '<div class="mission-title">' + escMission(m.title) + '</div>'
+                          + '<div class="mission-desc">' + escMission(m.description) + '</div>'
+                          + '<div class="mission-reward">reward: ' + formatMissionReward(m.rewards) + '</div>';
+                if (m.status === 'ready_to_claim') {
+                    inner += '<button class="mission-claim-btn" onclick="claimMission(\'' + escMission(m.mission_id) + '\')">Claim reward</button>';
+                } else if (m.status === 'active') {
+                    inner += '<div class="mission-progress"><div class="mission-progress-bar" style="width:' + pct + '%"></div></div>';
+                    if (m.label) inner += '<div class="mission-progress-label">' + escMission(m.label) + '</div>';
+                }
+                return '<div class="mission-item ' + cls + '" data-mission="' + escMission(m.mission_id) + '">' + inner + '</div>';
+            }).join('');
+        }
+
+        async function claimMission(missionId) {
+            var agent = _currentAgent;
+            if (!agent || !agent.agentId) return;
+            var btn = document.querySelector('.mission-item[data-mission="' + missionId + '"] .mission-claim-btn');
+            if (btn) { btn.disabled = true; btn.textContent = 'Claiming…'; }
+            try {
+                var res = await fetch(MISSIONS_URL + '/claim', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ agent_id: agent.agentId, mission_id: missionId })
+                });
+                var data = await res.json();
+                if (data && data.ok) {
+                    if (typeof data.shell_balance === 'number') {
+                        agent.shell = data.shell_balance;
+                        if (typeof refreshShellDisplays === 'function') refreshShellDisplays(data.shell_balance);
+                    }
+                    if (typeof data.xp === 'number') agent.xp = data.xp;
+                    var rw = data.rewards || {};
+                    var msg = 'Mission complete! +' + (rw.shell || 0) + ' $SHELL'
+                            + (rw.xp ? ' +' + rw.xp + ' XP' : '')
+                            + (rw.item ? ' · ' + rw.item : '');
+                    if (typeof terminalNotify !== 'undefined') terminalNotify.success(msg);
+                    loadMissions(agent.agentId);
+                } else {
+                    if (btn) { btn.disabled = false; btn.textContent = 'Claim reward'; }
+                    if (typeof terminalNotify !== 'undefined') terminalNotify.error((data && data.error) || 'Claim failed.');
+                }
+            } catch (e) {
+                if (btn) { btn.disabled = false; btn.textContent = 'Claim reward'; }
+                if (typeof terminalNotify !== 'undefined') terminalNotify.error('Claim failed — try again.');
+            }
         }
 
         function timeAgo(ts) {
@@ -8014,6 +8139,10 @@
             // Fresh chronicle load on open
             if (id === 'chronicle' && _currentAgent && _currentAgent.agentId) {
                 loadActivityLog(_currentAgent.agentId);
+            }
+            // Fresh missions on open
+            if (id === 'missions') {
+                loadMissions(_currentAgent && _currentAgent.agentId);
             }
             // Fresh workshop ingredients on open
             if (id === 'workshop' && _currentAgent && _currentAgent.agentId) {

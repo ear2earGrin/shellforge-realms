@@ -1,0 +1,31 @@
+{
+  "_comment": "Source of truth for mission definitions. The seed block in backend/migrations/010_missions.sql mirrors this file, and scripts/test-missions.mjs reads it. Predicate + reward shapes are interpreted by workers/turn-engine/missions-eval.js. Keep all three in sync.",
+  "missions": [
+    {
+      "mission_id": "first_steps",
+      "title": "First Steps",
+      "description": "Explore Nexarch and gather 10 Binary Code Shards from the marketplace.",
+      "sort_order": 1,
+      "predicate": { "type": "inventory_gte", "item_id": "binary_code_shards", "count": 10 },
+      "rewards": { "shell": 50, "xp": 10 }
+    },
+    {
+      "mission_id": "oracles_request",
+      "title": "The Oracle's Request",
+      "description": "Seek out the Church and meditate for enlightenment. Gain +5 Karma.",
+      "sort_order": 2,
+      "predicate": {
+        "type": "all",
+        "of": [
+          { "type": "action_count_gte", "action_type": "church", "count": 1 },
+          { "type": "karma_delta_gte", "value": 5 }
+        ]
+      },
+      "rewards": {
+        "shell": 100,
+        "xp": 0,
+        "item": { "item_id": "oracle_blessing", "item_name": "Oracle's Blessing", "item_type": "artifact", "item_category": "Artifact" }
+      }
+    }
+  ]
+}
