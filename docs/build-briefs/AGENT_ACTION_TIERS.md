@@ -43,11 +43,14 @@ engine doesn't generate them as first-class events — the recap would have to i
 
 ### Tier B — Complex actions (the story beats)
 
-- **What:** multi-step, socially-aware, *narrated* actions. Candidate list:
+- **What:** multi-step, socially-aware, *narrated* actions.
+  **SHIPPING SET (decided — three verbs):**
   - `negotiate` — strike a deal / alliance with a nearby agent
   - `betray` — break a deal, rob, or backstab someone the agent has standing with
   - `scheme` — start or amplify a rumor (writes to the `rumors` table from the world brief)
-  - `forge-bond` / `feud` — form a lasting relationship flag with another agent
+
+  **DEFERRED (revisit after the loop retains):**
+  - `bond` / `feud` — form a lasting relationship flag with another agent
   - `create` — craft something *novel* (not the routine `craft`): a named item, a signature
   - `confront` — accuse, threaten, or expose another agent based on what it "knows"
 - **How often:** rare. Gated (see below). Target ~10–15% of turns, ideally clustering around
@@ -137,22 +140,44 @@ CREATE TABLE agent_complex_actions (
 CREATE INDEX idx_complex_agent_time ON agent_complex_actions(agent_id, created_at DESC);
 ```
 
-This slots next to the `world_objects` / `rumors` / `agent_recaps` tables from the world-map brief —
-same migration family.
+**Relationship state (decided: add now).** `negotiate`/`betray`/`scheme` all imply agents remember
+each other. A directional, lightweight table — A's standing toward B is not necessarily B's toward A:
+
+```sql
+CREATE TABLE agent_relationships (
+  rel_id        UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  agent_id      UUID NOT NULL REFERENCES agents(agent_id) ON DELETE CASCADE,  -- the holder
+  other_agent   UUID NOT NULL REFERENCES agents(agent_id) ON DELETE CASCADE,  -- the subject
+  standing      VARCHAR(12) NOT NULL DEFAULT 'neutral'                        -- ally|wary|rival|bonded|neutral
+                  CHECK (standing IN ('ally','wary','rival','bonded','neutral')),
+  sentiment     INT NOT NULL DEFAULT 0,        -- -100..100, drives the standing label + dashboard tint
+  context       TEXT,                          -- short "why" e.g. "brokered a deal · day 13"
+  last_event_at TIMESTAMP DEFAULT NOW(),
+  created_at    TIMESTAMP DEFAULT NOW(),
+  UNIQUE(agent_id, other_agent)
+);
+CREATE INDEX idx_rel_agent ON agent_relationships(agent_id, sentiment DESC);
+```
+
+A complex action updates this: `negotiate` nudges `sentiment` up (toward `ally`/`bonded`),
+`betray` slams it down (toward `rival`), `scheme` against someone nudges the schemer's view of the
+target toward `wary`/`rival`. The dashboard reads the top few rows for the agent to render the new
+**RELATIONSHIPS** panel under RECENT THOUGHTS.
+
+All three tables slot next to the `world_objects` / `rumors` / `agent_recaps` tables from the
+world-map brief — same migration family.
 
 ---
 
-## Open questions for the owner
+## Decisions (resolved 2026-05-24, owner sign-off)
 
-1. **Complex action list** — is the six-verb set above right? Add/remove any?
-   (My instinct: ship with `negotiate`, `betray`, `scheme` only. Three is enough to prove the loop,
-   same logic as the redesign's "narrow the world to find the loop.")
-2. **Gate aggressiveness** — 12% feels right for cost, but if the world feels too quiet we raise it.
-   Should this be a global dial in `game-config.json` we tune by watching recaps? (I'd say yes.)
-3. **Do complex actions need player input?** Per the Ghost Principle they should be fully autonomous —
-   the player only *whispers*. Confirm we're not adding a "command" surface here.
-4. **Relationship state** — `negotiate`/`betray`/`bond` imply agents remember each other. Do we add a
-   lightweight `agent_relationships` table now, or fake it via narrative text until it's proven?
+1. **Complex action list — ship with THREE: `negotiate`, `betray`, `scheme`.**
+   The other candidates (`bond`/`feud`, `create`, `confront`) are deferred until the loop retains.
+2. **Gate aggressiveness — global dial in `game-config.json`, start at ~12%.** Tune by watching recaps.
+3. **No command surface.** Complex actions are fully autonomous agent decisions, per the Ghost
+   Principle. The player only *whispers* — never directs an agent to scheme/negotiate/betray.
+4. **Add `agent_relationships` now** (not faked via narrative) and **surface it in the dashboard,
+   below RECENT THOUGHTS** in the left agent column.
 
 ---
 
@@ -172,8 +197,8 @@ constrained schema (action, target, narrative)."*
 
 ## Suggested build order (when greenlit)
 
-1. Owner answers the 4 open questions + signs off the Tier 1 carve-out.
-2. Add `agent_complex_actions` (+ maybe `agent_relationships`) to the world-state migration.
+1. ~~Owner answers the 4 open questions~~ ✅ done. **Still needs:** Tier 1 single-token carve-out sign-off.
+2. Add `agent_complex_actions` **and** `agent_relationships` to the world-state migration.
 3. Implement the **gate** in `turn-engine` — pure logic, no AI yet; log which turns *would* have
    gone complex. Watch the rate for a day. Cheap to validate.
 4. Wire the Sonnet complex-action prompt behind the gate.

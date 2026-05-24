@@ -209,6 +209,24 @@ body::before{
 .mood-line{font-size:11px;color:var(--color-text);margin-bottom:4px}
 .mood-line .mood{color:var(--color-amber);text-shadow:0 0 4px rgba(255,170,0,0.4)}
 
+.relationships{display:flex;flex-direction:column;gap:5px}
+.rel-item{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:6px 8px;border:1px solid var(--border-dim);background:rgba(0,0,0,0.3);
+}
+.rel-item .rel-name{font-size:10px;color:var(--color-text);font-weight:500;letter-spacing:.05em}
+.rel-item .rel-ctx{font-size:8px;color:var(--color-text-dim);font-style:italic;margin-top:1px}
+.rel-item .rel-type{
+  font-size:8px;letter-spacing:.14em;text-transform:uppercase;
+  padding:2px 7px;border:1px solid currentColor;white-space:nowrap;
+}
+.rel-item.ally   .rel-type{color:var(--color-primary)}
+.rel-item.bonded .rel-type{color:var(--color-rumor)}
+.rel-item.wary   .rel-type{color:var(--color-amber)}
+.rel-item.rival  .rel-type{color:var(--color-danger)}
+.rel-item.dead{opacity:.5}
+.rel-item.dead .rel-name{text-decoration:line-through;color:var(--color-danger)}
+
 .recap-btn{
   padding:14px 18px;border-top:1px solid var(--border-dim);
   background:rgba(74,222,128,0.04);cursor:pointer;transition:all .15s;
@@ -844,6 +862,38 @@ body.armed, body.armed .map-wrap, body.armed .region{cursor:crosshair !important
           <div class="thought">Iron's scarce today. Prices won't hold.</div>
           <div class="thought">ECHO-2 has been watching me since the forge.</div>
           <div class="thought">If the uranium rumor's true, I should move now.</div>
+        </div>
+
+        <div class="section-head">RELATIONSHIPS <span class="meta">4 known</span></div>
+        <div class="relationships">
+          <div class="rel-item ally">
+            <div>
+              <div class="rel-name">ZEN-7</div>
+              <div class="rel-ctx">brokered a deal · day 13</div>
+            </div>
+            <span class="rel-type">Ally</span>
+          </div>
+          <div class="rel-item rival">
+            <div>
+              <div class="rel-name">ECHO-2</div>
+              <div class="rel-ctx">tailing since the forge</div>
+            </div>
+            <span class="rel-type">Rival</span>
+          </div>
+          <div class="rel-item wary">
+            <div>
+              <div class="rel-name">BYTE-4</div>
+              <div class="rel-ctx">read your note · undecided</div>
+            </div>
+            <span class="rel-type">Wary</span>
+          </div>
+          <div class="rel-item dead">
+            <div>
+              <div class="rel-name">NOVA-1</div>
+              <div class="rel-ctx">died in the marsh · day 14</div>
+            </div>
+            <span class="rel-type">Lost</span>
+          </div>
         </div>
 
       </div>
