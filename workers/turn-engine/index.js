@@ -1131,26 +1131,15 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
     });
   }
 
-  // Log hazard to activity_log
+  // Build hazard/event narrative for the AI prompt (but don't log separately)
+  let hazardPrefix = '';
   if (envResult.hazardLog) {
-    await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
-      method: 'POST',
-      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-      body: JSON.stringify({
-        agent_id: agent.agent_id,
-        turn_number: agent.turns_taken,
-        action_type: 'hazard',
-        action_detail: envResult.hazardLog,
-        energy_cost: Math.abs(Math.min(0, envResult.energyDelta)),
-        health_change: Math.min(0, envResult.healthDelta),
-        location: agent.location,
-        success: false,
-      }),
-    });
+    hazardPrefix = envResult.hazardLog;
     envNarrative += `⚠ HAZARD: ${envResult.hazardLog}\n`;
   }
 
-  // Log random event to activity_log
+  // Log random event to activity_log (events are noteworthy — keep as separate entry)
+  let eventPrefix = '';
   if (envResult.eventLog) {
     await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
       method: 'POST',
@@ -1321,7 +1310,7 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
         agent_id: agent.agent_id,
         turn_number: agent.turns_taken,
         action_type: 'stranded',
-        action_detail: strandedMsg,
+        action_detail: (hazardPrefix ? hazardPrefix + ' ' : '') + strandedMsg,
         location: agent.location,
         success: false,
       }),
@@ -1914,7 +1903,7 @@ Respond with JSON only — no markdown, no commentary:
       headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
       body: JSON.stringify({
         agent_id: agent.agent_id, turn_number: newTurns, action_type: 'move',
-        action_detail: decision.detail, energy_cost: moveCost, energy_gained: 0,
+        action_detail: (hazardPrefix ? hazardPrefix + ' ' : '') + decision.detail, energy_cost: moveCost, energy_gained: 0,
         shell_change: 0, karma_change: 0, health_change: 0,
         location: destination, success: true,
       }),
@@ -2186,7 +2175,7 @@ Respond with JSON only — no markdown, no commentary:
     agent_id: agent.agent_id,
     turn_number: newTurns,
     action_type: action,
-    action_detail: decision.detail + (lootInserted && lootDrop ? ` Found: ${lootDrop.name}.` : '') + discoveryText,
+    action_detail: (hazardPrefix ? hazardPrefix + ' ' : '') + decision.detail + (lootInserted && lootDrop ? ` Found: ${lootDrop.name}.` : '') + discoveryText,
     energy_cost: energyCost,
     energy_gained: energyGain,
     shell_change: shellChange,
