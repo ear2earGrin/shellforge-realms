@@ -1477,16 +1477,17 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
 
 .social-links {
     display: flex;
-    gap: 2rem;
+    gap: 1rem;
     justify-content: center;
-    margin-top: 3rem;
+    margin-top: 1.25rem;
+    margin-bottom: 1.25rem;
 }
 
 .social-link {
     color: var(--color-text-dim);
     text-decoration: none;
-    font-size: 0.9rem;
-    padding: 8px 16px;
+    font-size: 0.78rem;
+    padding: 6px 12px;
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 5px;
     transition: all 0.3s ease;
@@ -1501,19 +1502,19 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
 /* Footer */
 .footer {
     background: transparent;
-    padding: 2.5rem 20px;
+    padding: 1.5rem 20px;
     text-align: center;
     border-top: 1px solid rgba(74, 222, 128, 0.2);
 }
 
 .footer p {
     color: var(--color-text-dim);
-    margin-bottom: 0.5rem;
-    font-size: 0.8rem;
+    margin-bottom: 0.25rem;
+    font-size: 0.72rem;
 }
 
 .tagline-small {
-    font-size: 0.72rem;
+    font-size: 0.65rem;
     font-style: italic;
 }
 
