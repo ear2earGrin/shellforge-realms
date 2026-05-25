@@ -1485,8 +1485,8 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
 .social-link {
     color: var(--color-text-dim);
     text-decoration: none;
-    font-size: 1.1rem;
-    padding: 10px 20px;
+    font-size: 0.9rem;
+    padding: 8px 16px;
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 5px;
     transition: all 0.3s ease;
@@ -1500,8 +1500,8 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
 
 /* Footer */
 .footer {
-    background: rgba(18, 18, 26, 0.7);
-    padding: 3rem 20px;
+    background: transparent;
+    padding: 2.5rem 20px;
     text-align: center;
     border-top: 1px solid rgba(74, 222, 128, 0.2);
 }
@@ -1509,10 +1509,11 @@ button, a, .btn, .curl-command, .map-background, .sidebar-item {
 .footer p {
     color: var(--color-text-dim);
     margin-bottom: 0.5rem;
+    font-size: 0.8rem;
 }
 
 .tagline-small {
-    font-size: 0.85rem;
+    font-size: 0.72rem;
     font-style: italic;
 }
 
