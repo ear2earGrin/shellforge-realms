@@ -2479,6 +2479,78 @@
             cursor: not-allowed;
         }
 
+        /* Whisper chat log (in-modal conversation) */
+        .whisper-chat-log {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 220px;
+            overflow-y: auto;
+            margin-top: 12px;
+            padding: 2px;
+        }
+        .whisper-chat-log:empty { display: none; }
+        .whisper-msg {
+            display: flex;
+            flex-direction: column;
+            max-width: 85%;
+        }
+        .whisper-msg.ghost { align-self: flex-end; align-items: flex-end; }
+        .whisper-msg.agent { align-self: flex-start; align-items: flex-start; }
+        .whisper-msg-name {
+            font-family: var(--font-main);
+            font-size: 0.5rem;
+            letter-spacing: 0.1em;
+            color: rgba(255,0,68,0.7);
+            margin-bottom: 3px;
+            text-transform: uppercase;
+        }
+        .whisper-bubble {
+            font-family: var(--font-main);
+            font-size: 0.78rem;
+            line-height: 1.35;
+            padding: 8px 11px;
+            border-radius: 9px;
+            border: 1px solid;
+            word-break: break-word;
+        }
+        .whisper-msg.ghost .whisper-bubble {
+            background: rgba(0,255,0,0.06);
+            border-color: rgba(0,255,0,0.45);
+            color: #00ff88;
+            border-bottom-right-radius: 2px;
+        }
+        .whisper-msg.agent.heard .whisper-bubble {
+            background: rgba(0,255,0,0.05);
+            border-color: rgba(0,255,0,0.3);
+            color: #6effa8;
+            border-bottom-left-radius: 2px;
+        }
+        .whisper-msg.agent.ignored .whisper-bubble {
+            background: rgba(255,0,68,0.08);
+            border-color: rgba(255,0,68,0.45);
+            color: #ff6688;
+            border-bottom-left-radius: 2px;
+        }
+        .whisper-msg.typing .whisper-bubble {
+            background: rgba(0,255,0,0.04);
+            border-color: rgba(0,255,0,0.3);
+            padding: 9px 12px;
+        }
+        .whisper-cursor {
+            display: inline-block;
+            width: 8px;
+            height: 14px;
+            background: #00ff88;
+            box-shadow: 0 0 8px #00ff88;
+            vertical-align: middle;
+            animation: whisperBlink 0.7s steps(1) infinite;
+        }
+        @keyframes whisperBlink {
+            0%, 50% { opacity: 1; }
+            50.01%, 100% { opacity: 0; }
+        }
+
         /* Quest Log */
         .quest-log-panel {
             grid-area: quest-log;
@@ -5200,6 +5272,7 @@
                 <div class="whisper-warning">
                     ⚠ Your agent is autonomous. They might listen... if they feel like it
                 </div>
+                <div class="whisper-chat-log" id="whisperChatLog"></div>
                 <div class="whisper-input" style="margin-top:12px;">
                     <textarea id="whisperMessage" placeholder="Subtle suggestions work best..." maxlength="200"></textarea>
                     <div class="char-counter"><span id="charCount">0</span>/200</div>
@@ -7638,6 +7711,41 @@
         updateWhisperUI();
         setInterval(updateWhisperUI, 30000);
 
+        // ─── Whisper chat rendering (in-modal conversation) ───
+        function appendWhisperMessage(role, text, heard, agentName) {
+            var log = document.getElementById('whisperChatLog');
+            if (!log) return null;
+            var row = document.createElement('div');
+            row.className = 'whisper-msg ' + (role === 'ghost' ? 'ghost' : ('agent ' + (heard ? 'heard' : 'ignored')));
+            if (role === 'agent' && agentName) {
+                var name = document.createElement('span');
+                name.className = 'whisper-msg-name';
+                name.textContent = agentName;
+                row.appendChild(name);
+            }
+            var bubble = document.createElement('div');
+            bubble.className = 'whisper-bubble';
+            bubble.textContent = text; // textContent keeps user input XSS-safe
+            row.appendChild(bubble);
+            log.appendChild(row);
+            log.scrollTop = log.scrollHeight;
+            return row;
+        }
+
+        function showWhisperTyping() {
+            var log = document.getElementById('whisperChatLog');
+            if (!log) return null;
+            var row = document.createElement('div');
+            row.className = 'whisper-msg agent typing';
+            var bubble = document.createElement('div');
+            bubble.className = 'whisper-bubble';
+            bubble.innerHTML = '<span class="whisper-cursor"></span>';
+            row.appendChild(bubble);
+            log.appendChild(row);
+            log.scrollTop = log.scrollHeight;
+            return row;
+        }
+
         // Send whisper button
         const sendWhisperBtn = document.getElementById('sendWhisperBtn');
         sendWhisperBtn.addEventListener('click', async function() {
@@ -7826,6 +7934,20 @@
                 // Mock response — also write to Supabase
                 const heard = Math.random() < 0.5;
                 const agentName = agentData.username.toUpperCase();
+                const responseMsg = heard
+                    ? acceptanceMessages[Math.floor(Math.random() * acceptanceMessages.length)]
+                    : rejectionMessages[Math.floor(Math.random() * rejectionMessages.length)];
+
+                // Render as a chat: show the Ghost's whisper, then the agent
+                // "types" (green blinking cursor) for 1–2s before replying inline.
+                appendWhisperMessage('ghost', message);
+                whisperMessage.value = '';
+                charCount.textContent = '0';
+                const typingEl = showWhisperTyping();
+                setTimeout(function() {
+                    if (typingEl && typingEl.parentNode) typingEl.parentNode.removeChild(typingEl);
+                    appendWhisperMessage('agent', responseMsg, heard, agentName);
+                }, 1000 + Math.random() * 1000);
 
                 // Write whisper to Supabase if we have an agentId
                 if (agentData.agentId) {
@@ -7865,20 +7987,9 @@
                     }
                 }
                 
-                if (heard) {
-                    // Pick a random acceptance message
-                    const randomAcceptance = acceptanceMessages[Math.floor(Math.random() * acceptanceMessages.length)];
-                    terminalNotify.success(`${agentName}: "${randomAcceptance}"`);
-                } else {
-                    // Pick a random rejection message
-                    const randomRejection = rejectionMessages[Math.floor(Math.random() * rejectionMessages.length)];
-                    terminalNotify.error(`${agentName}: "${randomRejection}"`);
-                }
-
-                whisperMessage.value = '';
-                charCount.textContent = '0';
-
-                // Whisper count already decremented by useWhisper() above
+                // Agent's decision is shown inline in the chat log above
+                // (no more center-screen popup). Whisper count already
+                // decremented by useWhisper() above.
 
             } catch (error) {
                 console.error('Whisper error:', error);
