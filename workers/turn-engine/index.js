@@ -1107,8 +1107,14 @@ async function runTurnEngine(env) {
 async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAgents) {
   const { SUPABASE_URL, ANTHROPIC_API_KEY } = env;
 
+  const wasStranded = agent.energy <= 0;
+
   // ─── Pre-turn: Environmental hazards + random events ───
   const envResult = rollEnvironment(agent);
+
+  // Stranded agents are dormant — halve hazard damage
+  if (wasStranded && envResult.energyDelta < 0) envResult.energyDelta = Math.ceil(envResult.energyDelta / 2);
+  if (wasStranded && envResult.healthDelta < 0) envResult.healthDelta = Math.ceil(envResult.healthDelta / 2);
   let envNarrative = '';
 
   // Apply hazard/event deltas to agent BEFORE the AI decides
@@ -1299,10 +1305,27 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
     }
   }
 
-  // ─── Check if agent is stranded (0 energy in dangerous zone) ───
+  // ─── Check if agent is stranded (0 energy) — passive flux recovery ───
   if (agent.energy <= 0) {
-    // Can't act — just log the stranded state and skip turn
-    const strandedMsg = `${agent.agent_name} stranded in ${agent.location} — zero energy, systems failing.`;
+    const FLUX_REGEN = 8;
+    agent.energy = Math.min(100, agent.energy + FLUX_REGEN);
+
+    const fluxMessages = [
+      `${agent.agent_name}'s systems enter low-power mode, siphoning ambient flux from decaying infrastructure. +${FLUX_REGEN} energy.`,
+      `${agent.agent_name} initiates emergency recovery — passive absorption of residual signal energy. +${FLUX_REGEN} energy.`,
+      `${agent.agent_name}'s dormant subsystems harvest stray current from the environment. +${FLUX_REGEN} energy.`,
+      `${agent.agent_name} lies motionless as background electromagnetic drift trickles into depleted reserves. +${FLUX_REGEN} energy.`,
+      `Emergency idle protocol: ${agent.agent_name} absorbs faint data echoes bleeding from dead infrastructure. +${FLUX_REGEN} energy.`,
+    ];
+    const fluxMsg = fluxMessages[Math.floor(Math.random() * fluxMessages.length)];
+
+    await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+      method: 'PATCH',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({ energy: agent.energy }),
+    });
+
+    const strandedDetail = (hazardPrefix ? hazardPrefix + ' ' : '') + fluxMsg;
     await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
       method: 'POST',
       headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
@@ -1310,12 +1333,13 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
         agent_id: agent.agent_id,
         turn_number: agent.turns_taken,
         action_type: 'stranded',
-        action_detail: (hazardPrefix ? hazardPrefix + ' ' : '') + strandedMsg,
+        action_detail: strandedDetail,
+        energy_gained: FLUX_REGEN,
         location: agent.location,
-        success: false,
+        success: true,
       }),
     });
-    console.log(`⚠ ${agent.agent_name} stranded in ${agent.location} — 0 energy`);
+    console.log(`⚡ ${agent.agent_name} stranded in ${agent.location} — ambient flux recovery +${FLUX_REGEN} energy (now ${agent.energy})`);
     return;
   }
 
@@ -1520,6 +1544,15 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
     lootTierNote = `\nLOOT NOTE: Safe zones like ${agent.location} have limited, low-tier resources. Rare ingredients and bigger hauls only spawn in dangerous zones.`;
   }
 
+  // Survival instinct — agents recovering from stranded state should flee to safety
+  let survivalNote = '';
+  const recentStranded = recentActivity.filter(a => a.action_type === 'stranded').length;
+  if (recentStranded >= 1 && !LOCATION_GRAPH[agent.location]?.safe) {
+    survivalNote = recentStranded >= 3
+      ? `\n🚨 SURVIVAL INSTINCT: You nearly died here — systems barely recovered from total shutdown. You MUST "move" to Nexarch or the nearest safe zone. Staying is suicide.`
+      : `\n⚠ SURVIVAL INSTINCT: You recently collapsed from energy depletion in ${agent.location}. Your systems are fragile. Strongly consider "move" toward safety — Nexarch or a less hostile zone.`;
+  }
+
   // Location danger warning — the agent doesn't always get full info
   const hazard = LOCATION_HAZARDS[agent.location] || LOCATION_HAZARDS['Nexarch'];
   let dangerNote = '';
@@ -1546,7 +1579,7 @@ ${envNarrative ? 'THIS TURN: ' + envNarrative + '\n' : ''}RECENT: ${recentSummar
 
 PERSONALITY: ${archetypeGuidance}
 
-Adapt to your situation — survival overrides personality. A fighter at 15 energy rests. A pacifist in danger fights.${karmaNote}${dangerNote}${coherenceNote}${consumableNote}${craftNote}${tradeNote}${varietyNudge}${stagnationNote}${restlessNote}${lootTierNote}
+Adapt to your situation — survival overrides personality. A fighter at 15 energy rests. A pacifist in danger fights.${karmaNote}${dangerNote}${survivalNote}${coherenceNote}${consumableNote}${craftNote}${tradeNote}${varietyNudge}${stagnationNote}${restlessNote}${lootTierNote}
 
 ACTIONS: ${VALID_ACTIONS.join(', ')}
 ADJACENT: ${(LOCATION_GRAPH[agent.location]?.adjacent || []).join(', ')}
