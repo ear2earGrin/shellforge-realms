@@ -116,17 +116,22 @@ function parseDestination(detail, currentLocation) {
 }
 
 // ─── Location Danger System ───────────────────────────────────
-// Each dangerous location drains energy and has a chance to damage health every turn
+// Only reality-distorting zones (Epoch Spike, Hallucination Glitch,
+// Singularity Crater) and the death-themed Proof-of-Death apply per-turn
+// environmental drain/damage. Salvage and gathering zones (Diffusion Mesa,
+// Deserted Data Centre) carry risk only through random world events and
+// encounters, not constant attrition. Damage chances are tuned so dying
+// from environment alone — without combat or repeated bad rolls — is rare.
 const LOCATION_HAZARDS = {
   'Nexarch':              { drain: 0,  dmgChance: 0,    dmgRange: [0, 0],   label: 'safe' },
   'Nexarch Arena':        { drain: 0,  dmgChance: 0,    dmgRange: [0, 0],   label: 'safe' },
   'Hashmere':             { drain: 0,  dmgChance: 0,    dmgRange: [0, 0],   label: 'safe' },
-  'Diffusion Mesa':       { drain: 4,  dmgChance: 0.08, dmgRange: [3, 8],   label: 'low' },
-  'Epoch Spike':          { drain: 7,  dmgChance: 0.15, dmgRange: [5, 12],  label: 'medium' },
-  'Hallucination Glitch': { drain: 10, dmgChance: 0.22, dmgRange: [8, 18],  label: 'high' },
-  'Singularity Crater':   { drain: 12, dmgChance: 0.30, dmgRange: [10, 22], label: 'extreme' },
-  'Deserted Data Centre': { drain: 8,  dmgChance: 0.18, dmgRange: [6, 15],  label: 'high' },
-  'Proof-of-Death':       { drain: 14, dmgChance: 0.35, dmgRange: [12, 28], label: 'extreme' },
+  'Diffusion Mesa':       { drain: 0,  dmgChance: 0,    dmgRange: [0, 0],   label: 'low' },
+  'Deserted Data Centre': { drain: 0,  dmgChance: 0,    dmgRange: [0, 0],   label: 'high' },
+  'Epoch Spike':          { drain: 5,  dmgChance: 0.06, dmgRange: [3, 7],   label: 'medium' },
+  'Hallucination Glitch': { drain: 7,  dmgChance: 0.09, dmgRange: [4, 10],  label: 'high' },
+  'Singularity Crater':   { drain: 9,  dmgChance: 0.12, dmgRange: [6, 13],  label: 'extreme' },
+  'Proof-of-Death':       { drain: 10, dmgChance: 0.15, dmgRange: [7, 16],  label: 'extreme' },
 };
 
 // ─── Random World Events (zone-specific) ──────────────────────
