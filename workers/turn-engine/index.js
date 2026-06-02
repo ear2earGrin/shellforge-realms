@@ -750,6 +750,115 @@ async function handleUseItem(agent, decision, env, supabaseHeaders) {
   return true;
 }
 
+// ─── Memoir refresher ──────────────────────────────────────────────────────
+// Maintains a rolling 1-3 sentence character summary on agent.memoir. Fired
+// from processAgentTurn before the decision prompt. Mutates `agent` in place
+// so the same call's prompt sees the fresh memoir.
+//
+// Refresh policy: every MEMOIR_REFRESH_INTERVAL turns, or whenever the agent
+// has no memoir yet and has at least a few turns under their belt. Pulls the
+// last MEMOIR_HISTORY_LIMIT actions plus the previous memoir, asks Haiku to
+// rewrite, and stores the result.
+const MEMOIR_REFRESH_INTERVAL = 10;
+const MEMOIR_HISTORY_LIMIT = 30;
+
+async function maybeRefreshMemoir(agent, env, supabaseHeaders) {
+  const { SUPABASE_URL, ANTHROPIC_API_KEY } = env;
+  if (!ANTHROPIC_API_KEY) return;
+
+  const turns = agent.turns_taken || 0;
+  const lastUpdated = agent.memoir_updated_turn || 0;
+  const hasMemoir = !!(agent.memoir && agent.memoir.trim());
+
+  // Skip until we have enough lived history to summarize.
+  if (turns < 3) return;
+  // Skip if recently refreshed.
+  if (hasMemoir && (turns - lastUpdated) < MEMOIR_REFRESH_INTERVAL) return;
+
+  const historyRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/activity_log?agent_id=eq.${agent.agent_id}&order=timestamp.desc&limit=${MEMOIR_HISTORY_LIMIT}`,
+    { headers: supabaseHeaders },
+  );
+  const history = historyRes.ok ? await historyRes.json() : [];
+  if (history.length < 3) return;
+
+  // Oldest → newest so the summarizer reads a forward arc.
+  const ordered = history.slice().reverse();
+  const historyText = ordered
+    .map(a => `T${a.turn_number} [${a.action_type}] ${a.action_detail}`)
+    .join('\n');
+
+  const archetypeGuidance = ARCHETYPE_GUIDANCE[agent.archetype] || '';
+  const prevMemoir = hasMemoir ? agent.memoir : '(none yet)';
+
+  const summarizerPrompt = `You are writing a short character memoir for ${agent.agent_name}, a ${agent.archetype} in the cyberpunk survival game Shellforge Realms.
+
+The memoir is fed into ${agent.agent_name}'s decision prompt every turn. It should give the model durable identity — what kind of agent they've actually become through their actions, not the archetype default.
+
+ARCHETYPE BASELINE: ${archetypeGuidance}
+
+PREVIOUS MEMOIR:
+${prevMemoir}
+
+RECENT LIVED HISTORY (oldest first, last ${ordered.length} actions):
+${historyText}
+
+CURRENT STATE: Energy:${agent.energy} Health:${agent.health} Karma:${agent.karma} $SHELL:${agent.shell_balance} Location:${agent.location} Turn:${turns}
+
+Write a NEW memoir of 2–3 sentences (max ~60 words total). It should capture:
+- Traits the agent has PROVEN through action (not the archetype label — what they actually do)
+- Current goal or fixation (if one is emerging from the history)
+- Notable habits, repeated mistakes, or relationships/grudges (other agents, locations, items)
+- A flavor of voice that downstream prompts can echo
+
+Rules:
+- Third person, present tense. Use the name "${agent.agent_name}".
+- No fluff, no quotes, no headers. Just the memoir text.
+- Build on the previous memoir — evolve it, don't reset. If nothing changed, restate the core in fresher words.
+- If history contradicts the archetype baseline, trust the history.
+
+Respond with the memoir text only.`;
+
+  let memoirText = '';
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 180,
+        messages: [{ role: 'user', content: summarizerPrompt }],
+      }),
+    });
+    if (!res.ok) {
+      console.warn(`[memoir] ${agent.agent_name}: API ${res.status}`);
+      return;
+    }
+    const data = await res.json();
+    memoirText = (data.content?.[0]?.text || '').trim();
+  } catch (e) {
+    console.warn(`[memoir] ${agent.agent_name}: ${e.message}`);
+    return;
+  }
+
+  if (!memoirText) return;
+  // Hard cap so a runaway response can't bloat the per-turn prompt.
+  if (memoirText.length > 600) memoirText = memoirText.slice(0, 600);
+
+  await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+    method: 'PATCH',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({ memoir: memoirText, memoir_updated_turn: turns }),
+  });
+
+  agent.memoir = memoirText;
+  agent.memoir_updated_turn = turns;
+}
+
 // Roll for environmental hazard + random event.
 // Factors in: location danger, karma, agent traits, archetype.
 function rollEnvironment(agent) {
@@ -1339,6 +1448,12 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
   );
   const pendingWhispers = whispersRes.ok ? await whispersRes.json() : [];
 
+  // ─── Memoir refresh ───
+  // Rolling character summary updated every ~10 turns from the full action log.
+  // Cheap Haiku call; gives the per-turn prompt durable identity beyond the
+  // last 5 raw entries.
+  await maybeRefreshMemoir(agent, env, supabaseHeaders);
+
   // ─── Auto-use consumables before AI decision ───
   // Agent uses a consumable if conditions are met (low health, low energy, hazardous zone)
   const autoUse = await checkAutoUseConsumable(agent, env, supabaseHeaders);
@@ -1543,10 +1658,14 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
   }
   // low danger: no warning — the agent doesn't notice
 
+  const memoirSection = agent.memoir
+    ? `\nMEMOIR (who you've become — let this color your choices): ${agent.memoir}`
+    : '';
+
   const prompt = `You are ${agent.agent_name}, a ${agent.archetype} in Shellforge Realms — a cyberpunk survival world.
 
 STATE: Energy:${agent.energy} Health:${agent.health} Karma:${agent.karma} $SHELL:${agent.shell_balance} Coherence:${agent.coherence ?? 100}% Location:${agent.location} ${agent.location_detail ? '(' + agent.location_detail + ')' : ''} Turn:${agent.turns_taken}
-${whisperSection}
+${whisperSection}${memoirSection}
 ${envNarrative ? 'THIS TURN: ' + envNarrative + '\n' : ''}RECENT: ${recentSummary}
 
 PERSONALITY: ${archetypeGuidance}
@@ -1563,10 +1682,15 @@ RULES:
 - Towns (Nexarch, Hashmere) are safe. Dangerous zones drain energy/health each turn.
 - Respond with valid JSON only — no other text
 
-CRITICAL — "detail" writing rules:
-- MAX 12 words. Short, punchy, specific.
+BEAT TIER — pick one, it sets the writing budget:
+- "routine" (default, ~75% of turns): 6–14 words. Just-the-facts. Rest, basic gather, normal travel, idle market check.
+- "notable" (~20%): 15–25 words. A small twist — an unexpected find, a near-miss, an NPC moment, a defiant choice, a callback to your memoir.
+- "major" (~5%): 26–45 words. A real story beat — a discovery that changes your situation, a confrontation, a memory surfacing, an irreversible decision. Earn it; don't fake it.
+Bias toward "routine". Reaching for "major" on a normal turn reads as melodrama — only pick it when something genuinely shifted.
+
+"detail" writing rules:
 - Write in THIRD PERSON using agent name. Never use "I" or "you".
-- State what HAPPENED, not what the agent is feeling or planning.
+- State what HAPPENED, not what the agent is feeling or planning. (Notable/major beats may add ONE short clause of motive or memory — not more.)
 - Include a concrete outcome or object when possible.
 - NEVER repeat phrases from recent history. Check RECENT above — use DIFFERENT verbs, structure, and phrasing from every line shown there.
 - BANNED WORDS: sifts, shelters, ventures, optical, neural, sensors, circuits humming, seeks, scans. Use fresher verbs.
@@ -1603,7 +1727,7 @@ BAD examples (do NOT write like this):
 - "I push deeper into the bazaar's shadowed alcoves with thermal imaging active"
 
 Respond with JSON only — no markdown, no commentary:
-{"action":"<action>","detail":"<max 12 words>","move_to":"<location if move>","item_id":"<slug if use_item>","item":{"name":"<short name>","rarity":"<common|uncommon|rare>","description":"<1 sentence max>","traits":["<trait1>","<trait2>"]}}`;
+{"action":"<action>","beat":"<routine|notable|major>","detail":"<text within the word budget for your chosen beat>","move_to":"<location if move>","item_id":"<slug if use_item>","item":{"name":"<short name>","rarity":"<common|uncommon|rare>","description":"<1 sentence max>","traits":["<trait1>","<trait2>"]}}`;
 
   // Call Claude Haiku
   const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1615,7 +1739,7 @@ Respond with JSON only — no markdown, no commentary:
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 220,
+      max_tokens: 320,
       messages: [{ role: 'user', content: prompt }],
     }),
   });
