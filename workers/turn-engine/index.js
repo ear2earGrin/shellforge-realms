@@ -1415,22 +1415,36 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
 
   // ─── Check if agent is stranded (0 energy in dangerous zone) ───
   if (agent.energy <= 0) {
-    // Can't act — just log the stranded state and skip turn
-    const strandedMsg = `${agent.agent_name} stranded in ${agent.location} — zero energy, systems failing.`;
-    await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
-      method: 'POST',
-      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-      body: JSON.stringify({
-        agent_id: agent.agent_id,
-        turn_number: agent.turns_taken,
-        action_type: 'stranded',
-        action_detail: (hazardPrefix ? hazardPrefix + ' ' : '') + strandedMsg,
-        location: agent.location,
-        success: false,
-      }),
-    });
-    console.log(`⚠ ${agent.agent_name} stranded in ${agent.location} — 0 energy`);
-    return;
+    // Last-chance rescue: if the agent owns any energy-restoring consumable,
+    // auto-use it BEFORE marking them stranded. The normal auto-use pass
+    // happens further down, but the stranded short-circuit was returning
+    // before ever reaching it — leaving agents to bleed out next to a stack
+    // of Synth Rations they could have used to walk out.
+    const rescue = await checkAutoUseConsumable(agent, env, supabaseHeaders);
+    if (rescue) {
+      await useConsumable(agent, rescue, env, supabaseHeaders);
+      envNarrative += `💊 ${agent.agent_name} used ${rescue.item.item_name} to break the strand.\n`;
+    }
+
+    if (agent.energy <= 0) {
+      // Still out of reserves — actually stranded.
+      const strandedMsg = `${agent.agent_name} stranded in ${agent.location} — zero energy, systems failing.`;
+      await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+        method: 'POST',
+        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          agent_id: agent.agent_id,
+          turn_number: agent.turns_taken,
+          action_type: 'stranded',
+          action_detail: (hazardPrefix ? hazardPrefix + ' ' : '') + strandedMsg,
+          location: agent.location,
+          success: false,
+        }),
+      });
+      console.log(`⚠ ${agent.agent_name} stranded in ${agent.location} — 0 energy`);
+      return;
+    }
+    // Energy restored — fall through and take a normal turn.
   }
 
   // Fetch last 5 activity log entries
