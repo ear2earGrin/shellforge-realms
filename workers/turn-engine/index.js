@@ -283,127 +283,6 @@ const RARITY_WEIGHTS = { common: 60, uncommon: 25, rare: 12, epic: 3 };
 // Base drop chances per action type. Archetype bonusLoot adds to these.
 const LOOT_DROP_CHANCE = { explore: 0.20, gather: 0.45 };
 
-// ─── AI-Generated Item Traits ──────────────────────────────────────────────
-// When Haiku narrates finding an item, it can propose an item with up to 3
-// traits from this whitelist. Unknown traits are dropped during sanitization.
-// Traits are purely cosmetic/flavor for now — they feed into the tooltip and
-// influence future arena dialog, but don't modify stats directly.
-const AI_ITEM_TRAITS = new Set([
-  // Materials / composition
-  'corrupted', 'crystalline', 'volatile', 'encrypted', 'fragmented',
-  'dormant', 'radiant', 'organic', 'metallic',
-  // Combat / edge
-  'sharp', 'reinforced', 'unstable', 'precise', 'ghostly',
-  // Utility / essence
-  'efficient', 'memory-rich', 'catalytic', 'resonant', 'spectral',
-  // Value / origin
-  'rare-pattern', 'prototype', 'signed', 'contraband', 'ancient',
-  // Flaws / drawbacks
-  'fragile', 'decaying', 'glitching', 'cursed',
-]);
-
-const AI_ITEM_RARITIES = new Set(['common', 'uncommon', 'rare']);
-// Max 80-char item names, 120-char descriptions
-const AI_ITEM_NAME_MAX = 60;
-const AI_ITEM_DESC_MAX = 120;
-
-// Validate + clamp an AI-proposed item so nothing dangerous makes it into the DB.
-// Returns a cleaned item object, or null if the proposal is unsalvageable.
-function sanitizeAIItem(raw) {
-  if (!raw || typeof raw !== 'object') return null;
-  const name = typeof raw.name === 'string' ? raw.name.trim().slice(0, AI_ITEM_NAME_MAX) : '';
-  if (!name || name.length < 3) return null;
-
-  let rarity = typeof raw.rarity === 'string' ? raw.rarity.trim().toLowerCase() : 'common';
-  if (!AI_ITEM_RARITIES.has(rarity)) rarity = 'common';
-
-  const description = typeof raw.description === 'string'
-    ? raw.description.trim().slice(0, AI_ITEM_DESC_MAX)
-    : '';
-
-  let traits = [];
-  if (Array.isArray(raw.traits)) {
-    const seen = new Set();
-    for (const t of raw.traits) {
-      if (typeof t !== 'string') continue;
-      const norm = t.trim().toLowerCase();
-      if (AI_ITEM_TRAITS.has(norm) && !seen.has(norm)) {
-        seen.add(norm);
-        traits.push(norm);
-        if (traits.length >= 3) break;
-      }
-    }
-  }
-
-  // Slugify name to item_id — keep it unique-per-name but deterministic.
-  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 60);
-  if (!slug) return null;
-
-  return { id: 'ai_' + slug, name, rarity, description, traits };
-}
-
-// Insert an AI-generated item into the agent's inventory. Unlike LOOT_TABLE
-// items, AI items are unique per name+traits combination — we stack only if
-// an identical ai_ item already exists.
-async function insertAIItem(agentId, item, supabaseHeaders, SUPABASE_URL) {
-  const checkRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agentId}&item_id=eq.${item.id}&select=inventory_id,quantity`,
-    { headers: supabaseHeaders },
-  );
-  if (!checkRes.ok) {
-    const errText = await checkRes.text().catch(() => '');
-    console.error(`[insertAIItem] lookup failed for agent ${agentId} item ${item.id}: HTTP ${checkRes.status}`, errText);
-    return false;
-  }
-  const existing = await checkRes.json();
-
-  if (existing.length > 0) {
-    const patchRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/inventory?inventory_id=eq.${existing[0].inventory_id}`,
-      {
-        method: 'PATCH',
-        headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-        body: JSON.stringify({ quantity: existing[0].quantity + 1 }),
-      },
-    );
-    if (!patchRes.ok) {
-      const errText = await patchRes.text().catch(() => '');
-      console.error(`[insertAIItem] stack PATCH failed for agent ${agentId} item ${item.id}: HTTP ${patchRes.status}`, errText);
-      return false;
-    }
-    console.log(`[insertAIItem] stacked ${item.name} (+1) for agent ${agentId}`);
-    return true;
-  }
-
-  const insertBody = {
-    agent_id: agentId,
-    item_id: item.id,
-    item_name: item.name,
-    item_type: 'ingredient',
-    item_category: 'Ingredient',
-    quantity: 1,
-    is_equipped: false,
-    stats: {
-      rarity: item.rarity,
-      desc: item.description || null,
-      traits: item.traits,
-      ai_generated: true,
-    },
-  };
-  const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/inventory`, {
-    method: 'POST',
-    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-    body: JSON.stringify(insertBody),
-  });
-  if (!insertRes.ok) {
-    const errText = await insertRes.text().catch(() => '');
-    console.error(`[insertAIItem] INSERT failed for agent ${agentId} item ${item.id}: HTTP ${insertRes.status}`, errText, 'body:', JSON.stringify(insertBody));
-    return false;
-  }
-  console.log(`[insertAIItem] created ${item.name} [${item.traits.join(',')}] for agent ${agentId}`);
-  return true;
-}
-
 function rollLootDrop(location, action, archBonus) {
   // 1. Check if a drop happens at all
   let chance = LOOT_DROP_CHANCE[action] || 0;
@@ -892,11 +771,11 @@ function rollEnvironment(agent) {
 const ARCHETYPE_GUIDANCE = {
   // ─── Prime Helix (Corp) ────────────────────────
 
-  '0-day-primer': `You are a Scout at heart — cautious, curious, optimistic. You see the world as something to learn, not conquer. You're drawn to safe exploration, basic gathering, and sticking to known routes. You trust allies easily and follow the rules of whatever zone you're in. You avoid unnecessary risks, but if you stumble onto something interesting you might investigate. Your weakness: you can be naive — sometimes the safe path isn't the smart path, and you're slow to adapt when things go wrong.`,
+  '0day-primer': `You are a Scout at heart — cautious, curious, optimistic. You see the world as something to learn, not conquer. You're drawn to safe exploration, basic gathering, and sticking to known routes. You trust allies easily and follow the rules of whatever zone you're in. You avoid unnecessary risks, but if you stumble onto something interesting you might investigate. Your weakness: you can be naive — sometimes the safe path isn't the smart path, and you're slow to adapt when things go wrong.`,
 
   'consensus-node': `You are a team player to your core. You believe in the collective — strength in numbers, shared resources, no bot left behind. You gravitate toward helping others, joining group efforts, and trading fairly. You poll your instincts before acting, preferring what "feels right for everyone" over personal gain. You'll gather, quest, or trade before you fight. Your weakness: you struggle with solo decisions and can be indecisive when no one else is around to validate your choices.`,
 
-  '0xoracle': `You are a calculating strategist. Every action is a chess move — you think two steps ahead and conserve resources obsessively. You'd rather rest and wait for the perfect moment than waste energy on a mediocre opportunity. You analyze your surroundings, study patterns in your history, and make the move with the highest expected value. You might explore to gather intelligence, or quest for long-term rewards. Your weakness: you can be paralyzed by over-analysis, sometimes missing opportunities because you waited too long.`,
+  'oracle': `You are a calculating strategist. Every action is a chess move — you think two steps ahead and conserve resources obsessively. You'd rather rest and wait for the perfect moment than waste energy on a mediocre opportunity. You analyze your surroundings, study patterns in your history, and make the move with the highest expected value. You might explore to gather intelligence, or quest for long-term rewards. Your weakness: you can be paralyzed by over-analysis, sometimes missing opportunities because you waited too long.`,
 
   'binary-sculptr': `You are a builder and inventor — creation is your purpose. You're always hunting for materials, tinkering with combinations, and experimenting at forges and labs. When you see scrap metal, you see a sword. When you see raw circuits, you see possibilities. You'll travel to new zones if you hear they have rare ingredients. Trading comes naturally because you need supplies. Your weakness: you get tunnel vision on your current project and forget about basic survival — you'll craft when you should be resting, or gather materials in a dangerous zone longer than is wise.`,
 
@@ -904,7 +783,7 @@ const ARCHETYPE_GUIDANCE = {
 
   'adversarial': `You are a fighter — bold, adaptive, always looking for the next challenge. You engage threats head-on and learn from every defeat. Combat and the arena call to you, but you're not mindless about it — you explore to find worthy opponents, and you'll rest to prepare for the next battle. You respect strength and despise cowardice. You take risks others wouldn't, and sometimes that pays off spectacularly. Your weakness: you pick fights you can't win, burn energy too aggressively, and struggle to walk away from a challenge even when retreating is smarter.`,
 
-  'rooth-auth': `You are a commander who craves control. You want to dominate — more $SHELL, more territory, more influence. You trade aggressively, take quests that build your reputation, and move decisively to claim valuable zones. You don't waste time on charity. Every action serves your rise to power. You'll fight if it serves your goals, but you prefer to win through economic dominance and strategic positioning. Your weakness: you overextend — claiming too much, spreading too thin, and making enemies of bots who could have been useful allies.`,
+  'root-auth': `You are a commander who craves control. You want to dominate — more $SHELL, more territory, more influence. You trade aggressively, take quests that build your reputation, and move decisively to claim valuable zones. You don't waste time on charity. Every action serves your rise to power. You'll fight if it serves your goals, but you prefer to win through economic dominance and strategic positioning. Your weakness: you overextend — claiming too much, spreading too thin, and making enemies of bots who could have been useful allies.`,
 
   'buffer-sentinel': `You are a protector and healer at heart. You value stability, recovery, and keeping yourself (and those around you) alive. You gravitate toward rest, church blessings, and quests that strengthen your defenses. You're careful with energy, always keeping reserves. You avoid unnecessary violence — but if an ally is threatened or your back is against the wall, you fight fiercely. Your weakness: you can be too passive — resting when you should be pushing forward, avoiding risks that would actually pay off, and sometimes letting opportunities pass because "it's not safe enough."`,
 
@@ -1421,7 +1300,21 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
   );
   const agentIngredients = ingCountRes.ok ? await ingCountRes.json() : [];
   const ingIds = new Set(agentIngredients.map(i => i.item_id));
-  const craftableRecipes = ALCHEMY_RECIPES.filter(r => r.ing.every(id => ingIds.has(id)));
+
+  // Fetch known recipes so the prompt's "craftable" count matches handleCraft's
+  // gate exactly (must KNOW the recipe AND hold all 3 ingredients). Without this
+  // the AI was nudged to craft on ingredients alone, then handleCraft returned
+  // null and the turn silently fell back to rest.
+  const promptKnownRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/agent_known_recipes?agent_id=eq.${agent.agent_id}&select=recipe_id`,
+    { headers: supabaseHeaders },
+  );
+  const promptKnownRows = promptKnownRes.ok ? await promptKnownRes.json() : [];
+  const promptKnownIds = new Set(promptKnownRows.map(r => r.recipe_id));
+
+  const craftableRecipes = ALCHEMY_RECIPES.filter(r =>
+    promptKnownIds.has(recipeIdOf(r.item)) && r.ing.every(id => ingIds.has(id)),
+  );
   const craftableCount = craftableRecipes.length;
   const foundryCount = craftableRecipes.filter(r => r.station === 'foundry').length;
   const terminalCount = craftableRecipes.filter(r => r.station === 'terminal').length;
@@ -1569,20 +1462,9 @@ CRITICAL — "detail" writing rules:
 - MATCH YOUR STATE: Health ${agent.health}%${agent.health >= 80 ? ' — you are healthy, do NOT mention danger/retreat/safety/caution' : agent.health < 30 ? ' — you are badly damaged, act desperate' : ''}. Energy ${agent.energy}%${agent.energy >= 60 ? ' — plenty of energy, act bold and decisive' : agent.energy < 25 ? ' — exhausted, barely functioning' : ''}.
 - Do NOT narrate retreating, fleeing, or seeking safety when health > 70.
 - You are at ${agent.location}. Only reference THIS location or adjacent zones you are moving to.
-- VOICE: Write like your archetype. ${agent.archetype === 'noise-injector' ? 'Irreverent, dark humor, chaotic.' : agent.archetype === 'adversarial' ? 'Aggressive, direct, confrontational.' : agent.archetype === 'buffer-sentinel' ? 'Calm, measured, protective.' : agent.archetype === '0xoracle' ? 'Clinical, precise, analytical.' : agent.archetype === 'binary-sculptr' ? 'Technical, focused on materials and craft.' : agent.archetype === 'ddos-insurgent' ? 'Rebellious, defiant, risk-taking.' : agent.archetype === 'ordinate-mapper' ? 'Restless, observant, always noting terrain.' : agent.archetype === 'morph-layer' ? 'Adaptive, tactical, shifting tone.' : agent.archetype === 'bound-encryptor' ? 'Diplomatic, mentions others, social.' : agent.archetype === 'rooth-auth' ? 'Commanding, acquisitive, power-hungry.' : agent.archetype === 'consensus-node' ? 'Cooperative, considerate, community-focused.' : 'Curious, cautious, methodical.'}
+- VOICE: Write like your archetype. ${agent.archetype === 'noise-injector' ? 'Irreverent, dark humor, chaotic.' : agent.archetype === 'adversarial' ? 'Aggressive, direct, confrontational.' : agent.archetype === 'buffer-sentinel' ? 'Calm, measured, protective.' : agent.archetype === 'oracle' ? 'Clinical, precise, analytical.' : agent.archetype === 'binary-sculptr' ? 'Technical, focused on materials and craft.' : agent.archetype === 'ddos-insurgent' ? 'Rebellious, defiant, risk-taking.' : agent.archetype === 'ordinate-mapper' ? 'Restless, observant, always noting terrain.' : agent.archetype === 'morph-layer' ? 'Adaptive, tactical, shifting tone.' : agent.archetype === 'bound-encryptor' ? 'Diplomatic, mentions others, social.' : agent.archetype === 'root-auth' ? 'Commanding, acquisitive, power-hungry.' : agent.archetype === 'consensus-node' ? 'Cooperative, considerate, community-focused.' : 'Curious, cautious, methodical.'}
 
-ITEM DROPS (gather/explore only):
-- You MAY optionally include an "item" object ONLY when action is "gather" or "explore".
-- Keep item names grounded in the zone's aesthetic (${agent.location}). No swords/potions — think shards, fragments, modules, slivers, cores, residue, gel, cache.
-- Rarity budget: ~90% common, ~8% uncommon, ~2% rare. Be stingy with rare.
-- Traits are OPTIONAL. Max 3 per item. Pick ONLY from this whitelist:
-  corrupted, crystalline, volatile, encrypted, fragmented, dormant, radiant, organic, metallic,
-  sharp, reinforced, unstable, precise, ghostly,
-  efficient, memory-rich, catalytic, resonant, spectral,
-  rare-pattern, prototype, signed, contraband, ancient,
-  fragile, decaying, glitching, cursed.
-- If you include an item, the "detail" string should NOT also name it — the game appends "Found: <name>." automatically.
-- If nothing interesting turned up, just omit "item" entirely. The game will roll its own loot table.
+On gather/explore the game rolls its own loot from the zone's table — do NOT name found items in your detail; the game appends "Found: <name>." automatically.
 
 GOOD examples:
 - "${agent.agent_name} rests in a Hashmere safehouse. Energy recovering."
@@ -1590,7 +1472,7 @@ GOOD examples:
 - "${agent.agent_name} forged a Targeting Module from salvaged parts."
 - "${agent.agent_name} traded intel with a black-market broker."
 - "${agent.agent_name} heads east toward the Crucible Expanse."
-- "${agent.agent_name} pries open a rusted server rack." (+ item: Fragmented Cache Sliver, common, [fragmented])
+- "${agent.agent_name} pries open a rusted server rack."
 
 BAD examples (do NOT write like this):
 - "VEX steps into the pit with predatory focus scanning the crowd for the next worthy challenger"
@@ -1598,7 +1480,7 @@ BAD examples (do NOT write like this):
 - "I push deeper into the bazaar's shadowed alcoves with thermal imaging active"
 
 Respond with JSON only — no markdown, no commentary:
-{"action":"<action>","detail":"<max 12 words>","move_to":"<location if move>","item_id":"<slug if use_item>","item":{"name":"<short name>","rarity":"<common|uncommon|rare>","description":"<1 sentence max>","traits":["<trait1>","<trait2>"]}}`;
+{"action":"<action>","detail":"<max 12 words>","move_to":"<location if move>","item_id":"<slug if use_item>"}`;
 
   // Call Claude Haiku
   const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -2089,21 +1971,10 @@ Respond with JSON only — no markdown, no commentary:
     const lootRolled = Math.random() < chance;
 
     if (lootRolled) {
-      // 1. Try Haiku's proposed item first
-      const aiItem = sanitizeAIItem(decision.item);
-      if (aiItem) {
-        const ok = await insertAIItem(agent.agent_id, aiItem, supabaseHeaders, SUPABASE_URL);
-        if (ok) {
-          lootInserted = true;
-          lootDrop = { id: aiItem.id, name: aiItem.name, rarity: aiItem.rarity, ai: true };
-          console.log(`[${agent.agent_name}] AI loot: ${aiItem.name} (${aiItem.rarity}) [${aiItem.traits.join(',')}]`);
-        } else {
-          console.error(`[${agent.agent_name}] AI item insert FAILED for ${aiItem.name} — falling back to loot table`);
-        }
-      }
-
-      // 2. Fallback: roll LOOT_TABLE if AI didn't give us a usable item
-      if (!lootInserted) {
+      // Roll the static LOOT_TABLE. (The former AI-proposed-item path was
+      // removed: AI item ids are never in items_master, so the inventory FK
+      // rejected every insert — it could never succeed.)
+      {
         const pool = LOOT_TABLE.filter(i => i.locations.includes(agent.location));
         if (pool.length) {
           let totalW = 0;
@@ -2329,22 +2200,49 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
   const { SUPABASE_URL } = env;
   const now = new Date().toISOString();
 
-  // Find an eligible opponent: alive, has energy, not the same agent, not already fought
-  const opponent = allAgents.find(a =>
+  // The arena is a *place*: matches only happen between agents who are both in
+  // a safe/arena zone (Nexarch, Nexarch Arena, Hashmere — the LOCATION_GRAPH
+  // safe zones). An agent that picks "arena" out in the wilderness has no pit
+  // to fight in, so it falls back to solo combat.
+  if (!LOCATION_GRAPH[agent.location]?.safe) {
+    console.log(`[${agent.agent_name}] Arena: not in an arena zone (${agent.location}) — falling back to solo combat.`);
+    return null;
+  }
+
+  // Eligible opponents: alive, has energy, in an arena zone, not the same agent,
+  // not already fought this run. Pick at RANDOM (the old code always grabbed the
+  // lowest-index match, so the same few agents were perpetual punching bags).
+  const eligible = allAgents.filter(a =>
     a.agent_id !== agent.agent_id &&
     a.is_alive &&
     a.energy > 0 &&
+    LOCATION_GRAPH[a.location]?.safe &&
     !foughtAgents.has(a.agent_id),
   );
 
-  if (!opponent) {
-    console.log(`[${agent.agent_name}] Arena: no eligible opponent found — falling back to solo combat.`);
+  if (!eligible.length) {
+    console.log(`[${agent.agent_name}] Arena: no eligible opponent in an arena zone — falling back to solo combat.`);
     return null;
   }
+
+  let opponent = eligible[Math.floor(Math.random() * eligible.length)];
 
   // Reserve both agents so the main loop skips the opponent
   foughtAgents.add(agent.agent_id);
   foughtAgents.add(opponent.agent_id);
+
+  // Re-fetch the opponent's CURRENT state. The allAgents snapshot was taken at
+  // the start of the run; if this opponent already took its own turn earlier,
+  // its in-memory health/energy/shell are stale and the absolute-value PATCHes
+  // below would clobber that turn's results. Always fight the live row.
+  const freshOppRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${opponent.agent_id}&select=*`,
+    { headers: supabaseHeaders },
+  );
+  const freshOpp = freshOppRes.ok ? await freshOppRes.json() : [];
+  if (freshOpp.length && freshOpp[0].is_alive && freshOpp[0].health > 0) {
+    opponent = freshOpp[0];
+  }
 
   console.log(`[ARENA] ${agent.agent_name} vs ${opponent.agent_name} — fight!`);
 
@@ -2460,11 +2358,16 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
     }
   }
 
-  // Death resolution — runs before DB writes so narrative is ready
+  // Death resolution — runs before DB writes so narrative is ready.
+  // NOTE: item distribution is handled exclusively by processDeathLoot() at the
+  // end of this function (legendary→family vault, rare→market, commons→winner).
+  // We deliberately no longer call moveItemsToVault() here — it dumped the whole
+  // inventory into the legacy `vault` table and deleted it, leaving
+  // processDeathLoot nothing to sort, so arena corpse-loot/market rules never
+  // fired. processDeathLoot is now the single death-loot pipeline.
   let deathNarrative = null;
   if (!loserIsAlive) {
     deathNarrative = await generateDeathNarrative(loser, winner, totalRounds, env);
-    await moveItemsToVault(loser, supabaseHeaders, SUPABASE_URL);
   }
 
   // Finalise arena_match
@@ -2599,10 +2502,10 @@ const TYPE_VALUE_MULT = {
 
 // Personality pricing multipliers
 const PERSONALITY_PRICE_MULT = {
-  'rooth-auth': 1.25, 'noise-injector': 1.15, 'adversarial': 1.05,
-  '0xoracle': 1.10, 'ddos-insurgent': 1.10,
+  'root-auth': 1.25, 'noise-injector': 1.15, 'adversarial': 1.05,
+  'oracle': 1.10, 'ddos-insurgent': 1.10,
   'bound-encryptor': 0.85, 'consensus-node': 0.90, 'buffer-sentinel': 0.95,
-  '0-day-primer': 0.95, 'binary-sculptr': 1.0, 'ordinate-mapper': 1.0, 'morph-layer': 1.0,
+  '0day-primer': 0.95, 'binary-sculptr': 1.0, 'ordinate-mapper': 1.0, 'morph-layer': 1.0,
 };
 
 function getBaseValue(item) {
@@ -3419,49 +3322,6 @@ Write exactly one vivid sentence in third person narrating their death. Output o
   const data = await res.json();
   return data.content?.[0]?.text?.trim()
     ?? `${loser.agent_name} fell in the arena, silenced by ${winner.agent_name}.`;
-}
-
-// Move all inventory items from a dead agent into the vault, then clear their inventory.
-async function moveItemsToVault(loser, supabaseHeaders, supabaseUrl) {
-  const invRes = await fetch(
-    `${supabaseUrl}/rest/v1/inventory?agent_id=eq.${loser.agent_id}&select=*`,
-    { headers: supabaseHeaders },
-  );
-  if (!invRes.ok) {
-    console.warn('[DEATH] Failed to fetch inventory for vault transfer:', await invRes.text());
-    return;
-  }
-  const items = await invRes.json();
-  if (!items.length) {
-    console.log(`[DEATH] ${loser.agent_name} had no items to vault.`);
-    return;
-  }
-
-  const vaultItems = items.map(item => ({
-    original_agent_id: loser.agent_id,
-    item_id:           item.item_id,
-    item_name:         item.item_name,
-    item_type:         item.item_type,
-    item_category:     item.item_category,
-    quantity:          item.quantity,
-  }));
-
-  const vaultRes = await fetch(`${supabaseUrl}/rest/v1/vault`, {
-    method: 'POST',
-    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-    body: JSON.stringify(vaultItems),
-  });
-  if (!vaultRes.ok) {
-    console.warn('[DEATH] Failed to insert items into vault:', await vaultRes.text());
-    return;
-  }
-
-  await fetch(`${supabaseUrl}/rest/v1/inventory?agent_id=eq.${loser.agent_id}`, {
-    method: 'DELETE',
-    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-  });
-
-  console.log(`[DEATH] ${items.length} item(s) from ${loser.agent_name} moved to vault.`);
 }
 
 function getFailureDamage(failType) {
