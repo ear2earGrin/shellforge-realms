@@ -3,4 +3,6 @@ main = "index.js"
 compatibility_date = "2026-02-12"
 
 [triggers]
-crons = ["0 */2 * * *"]
+# Tick every 10 minutes; each tick processes only agents whose next_turn_at is
+# due (staggered ~2h cadence per agent). See runTurnEngine / scheduleNextTurn.
+crons = ["*/10 * * * *"]

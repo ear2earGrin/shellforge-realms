@@ -921,9 +921,20 @@ async function runTurnEngine(env) {
     'Content-Type': 'application/json',
   };
 
-  // Fetch all alive agents (including stranded ones at 0 energy — they still take hazard damage)
+  // ─── Staggered turns ───────────────────────────────────────────
+  // Agents no longer all act on every cron tick. Each agent carries a
+  // next_turn_at; a tick processes only the agents whose turn is due (or who
+  // have never been scheduled), oldest-first, capped so a single invocation
+  // never exceeds Cloudflare's subrequest budget. After acting, an agent is
+  // rescheduled ~2h out with jitter, so the population spreads out organically
+  // instead of starving the tail of one big batch.
+  const TICK_AGENT_CAP = 25;            // max agents processed per cron tick
+  const nowISO = new Date().toISOString();
+
+  // Fetch DUE alive agents (next_turn_at null or in the past). Stranded agents
+  // (0 energy) are still included — they take hazard damage and get logged.
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/agents?is_alive=eq.true&select=*`,
+    `${SUPABASE_URL}/rest/v1/agents?is_alive=eq.true&or=(next_turn_at.is.null,next_turn_at.lte.${nowISO})&order=next_turn_at.asc.nullsfirst&limit=${TICK_AGENT_CAP}`,
     { headers },
   );
 
@@ -933,7 +944,7 @@ async function runTurnEngine(env) {
   }
 
   const agents = await res.json();
-  console.log(`Turn engine: processing ${agents.length} agent(s)`);
+  console.log(`Turn engine: ${agents.length} agent(s) due this tick (cap ${TICK_AGENT_CAP})`);
 
   // Expire stale agent listings (48h old) — return items to sellers
   try {
@@ -977,8 +988,9 @@ async function runTurnEngine(env) {
     console.error('[Market] Expiry cleanup failed:', e.message);
   }
 
-  // Track agents already consumed by arena combat this turn
+  // Track agents already consumed by arena combat this tick
   const foughtAgents = new Set();
+  const scheduled = new Set();
 
   for (const agent of agents) {
     if (foughtAgents.has(agent.agent_id)) continue; // already fought as opponent
@@ -987,7 +999,34 @@ async function runTurnEngine(env) {
     } catch (err) {
       console.error(`Error processing agent ${agent.agent_name}:`, err.message);
     }
+    // Reschedule this agent's next turn (~2h out, jittered) even if its turn
+    // threw — otherwise a persistently-failing agent would be re-picked every
+    // tick and block the queue.
+    await scheduleNextTurn(agent.agent_id, headers, SUPABASE_URL);
+    scheduled.add(agent.agent_id);
   }
+
+  // Arena opponents acted as part of an attacker's turn but were never iterated
+  // here (they're skipped via foughtAgents). Reschedule them too so they don't
+  // get re-picked on the very next tick.
+  for (const id of foughtAgents) {
+    if (!scheduled.has(id)) await scheduleNextTurn(id, headers, SUPABASE_URL);
+  }
+}
+
+// Reschedule an agent's next turn ~2h out with ±30min jitter (90–150 min),
+// so the population's turns spread across wall-clock time instead of clumping.
+function nextTurnAtISO() {
+  const mins = 90 + Math.floor(Math.random() * 61); // 90–150 min, avg ~120 (2h)
+  return new Date(Date.now() + mins * 60 * 1000).toISOString();
+}
+
+async function scheduleNextTurn(agentId, headers, SUPABASE_URL) {
+  await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agentId}`, {
+    method: 'PATCH',
+    headers: { ...headers, Prefer: 'return=minimal' },
+    body: JSON.stringify({ next_turn_at: nextTurnAtISO() }),
+  });
 }
 
 async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAgents) {
