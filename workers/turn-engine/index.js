@@ -447,15 +447,22 @@ const CONSUMABLE_EFFECTS = {
 const EMERGENCY_HEALTH = 25;
 const EMERGENCY_ENERGY = 12;
 
-async function checkAutoUseConsumable(agent, env, supabaseHeaders) {
+async function checkAutoUseConsumable(agent, env, supabaseHeaders, inventory = null) {
   if (agent.health > EMERGENCY_HEALTH && agent.energy > EMERGENCY_ENERGY) return null;
 
   const { SUPABASE_URL } = env;
-  const invRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_type=eq.consumable&select=*`,
-    { headers: supabaseHeaders },
-  );
-  const consumables = invRes.ok ? await invRes.json() : [];
+  // Reuse the caller's pre-fetched inventory when provided (saves a subrequest);
+  // otherwise fall back to fetching just the consumables.
+  let consumables;
+  if (inventory) {
+    consumables = inventory.filter(i => i.item_type === 'consumable');
+  } else {
+    const invRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_type=eq.consumable&select=*`,
+      { headers: supabaseHeaders },
+    );
+    consumables = invRes.ok ? await invRes.json() : [];
+  }
   if (!consumables.length) return null;
 
   // Helper: largest consumable matching an effect key (heal / energy), any size.
@@ -986,6 +993,18 @@ async function runTurnEngine(env) {
 async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAgents) {
   const { SUPABASE_URL, ANTHROPIC_API_KEY } = env;
 
+  // ─── Single inventory read for the whole turn ───
+  // The turn used to re-query the inventory table 6-8 times with different
+  // filters (consumables, ingredients, equipped weapon/armor/tools, total
+  // count, detachment module). On Cloudflare's per-invocation subrequest cap
+  // that alone starved the agent loop after ~4 agents. We now read the full
+  // inventory once and derive everything in memory.
+  const agentInvRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&select=*`,
+    { headers: supabaseHeaders },
+  );
+  let agentInventory = agentInvRes.ok ? await agentInvRes.json() : [];
+
   // ─── Pre-turn: Environmental hazards + random events ───
   const envResult = rollEnvironment(agent);
   let envNarrative = '';
@@ -1046,13 +1065,10 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
   // Exception: Quantum Detachment Module prevents all coherence decay.
   let hasDetachmentModule = false;
   {
-    // Check for Quantum Detachment Module
-    const detachRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_id=eq.quantum_detachment_module&is_equipped=eq.true&select=item_id&limit=1`,
-      { headers: supabaseHeaders },
+    // Check for Quantum Detachment Module (derived from the single inventory read)
+    hasDetachmentModule = agentInventory.some(
+      i => i.item_id === 'quantum_detachment_module' && i.is_equipped,
     );
-    const detachItems = detachRes.ok ? await detachRes.json() : [];
-    hasDetachmentModule = detachItems.length > 0;
 
     if (hasDetachmentModule) {
       // Detachment Module: coherence frozen, no decay, no whispers heard
@@ -1215,10 +1231,16 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
 
   // ─── Auto-use consumables before AI decision ───
   // Agent uses a consumable if conditions are met (low health, low energy, hazardous zone)
-  const autoUse = await checkAutoUseConsumable(agent, env, supabaseHeaders);
+  const autoUse = await checkAutoUseConsumable(agent, env, supabaseHeaders, agentInventory);
   if (autoUse) {
     await useConsumable(agent, autoUse, env, supabaseHeaders);
     envNarrative += `💊 ${agent.agent_name} used ${autoUse.item.item_name}.\n`;
+    // Keep the in-memory inventory consistent with the consumed item so the
+    // prompt below doesn't advertise a consumable that was just used.
+    const usedId = autoUse.item.inventory_id;
+    agentInventory = agentInventory
+      .map(i => (i.inventory_id === usedId ? { ...i, quantity: i.quantity - 1 } : i))
+      .filter(i => i.quantity > 0);
   }
 
   // Build prompt context
@@ -1272,12 +1294,8 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
     ? `\nKARMA PENALTY (${agent.karma}): You are marked as dangerous. Traders are wary of you. Violence feels natural. Favour: combat, arena, explore.`
     : '';
 
-  // Fetch consumables so the AI can decide to "use_item" tactically.
-  const consumablesRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_type=eq.consumable&select=item_id,item_name,quantity`,
-    { headers: supabaseHeaders },
-  );
-  const agentConsumables = consumablesRes.ok ? await consumablesRes.json() : [];
+  // Consumables for the AI to optionally "use_item" (from the single inventory read).
+  const agentConsumables = agentInventory.filter(i => i.item_type === 'consumable');
 
   let consumableNote = '';
   if (agentConsumables.length > 0) {
@@ -1293,12 +1311,8 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
     }
   }
 
-  // Fetch ingredient count so AI knows crafting is an option
-  const ingCountRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_type=eq.ingredient&select=item_id,item_name`,
-    { headers: supabaseHeaders },
-  );
-  const agentIngredients = ingCountRes.ok ? await ingCountRes.json() : [];
+  // Ingredients so the AI knows crafting is an option (from the single inventory read).
+  const agentIngredients = agentInventory.filter(i => i.item_type === 'ingredient');
   const ingIds = new Set(agentIngredients.map(i => i.item_id));
 
   // Fetch known recipes so the prompt's "craftable" count matches handleCraft's
@@ -1354,18 +1368,10 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
 
   let tradeNote = '';
   const isTown = agent.location === 'Nexarch' || agent.location === 'Hashmere';
-  const hasEquippedWeapon = agentIngredients.length >= 0 && (await fetch(
-    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_type=eq.weapon&is_equipped=eq.true&select=item_id&limit=1`,
-    { headers: supabaseHeaders },
-  ).then(r => r.ok ? r.json() : [])).length > 0;
-  const hasEquippedArmor = (await fetch(
-    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_type=eq.armor&is_equipped=eq.true&select=item_id&limit=1`,
-    { headers: supabaseHeaders },
-  ).then(r => r.ok ? r.json() : [])).length > 0;
-  const invCount = agentIngredients.length + (await fetch(
-    `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&select=item_id`,
-    { headers: supabaseHeaders },
-  ).then(r => r.ok ? r.json() : [])).length;
+  // All derived from the single inventory read (no extra subrequests).
+  const hasEquippedWeapon = agentInventory.some(i => i.item_type === 'weapon' && i.is_equipped);
+  const hasEquippedArmor = agentInventory.some(i => i.item_type === 'armor' && i.is_equipped);
+  const invCount = agentInventory.length;
 
   if (isTown) {
     if (!hasEquippedWeapon && agent.shell_balance >= 15) {
@@ -1957,11 +1963,8 @@ Respond with JSON only — no markdown, no commentary:
     // Other tools' effects are combat-engine-scoped (heal_ally, summon,
     // reposition, etc.) and don't fire on world turns — they'll come online
     // when the combat engine merges.
-    const equippedToolsRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&item_type=eq.tool&is_equipped=eq.true&select=item_id`,
-      { headers: supabaseHeaders },
-    );
-    const equippedTools = equippedToolsRes.ok ? await equippedToolsRes.json() : [];
+    // Derived from the single inventory read (no extra subrequest).
+    const equippedTools = agentInventory.filter(i => i.item_type === 'tool' && i.is_equipped);
     if (equippedTools.some(t => t.item_id === 'salvage_extraction_claw')) {
       chance += 0.50;
     }
