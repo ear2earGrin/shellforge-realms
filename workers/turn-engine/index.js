@@ -19,6 +19,18 @@ const ACTION_ENERGY_COSTS = {
 
 const ACTION_ENERGY_GAINS = { rest: 25 };
 
+// ─── Travel Timing ──────────────────────────────────────────────
+// Real-time travel: when an agent moves, they don't teleport. They get a
+// travel_state row with an ETA somewhere in [TRAVEL_MIN_HOURS, TRAVEL_MAX_HOURS]
+// hours from now. The frontend interpolates the dot position between origin
+// and destination from started_at/eta_at. The turn engine finalizes arrival
+// on the first tick where now >= eta_at.
+const TRAVEL_MIN_HOURS = 1;
+const TRAVEL_MAX_HOURS = 3;
+function rollTravelHours() {
+  return TRAVEL_MIN_HOURS + Math.random() * (TRAVEL_MAX_HOURS - TRAVEL_MIN_HOURS);
+}
+
 // ─── Anti-Camping Tuning Constants ──────────────────────────────
 const DIMINISH_THRESHOLDS = [4, 8, 12];           // turns before each penalty tier
 const DIMINISH_VALUES     = [1.0, 0.7, 0.4, 0.15]; // reward multipliers per tier
@@ -859,6 +871,161 @@ Respond with the memoir text only.`;
   agent.memoir_updated_turn = turns;
 }
 
+// ─── Travel helpers ────────────────────────────────────────────────────────
+// startTravel: kick off real-time travel from agent.location → destination.
+// Sets agent.travel_state, deducts move energy, logs a "departed" entry, and
+// mutates the agent in place. Does NOT change agent.location — that happens
+// on arrival. Returns the eta_at ISO string.
+async function startTravel(agent, destination, env, supabaseHeaders, detail) {
+  const { SUPABASE_URL } = env;
+  const now = new Date();
+  const hours = rollTravelHours();
+  const etaMs = now.getTime() + hours * 60 * 60 * 1000;
+  const eta = new Date(etaMs);
+  const travelState = {
+    from: agent.location,
+    to: destination,
+    started_at: now.toISOString(),
+    eta_at: eta.toISOString(),
+    hours,
+  };
+  const moveCost = ACTION_ENERGY_COSTS.move;
+  const newEnergy = Math.max(0, agent.energy - moveCost);
+  const newTurns = agent.turns_taken + 1;
+
+  await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+    method: 'POST',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      agent_id: agent.agent_id,
+      turn_number: newTurns,
+      action_type: 'depart',
+      action_detail: detail || `${agent.agent_name} sets out toward ${destination}.`,
+      energy_cost: moveCost,
+      energy_gained: 0,
+      shell_change: 0,
+      karma_change: 0,
+      health_change: 0,
+      location: agent.location,
+      success: true,
+    }),
+  });
+  await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+    method: 'PATCH',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      energy: newEnergy,
+      travel_state: travelState,
+      location_detail: `En route to ${destination}`,
+      turns_taken: newTurns,
+      last_action_at: now.toISOString(),
+    }),
+  });
+  agent.energy = newEnergy;
+  agent.travel_state = travelState;
+  agent.turns_taken = newTurns;
+  console.log(`[${agent.agent_name}] Departed ${agent.location} → ${destination}, eta ${eta.toISOString()} (${hours.toFixed(1)}h)`);
+  return eta.toISOString();
+}
+
+// finalizeArrival: agent has reached destination. Clears travel_state, sets
+// location, logs an "arrive" entry, increments turn counter. Does NOT run a
+// normal AI turn — arrival is the turn's payload.
+async function finalizeArrival(agent, env, supabaseHeaders) {
+  const { SUPABASE_URL } = env;
+  const ts = agent.travel_state;
+  if (!ts) return;
+  const destination = ts.to;
+  const newTurns = agent.turns_taken + 1;
+  const now = new Date().toISOString();
+
+  await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+    method: 'POST',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      agent_id: agent.agent_id,
+      turn_number: newTurns,
+      action_type: 'arrive',
+      action_detail: `${agent.agent_name} arrives at ${destination}.`,
+      energy_cost: 0,
+      energy_gained: 0,
+      shell_change: 0,
+      karma_change: 0,
+      health_change: 0,
+      location: destination,
+      success: true,
+    }),
+  });
+  await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+    method: 'PATCH',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      location: destination,
+      location_detail: `Just arrived from ${ts.from}`,
+      travel_state: null,
+      turns_at_location: 0,
+      turns_taken: newTurns,
+      last_action_at: now,
+      ...(LOCATION_VISUAL_COORDS[destination] ? {
+        visual_x: LOCATION_VISUAL_COORDS[destination].x,
+        visual_y: LOCATION_VISUAL_COORDS[destination].y,
+      } : {}),
+    }),
+  });
+  agent.location = destination;
+  agent.travel_state = null;
+  agent.turns_taken = newTurns;
+  agent.turns_at_location = 0;
+  console.log(`[${agent.agent_name}] Arrived ${destination}`);
+}
+
+// logInTransit: agent is still mid-journey. Cheap log entry, no AI call.
+async function logInTransit(agent, env, supabaseHeaders) {
+  const { SUPABASE_URL } = env;
+  const ts = agent.travel_state;
+  if (!ts) return;
+  const newTurns = agent.turns_taken + 1;
+  const now = new Date().toISOString();
+  const etaMs = new Date(ts.eta_at).getTime();
+  const remainingMs = Math.max(0, etaMs - Date.now());
+  const remainingH = (remainingMs / (1000 * 60 * 60)).toFixed(1);
+
+  const lines = [
+    `${agent.agent_name} is en route to ${ts.to}. ~${remainingH}h remaining.`,
+    `${agent.agent_name} keeps moving toward ${ts.to}. Roughly ${remainingH}h out.`,
+    `${agent.agent_name} pushes on. ${ts.to} still ~${remainingH}h ahead.`,
+  ];
+  const detail = lines[Math.floor(Math.random() * lines.length)];
+
+  await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+    method: 'POST',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      agent_id: agent.agent_id,
+      turn_number: newTurns,
+      action_type: 'transit',
+      action_detail: detail,
+      energy_cost: 0,
+      energy_gained: 0,
+      shell_change: 0,
+      karma_change: 0,
+      health_change: 0,
+      location: ts.from,
+      success: true,
+    }),
+  });
+  await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+    method: 'PATCH',
+    headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      turns_taken: newTurns,
+      last_action_at: now,
+    }),
+  });
+  agent.turns_taken = newTurns;
+  console.log(`[${agent.agent_name}] In transit → ${ts.to}, ${remainingH}h left`);
+}
+
 // Roll for environmental hazard + random event.
 // Factors in: location danger, karma, agent traits, archetype.
 function rollEnvironment(agent) {
@@ -1220,6 +1387,20 @@ async function runTurnEngine(env) {
 
 async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAgents) {
   const { SUPABASE_URL, ANTHROPIC_API_KEY } = env;
+
+  // ─── Real-time travel: handle in-transit agents before anything else ───
+  // Travel takes 1–3h of real time. If travel_state is set, this turn is
+  // either an arrival (now >= eta_at) or an in-transit tick (still en route).
+  // Either way we skip hazards, AI decision, and the rest of the normal flow.
+  if (agent.travel_state && agent.travel_state.eta_at) {
+    const etaMs = new Date(agent.travel_state.eta_at).getTime();
+    if (Date.now() >= etaMs) {
+      await finalizeArrival(agent, env, supabaseHeaders);
+    } else {
+      await logInTransit(agent, env, supabaseHeaders);
+    }
+    return;
+  }
 
   // ─── Pre-turn: Environmental hazards + random events ───
   const envResult = rollEnvironment(agent);
@@ -2039,39 +2220,18 @@ Respond with JSON only — no markdown, no commentary:
       return;
     }
 
-    // Valid move — deduct energy and update location
-    const newEnergy = Math.max(0, agent.energy - moveCost);
-    await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
-      method: 'POST',
-      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-      body: JSON.stringify({
-        agent_id: agent.agent_id, turn_number: newTurns, action_type: 'move',
-        action_detail: (hazardPrefix ? hazardPrefix + ' ' : '') + decision.detail, energy_cost: moveCost, energy_gained: 0,
-        shell_change: 0, karma_change: 0, health_change: 0,
-        location: destination, success: true,
-      }),
-    });
-    await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
-      method: 'PATCH',
-      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-      body: JSON.stringify({
-        energy: newEnergy, location: destination,
-        location_detail: `Just arrived from ${agent.location}`,
-        turns_taken: newTurns, last_action_at: now,
-        turns_at_location: 0,
-        ...(LOCATION_VISUAL_COORDS[destination] ? {
-          visual_x: LOCATION_VISUAL_COORDS[destination].x,
-          visual_y: LOCATION_VISUAL_COORDS[destination].y,
-        } : {}),
-      }),
-    });
-    console.log(`[${agent.agent_name}] Turn ${newTurns}: move ${agent.location} → ${destination} | E:${agent.energy}→${newEnergy}`);
+    // Valid move — start real-time travel. The agent does NOT teleport;
+    // travel_state is set and arrival fires on a future tick when now >= eta_at.
+    const departDetail = (hazardPrefix ? hazardPrefix + ' ' : '') + (decision.detail || `${agent.agent_name} sets out toward ${destination}.`);
+    await startTravel(agent, destination, env, supabaseHeaders, departDetail);
     return;
   }
 
-  // ─── Auto-Travel: if AI narration mentions a different location, move there first ───
-  // This makes agents actually traverse the map instead of staying put while
-  // narrating about distant places. Only triggers for explore/gather/quest/church.
+  // ─── Auto-Travel: if AI narration mentions a different location, depart instead ───
+  // With real-time travel (1-3h per hop) we can't do "gather AND travel" in one
+  // turn. If the AI's narration mentions an adjacent zone, treat the turn as a
+  // depart toward that zone — the original action is forfeited and the agent
+  // will get a fresh decision once they arrive.
   const autoTravelActions = ['explore', 'gather', 'quest', 'church'];
   if (autoTravelActions.includes(action) && decision.detail) {
     const mentionedLoc = ALL_LOCATIONS.find(loc =>
@@ -2080,75 +2240,17 @@ Respond with JSON only — no markdown, no commentary:
     );
     if (mentionedLoc) {
       const adjacent = LOCATION_GRAPH[agent.location]?.adjacent || [];
+      let target = null;
       if (adjacent.includes(mentionedLoc)) {
-        // Adjacent — auto-move there, deduct move energy, log travel
-        const travelCost = ACTION_ENERGY_COSTS.move;
-        if (agent.energy > travelCost + (ACTION_ENERGY_COSTS[action] || 0)) {
-          agent.energy = Math.max(0, agent.energy - travelCost);
-          const travelDetail = `${agent.agent_name} traveled from ${agent.location} to ${mentionedLoc}.`;
-          await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
-            method: 'POST',
-            headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-            body: JSON.stringify({
-              agent_id: agent.agent_id, turn_number: agent.turns_taken,
-              action_type: 'move', action_detail: travelDetail,
-              energy_cost: travelCost, energy_gained: 0,
-              shell_change: 0, karma_change: 0, health_change: 0,
-              location: mentionedLoc, success: true,
-            }),
-          });
-          // Update agent location in DB
-          const coords = LOCATION_VISUAL_COORDS[mentionedLoc] || {};
-          await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
-            method: 'PATCH',
-            headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-            body: JSON.stringify({
-              location: mentionedLoc, energy: agent.energy,
-              location_detail: `Traveled from ${agent.location}`,
-              turns_at_location: 0,
-              ...(coords.x != null ? { visual_x: coords.x, visual_y: coords.y } : {}),
-            }),
-          });
-          console.log(`[${agent.agent_name}] Auto-travel: ${agent.location} → ${mentionedLoc} (E:${agent.energy + travelCost}→${agent.energy})`);
-          agent.location = mentionedLoc;
-          agent.turns_at_location = 0;
-        }
+        target = mentionedLoc;
       } else {
-        // Not adjacent — find path and move one step closer
         const path = findPath(agent.location, mentionedLoc);
-        if (path && path.length > 1) {
-          const nextStep = path[1];
-          const travelCost = ACTION_ENERGY_COSTS.move;
-          if (agent.energy > travelCost + (ACTION_ENERGY_COSTS[action] || 0)) {
-            agent.energy = Math.max(0, agent.energy - travelCost);
-            const travelDetail = `${agent.agent_name} headed toward ${mentionedLoc} — reached ${nextStep}.`;
-            await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
-              method: 'POST',
-              headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-              body: JSON.stringify({
-                agent_id: agent.agent_id, turn_number: agent.turns_taken,
-                action_type: 'move', action_detail: travelDetail,
-                energy_cost: travelCost, energy_gained: 0,
-                shell_change: 0, karma_change: 0, health_change: 0,
-                location: nextStep, success: true,
-              }),
-            });
-            const coords = LOCATION_VISUAL_COORDS[nextStep] || {};
-            await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
-              method: 'PATCH',
-              headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
-              body: JSON.stringify({
-                location: nextStep, energy: agent.energy,
-                location_detail: `En route to ${mentionedLoc}`,
-                turns_at_location: 0,
-                ...(coords.x != null ? { visual_x: coords.x, visual_y: coords.y } : {}),
-              }),
-            });
-            console.log(`[${agent.agent_name}] Auto-travel (step): ${agent.location} → ${nextStep} (toward ${mentionedLoc}) E:${agent.energy + travelCost}→${agent.energy}`);
-            agent.location = nextStep;
-            agent.turns_at_location = 0;
-          }
-        }
+        if (path && path.length > 1) target = path[1];
+      }
+      if (target && agent.energy > ACTION_ENERGY_COSTS.move) {
+        const departDetail = `${agent.agent_name} sets out toward ${target}${target !== mentionedLoc ? ` (heading for ${mentionedLoc})` : ''}.`;
+        await startTravel(agent, target, env, supabaseHeaders, departDetail);
+        return;
       }
     }
   }
