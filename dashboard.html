@@ -5541,6 +5541,7 @@
                         stats:          dbAgent.stats || {},
                         traits:         dbAgent.traits || {},
                         journey:        dbAgent.journey || null,
+                        travelState:    dbAgent.travel_state || null,
                         _source:        'supabase'
                     };
                     saveAgent(agent);
@@ -6272,8 +6273,11 @@
         if (agent.journey && agent.journey.status === 'active') {
             console.log('🚀 Journey detected, starting animation...', agent.journey);
             startJourneyAnimation(agent);
+        } else if (agent.travelState && agent.travelState.eta_at && Date.now() < Date.parse(agent.travelState.eta_at)) {
+            console.log('🚀 Backend travel detected, starting animation...', agent.travelState);
+            startJourneyAnimation(agent);
         } else {
-            console.log('🚀 No active journey. journey=', agent.journey);
+            console.log('🚀 No active journey. journey=', agent.journey, 'travelState=', agent.travelState);
         }
 
         // Update shell balance
@@ -8094,6 +8098,12 @@
                     classes.push('traveling');
                 }
             }
+            // Backend travel_state: dot is in transit between zones
+            if (agent && agent.travelState && agent.travelState.eta_at) {
+                if (Date.now() < Date.parse(agent.travelState.eta_at)) {
+                    classes.push('traveling');
+                }
+            }
             
             marker.className = classes.join(' ');
 
@@ -8136,6 +8146,24 @@
 
         // Get current position if agent is traveling (returns VISUAL coordinates 0-100)
         function getCurrentPosition(agent) {
+            // ─── Backend travel_state (Phase 1 real-time travel) ───
+            // Lerp between the visual coords of `from` and `to` based on how much
+            // real time has elapsed. If eta_at has passed but the cron hasn't
+            // finalized arrival yet, clamp the dot at the destination.
+            if (agent.travelState && agent.travelState.eta_at && agent.travelState.started_at) {
+                const startMs = Date.parse(agent.travelState.started_at);
+                const etaMs   = Date.parse(agent.travelState.eta_at);
+                const fromPos = getVisualCoordsForLocation(agent.travelState.from);
+                const toPos   = getVisualCoordsForLocation(agent.travelState.to);
+                if (fromPos && toPos && etaMs > startMs) {
+                    const progress = Math.max(0, Math.min(1, (Date.now() - startMs) / (etaMs - startMs)));
+                    return {
+                        x: Math.round(lerp(fromPos.x, toPos.x, progress)),
+                        y: Math.round(lerp(fromPos.y, toPos.y, progress)),
+                    };
+                }
+            }
+
             // Check if agent has active journey
             if (agent.journey && agent.journey.status === 'active') {
                 const now = Date.now();
@@ -8278,11 +8306,20 @@
                     return;
                 }
 
-                // Continue animation if still traveling
-                if (currentAgent.journey && currentAgent.journey.status === 'active') {
+                // Continue animation if still traveling (journey OR backend travel_state)
+                const stillJourney = currentAgent.journey && currentAgent.journey.status === 'active';
+                const stillTraveling = currentAgent.travelState
+                    && currentAgent.travelState.eta_at
+                    && Date.now() < Date.parse(currentAgent.travelState.eta_at);
+                if (stillJourney || stillTraveling) {
                     journeyAnimationId = requestAnimationFrame(animate);
                 } else {
                     journeyAnimationId = null;
+                    // Backend travel just completed in the frontend's view — refresh so
+                    // the next poll picks up the new location set by the cron arrival.
+                    if (currentAgent.travelState) {
+                        setTimeout(() => location.reload(), 500);
+                    }
                 }
             }
 
