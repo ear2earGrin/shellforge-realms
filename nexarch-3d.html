@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXARCH — City of Shadows [3D]</title>
+<style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #05070c;
+                 font-family: 'Courier New', monospace; }
+    #scene { position: fixed; inset: 0; }
+    .hud { position: fixed; z-index: 10; color: #5af0e1; pointer-events: none;
+           text-shadow: 0 0 8px rgba(90,240,225,.6); letter-spacing: .12em; }
+    #title { top: 18px; left: 22px; font-size: 1.05rem; }
+    #title small { display: block; color: #d769ff; font-size: .62rem;
+                   letter-spacing: .3em; margin-top: 4px;
+                   text-shadow: 0 0 8px rgba(215,105,255,.6); }
+    #status { bottom: 44px; left: 22px; font-size: .72rem; color: #d769ff; }
+    #hint { bottom: 18px; left: 22px; font-size: .62rem; color: #3d6f74; }
+    #loading { top: 50%; left: 50%; transform: translate(-50%,-50%);
+               font-size: .8rem; animation: pulse 1.2s infinite; }
+    @keyframes pulse { 50% { opacity: .35; } }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div class="hud" id="title">NEXARCH<small>CITY OF SHADOWS — LIVE SECTOR VIEW</small></div>
+<div class="hud" id="status">AGENT: initializing…</div>
+<div class="hud" id="hint">DRAG pan · WHEEL zoom · Q/E rotate · CLICK ground to dispatch agent · L labels</div>
+<div class="hud" id="loading">ESTABLISHING UPLINK…</div>
+
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const canvas = document.getElementById('scene');
+const statusEl = document.getElementById('status');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.3;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x05070c);
+scene.fog = new THREE.Fog(0x05070c, 980, 1900);
+
+// ---------------------------------------------------------------- camera
+const camera = new THREE.OrthographicCamera();
+const view = { target: new THREE.Vector3(0, 0, 0), yaw: Math.PI * 1.25,
+               yawGoal: Math.PI * 1.25, pitch: THREE.MathUtils.degToRad(38),
+               zoom: 1.0, dist: 900 };
+function updateCamera() {
+    const aspect = innerWidth / innerHeight;
+    const h = 460 / view.zoom;
+    camera.left = -h * aspect / 2; camera.right = h * aspect / 2;
+    camera.top = h / 2; camera.bottom = -h / 2;
+    camera.near = 1; camera.far = 2600;
+    const cp = Math.cos(view.pitch), sp = Math.sin(view.pitch);
+    camera.position.set(
+        view.target.x + view.dist * cp * Math.sin(view.yaw),
+        view.target.y + view.dist * sp,
+        view.target.z + view.dist * cp * Math.cos(view.yaw));
+    camera.lookAt(view.target);
+    camera.updateProjectionMatrix();
+}
+
+// ---------------------------------------------------------------- lights
+scene.add(new THREE.HemisphereLight(0x44557e, 0x0c0e16, 4.0));
+const moon = new THREE.DirectionalLight(0x8898d8, 2.6);
+moon.position.set(-300, 500, -200);
+scene.add(moon);
+
+// ---------------------------------------------------------------- composer
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.85, 0.55, 0.62);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+function resize() {
+    renderer.setSize(innerWidth, innerHeight);
+    composer.setSize(innerWidth, innerHeight);
+    updateCamera();
+}
+addEventListener('resize', resize);
+
+// ---------------------------------------------------------------- load city
+const ASSETS = 'images/3d/';
+const loader = new GLTFLoader();
+const texLoader = new THREE.TextureLoader();
+const layout = await (await fetch(ASSETS + 'nexarch-layout.json')).json();
+
+// ground
+const groundTex = texLoader.load(ASSETS + 'nexarch-ground.png');
+groundTex.colorSpace = THREE.SRGBColorSpace;
+groundTex.anisotropy = 4;
+{
+    const g = new THREE.PlaneGeometry(layout.size + 20, layout.size + 20);
+    g.rotateX(-Math.PI / 2);
+    const m = new THREE.MeshStandardMaterial({
+        map: groundTex, emissiveMap: groundTex, emissive: 0xffffff,
+        emissiveIntensity: 0.7, roughness: 0.7, metalness: 0.1
+    });
+    scene.add(new THREE.Mesh(g, m));
+    const apron = new THREE.Mesh(
+        new THREE.CircleGeometry(1400, 48).rotateX(-Math.PI / 2),
+        new THREE.MeshStandardMaterial({ color: 0x070a10, roughness: 1 }));
+    apron.position.y = -0.25;
+    scene.add(apron);
+}
+
+// kit pieces -> InstancedMesh per primitive
+const kit = await loader.loadAsync(ASSETS + 'nexarch-kit.glb');
+const byPiece = {};
+for (const pl of layout.placements) (byPiece[pl.p] ??= []).push(pl);
+const tmpM = new THREE.Matrix4(), tmpP = new THREE.Matrix4();
+for (const [name, places] of Object.entries(byPiece)) {
+    const root = kit.scene.getObjectByName(name);
+    if (!root) { console.warn('missing kit piece', name); continue; }
+    root.updateWorldMatrix(true, true);
+    const prims = [];
+    root.traverse(o => { if (o.isMesh) prims.push(o); });
+    for (const prim of prims) {
+        const inst = new THREE.InstancedMesh(prim.geometry, prim.material, places.length);
+        const rel = prim.matrixWorld.clone()
+            .premultiply(root.matrixWorld.clone().invert());
+        places.forEach((pl, i) => {
+            tmpP.makeRotationY(pl.r)
+                .scale(new THREE.Vector3(pl.s, pl.s, pl.s))
+                .setPosition(pl.x, 0, pl.z);
+            inst.setMatrixAt(i, tmpM.multiplyMatrices(tmpP, rel));
+        });
+        inst.instanceMatrix.needsUpdate = true;
+        scene.add(inst);
+    }
+}
+
+// forest outside the walls
+{
+    const g = new THREE.ConeGeometry(1, 1, 7);
+    g.translate(0, 0.5, 0);
+    const m = new THREE.MeshStandardMaterial({ color: 0x0b2018, roughness: 1 });
+    const trees = new THREE.InstancedMesh(g, m, 300);
+    const rng = (() => { let s = 5; return () => (s = s * 16807 % 2147483647) / 2147483647; })();
+    for (let i = 0; i < 300; i++) {
+        const a = rng() * Math.PI * 2, r = 318 + rng() * 220, h = 9 + rng() * 9;
+        tmpM.makeScale(h * 0.34, h, h * 0.34).setPosition(
+            r * Math.cos(a), 0, r * Math.sin(a));
+        trees.setMatrixAt(i, tmpM);
+    }
+    scene.add(trees);
+}
+
+// ---------------------------------------------------------------- labels
+const LABEL_H = { 'CHURCH': 52, 'ARENA': 34, 'THE CORE': 20, 'FORGE': 28,
+                  'MARKET': 18, 'ALCHEMY LABS': 42, 'FAMILY VAULT': 22,
+                  'DEEP MINES': 30, 'DARK ALLEY': 36 };
+const labelGroup = new THREE.Group();
+const labelSprites = [];
+for (const lb of layout.labels) {
+    const c = document.createElement('canvas');
+    c.width = 512; c.height = 128;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = 'rgba(5,10,14,0.82)';
+    ctx.strokeStyle = '#5af0e1';
+    ctx.lineWidth = 5;
+    const w = ctx.measureText(lb.name).width;
+    ctx.font = 'bold 52px Courier New';
+    const tw = ctx.measureText(lb.name).width + 70;
+    ctx.fillRect((512 - tw) / 2, 22, tw, 84);
+    ctx.strokeRect((512 - tw) / 2, 22, tw, 84);
+    ctx.fillStyle = '#9af5ec';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = '#5af0e1'; ctx.shadowBlur = 16;
+    ctx.fillText(lb.name, 256, 66);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const spr = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: tex, depthTest: false, transparent: true }));
+    spr.position.set(lb.x, (LABEL_H[lb.name] ?? 26), lb.z);
+    spr.scale.set(64, 16, 1);
+    spr.userData = lb;
+    labelGroup.add(spr);
+    labelSprites.push(spr);
+}
+scene.add(labelGroup);
+
+// ---------------------------------------------------------------- rain
+let rain;
+{
+    const N = 3200, pos = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) {
+        pos[i * 3] = (Math.random() - 0.5) * 720;
+        pos[i * 3 + 1] = Math.random() * 260;
+        pos[i * 3 + 2] = (Math.random() - 0.5) * 720;
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    rain = new THREE.Points(g, new THREE.PointsMaterial({
+        color: 0x6f86b8, size: 1.3, sizeAttenuation: false,
+        transparent: true, opacity: 0.28 }));
+    scene.add(rain);
+}
+
+// ---------------------------------------------------------------- walk grid + A*
+const N = layout.gridN, CELL = layout.size / N, HALF = layout.size / 2;
+const walk = layout.grid;
+const cellOf = v => Math.max(0, Math.min(N - 1, Math.floor((v + HALF) / CELL)));
+const isWalk = (cx, cz) => cx >= 0 && cz >= 0 && cx < N && cz < N && walk[cz][cx] === '1';
+const worldOf = (cx, cz) => [ -HALF + (cx + 0.5) * CELL, -HALF + (cz + 0.5) * CELL ];
+
+function nearestWalkable(cx, cz) {
+    if (isWalk(cx, cz)) return [cx, cz];
+    for (let r = 1; r < 30; r++)
+        for (let dz = -r; dz <= r; dz++)
+            for (let dx = -r; dx <= r; dx++)
+                if (Math.max(Math.abs(dx), Math.abs(dz)) === r && isWalk(cx + dx, cz + dz))
+                    return [cx + dx, cz + dz];
+    return null;
+}
+
+function astar(start, goal) {
+    const key = (x, z) => z * N + x;
+    const open = new Map([[key(...start), { c: start, g: 0,
+        f: Math.hypot(goal[0] - start[0], goal[1] - start[1]), from: null }]]);
+    const closed = new Map();
+    while (open.size) {
+        let bk, best;
+        for (const [k, n] of open) if (!best || n.f < best.f) { best = n; bk = k; }
+        open.delete(bk); closed.set(bk, best);
+        const [cx, cz] = best.c;
+        if (cx === goal[0] && cz === goal[1]) {
+            const path = [];
+            for (let n = best; n; n = n.from) path.unshift(n.c);
+            return path;
+        }
+        for (const [dx, dz] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]) {
+            const nx = cx + dx, nz = cz + dz;
+            if (!isWalk(nx, nz)) continue;
+            if (dx && dz && (!isWalk(cx + dx, cz) || !isWalk(cx, cz + dz))) continue;
+            const k = key(nx, nz);
+            if (closed.has(k)) continue;
+            const g = best.g + Math.hypot(dx, dz);
+            const ex = open.get(k);
+            if (!ex || g < ex.g)
+                open.set(k, { c: [nx, nz], g,
+                    f: g + Math.hypot(goal[0] - nx, goal[1] - nz), from: best });
+        }
+        if (closed.size > 14000) break;
+    }
+    return null;
+}
+
+function losClear(a, b) {  // straight-line walkability between cells
+    const steps = Math.ceil(Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1])) * 2);
+    for (let i = 1; i < steps; i++) {
+        const t = i / steps;
+        if (!isWalk(Math.round(a[0] + (b[0] - a[0]) * t),
+                    Math.round(a[1] + (b[1] - a[1]) * t))) return false;
+    }
+    return true;
+}
+function smooth(path) {
+    if (!path || path.length < 3) return path;
+    const out = [path[0]];
+    let i = 0;
+    while (i < path.length - 1) {
+        let j = path.length - 1;
+        while (j > i + 1 && !losClear(path[i], path[j])) j--;
+        out.push(path[j]); i = j;
+    }
+    return out;
+}
+
+// ---------------------------------------------------------------- agent
+const agent = new THREE.Group();
+scene.add(agent);
+const agentLight = new THREE.PointLight(0xff2814, 30, 40);
+agentLight.position.y = 6;
+agent.add(agentLight);
+let agentReady = false;
+loader.load(ASSETS + 'rune-monk.glb', g => {
+    const m = g.scene;
+    m.scale.setScalar(2.1);
+    agent.add(m);
+    agentReady = true;
+    document.getElementById('loading').style.display = 'none';
+});
+let route = [], routeName = '', speed = 13;
+const spawn = nearestWalkable(cellOf(0), cellOf(14));
+let [ax, az] = worldOf(...spawn);
+agent.position.set(ax, 0, az);
+
+function dispatch(wx, wz, name) {
+    const from = nearestWalkable(cellOf(agent.position.x), cellOf(agent.position.z));
+    const to = nearestWalkable(cellOf(wx), cellOf(wz));
+    if (!from || !to) return;
+    const p = smooth(astar(from, to));
+    if (!p) return;
+    route = p.map(c => worldOf(...c));
+    routeName = name || `(${Math.round(wx + 10500)}, ${Math.round(wz + 9000)})`;
+    statusEl.textContent = `AGENT: en route → ${routeName}`;
+}
+function wander() {
+    const lb = layout.labels[Math.floor(Math.random() * layout.labels.length)];
+    dispatch(lb.x, lb.z, lb.name);
+}
+
+// ---------------------------------------------------------------- input
+let dragging = false, moved = 0, px = 0, py = 0;
+canvas.addEventListener('pointerdown', e => { dragging = true; moved = 0; px = e.clientX; py = e.clientY; });
+addEventListener('pointerup', e => {
+    dragging = false;
+    if (moved < 5) {  // click → dispatch
+        const ndc = new THREE.Vector2(e.clientX / innerWidth * 2 - 1,
+                                      -(e.clientY / innerHeight) * 2 + 1);
+        const ray = new THREE.Raycaster();
+        ray.setFromCamera(ndc, camera);
+        const hitLabel = ray.intersectObjects(labelSprites)[0];
+        if (hitLabel) { const lb = hitLabel.object.userData; dispatch(lb.x, lb.z, lb.name); return; }
+        const pt = new THREE.Vector3();
+        if (ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), pt))
+            dispatch(pt.x, pt.z);
+    }
+});
+addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const dx = e.clientX - px, dy = e.clientY - py;
+    moved += Math.abs(dx) + Math.abs(dy);
+    px = e.clientX; py = e.clientY;
+    const s = (460 / view.zoom) / innerHeight;
+    const right = new THREE.Vector3(Math.cos(view.yaw), 0, -Math.sin(view.yaw));
+    const fwd = new THREE.Vector3(-Math.sin(view.yaw), 0, -Math.cos(view.yaw));
+    view.target.addScaledVector(right, -dx * s);
+    view.target.addScaledVector(fwd, dy * s / Math.sin(view.pitch));
+    view.target.clampScalar(-340, 340);
+    view.target.y = 0;
+});
+addEventListener('wheel', e => {
+    view.zoom = THREE.MathUtils.clamp(view.zoom * (e.deltaY > 0 ? 0.9 : 1.12), 0.55, 7);
+});
+addEventListener('keydown', e => {
+    const k = e.key.toLowerCase();
+    if (k === 'q') view.yawGoal += Math.PI / 4;
+    if (k === 'e') view.yawGoal -= Math.PI / 4;
+    if (k === 'l') labelGroup.visible = !labelGroup.visible;
+});
+
+// ---------------------------------------------------------------- main loop
+const clock = new THREE.Clock();
+let idleT = 0;
+function tick() {
+    requestAnimationFrame(tick);
+    const dt = Math.min(clock.getDelta(), 0.1);
+    view.yaw += (view.yawGoal - view.yaw) * Math.min(1, dt * 6);
+    updateCamera();
+
+    // rain fall
+    const rp = rain.geometry.attributes.position;
+    for (let i = 0; i < rp.count; i++) {
+        let y = rp.getY(i) - dt * 120;
+        if (y < 0) y = 260;
+        rp.setY(i, y);
+    }
+    rp.needsUpdate = true;
+
+    // agent movement
+    if (agentReady) {
+        if (route.length) {
+            const [tx, tz] = route[0];
+            const dx = tx - agent.position.x, dz = tz - agent.position.z;
+            const d = Math.hypot(dx, dz);
+            if (d < 0.6) route.shift();
+            else {
+                agent.position.x += dx / d * speed * dt;
+                agent.position.z += dz / d * speed * dt;
+                const want = Math.atan2(dx, dz);
+                let dr = want - agent.rotation.y;
+                while (dr > Math.PI) dr -= 2 * Math.PI;
+                while (dr < -Math.PI) dr += 2 * Math.PI;
+                agent.rotation.y += dr * Math.min(1, dt * 8);
+            }
+            if (!route.length) {
+                statusEl.textContent = `AGENT: arrived — ${routeName}`;
+                idleT = 2 + Math.random() * 4;
+            }
+        } else {
+            idleT -= dt;
+            if (idleT <= 0) wander();
+        }
+        agent.position.y = Math.sin(clock.elapsedTime * 2.2) * 0.25 + 0.1;
+    }
+    composer.render();
+}
+window.NEXARCH = { view, dispatch, agent, layout };  // console / future dashboard hook
+resize();
+wander();
+tick();
+</script>
+</body>
+</html>
