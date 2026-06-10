@@ -388,7 +388,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions
 AS $$
 DECLARE
   v_agent  agents%ROWTYPE;
-  v_damage int := least(greatest(coalesce(p_damage, 0), 0), 30);
+  v_damage int := least(greatest(coalesce(p_damage, 0), 0), 50);  -- 50 = catastrophic explosion cap
   v_energy int;
   v_health int;
 BEGIN

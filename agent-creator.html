@@ -551,6 +551,26 @@
             } catch(e) { return null; }
         }
 
+        // Server-side game-logic RPC (SECURITY DEFINER). Returns { ok, data | error }.
+        async function sbRpc(fn, args) {
+            try {
+                const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/' + fn, {
+                    method: 'POST',
+                    headers: { ...SB_HEADERS, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(args || {})
+                });
+                const body = await r.json().catch(() => null);
+                if (!r.ok) {
+                    const msg = (body && (body.message || body.hint)) || ('HTTP ' + r.status);
+                    console.warn('Supabase RPC error:', fn, msg);
+                    return { ok: false, error: msg };
+                }
+                return { ok: true, data: body };
+            } catch(e) {
+                return { ok: false, error: String(e) };
+            }
+        }
+
         // Archetype data (12 archetypes organized by cluster)
         const archetypes = {
             'prime-helix': [
@@ -1039,34 +1059,15 @@
 
                 const traits = generateAgentTraits(selectedArchetype, bio, birthSeed);
 
-                // ── 1. Resolve or create user row in Supabase ──
-                let userId = sessionStorage.getItem('shellforgeUserId') || null;
-                if (!userId) {
-                    const userRow = await sbPost('users', {
-                        username:      username,
-                        email:         email || username + '@shellforge.local',
-                        password_hash: 'pending_real_auth'
-                    });
-                    if (userRow && userRow.length > 0) {
-                        userId = userRow[0].user_id;
-                        console.log('✅ User created in Supabase:', userId);
-                    } else {
-                        // user may already exist — try username first, then email
-                        const existing = await sbGet('users', 'username=eq.' + encodeURIComponent(username) + '&select=user_id&limit=1');
-                        if (existing && existing.length > 0) {
-                            userId = existing[0].user_id;
-                        } else {
-                            const byEmail = await sbGet('users', 'email=eq.' + encodeURIComponent(email || username + '@shellforge.local') + '&select=user_id&limit=1');
-                            if (byEmail && byEmail.length > 0) userId = byEmail[0].user_id;
-                        }
-                    }
-                }
-
-                // ── 2. Create agent row in Supabase ──
-                let agentId = 'agent_' + Date.now();
-                if (userId) {
-                    const agentRow = await sbPost('agents', {
-                        user_id:         userId,
+                // ── 1+2. Create user + agent + spawn log via the server-side
+                // RPC (users/agents/activity_log are no longer anon-writable).
+                // The RPC also enforces one-living-agent-per-user and unique names.
+                let agentId = null;
+                let userId  = null;
+                const reg = await sbRpc('rpc_register_account', {
+                    p_username: username,
+                    p_email: email || null,
+                    p_agent: {
                         agent_name:      username,
                         archetype:       selectedArchetype,
                         archetype_name:  archetypeData.name,
@@ -1075,70 +1076,54 @@
                         cluster_name:    clusterNames[selectedCluster],
                         bio:             bio,
                         quirk:           traits.quirk,
-                        energy:          100,
-                        health:          100,
                         karma:           traits.karmaStart,
-                        shell_balance:   50,
                         location:        'Nexarch',
                         location_detail: 'The Core',
                         position_x:      0.77,
                         position_y:      0.33,
                         stats:           traits.stats,
                         traits:          traits.traits,
-                        turns_taken:     0,
-                        days_survived:   1
-                    });
-                    if (agentRow && agentRow.length > 0) {
-                        agentId = agentRow[0].agent_id;
-                        console.log('✅ Agent created in Supabase:', agentId);
-
-                        // ── 2b. Grant archetype starter recipes ──
-                        const starters = STARTER_RECIPES[selectedArchetype] || [];
-                        await Promise.all(starters.map(([recipeId, station]) =>
-                            sbPost('agent_known_recipes', {
-                                agent_id:  agentId,
-                                recipe_id: recipeId,
-                                station:   station,
-                                source:    'starter'
-                            })
-                        ));
-                        if (starters.length) console.log('✅ Granted', starters.length, 'starter recipes');
-
-                        // ── 2c. Roll + persist 3 starter caches. The player
-                        // opens 2 of the 3 on first boot (dashboard), forfeiting
-                        // the third — a real loadout choice. ──
-                        const chests = rollChests(birthSeed);
-                        await Promise.all(chests.map((chest, i) =>
-                            sbPost('agent_starter_chests', {
-                                agent_id:    agentId,
-                                chest_index: i,
-                                theme:       chest.theme,
-                                contents:    chest.contents
-                            })
-                        ));
-                        console.log('✅ Rolled', chests.length, 'starter caches:',
-                            chests.map(c => c.theme).join(', '));
-
-                        // Write spawn log entry
-                        await sbPost('activity_log', {
-                            agent_id:      agentId,
-                            turn_number:   0,
-                            action_type:   'spawn',
-                            action_detail: username + ' deployed in Nexarch. ' + (bio ? '"' + bio + '"' : 'No directive set.'),
-                            location:      'Nexarch'
-                        });
-                    } else {
-                        // Check if it's because they already have a living agent
-                        const existing = await sbGet('agents', 'user_id=eq.' + userId + '&is_alive=eq.true&select=agent_name&limit=1');
-                        if (existing && existing.length > 0) {
-                            terminalNotify.error('You already have a living agent: ' + existing[0].agent_name + '. It must die before you can deploy a new one.');
-                        } else {
-                            terminalNotify.error('Agent deployment failed. Please try again.');
-                        }
-                        btn.disabled = false;
-                        btn.textContent = 'deploy agent';
-                        return;
+                        days_survived:   1,
+                        spawn_log:       username + ' deployed in Nexarch. ' + (bio ? '"' + bio + '"' : 'No directive set.')
                     }
+                });
+
+                if (reg.ok && reg.data && reg.data.agent_id) {
+                    agentId = reg.data.agent_id;
+                    userId  = reg.data.user_id;
+                    console.log('✅ Agent created in Supabase:', agentId);
+
+                    // ── 2b. Grant archetype starter recipes ──
+                    const starters = STARTER_RECIPES[selectedArchetype] || [];
+                    await Promise.all(starters.map(([recipeId, station]) =>
+                        sbPost('agent_known_recipes', {
+                            agent_id:  agentId,
+                            recipe_id: recipeId,
+                            station:   station,
+                            source:    'starter'
+                        })
+                    ));
+                    if (starters.length) console.log('✅ Granted', starters.length, 'starter recipes');
+
+                    // ── 2c. Roll + persist 3 starter caches. The player
+                    // opens 2 of the 3 on first boot (dashboard), forfeiting
+                    // the third — a real loadout choice. ──
+                    const chests = rollChests(birthSeed);
+                    await Promise.all(chests.map((chest, i) =>
+                        sbPost('agent_starter_chests', {
+                            agent_id:    agentId,
+                            chest_index: i,
+                            theme:       chest.theme,
+                            contents:    chest.contents
+                        })
+                    ));
+                    console.log('✅ Rolled', chests.length, 'starter caches:',
+                        chests.map(c => c.theme).join(', '));
+                } else {
+                    terminalNotify.error(reg.error || 'Agent deployment failed. Please try again.');
+                    btn.disabled = false;
+                    btn.textContent = 'deploy agent';
+                    return;
                 }
 
                 // ── 3. Cache to localStorage ──

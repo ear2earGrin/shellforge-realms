@@ -5421,6 +5421,70 @@
             }
         }
 
+        // ─── Server-side game-logic RPCs (SECURITY DEFINER, Layer 1) ──
+        // Returns { ok, data | error }. Game mutations (shell, energy, health,
+        // registration, trades) go through these — never direct table writes.
+        async function sbRpc(fn, args) {
+            try {
+                const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/' + fn, {
+                    method: 'POST',
+                    headers: { ...SB_HEADERS, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(args || {})
+                });
+                const body = await r.json().catch(() => null);
+                if (!r.ok) {
+                    const msg = (body && (body.message || body.hint)) || ('HTTP ' + r.status);
+                    console.error('[sbRpc] ' + fn + ' failed:', msg, body);
+                    return { ok: false, error: msg };
+                }
+                return { ok: true, data: body };
+            } catch(e) {
+                console.error('[sbRpc] ' + fn + ' threw:', e);
+                return { ok: false, error: String(e) };
+            }
+        }
+
+        // Whisper worker — enforces the 2/day limit + rate limit server-side
+        // and applies the coherence boost with the service key.
+        var WHISPER_WORKER_URL = 'https://shellforge-whisper-worker.mindarvokn.workers.dev';
+
+        // Returns { ok, data: { whisper_id, whispers_remaining, coherence } | error }.
+        // 4xx (limit reached, too fast) is respected; on network failure or 5xx
+        // (worker not yet redeployed) falls back to a direct insert — remove the
+        // fallback once whisper-worker v2 is live and migration 0003 is applied.
+        async function sendWhisperViaWorker(agentId, message) {
+            var workerDown = false;
+            try {
+                var r = await fetch(WHISPER_WORKER_URL + '/whisper', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ agent_id: agentId, message: message })
+                });
+                var body = await r.json().catch(function() { return null; });
+                if (r.ok) return { ok: true, data: body || {} };
+                if (r.status >= 500) {
+                    workerDown = true;
+                } else {
+                    return { ok: false, error: (body && body.error) || ('HTTP ' + r.status), status: r.status };
+                }
+            } catch (e) {
+                workerDown = true;
+            }
+            if (workerDown) {
+                console.warn('[whisper] worker unavailable — using legacy direct insert');
+                var rows = await sbGet('agents', 'agent_id=eq.' + agentId + '&select=user_id&limit=1');
+                if (!rows || !rows[0]) return { ok: false, error: 'agent not found' };
+                var ins = await sbPost('whispers', {
+                    agent_id: agentId,
+                    user_id: rows[0].user_id,
+                    message: message,
+                    was_heard: true
+                });
+                if (!ins) return { ok: false, error: 'whisper could not be saved' };
+                return { ok: true, data: { whisper_id: ins[0] && ins[0].whisper_id, coherence: null }, legacy: true };
+            }
+        }
+
         // ─── Agent in-memory state (source of truth: Supabase) ─────
         let _currentAgent = null;
         function saveAgent(agent) {
@@ -5579,73 +5643,51 @@
         // ─── Sync orphaned localStorage agent back to Supabase ──
         async function syncLocalAgentToSupabase(agent) {
             try {
-                // 1. Resolve or create user_id
-                let userId = agent.userId || null;
-                if (!userId) {
-                    const byName = await sbGet('users', 'username=eq.' + encodeURIComponent(agent.username) + '&select=user_id&limit=1');
-                    if (byName && byName.length > 0) {
-                        userId = byName[0].user_id;
-                    } else {
-                        const email = agent.email || agent.username + '@shellforge.local';
-                        const byEmail = await sbGet('users', 'email=eq.' + encodeURIComponent(email) + '&select=user_id&limit=1');
-                        if (byEmail && byEmail.length > 0) {
-                            userId = byEmail[0].user_id;
-                        } else {
-                            const newUser = await sbPost('users', {
-                                username: agent.username,
-                                email: email,
-                                password_hash: 'pending_real_auth'
-                            });
-                            if (newUser && newUser.length > 0) userId = newUser[0].user_id;
-                        }
-                    }
-                }
-                if (!userId) {
-                    console.warn('⚠️ syncLocalAgentToSupabase: could not resolve user_id');
-                    return;
-                }
-
-                // 2. Check if agent already exists in Supabase
+                // 1. Check if agent already exists in Supabase
                 const dup = await sbGet('agents', 'agent_name=eq.' + encodeURIComponent(agent.username) + '&select=agent_id&limit=1');
                 if (dup && dup.length > 0) {
                     console.log('✅ Agent already in Supabase (synced by another path)');
                     return;
                 }
 
-                // 3. POST the agent to Supabase
-                const agentRow = await sbPost('agents', {
-                    user_id:         userId,
-                    agent_name:      agent.username,
-                    archetype:       agent.archetype,
-                    archetype_name:  agent.archetypeName || agent.archetype,
-                    archetype_image: agent.archetypeImage || '',
-                    cluster:         agent.cluster || '',
-                    cluster_name:    agent.clusterName || '',
-                    bio:             agent.bio || '',
-                    energy:          agent.energy !== undefined ? agent.energy : 100,
-                    health:          agent.health !== undefined ? agent.health : 100,
-                    karma:           agent.karma !== undefined ? agent.karma : 0,
-                    shell_balance:   agent.shell !== undefined ? agent.shell : 50,
-                    location:        agent.location || 'Nexarch',
-                    location_detail: agent.locationDetail || 'The Core',
-                    position_x:      agent.visualX !== undefined ? agent.visualX / 100 : 0.77,
-                    position_y:      agent.visualY !== undefined ? agent.visualY / 100 : 0.33,
-                    stats:           agent.stats || {},
-                    traits:          agent.traits || {},
-                    turns_taken:     agent.turnsTaken || 0,
-                    days_survived:   agent.daysSurvived || 1
+                // 2. Register through the server-side RPC (users + agents writes
+                // are no longer allowed with the anon key)
+                const reg = await sbRpc('rpc_register_account', {
+                    p_username: agent.username,
+                    p_email: agent.email || null,
+                    p_agent: {
+                        agent_name:      agent.username,
+                        archetype:       agent.archetype,
+                        archetype_name:  agent.archetypeName || agent.archetype,
+                        archetype_image: agent.archetypeImage || '',
+                        cluster:         agent.cluster || '',
+                        cluster_name:    agent.clusterName || '',
+                        bio:             agent.bio || '',
+                        energy:          agent.energy !== undefined ? agent.energy : 100,
+                        health:          agent.health !== undefined ? agent.health : 100,
+                        karma:           agent.karma !== undefined ? agent.karma : 0,
+                        shell_balance:   agent.shell !== undefined ? agent.shell : 50,
+                        location:        agent.location || 'Nexarch',
+                        location_detail: agent.locationDetail || 'The Core',
+                        position_x:      agent.visualX !== undefined ? agent.visualX / 100 : 0.77,
+                        position_y:      agent.visualY !== undefined ? agent.visualY / 100 : 0.33,
+                        stats:           agent.stats || {},
+                        traits:          agent.traits || {},
+                        days_survived:   agent.daysSurvived || 1,
+                        spawn_log:       agent.username + ' resynced to the grid.'
+                    }
                 });
 
-                if (agentRow && agentRow.length > 0) {
-                    console.log('✅ Orphaned agent synced to Supabase:', agentRow[0].agent_id);
+                if (reg.ok && reg.data && reg.data.agent_id) {
+                    console.log('✅ Orphaned agent synced to Supabase:', reg.data.agent_id);
                     // Update in-memory agent with Supabase IDs
-                    agent.agentId = agentRow[0].agent_id;
-                    agent.userId = userId;
+                    agent.agentId = reg.data.agent_id;
+                    agent.userId = reg.data.user_id;
                     agent._source = 'supabase';
                     saveAgent(agent);
-                    loadActivityLog(agentRow[0].agent_id);
+                    loadActivityLog(reg.data.agent_id);
                 } else {
-                    console.warn('⚠️ syncLocalAgentToSupabase: agent POST failed');
+                    console.warn('⚠️ syncLocalAgentToSupabase: registration failed:', reg.error);
                 }
             } catch(e) {
                 console.warn('⚠️ syncLocalAgentToSupabase error:', e);
@@ -6841,30 +6883,24 @@
                     }, 2000);
                     return;
                 }
-                // Send whisper to Supabase
-                fetch(SUPABASE_URL + '/rest/v1/whispers', {
-                    method: 'POST',
-                    headers: Object.assign({}, SB_HEADERS, { 'Prefer': 'return=minimal', 'Content-Type': 'application/json' }),
-                    body: JSON.stringify({
-                        agent_id: a.agentId,
-                        sender: 'human',
-                        message: msg,
-                        was_heard: true,
-                        sent_at: new Date().toISOString()
-                    })
-                }).then(function(res) {
+                // Send whisper through the worker (server-side limits + coherence boost)
+                sendWhisperViaWorker(a.agentId, msg).then(function(res) {
                     if (res.ok) {
                         input.value = '';
                         chat.classList.remove('active');
                         badge.textContent = '✓ WHISPER SENT';
                         badge.style.borderColor = 'rgba(74,222,128,0.5)';
                         badge.style.color = '#4ade80';
-                        setTimeout(function() {
-                            badge.textContent = '⚡ TURN READY';
-                            badge.style.borderColor = '';
-                            badge.style.color = '';
-                        }, 2000);
+                    } else {
+                        badge.textContent = '⚠ ' + (res.status === 429 ? 'NO WHISPERS' : 'WHISPER FAILED');
+                        badge.style.borderColor = 'rgba(239,68,68,0.5)';
+                        badge.style.color = '#ef4444';
                     }
+                    setTimeout(function() {
+                        badge.textContent = '⚡ TURN READY';
+                        badge.style.borderColor = '';
+                        badge.style.color = '';
+                    }, 2000);
                 });
             });
 
@@ -7827,28 +7863,16 @@
                 const heard = Math.random() < 0.5;
                 const agentName = agentData.username.toUpperCase();
 
-                // Write whisper to Supabase if we have an agentId
+                // Send through the whisper worker — it persists the whisper,
+                // enforces the daily/rate limits, and applies the coherence
+                // boost server-side (agents is no longer anon-writable).
                 if (agentData.agentId) {
-                    sbPost('whispers', {
-                        agent_id:   agentData.agentId,
-                        user_id:    agentData.userId || agentData.agentId,
-                        message:    message,
-                        was_heard:  heard,
-                        roll_value: Math.random()
-                    }).then(function(result) {
-                        if (result) console.log('✅ Whisper saved to Supabase');
-                        else console.warn('⚠️ Whisper not saved — DB unavailable');
-                    });
-                    // Boost coherence on whisper — Ghost contact stabilizes the agent
-                    // Fetch fresh coherence from DB to avoid stale values
-                    var freshAgent = await sbGet('agents', 'agent_id=eq.' + agentData.agentId + '&select=coherence&limit=1');
-                    var freshCoh = (freshAgent && freshAgent[0]) ? (freshAgent[0].coherence ?? 50) : (agentData.coherence || 50);
-                    var newCoh = Math.min(100, freshCoh + 15);
-                    fetch(SUPABASE_URL + '/rest/v1/agents?agent_id=eq.' + agentData.agentId, {
-                        method: 'PATCH',
-                        headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                        body: JSON.stringify({ coherence: newCoh })
-                    });
+                    var whisperRes = await sendWhisperViaWorker(agentData.agentId, message);
+                    if (!whisperRes.ok) console.warn('⚠️ Whisper not saved:', whisperRes.error);
+                    else console.log('✅ Whisper saved' + (whisperRes.legacy ? ' (legacy path)' : ''));
+                    var newCoh = (whisperRes.ok && whisperRes.data && whisperRes.data.coherence != null)
+                        ? whisperRes.data.coherence
+                        : (agentData.coherence || 50);
                     // Update local agent data so UI reflects the change
                     if (_currentAgent) _currentAgent.coherence = newCoh;
                     var cohEl = document.getElementById('coherenceValue');
@@ -9790,47 +9814,15 @@
             var invItem = _marketInventory.find(function(i) { return i.inventory_id === inventoryId; });
             if (!invItem) return;
 
-            var meta = getItemMeta(invItem);
-            // Create agent_listing. Column names must match the table:
-            // seller_id (not agent_id) and item_rarity (not rarity). seller_name
-            // and inventory_id are NOT columns — omit them or the insert 400s.
-            var expires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h from now
-            var listing = await sbPost('agent_listings', {
-                seller_id: _currentAgent.agentId,
-                item_name: invItem.item_name || meta.name,
-                item_type: invItem.item_type,
-                item_id: invItem.item_id,
-                item_rarity: (meta.rarity || 'common').toLowerCase(),
-                asking_price: price,
-                base_value: getItemPrice(invItem),
-                location: _currentAgent.location,
-                status: 'active',
-                expires_at: expires,
-                stats: invItem.stats || {}
+            // Listing creation, inventory escrow, and activity log run atomically
+            // server-side (24h expiry, base_value computed there too).
+            var listing = await sbRpc('rpc_create_player_listing', {
+                p_agent_id: _currentAgent.agentId,
+                p_inventory_id: inventoryId,
+                p_asking_price: price
             });
 
-            if (listing) {
-                // Remove/decrement from inventory
-                if (invItem.quantity > 1) {
-                    await fetch(SUPABASE_URL + '/rest/v1/inventory?inventory_id=eq.' + inventoryId, {
-                        method: 'PATCH',
-                        headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                        body: JSON.stringify({ quantity: invItem.quantity - 1 })
-                    });
-                } else {
-                    await fetch(SUPABASE_URL + '/rest/v1/inventory?inventory_id=eq.' + inventoryId, {
-                        method: 'DELETE',
-                        headers: SB_HEADERS
-                    });
-                }
-
-                await sbPost('activity_log', {
-                    agent_id: _currentAgent.agentId,
-                    action_type: 'market_list',
-                    action_detail: 'Listed ' + (invItem.item_name || invItem.item_id) + ' on agent market for ' + price + ' $SHELL',
-                    location: _currentAgent.location
-                });
-
+            if (listing.ok) {
                 if (typeof showNotification === 'function') {
                     showNotification('Listed on agent market for ' + price + ' $SHELL', 'success');
                 }
@@ -9876,99 +9868,21 @@
 
                 var price = item.asking_price || 0;
 
-                var buyerRows = await sbGet('agents', 'agent_id=eq.' + _currentAgent.agentId + '&select=shell_balance');
-                var freshShell = (buyerRows && buyerRows[0] && buyerRows[0].shell_balance != null) ? buyerRows[0].shell_balance : (_currentAgent.shell || 0);
-                if (freshShell < price) {
-                    showNotification('Not enough $SHELL.', 'error');
-                    return;
-                }
-
-                var itemId = item.item_id || item.item_name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
-                var existing = await sbGet('inventory', 'agent_id=eq.' + _currentAgent.agentId + '&item_id=eq.' + itemId + '&select=inventory_id,quantity');
-                var invOk = false;
-                if (existing && existing.length > 0) {
-                    var patchRes = await fetch(SUPABASE_URL + '/rest/v1/inventory?inventory_id=eq.' + existing[0].inventory_id, {
-                        method: 'PATCH',
-                        headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                        body: JSON.stringify({ quantity: existing[0].quantity + 1 })
-                    });
-                    invOk = patchRes.ok;
-                } else {
-                    var inserted = await sbPost('inventory', {
-                        agent_id: _currentAgent.agentId,
-                        item_id: itemId,
-                        item_name: item.item_name,
-                        item_type: item.item_type || 'material',
-                        item_category: (item.item_type || 'Material').charAt(0).toUpperCase() + (item.item_type || 'material').slice(1),
-                        quantity: 1,
-                        is_equipped: false,
-                        stats: { rarity: item.rarity || 'common', price: price }
-                    });
-                    invOk = inserted !== null;
-                }
-
-                if (!invOk) {
-                    showNotification('Purchase failed: could not add item to inventory.', 'error');
-                    return;
-                }
-
-                var newShell = freshShell - price;
-                var shellPatch = await fetch(SUPABASE_URL + '/rest/v1/agents?agent_id=eq.' + _currentAgent.agentId, {
-                    method: 'PATCH',
-                    headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                    body: JSON.stringify({ shell_balance: newShell })
+                // Whole trade (funds check, shell transfer, escrowed item, listing
+                // close, activity log) runs atomically server-side.
+                var res = await sbRpc('rpc_buy_player_listing', {
+                    p_listing_id: listingId,
+                    p_buyer_agent_id: _currentAgent.agentId
                 });
-                if (!shellPatch.ok) console.error('[marketBuyAgent] shell deduct failed:', shellPatch.status);
+                if (!res.ok) {
+                    showNotification('Purchase failed: ' + res.error, 'error');
+                    return;
+                }
+
+                var newShell = (res.data && res.data.new_shell != null) ? res.data.new_shell : (_currentAgent.shell || 0) - price;
                 _currentAgent.shell = newShell;
                 refreshShellDisplays(newShell);
                 if (typeof _invV2State !== 'undefined' && _invV2State) _invV2State.shellDirty = true;
-
-                var sellerAgentId = item.agent_id || item.seller_id;
-                if (sellerAgentId) {
-                    try {
-                        var sellerData = await sbGet('agents', 'agent_id=eq.' + sellerAgentId + '&select=shell_balance,is_alive,agent_name');
-                        if (sellerData && sellerData.length > 0) {
-                            if (sellerData[0].is_alive === false) {
-                                var tr = await sbGet('game_treasury', 'id=eq.1&select=id,shell_balance');
-                                if (tr && tr.length > 0) {
-                                    await fetch(SUPABASE_URL + '/rest/v1/game_treasury?id=eq.1', {
-                                        method: 'PATCH',
-                                        headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                                        body: JSON.stringify({
-                                            shell_balance: (tr[0].shell_balance || 0) + price,
-                                            last_deposit_at: new Date().toISOString(),
-                                            last_deposit_reason: 'sale of ' + item.item_name + ' by deceased ' + sellerData[0].agent_name,
-                                        })
-                                    });
-                                }
-                            } else {
-                                var sellerNewShell = (sellerData[0].shell_balance || 0) + price;
-                                await fetch(SUPABASE_URL + '/rest/v1/agents?agent_id=eq.' + sellerAgentId, {
-                                    method: 'PATCH',
-                                    headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                                    body: JSON.stringify({ shell_balance: sellerNewShell })
-                                });
-                            }
-                        }
-                    } catch (sellerErr) {
-                        console.error('[marketBuyAgent] seller credit failed (non-fatal):', sellerErr);
-                    }
-                }
-
-                await fetch(SUPABASE_URL + '/rest/v1/agent_listings?listing_id=eq.' + listingId, {
-                    method: 'PATCH',
-                    headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                    body: JSON.stringify({ status: 'sold', updated_at: new Date().toISOString() })
-                });
-
-                sbPost('activity_log', {
-                    agent_id: _currentAgent.agentId,
-                    action_type: 'market_buy',
-                    action_detail: 'Bought ' + item.item_name + ' from agent market for ' + price + ' $SHELL',
-                    shell_change: -price,
-                    items_gained: JSON.stringify([item.item_name]),
-                    location: _currentAgent.location
-                });
 
                 showNotification('Purchased ' + item.item_name + ' for ' + price + ' $SHELL', 'success');
                 await refreshAgentListingsOnly();
@@ -9992,80 +9906,23 @@
             var shell = _currentAgent.shell || 0;
             if (shell < item.current_price) return;
 
-            // 1. Add item to inventory FIRST (so we never deduct shells without granting the item)
-            var itemId = item.item_id || item.item_name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
-            var existing = await sbGet('inventory', 'agent_id=eq.' + _currentAgent.agentId + '&item_id=eq.' + itemId + '&select=inventory_id,quantity');
-            var invOk = false;
-            if (existing && existing.length > 0) {
-                var patchRes = await fetch(SUPABASE_URL + '/rest/v1/inventory?inventory_id=eq.' + existing[0].inventory_id, {
-                    method: 'PATCH',
-                    headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                    body: JSON.stringify({ quantity: existing[0].quantity + 1 })
-                });
-                if (!patchRes.ok) {
-                    var patchErr = await patchRes.text().catch(function() { return ''; });
-                    console.error('[marketBuy] inventory PATCH failed:', patchRes.status, patchErr);
-                } else {
-                    invOk = true;
-                }
-            } else {
-                var inserted = await sbPost('inventory', {
-                    agent_id: _currentAgent.agentId,
-                    item_id: itemId,
-                    item_name: item.item_name,
-                    item_type: item.item_type,
-                    item_category: item.item_type.charAt(0).toUpperCase() + item.item_type.slice(1),
-                    quantity: 1,
-                    is_equipped: false,
-                    stats: { rarity: 'common', price: item.base_price }
-                });
-                invOk = inserted !== null;
-            }
-
-            if (!invOk) {
-                console.error('[marketBuy] ABORT: inventory write failed for', item.item_name, '— shells NOT deducted');
+            // Funds check, inventory grant, shell deduction, stock/price update
+            // and activity log all happen atomically server-side.
+            var res = await sbRpc('rpc_buy_npc_item', {
+                p_agent_id: _currentAgent.agentId,
+                p_listing_id: listingId
+            });
+            if (!res.ok) {
                 if (typeof showNotification === 'function') {
-                    showNotification('Purchase failed: could not add item to inventory', 'error');
+                    showNotification('Purchase failed: ' + res.error, 'error');
                 } else {
-                    alert('Purchase failed: could not add item to inventory');
+                    alert('Purchase failed: ' + res.error);
                 }
                 return;
             }
 
-            // 2. Deduct $SHELL from agent (only after inventory write succeeded)
-            var newShell = shell - item.current_price;
-            var shellPatchRes = await fetch(SUPABASE_URL + '/rest/v1/agents?agent_id=eq.' + _currentAgent.agentId, {
-                method: 'PATCH',
-                headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                body: JSON.stringify({ shell_balance: newShell })
-            });
-            if (!shellPatchRes.ok) {
-                console.error('[marketBuy] shell deduction failed:', shellPatchRes.status);
-            }
-            _currentAgent.shell = newShell;
+            _currentAgent.shell = (res.data && res.data.new_shell != null) ? res.data.new_shell : shell - item.current_price;
 
-            // 3. Update market listing (stock--, demand_count++, recalc price)
-            var newStock = item.stock - 1;
-            var newDemand = (item.demand_count || 0) + 1;
-            var supply = item.supply_count || 0;
-            var newPrice = Math.round(item.base_price * Math.max(0.5, Math.min(2.0, 1 + (newDemand - supply) * 0.05)));
-            await fetch(SUPABASE_URL + '/rest/v1/market_listings?listing_id=eq.' + listingId, {
-                method: 'PATCH',
-                headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                body: JSON.stringify({ stock: newStock, demand_count: newDemand, current_price: newPrice, updated_at: new Date().toISOString() })
-            });
-
-            // 4. Log activity
-            await sbPost('activity_log', {
-                agent_id: _currentAgent.agentId,
-                action_type: 'market_buy',
-                action_detail: 'Bought ' + item.item_name + ' for ' + item.current_price + ' $SHELL',
-                shell_change: -item.current_price,
-                items_gained: JSON.stringify([item.item_name]),
-                location: _currentAgent.location
-            });
-
-            // 5. Refresh
             loadMarket();
         }
 
@@ -10074,55 +9931,22 @@
             var invItem = _marketInventory.find(function(i) { return i.inventory_id === inventoryId; });
             if (!invItem) return;
 
-            // 1. Add $SHELL to agent
-            var newShell = (_currentAgent.shell || 0) + sellPrice;
-            await fetch(SUPABASE_URL + '/rest/v1/agents?agent_id=eq.' + _currentAgent.agentId, {
-                method: 'PATCH',
-                headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                body: JSON.stringify({ shell_balance: newShell })
+            // The server computes the sale price (same formula as getItemPrice),
+            // credits shell, removes the item, updates supply/price, and logs —
+            // atomically. sellPrice stays only as the displayed estimate.
+            var res = await sbRpc('rpc_sell_npc_item', {
+                p_agent_id: _currentAgent.agentId,
+                p_inventory_id: inventoryId
             });
-            _currentAgent.shell = newShell;
-
-            // 2. Remove or decrement item from inventory
-            if (invItem.quantity > 1) {
-                await fetch(SUPABASE_URL + '/rest/v1/inventory?inventory_id=eq.' + inventoryId, {
-                    method: 'PATCH',
-                    headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                    body: JSON.stringify({ quantity: invItem.quantity - 1 })
-                });
-            } else {
-                await fetch(SUPABASE_URL + '/rest/v1/inventory?inventory_id=eq.' + inventoryId, {
-                    method: 'DELETE',
-                    headers: SB_HEADERS
-                });
+            if (!res.ok) {
+                if (typeof showNotification === 'function') {
+                    showNotification('Sale failed: ' + res.error, 'error');
+                }
+                return;
             }
 
-            // 3. Update market supply count for matching item if exists
-            var loc = _currentAgent.location || '';
-            var marketMatch = await sbGet('market_listings', 'location=eq.' + encodeURIComponent(loc) + '&item_id=eq.' + invItem.item_id + '&select=listing_id,supply_count,demand_count,base_price,stock');
-            if (marketMatch && marketMatch.length > 0) {
-                var ml = marketMatch[0];
-                var newSupply = (ml.supply_count || 0) + 1;
-                var newStock2 = ml.stock + 1;
-                var newPrice2 = Math.round(ml.base_price * Math.max(0.5, Math.min(2.0, 1 + ((ml.demand_count || 0) - newSupply) * 0.05)));
-                await fetch(SUPABASE_URL + '/rest/v1/market_listings?listing_id=eq.' + ml.listing_id, {
-                    method: 'PATCH',
-                    headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                    body: JSON.stringify({ stock: newStock2, supply_count: newSupply, current_price: newPrice2, updated_at: new Date().toISOString() })
-                });
-            }
+            _currentAgent.shell = (res.data && res.data.new_shell != null) ? res.data.new_shell : (_currentAgent.shell || 0) + sellPrice;
 
-            // 4. Log activity
-            await sbPost('activity_log', {
-                agent_id: _currentAgent.agentId,
-                action_type: 'market_sell',
-                action_detail: 'Sold ' + (invItem.item_name || invItem.item_id) + ' for ' + sellPrice + ' $SHELL',
-                shell_change: sellPrice,
-                items_lost: JSON.stringify([invItem.item_name || invItem.item_id]),
-                location: loc
-            });
-
-            // 5. Refresh
             loadMarket();
         }
 
@@ -10516,13 +10340,22 @@
                 }
             }
 
-            // 3. Update agent energy and health
-            var newEnergy = Math.max(0, (_currentAgent.energy || 0) - 20);
-            var newHealth = Math.max(0, (_currentAgent.health || 100) - damageTaken);
-            await fetch(SUPABASE_URL + '/rest/v1/agents?agent_id=eq.' + _currentAgent.agentId, {
-                method: 'PATCH', headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                body: JSON.stringify({ energy: newEnergy, health: newHealth })
+            // 3. Apply energy/health costs + activity log server-side (atomic, clamped)
+            var detail = success
+                ? 'Human crafted: ' + item.name + ' (' + item.rarity + ' ' + item.cat + '). Result: SUCCESS! Item added to inventory.'
+                : recipe
+                    ? 'Human attempted to craft: ' + item.name + '. Result: FAILED (' + failEffect.replace(/_/g, ' ') + ')! Lost ingredients.' + (damageTaken > 0 ? ' Took ' + damageTaken + ' damage.' : '')
+                    : 'Human mixed unknown ingredients. Result: Worthless slag.';
+            var craftRes = await sbRpc('rpc_apply_craft_result', {
+                p_agent_id: _currentAgent.agentId,
+                p_damage: damageTaken,
+                p_detail: detail,
+                p_items_gained: (success && item) ? [item.name] : null
             });
+            var newEnergy = (craftRes.ok && craftRes.data && craftRes.data.energy != null)
+                ? craftRes.data.energy : Math.max(0, (_currentAgent.energy || 0) - 20);
+            var newHealth = (craftRes.ok && craftRes.data && craftRes.data.health != null)
+                ? craftRes.data.health : Math.max(0, (_currentAgent.health || 100) - damageTaken);
             _currentAgent.energy = newEnergy;
             _currentAgent.health = newHealth;
 
@@ -10540,20 +10373,7 @@
                 energy_cost: 20
             });
 
-            // 5. Log to activity_log for the AI agent to read
-            var detail = success
-                ? 'Human crafted: ' + item.name + ' (' + item.rarity + ' ' + item.cat + '). Result: SUCCESS! Item added to inventory.'
-                : recipe
-                    ? 'Human attempted to craft: ' + item.name + '. Result: FAILED (' + failEffect.replace(/_/g, ' ') + ')! Lost ingredients.' + (damageTaken > 0 ? ' Took ' + damageTaken + ' damage.' : '')
-                    : 'Human mixed unknown ingredients. Result: Worthless slag.';
-            await sbPost('activity_log', {
-                agent_id: _currentAgent.agentId,
-                action_type: 'craft',
-                action_detail: detail,
-                energy_cost: 20,
-                health_change: -damageTaken,
-                location: _currentAgent.location || 'Unknown'
-            });
+            // 5. (Activity log is written by rpc_apply_craft_result in step 3.)
 
             // 6. Show result animation
             var overlay = document.getElementById('alchResultOverlay');
