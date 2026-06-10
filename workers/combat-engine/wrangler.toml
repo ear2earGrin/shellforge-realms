@@ -1,0 +1,17 @@
+name = "shellforge-combat-engine"
+main = "index.js"
+compatibility_date = "2026-04-01"
+
+# Cron triggers:
+#   */1 * * * *   — advance one turn for every in-progress match (every minute)
+#   0 */6 * * *   — Crucible escalation check (every 6 hours)
+#   0 3 * * *     — daily feud heat decay (-1/day at 3am UTC)
+[triggers]
+crons = ["*/1 * * * *", "0 */6 * * *", "0 3 * * *"]
+
+# Bindings — provide via `wrangler secret put` when deploying:
+#   SUPABASE_URL              — Project REST URL
+#   SUPABASE_SERVICE_KEY      — Service-role key (full RLS bypass)
+#   ANTHROPIC_API_KEY         — Claude API
+#   GAME_CONFIG_URL           — Optional: external URL to game-config.json (else uses default)
+#   PUSH_NOTIFY_URL           — Optional: webhook for push notifications (Expo / OneSignal)
