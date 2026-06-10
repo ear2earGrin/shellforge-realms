@@ -80,6 +80,7 @@ const DEFAULT_CONFIG = {
     auto_challenge_enemies_chance: 0.40,
     auto_challenge_sworn_chance: 0.65,
     auto_challenge_blood_chance: 0.95,
+    auto_challenge_cooldown_hours: 24,   // min gap between auto-initiated matches per pair
   },
   crucible: {
     restless_days: 7,
@@ -96,15 +97,18 @@ const DEFAULT_CONFIG = {
   whisper: {
     base_compliance: 0.50,
     archetype_match_bonus: 0.15,
-    karma_aligned_bonus: 0.10,
+    karma_compliance_scale: 0.20,        // threshold += (karma / 100) * scale — high karma obeys, negative resists
+    premium_compliance_bonus: 0.15,
     rage_state_penalty: -0.20,
     suicidal_suggestion_penalty: -0.30,
     free_whisper_max_per_match: 2,
     premium_whisper_window_seconds: 8,
   },
   ai: {
-    haiku_model: 'claude-haiku-4-5-20251001',
-    sonnet_model: 'claude-sonnet-4-6',
+    groq_model: 'llama-3.1-8b-instant',  // routine turns (no pending whisper)
+    haiku_model: 'claude-haiku-4-5-20251001',  // whisper turns
+    sonnet_model: 'claude-sonnet-4-6',   // death / legendary moments
+    groq_max_tokens: 60,
     haiku_max_tokens: 60,
     sonnet_max_tokens: 200,
     decision_timeout_ms: 8000,

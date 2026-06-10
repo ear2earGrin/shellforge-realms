@@ -19,7 +19,7 @@
 import { sb, getOne } from './supabase.js';
 import { syncConfig } from './config-loader.js';
 import { buildDeck, getPlayableHand, buildNPCDeck } from './deck.js';
-import { decideAction } from './ai-decision.js';
+import { decideAction, recordTierUsage } from './ai-decision.js';
 import { calculateDamage, rollAccuracy } from './damage.js';
 import {
   effectsFromAbility, addCooldown, markConsumed,
@@ -148,6 +148,10 @@ export async function resolveTurn(env, matchId) {
 
   const cardA = decisionA.card;
   const cardB = decisionB.card;
+
+  // Tally AI tier usage for this turn (Groq/Haiku/fallback per side)
+  const tiersUsed = [decisionA.tier, decisionB.tier].filter(Boolean);
+  await recordTierUsage(env, matchId, tiersUsed);
 
   // 11. Pay coherence costs
   if (cardA) stateA.coherence = Math.max(0, stateA.coherence - cardA.coherence_cost);

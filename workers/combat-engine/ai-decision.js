@@ -1,16 +1,24 @@
 // ═══════════════════════════════════════════════════════════════
-//  AI DECISION MODULE
+//  AI DECISION MODULE — tiered (Tier 1 Rule 2)
 // ═══════════════════════════════════════════════════════════════
-//  Per-turn ability selection. Two paths:
-//    1. Haiku call — given compact context, agent picks 1 card
-//    2. Fallback — archetype-weighted random if Haiku fails
+//  Per-turn ability selection. Tier routing:
+//    - Routine turns (no pending whisper) → Groq Llama 3.1 8B
+//    - Whisper turns (Ghost suggestion pending) → Claude Haiku
+//    - Fallback — archetype-weighted random if the tier's key is
+//      missing or the call fails (counted as "fallback")
 //
-//  Whisper compliance roll happens AFTER Haiku decides:
-//    - If Ghost suggested ability X and Haiku picked Y, roll for compliance
-//    - Compliance probability based on archetype + karma + state
+//  Whisper compliance roll happens BEFORE the model call:
+//    - Roll based on archetype + karma + state (tunables in config)
+//    - Pass → play the suggested card directly (exact name match)
+//    - Fail / free-form → Haiku decides with the whisper in context
+//
+//  Every AI call is tallied per match in combat_matches.tier_usage
+//  ({"groq":n,"haiku":n,"sonnet":n,"fallback":n}) so spend per
+//  match is measurable.
 // ═══════════════════════════════════════════════════════════════
 
 import { syncConfig } from './config-loader.js';
+import { sb, getOne } from './supabase.js';
 
 // Archetype tendencies — used for fallback decisions and compliance bonuses
 const ARCHETYPE_PROFILES = {
@@ -113,7 +121,7 @@ Pick ONE card. Respond with ONLY the card number (1-${playableHand.length}). No 
 }
 
 /**
- * Call Haiku to pick a card. Returns the card or null on failure.
+ * Call Haiku to pick a card. Returns the response text or null on failure.
  */
 async function callHaikuForDecision(env, prompt) {
   const cfg = syncConfig().ai;
@@ -156,6 +164,63 @@ async function callHaikuForDecision(env, prompt) {
 }
 
 /**
+ * Call Groq (Llama 3.1 8B, OpenAI chat format) to pick a card.
+ * Routine-turn tier. Returns the response text or null on failure.
+ */
+async function callGroqForDecision(env, prompt) {
+  const cfg = syncConfig().ai;
+  if (!env.GROQ_API_KEY) {
+    console.warn('[ai-decision] GROQ_API_KEY not set, using fallback');
+    return null;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), cfg.decision_timeout_ms);
+
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${env.GROQ_API_KEY}`,
+        'content-type': 'application/json',
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: cfg.groq_model,
+        max_tokens: cfg.groq_max_tokens,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+
+    clearTimeout(timeout);
+    if (!res.ok) {
+      console.error(`[ai-decision] Groq HTTP ${res.status}`);
+      return null;
+    }
+    const data = await res.json();
+    const text = data?.choices?.[0]?.message?.content?.trim() || '';
+    return text;
+  } catch (e) {
+    console.error(`[ai-decision] Groq call failed: ${e.message}`);
+    return null;
+  }
+}
+
+/**
+ * Increment combat_matches.tier_usage counters for AI calls made on
+ * behalf of a match. Read-modify-write — fine inside the per-turn
+ * resolver, which processes one match at a time.
+ */
+export async function recordTierUsage(env, matchId, tiers) {
+  const used = (tiers || []).filter(Boolean);
+  if (!matchId || used.length === 0) return;
+  const match = await getOne(env, 'combat_matches', `id=eq.${matchId}&select=tier_usage`);
+  const usage = { ...((match && match.tier_usage) || {}) };
+  for (const t of used) usage[t] = (usage[t] || 0) + 1;
+  await sb.patch(env, `combat_matches?id=eq.${matchId}`, { tier_usage: usage });
+}
+
+/**
  * Roll for whisper compliance.
  * @returns {object} { followed, rollValue, threshold }
  */
@@ -172,8 +237,8 @@ export function rollWhisperCompliance(whisper, agent, opponent) {
     threshold += cfg.archetype_match_bonus;
   }
 
-  // Karma alignment (simplified — real karma integration TBD)
-  if (agent.karma >= 0) threshold += cfg.karma_aligned_bonus;
+  // Karma alignment — high karma pulls compliance up, negative pulls it down
+  threshold += ((agent.karma || 0) / 100) * cfg.karma_compliance_scale;
 
   // Self-preservation: agent won't follow obviously suicidal whispers
   const hpRatio = agent.hp / agent.hp_max;
@@ -182,7 +247,7 @@ export function rollWhisperCompliance(whisper, agent, opponent) {
   }
 
   // Premium whispers carry weight
-  if (whisper.is_premium) threshold += 0.15;
+  if (whisper.is_premium) threshold += cfg.premium_compliance_bonus;
 
   threshold = Math.max(0.05, Math.min(0.95, threshold));
   const roll = Math.random();
@@ -192,52 +257,63 @@ export function rollWhisperCompliance(whisper, agent, opponent) {
 /**
  * Main decision entry point.
  *
- * @returns {object} { card, source, whisper_followed, fallback_used }
+ * @returns {object} { card, source, whisper_followed, fallback_used, compliance, tier }
+ *   tier = which AI tier was billed for this decision
+ *          ('groq' | 'haiku' | 'fallback' | null when no call was made)
  */
 export async function decideAction(env, agent, opponent, playableHand, whisper, turnNum, recentTurns) {
   if (!playableHand || playableHand.length === 0) {
     // Should never happen — basic strike is always in deck
-    return { card: null, source: 'none', whisper_followed: false, fallback_used: true };
+    return { card: null, source: 'none', whisper_followed: false, fallback_used: true, compliance: null, tier: null };
   }
 
-  // 1. If whisper exists, attempt to find that card and roll compliance
+  // 1. If a whisper exists, roll compliance first. A passing roll on an
+  //    exact card-name suggestion plays that card directly (no model call).
+  let compliance = null;
   if (whisper && whisper.suggestion) {
+    compliance = rollWhisperCompliance(whisper, agent, opponent);
     const target = playableHand.find(c =>
       c.ability_name.toLowerCase() === whisper.suggestion.toLowerCase()
     );
-    if (target) {
-      const compliance = rollWhisperCompliance(whisper, agent, opponent);
-      if (compliance.followed) {
-        return {
-          card: target, source: 'whisper', whisper_followed: true,
-          fallback_used: false, compliance,
-        };
-      }
-    }
-  }
-
-  // 2. Try Haiku for organic decision
-  const cfg = syncConfig().ai;
-  const prompt = buildDecisionPrompt(agent, opponent, playableHand, whisper, turnNum, recentTurns);
-  const haikuResp = await callHaikuForDecision(env, prompt);
-
-  if (haikuResp) {
-    const num = parseInt(haikuResp.match(/\d+/)?.[0] || '0', 10);
-    if (num >= 1 && num <= playableHand.length) {
+    if (target && compliance.followed) {
       return {
-        card: playableHand[num - 1], source: 'haiku', whisper_followed: false,
-        fallback_used: false,
+        card: target, source: 'whisper', whisper_followed: true,
+        fallback_used: false, compliance, tier: null,
       };
     }
   }
 
-  // 3. Fallback: archetype-weighted random
-  if (!cfg.fallback_to_random_on_failure) return { card: null, source: 'none', fallback_used: true };
+  // 2. Model decision. Tier routing (Tier 1 Rule 2):
+  //    pending whisper → Haiku; routine turn → Groq.
+  const cfg = syncConfig().ai;
+  const prompt = buildDecisionPrompt(agent, opponent, playableHand, whisper, turnNum, recentTurns);
+  const tier = whisper ? 'haiku' : 'groq';
+  const resp = tier === 'haiku'
+    ? await callHaikuForDecision(env, prompt)
+    : await callGroqForDecision(env, prompt);
+
+  if (resp) {
+    const num = parseInt(resp.match(/\d+/)?.[0] || '0', 10);
+    if (num >= 1 && num <= playableHand.length) {
+      const card = playableHand[num - 1];
+      // If the model organically picked the whispered card, that still counts as followed
+      const followed = !!(whisper?.suggestion &&
+        card.ability_name.toLowerCase() === whisper.suggestion.toLowerCase());
+      return { card, source: tier, whisper_followed: followed, fallback_used: false, compliance, tier };
+    }
+  }
+
+  // 3. Fallback: archetype-weighted random (key missing or call failed)
+  if (!cfg.fallback_to_random_on_failure) {
+    return { card: null, source: 'none', whisper_followed: false, fallback_used: true, compliance, tier: 'fallback' };
+  }
 
   return {
     card: pickCardFallback(playableHand, agent.archetype, agent),
     source: 'fallback',
     whisper_followed: false,
     fallback_used: true,
+    compliance,
+    tier: 'fallback',
   };
 }

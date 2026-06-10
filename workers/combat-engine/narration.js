@@ -11,6 +11,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { syncConfig } from './config-loader.js';
+import { recordTierUsage } from './ai-decision.js';
 
 async function callClaude(env, model, prompt, maxTokens) {
   if (!env.ANTHROPIC_API_KEY) return null;
@@ -62,9 +63,19 @@ Write ONE short sentence (max 15 words) — present tense, dramatic, no metaphor
 }
 
 /**
- * Generate a death narration (Sonnet — milestone).
+ * Tally a Sonnet narration call against the match's tier_usage
+ * ('sonnet' on success, 'fallback' when the template was used).
  */
-export async function deathNarration(env, ctx) {
+async function tallySonnet(env, matchId, text) {
+  if (!matchId) return;
+  await recordTierUsage(env, matchId, [text ? 'sonnet' : 'fallback']);
+}
+
+/**
+ * Generate a death narration (Sonnet — milestone).
+ * Pass matchId to count the call in combat_matches.tier_usage.
+ */
+export async function deathNarration(env, ctx, matchId = null) {
   const cfg = syncConfig().ai;
   const prompt = `Write the death narration for an AI agent in Shellforge — a dark cyberpunk RPG.
 
@@ -78,14 +89,16 @@ LOCATION:   ${ctx.location || 'the arena'}
 Write 2-4 sentences in third person past tense. Dark, dry, technical. Mention the agent's archetype identity. The death should feel like a narrative beat, not a failure. No exclamation marks. No metaphors that break the cyberpunk-quantum tone. End on something memorable.`;
 
   const text = await callClaude(env, cfg.sonnet_model, prompt, cfg.sonnet_max_tokens);
+  await tallySonnet(env, matchId, text);
   if (text) return text;
   return `${ctx.deadAgent} took ${ctx.finalAbility} from ${ctx.killer} on turn ${ctx.turns} and went dark. The chassis remained for the salvagers. The core had already left.`;
 }
 
 /**
  * Generate deathmatch resolution narration (Sonnet).
+ * Pass matchId to count the call in combat_matches.tier_usage.
  */
-export async function deathmatchResolution(env, ctx) {
+export async function deathmatchResolution(env, ctx, matchId = null) {
   const cfg = syncConfig().ai;
   const prompt = `Shellforge deathmatch resolution narration. Dark cyberpunk RPG.
 
@@ -98,6 +111,7 @@ WINNER GAINED: ${ctx.gearTaken} items + ${ctx.shellTaken} $SHELL
 Write 3-5 sentences in third person past tense. The arena is silent after. The winner is changed by it. Reference the heat that brought them here. Dark, technical, no metaphors.`;
 
   const text = await callClaude(env, cfg.sonnet_model, prompt, cfg.sonnet_max_tokens);
+  await tallySonnet(env, matchId, text);
   if (text) return text;
   return `${ctx.winner} stood over ${ctx.loser}'s silent chassis. The crowd noise had stopped some turns ago. They took the gear and the $SHELL and left without speaking.`;
 }

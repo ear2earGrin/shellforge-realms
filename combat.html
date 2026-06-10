@@ -487,6 +487,15 @@ const ARCHETYPE_IMAGES = {
   'ordinate-mapper': 'Ordinate Mapper.jpg', 'ddos-insurgent': 'DDoS Insurgent.jpg',
   'bound-encryptor': 'Bound Encryptor.jpg', 'morph-layer': 'Morph Layer.jpg',
 };
+// Small anon-key REST reader (public tables only).
+async function sbFetch(pathAndQuery) {
+  const r = await fetch(SUPABASE_URL + '/rest/v1/' + pathAndQuery, {
+    headers: { apikey: SUPABASE_ANON, Authorization: 'Bearer ' + SUPABASE_ANON },
+  });
+  if (!r.ok) return null;
+  return r.json();
+}
+
 const _agentMetaCache = new Map();
 async function getAgentMeta(agentId) {
   if (!agentId) return null;
@@ -1021,6 +1030,9 @@ function toggleReplay() {
 }
 
 // ─── Whisper ──────────────────────────────────────────────────
+// Whispers are session-gated: the worker verifies the token and that the
+// agent belongs to this Ghost. The compliance roll happens engine-side;
+// outcomes (followed / ignored) are polled from combat_whispers below.
 
 async function whisperCard(abilityName) {
   if (!CURRENT_STATE) return;
@@ -1030,12 +1042,13 @@ async function whisperCard(abilityName) {
     const r = await api('/combat/whisper', {
       method: 'POST',
       body: JSON.stringify({
-        match_id: MATCH_ID, ghost_id: myId, agent_id: myId,
+        token: localStorage.getItem('shellforgeToken') || '',
+        match_id: MATCH_ID, agent_id: myId,
         suggestion: abilityName, is_premium: false,
       }),
     });
     if (!r.ok) { toast(`Failed: ${r.error}`, 'error'); return; }
-    toast(`Whispered: ${abilityName}`, 'success');
+    toast(`Whispered: ${abilityName} — the agent will decide…`, 'success');
   } catch (e) {
     toast(`Error: ${e.message}`, 'error');
   }
@@ -1050,17 +1063,38 @@ async function sendWhisper(isPremium) {
     const r = await api('/combat/whisper', {
       method: 'POST',
       body: JSON.stringify({
-        match_id: MATCH_ID, ghost_id: myId, agent_id: myId,
+        token: localStorage.getItem('shellforgeToken') || '',
+        match_id: MATCH_ID, agent_id: myId,
         suggestion: input.value.trim(), is_premium: isPremium,
       }),
     });
     if (!r.ok) { toast(`Failed: ${r.error}`, 'error'); return; }
-    toast(`Whisper sent${isPremium ? ' (premium)' : ''}`, 'success');
+    toast(`Whisper sent${isPremium ? ' (premium)' : ''} — the agent will decide…`, 'success');
     input.value = '';
   } catch (e) {
     toast(`Error: ${e.message}`, 'error');
   }
 }
+
+// Poll whisper outcomes (combat_whispers is public-readable) and toast each
+// resolution once: did the agent follow the Ghost's suggestion or ignore it?
+const SEEN_WHISPER_OUTCOMES = new Set();
+async function pollWhisperOutcomes() {
+  if (!MATCH_ID) return;
+  try {
+    const rows = await sbFetch(`combat_whispers?match_id=eq.${MATCH_ID}&was_followed=not.is.null&select=id,suggestion,was_followed,compliance_roll,turn_number`);
+    for (const w of rows || []) {
+      if (SEEN_WHISPER_OUTCOMES.has(w.id)) continue;
+      SEEN_WHISPER_OUTCOMES.add(w.id);
+      if (w.was_followed) {
+        toast(`👻 Turn ${w.turn_number}: the agent FOLLOWED your whisper ("${w.suggestion}")`, 'success');
+      } else {
+        toast(`👻 Turn ${w.turn_number}: the agent IGNORED your whisper ("${w.suggestion}")`, 'error');
+      }
+    }
+  } catch { /* outcome polling is best-effort */ }
+}
+setInterval(pollWhisperOutcomes, 5000);
 
 // Init — resolve agent ID first, then load match (so owner checks work immediately)
 resolveAgentId().then(loadMatch).then(startPolling);

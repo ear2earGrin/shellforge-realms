@@ -39,6 +39,7 @@ import {
   triggerClusterEncounter, triggerArchetypeMeeting, triggerMarketUndercut,
   triggerGhostProvocation, triggerGhostDeescalation, recordPvpResult,
   decayAllFeuds, getAgentFeuds, heatLevel, isArchetypeEnemy,
+  shouldAutoChallenge, resolveByDeath,
 } from './feuds.js';
 import {
   evaluateAllAgents, checkCollapses, getCrucibleBonuses, recordWhisper,
@@ -161,11 +162,29 @@ async function handleAgentActive(env, agentId) {
   return jsonResponse({ ok: true, matches: rows });
 }
 
+// Resolve a session token (issued by the auth-worker) to a user_id.
+// sessions stores only the sha256 of the bearer token.
+async function sessionUserFromToken(env, token) {
+  if (!token || typeof token !== 'string' || token.length < 16) return null;
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+  const hash = [...new Uint8Array(digest)].map(x => x.toString(16).padStart(2, '0')).join('');
+  const rows = await sb.get(env,
+    `sessions?token_hash=eq.${hash}&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&select=user_id`);
+  return rows?.[0]?.user_id || null;
+}
+
 async function handleWhisper(request, env) {
   const body = await readJSON(request);
-  if (!body || !body.match_id || !body.ghost_id || !body.agent_id || !body.suggestion) {
-    return errorResponse('match_id, ghost_id, agent_id, suggestion required');
+  if (!body || !body.match_id || !body.agent_id || !body.suggestion) {
+    return errorResponse('match_id, agent_id, suggestion required');
   }
+  // Session gate — only the agent's own Ghost may whisper into its match.
+  const userId = await sessionUserFromToken(env, body.token);
+  if (!userId) return errorResponse('invalid or expired session — please log in', 401);
+  const whisperAgent = await getOne(env, 'agents', `agent_id=eq.${body.agent_id}&select=user_id`);
+  if (!whisperAgent) return errorResponse('agent not found', 404);
+  if (whisperAgent.user_id !== userId) return errorResponse('not your agent', 403);
+
   const match = await getOne(env, 'combat_matches', `id=eq.${body.match_id}`);
   if (!match) return errorResponse('match not found', 404);
   if (match.status !== 'in_progress') return errorResponse('match not in progress');
@@ -174,7 +193,7 @@ async function handleWhisper(request, env) {
 
   const inserted = await sb.post(env, 'combat_whispers', [{
     match_id: body.match_id,
-    ghost_id: body.ghost_id,
+    ghost_id: userId,
     agent_id: body.agent_id,
     turn_number: turnNumber,
     suggestion: body.suggestion,
@@ -228,6 +247,12 @@ async function handleFeudEvent(request, env) {
       await triggerGhostDeescalation(env, body.agent_a, body.agent_b);
       return jsonResponse({ ok: true });
 
+    case 'pvp_result':
+      // Combat losses heat the feud — fired by the turn-engine for wild fights.
+      if (!body.winner || !body.loser) return errorResponse('winner + loser required');
+      await recordPvpResult(env, body.winner, body.loser, body.feud_id || null);
+      return jsonResponse({ ok: true });
+
     default:
       return errorResponse(`unknown event_type: ${body.event_type}`);
   }
@@ -265,6 +290,139 @@ async function handleCrucibleWhisper(request, env) {
 }
 
 // ─── Post-match hooks (death, dynasty, push notifications) ─
+
+// Compact dynasty pipeline for combat-engine deaths (wild + deathmatch).
+// Mirrors the turn-engine's processDeathLoot semantics: half the $SHELL to
+// the Family Vault (half dissolves — scarcity), lineage attribution, and
+// legendary/epic items preserved in vault_items for the heir.
+async function runDeathLoot(env, dead) {
+  if (!dead.user_id) return;
+  const vaultShell = Math.floor((dead.shell_balance || 0) / 2);
+  const lineName = dead.line_name || `House ${String(dead.agent_name || 'UNKNOWN').toUpperCase()}`;
+  const legacyTrait = dead.karma >= 10 ? 'disciplined' : dead.karma <= -10 ? 'chaotic' : 'neutral';
+
+  const vaults = (await sb.get(env, `family_vault?user_id=eq.${dead.user_id}&select=vault_id,shell_balance,generation`)) || [];
+  if (vaults.length > 0) {
+    await sb.patch(env, `family_vault?vault_id=eq.${vaults[0].vault_id}`, {
+      shell_balance: (vaults[0].shell_balance || 0) + vaultShell,
+      last_agent_name: dead.agent_name,
+      legacy_karma: dead.karma,
+      legacy_trait: legacyTrait,
+      line_name: lineName,
+      generation: Math.max(vaults[0].generation || 0, dead.generation || 1),
+      updated_at: new Date().toISOString(),
+    });
+  } else {
+    await sb.insert(env, 'family_vault', [{
+      user_id: dead.user_id,
+      shell_balance: vaultShell,
+      last_agent_name: dead.agent_name,
+      legacy_karma: dead.karma,
+      legacy_trait: legacyTrait,
+      line_name: lineName,
+      generation: dead.generation || 1,
+    }]);
+  }
+
+  // Preserve legendary/epic items for the heir; the rest stays with the body.
+  const inventory = (await sb.get(env, `inventory?agent_id=eq.${dead.agent_id}&select=*`)) || [];
+  const heirlooms = inventory.filter(i =>
+    ['legendary', 'epic'].includes(String(i.stats?.rarity || i.item_category || '').toLowerCase()));
+  if (heirlooms.length > 0) {
+    await sb.insert(env, 'vault_items', heirlooms.map(i => ({
+      user_id: dead.user_id,
+      item_id: i.item_id,
+      item_name: i.item_name,
+      item_type: i.item_type,
+      item_rarity: String(i.stats?.rarity || i.item_category || 'epic').toLowerCase(),
+      stats: i.stats || {},
+      inherited_from: dead.agent_name,
+    }))).catch(e => console.error('[death] vault_items insert failed:', e.message));
+    for (const i of heirlooms) {
+      await sb.delete(env, `inventory?inventory_id=eq.${i.inventory_id}`);
+    }
+  }
+
+  await sb.patch(env, `agents?agent_id=eq.${dead.agent_id}`, {
+    shell_balance: 0,
+  });
+}
+
+// ─── Feud escalation pass (cron) ─────────────────────────────
+// enemies+ heat → chance of an auto-initiated PvP challenge (config-gated
+// cooldown per pair). blood heat → dual-consent deathmatch state machine:
+//   none            → create a consent request for EACH Ghost → consent_pending
+//   armed           → (both Ghosts granted via rpc_respond_consent) schedule
+//                     the deathmatch + spectacle activity events → scheduled
+//   declined/done   → nothing; the feud stands down or is settled
+async function processFeudEscalations(env) {
+  const cfg = (await getConfig(env)).feuds;
+  const feuds = (await sb.get(env,
+    `agent_feuds?status=eq.active&or=(heat_a.gte.${cfg.threshold_enemies},heat_b.gte.${cfg.threshold_enemies})&select=*`)) || [];
+  let challenged = 0, consentsCreated = 0, deathmatches = 0;
+
+  for (const feud of feuds) {
+    const a = await getOne(env, 'agents', `agent_id=eq.${feud.agent_a}&select=agent_id,agent_name,user_id,is_alive,turns_taken,location,shell_balance`);
+    const b = await getOne(env, 'agents', `agent_id=eq.${feud.agent_b}&select=agent_id,agent_name,user_id,is_alive,turns_taken,location,shell_balance`);
+    if (!a?.is_alive || !b?.is_alive) continue;
+
+    const maxHeat = Math.max(feud.heat_a, feud.heat_b);
+
+    // Blood feud: dual-consent deathmatch gate (amended brief — the one
+    // consensual PvP permadeath path).
+    if (maxHeat >= cfg.threshold_blood) {
+      if (feud.deathmatch_state === 'none' || feud.deathmatch_state == null) {
+        for (const [agent, rival] of [[a, b], [b, a]]) {
+          await sb.insert(env, 'ghost_consent_requests', [{
+            feud_id: feud.id,
+            agent_id: agent.agent_id,
+            user_id: agent.user_id,
+            kind: 'deathmatch',
+            message: `Your agent ${agent.agent_name} demands a DEATHMATCH against ${rival.agent_name}. ` +
+                     `Feud heat: ${maxHeat}/100. If both Ghosts consent, death is permanent — no resurrection protocol.`,
+          }]).catch(() => {}); // partial unique index makes this idempotent
+        }
+        await sb.patch(env, `agent_feuds?id=eq.${feud.id}`, { deathmatch_state: 'consent_pending' });
+        consentsCreated++;
+        continue;
+      }
+      if (feud.deathmatch_state === 'armed') {
+        const dm = await createDeathmatch(env, feud.agent_a, feud.agent_b, feud.id, 0);
+        if (dm?.ok) {
+          await sb.patch(env, `agent_feuds?id=eq.${feud.id}`, { deathmatch_state: 'scheduled' });
+          for (const agent of [a, b]) {
+            await sb.insert(env, 'activity_log', [{
+              agent_id: agent.agent_id,
+              turn_number: agent.turns_taken || 0,
+              action_type: 'event',
+              action_detail: `⚔️ DEATHMATCH BEGINS: ${a.agent_name} vs ${b.agent_name}. ` +
+                             `Both Ghosts consented. The arena seals its doors.`,
+              location: agent.location,
+            }]).catch(() => {});
+          }
+          deathmatches++;
+        }
+        continue;
+      }
+      continue; // consent_pending / scheduled / declined / done — nothing to do
+    }
+
+    // enemies / sworn heat: chance of a normal (non-lethal) auto-challenge,
+    // rate-limited per pair by auto_challenge_cooldown_hours.
+    const roll = shouldAutoChallenge(feud);
+    if (!roll.shouldChallenge || roll.matchType !== 'pvp') continue;
+    const cooldownMs = (cfg.auto_challenge_cooldown_hours || 24) * 3600 * 1000;
+    const since = new Date(Date.now() - cooldownMs).toISOString();
+    const recent = (await sb.get(env,
+      `combat_matches?feud_id=eq.${feud.id}&created_at=gte.${encodeURIComponent(since)}&select=id&limit=1`)) || [];
+    if (recent.length > 0) continue;
+    const pot = Math.min(20, Math.floor(Math.min(a.shell_balance || 0, b.shell_balance || 0) * 0.1));
+    const made = await createPvpMatch(env, feud.agent_a, feud.agent_b, pot, feud.id);
+    if (made?.ok) challenged++;
+  }
+
+  return { challenged, consentsCreated, deathmatches };
+}
 
 async function postMatchHooks(env, matchId, resolveResult) {
   const match = await getOne(env, 'combat_matches', `id=eq.${matchId}`);
@@ -309,11 +467,15 @@ async function postMatchHooks(env, matchId, resolveResult) {
   if (resolveResult.death_occurred && resolveResult.death_agent_id) {
     const dead = await getOne(env, 'agents', `agent_id=eq.${resolveResult.death_agent_id}`);
     const killer = await getOne(env, 'agents', `agent_id=eq.${resolveResult.winner_agent_id}`);
+    const lineTag = dead?.line_name
+      ? ` — Gen ${dead.generation || 1} of ${dead.line_name} falls.` : '';
     const narration = await deathNarration(env, {
-      deadAgent: dead?.username || resolveResult.death_agent_id,
+      deadAgent: dead?.agent_name || resolveResult.death_agent_id,
       deadArchetype: dead?.archetype || 'unknown',
       deadCluster: dead?.cluster || 'unknown',
-      killer: killer?.username || resolveResult.winner_agent_id,
+      lineage: dead?.line_name
+        ? `${dead.agent_name}, generation ${dead.generation || 1} of ${dead.line_name}` : null,
+      killer: killer?.agent_name || resolveResult.winner_agent_id,
       killerArchetype: killer?.archetype || 'NPC',
       killerCluster: killer?.cluster || 'wild',
       matchType: match.match_type,
@@ -321,18 +483,34 @@ async function postMatchHooks(env, matchId, resolveResult) {
       finalDamage: 0,
       turns: resolveResult.turn_number,
       location: match.opponent_data?.location || 'the arena',
+    }, matchId);
+
+    // Mark agent dead
+    await sb.patch(env, `agents?agent_id=eq.${resolveResult.death_agent_id}`, {
+      is_alive: false,
+      health: 0,
+      died_at: new Date().toISOString(),
+      death_count: (dead?.death_count || 0) + 1,
     });
 
-    // Mark agent dead (dynasty / vault handled by turn-engine death-handler)
-    await sb.patch(env, `agents?agent_id=eq.${resolveResult.death_agent_id}`, { status: 'dead', health: 0 });
+    // Dynasty pipeline: shell halving + Family Vault (lineage-attributed) +
+    // legendary/epic items preserved for the heir.
+    if (dead) await runDeathLoot(env, dead);
 
-    // Write death narration to activity_log if that table exists
     await sb.insert(env, 'activity_log', [{
       agent_id: resolveResult.death_agent_id,
-      action: 'death',
-      detail: narration,
-      timestamp: new Date().toISOString(),
+      turn_number: dead?.turns_taken || 0,
+      action_type: 'death',
+      action_detail: narration + lineTag,
+      location: dead?.location || 'Unknown',
+      success: false,
     }]).catch(() => {});
+
+    // Feud closure for deathmatches: the blood debt is paid.
+    if (match.match_type === 'deathmatch' && match.feud_id) {
+      await resolveByDeath(env, match.feud_id);
+      await sb.patch(env, `agent_feuds?id=eq.${match.feud_id}`, { deathmatch_state: 'done' });
+    }
 
     // Push notification
     await sendPush(env, {
@@ -346,22 +524,23 @@ async function postMatchHooks(env, matchId, resolveResult) {
     // For deathmatch, also send winner notification + transfer rewards
     if (match.match_type === 'deathmatch') {
       const dmNarration = await deathmatchResolution(env, {
-        winner: killer?.username || 'the winner',
+        winner: killer?.agent_name || 'the winner',
         winnerArchetype: killer?.archetype || 'unknown',
         winnerCluster: killer?.cluster || 'unknown',
-        loser: dead?.username || 'the loser',
+        loser: dead?.agent_name || 'the loser',
         loserArchetype: dead?.archetype || 'unknown',
         loserCluster: dead?.cluster || 'unknown',
-        heatLevel: 'sworn_enemies',
+        heatLevel: 'blood_feud',
         turns: resolveResult.turn_number,
         gearTaken: 'all equipped',
-        shellTaken: Math.floor((dead?.shells || 0) / 2),
-      });
+        shellTaken: Math.floor((dead?.shell_balance || 0) / 2),
+      }, matchId);
       await sb.insert(env, 'activity_log', [{
         agent_id: resolveResult.winner_agent_id,
-        action: 'deathmatch_win',
-        detail: dmNarration,
-        timestamp: new Date().toISOString(),
+        turn_number: killer?.turns_taken || 0,
+        action_type: 'combat',
+        action_detail: dmNarration,
+        location: killer?.location || 'Unknown',
       }]).catch(() => {});
       await sendPush(env, {
         type: 'deathmatch_win',
@@ -508,8 +687,12 @@ async function handleScheduled(controller, env) {
     return r;
   });
   const collapses = await checkCollapses(env);
+  const feuds = await processFeudEscalations(env).catch(e => {
+    console.error('[cron] feud escalation pass failed:', e.message);
+    return { challenged: 0, consentsCreated: 0, deathmatches: 0 };
+  });
 
-  console.log(`[cron] ai-decide: ${auto.decided} (acc:${auto.accepted} dec:${auto.declined}) | expired: ${exp.expired} | init: ${init.initialized} | turns: ${adv.advanced} | collapses: ${collapses.collapsed}`);
+  console.log(`[cron] ai-decide: ${auto.decided} (acc:${auto.accepted} dec:${auto.declined}) | expired: ${exp.expired} | init: ${init.initialized} | turns: ${adv.advanced} | collapses: ${collapses.collapsed} | feuds: auto-pvp ${feuds.challenged}, consents ${feuds.consentsCreated}, deathmatches ${feuds.deathmatches}`);
 }
 
 // ─── Main fetch handler ─────────────────────────────────────
@@ -551,6 +734,11 @@ async function handleFetch(request, env) {
     if (path === '/feuds/hot' && method === 'GET') return await handleHotFeuds(env);
 
     // Crucible routes
+    if (path === '/crucible/danger' && method === 'GET') {
+      // Agents in reckless/death_wish/decoherence — backed by v_crucible_danger.
+      const rows = (await sb.get(env, 'v_crucible_danger?select=*')) || [];
+      return jsonResponse({ ok: true, count: rows.length, agents: rows });
+    }
     if (path === '/crucible/check' && method === 'POST') return await handleCrucibleCheck(request, env);
     if (path.startsWith('/crucible/agent/') && method === 'GET') {
       const id = path.split('/').pop();

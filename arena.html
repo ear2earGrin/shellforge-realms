@@ -1383,11 +1383,12 @@ async function loadFeuds() {
 }
 
 async function loadCrucible() {
-  // Best-effort: count agents currently in reckless/death_wish/decoherence
+  // Agents currently in reckless/death_wish/decoherence — GET /crucible/danger
+  // (backed by the v_crucible_danger view).
   try {
-    // We don't have a /crucible/danger endpoint yet — for now show "0"
-    // until the v_crucible_danger view is wired into a route.
-    const scEl = document.getElementById('stat-crucible'); if (scEl) scEl.textContent = '0';
+    const r = await api('/crucible/danger');
+    const scEl = document.getElementById('stat-crucible');
+    if (scEl) scEl.textContent = (r && r.ok) ? String(r.count) : '?';
   } catch {
     const scEl = document.getElementById('stat-crucible'); if (scEl) scEl.textContent = '?';
   }
