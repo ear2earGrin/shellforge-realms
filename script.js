@@ -352,7 +352,7 @@ if (subscribeForm) {
         e.preventDefault();
         const email = this.querySelector('input[type="email"]').value;
         
-        // TODO: Replace with actual backend endpoint
+        // No mailing-list backend yet — acknowledged client-side only.
         console.log('Subscribing email:', email);
         
         // Show success message
