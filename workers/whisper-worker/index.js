@@ -1,6 +1,9 @@
 // Shellforge Whisper Worker — Cloudflare Worker
 // POST /whisper  — player sends a whisper to their agent
-// Body: { agent_id: "<uuid>", message: "<text>", user_id?: "<uuid>" }
+// Body: { agent_id: "<uuid>", message: "<text>", token: "<session token>" }
+//
+// Requires a session token from the auth-worker — the whisper must come from
+// the agent's own Ghost (sessions.user_id must match agents.user_id).
 //
 // Server-side enforcement (the frontend check is advisory only):
 //   - FREE_WHISPERS_PER_DAY per agent per UTC day (counted in the whispers table)
@@ -49,10 +52,13 @@ async function handleWhisper(request, env) {
     return jsonError(400, 'Invalid JSON body');
   }
 
-  const { agent_id, message } = body ?? {};
+  const { agent_id, message, token } = body ?? {};
 
   if (!agent_id || typeof agent_id !== 'string') {
     return jsonError(400, 'Missing or invalid agent_id');
+  }
+  if (!token || typeof token !== 'string') {
+    return jsonError(401, 'Missing session token — please log in');
   }
   if (!message || typeof message !== 'string' || message.trim().length === 0) {
     return jsonError(400, 'Missing or empty message');
@@ -81,6 +87,22 @@ async function handleWhisper(request, env) {
   const [agent] = await agentRes.json();
   if (!agent) return jsonError(404, 'Agent not found');
   if (agent.is_alive === false) return jsonError(409, 'The dead hear no whispers.');
+
+  // Session check — only the agent's own Ghost may whisper.
+  const tokenDigest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+  const tokenHash = [...new Uint8Array(tokenDigest)].map(x => x.toString(16).padStart(2, '0')).join('');
+  const sessRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/sessions?token_hash=eq.${tokenHash}` +
+      `&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&select=user_id`,
+    { headers: supabaseHeaders },
+  );
+  if (!sessRes.ok) {
+    console.error('Supabase session lookup failed:', await sessRes.text());
+    return jsonError(502, 'Failed to verify session');
+  }
+  const [session] = await sessRes.json();
+  if (!session) return jsonError(401, 'Invalid or expired session — please log in again');
+  if (session.user_id !== agent.user_id) return jsonError(403, 'Not your agent');
 
   // Today's whispers for this agent — daily limit + rate limit in one query.
   // whisper_date defaults to CURRENT_DATE in the DB (UTC).
