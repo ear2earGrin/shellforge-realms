@@ -98,6 +98,35 @@ Snapshot the live schema into versioned migration files in the repo (e.g. `supab
 
 ## 3. Phase 1 — Finish the Arena (combat fully live)
 
+> **STATUS (2026-06-10): Phase 1 EXECUTED** (plus the real-auth prerequisite).
+> ✅ Auth: workers/auth-worker (PBKDF2 via WebCrypto, opaque session tokens,
+> legacy accounts claimed on first login); migration 0004 token-gates every
+> player-mutating RPC and owner-scopes the remaining anon-writable tables.
+> Verified as the anon role: cross-user actions raise 'not your agent',
+> garbage/expired tokens are rejected, valid tokens trade/equip/craft/open
+> caches.
+> ✅ Combat loop: arena.html/combat.html seams fixed (/crucible/danger added,
+> whisper calls session-gated, whisper outcomes surfaced); tiered AI live in
+> both engines (Groq routine / Haiku whisper / Sonnet milestone) with
+> per-match tier_usage and per-cron-run tier logs — no mocked decisions.
+> ✅ Death + lineage: vault writes are lineage-attributed (line_name +
+> generation); heirs register as Generation N+1 of the house; death
+> narratives and logs reference the line. Combat-engine deaths now run the
+> dynasty pipeline too (its old death branch wrote nonexistent columns).
+> ✅ Feuds: undercut + combat-loss triggers fire from the turn-engine;
+> enemies+ heat auto-challenges (cooldown-gated); blood heat creates dual
+> consent requests; deathmatch schedules ONLY when both Ghosts grant
+> (verified: consent_pending → armed in DB), with spectacle activity events.
+> ✅ Turn-engine 'arena' action enqueues real combat-engine matches.
+>
+> **Handoff (needs Cloudflare credentials):** deploy all four workers —
+> auth-worker (NEW: secrets SUPABASE_URL + SUPABASE_SERVICE_KEY),
+> turn-engine + combat-engine (add GROQ_API_KEY secret to both),
+> whisper-worker. Then merge this branch to main and apply
+> supabase/migrations/0003 (whispers worker-only). Live-fire checks that
+> need deployed workers: register/login round-trip, a full visible match
+> with whisper + tier_usage, auto-challenge firing from real heat.
+
 Combat is the #1 MUST system and is 70% there. Finish it. **Est: 1.5–2 weeks.**
 
 1. **Wire the loop end-to-end** — challenge → accept/decline (with AI auto-decide timeout) → turn resolution → result → loot/escrow payout → activity log entry. The frontend (`arena.html`, `combat.html`) is built; verify every screen against the live worker and fix the seams.
