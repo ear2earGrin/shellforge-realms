@@ -25,7 +25,7 @@
 <canvas id="scene"></canvas>
 <div class="hud" id="title">NEXARCH<small>CITY OF SHADOWS — LIVE SECTOR VIEW</small></div>
 <div class="hud" id="status">AGENT: initializing…</div>
-<div class="hud" id="hint">DRAG pan · WHEEL zoom · Q/E rotate · CLICK ground to dispatch agent · L labels</div>
+<div class="hud" id="hint">V cinematic/live · DRAG pan · WHEEL zoom · Q/E rotate (live) · CLICK dispatch · L labels</div>
 <div class="hud" id="loading">ESTABLISHING UPLINK…</div>
 
 <script type="importmap">
@@ -125,6 +125,7 @@ function heightAt(x, z) {
         emissiveIntensity: 0.7, roughness: 0.7, metalness: 0.1
     });
     scene.add(new THREE.Mesh(g, m));
+    window.__groundMat = m;
     const apron = new THREE.Mesh(
         new THREE.CircleGeometry(1400, 48).rotateX(-Math.PI / 2),
         new THREE.MeshStandardMaterial({ color: 0x070a10, roughness: 1 }));
@@ -134,6 +135,7 @@ function heightAt(x, z) {
 
 // kit pieces -> InstancedMesh per primitive
 const kit = await loader.loadAsync(ASSETS + 'nexarch-kit.glb');
+const cityMats = new Set();
 const byPiece = {};
 for (const pl of layout.placements) (byPiece[pl.p] ??= []).push(pl);
 const tmpM = new THREE.Matrix4(), tmpP = new THREE.Matrix4();
@@ -145,6 +147,7 @@ for (const [name, places] of Object.entries(byPiece)) {
     root.traverse(o => { if (o.isMesh) prims.push(o); });
     for (const prim of prims) {
         const inst = new THREE.InstancedMesh(prim.geometry, prim.material, places.length);
+        cityMats.add(prim.material);
         const rel = prim.matrixWorld.clone()
             .premultiply(root.matrixWorld.clone().invert());
         places.forEach((pl, i) => {
@@ -171,6 +174,37 @@ for (const [name, places] of Object.entries(byPiece)) {
     });
     scene.add(trees);
 }
+
+// ---------------------------------------------------------- cinematic bake
+const BAKE = { yaw: Math.PI * 1.25, pitch: THREE.MathUtils.degToRad(38),
+               w: 830, h: 830 * 2800 / 4096 };
+let cinematic = false, bakeMesh = null;
+const modeMats = [...cityMats, window.__groundMat, window.__treeMat];
+function setMode(c) {
+    if (c && !bakeMesh) return;
+    cinematic = c;
+    if (bakeMesh) bakeMesh.visible = c;
+    for (const m of modeMats) m.colorWrite = !c;   // depth-only in cinematic
+    if (c) { view.yaw = view.yawGoal = BAKE.yaw; view.zoom = Math.min(view.zoom, 3.2); }
+    statusEl.dataset.mode = c ? 'CINEMATIC' : 'LIVE 3D';
+}
+texLoader.load(ASSETS + 'nexarch-bake.jpg', tex => {
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 4;
+    const dummy = new THREE.OrthographicCamera();
+    const cp = Math.cos(BAKE.pitch), sp = Math.sin(BAKE.pitch);
+    dummy.position.set(cp * Math.sin(BAKE.yaw), sp, cp * Math.cos(BAKE.yaw))
+        .multiplyScalar(900);
+    dummy.lookAt(0, 0, 0);
+    bakeMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(BAKE.w, BAKE.h),
+        new THREE.MeshBasicMaterial({ map: tex, depthTest: false,
+                                      depthWrite: false, toneMapped: false }));
+    bakeMesh.quaternion.copy(dummy.quaternion);
+    bakeMesh.renderOrder = -10;
+    scene.add(bakeMesh);
+    setMode(true);
+}, undefined, () => console.warn('no bake image — staying in live mode'));
 
 // ---------------------------------------------------------------- labels
 const LABEL_H = { 'CHURCH': 52, 'ARENA': 34, 'THE CORE': 20, 'FORGE': 28,
@@ -299,6 +333,22 @@ scene.add(agent);
 const agentLight = new THREE.PointLight(0xff2814, 16, 32);
 agentLight.position.y = 6;
 agent.add(agentLight);
+{
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    const g2 = c.getContext('2d');
+    const rg = g2.createRadialGradient(64, 64, 4, 64, 64, 62);
+    rg.addColorStop(0, 'rgba(255,60,30,0.55)');
+    rg.addColorStop(1, 'rgba(255,60,30,0)');
+    g2.fillStyle = rg;
+    g2.fillRect(0, 0, 128, 128);
+    const spr = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: new THREE.CanvasTexture(c), blending: THREE.AdditiveBlending,
+        depthWrite: false }));
+    spr.scale.set(9, 9, 1);
+    spr.position.y = 2.5;
+    agent.add(spr);
+}
 let agentReady = false;
 loader.load(ASSETS + 'rune-monk.glb', g => {
     const m = g.scene;
@@ -320,7 +370,7 @@ function dispatch(wx, wz, name) {
     if (!p) return;
     route = p.map(c => worldOf(...c));
     routeName = name || `(${Math.round(wx + 10500)}, ${Math.round(wz + 9000)})`;
-    statusEl.textContent = `AGENT: en route → ${routeName}`;
+    statusEl.textContent = `[${statusEl.dataset.mode ?? 'LIVE 3D'}] AGENT: en route → ${routeName}`;
 }
 function wander() {
     const lb = layout.labels[Math.floor(Math.random() * layout.labels.length)];
@@ -358,12 +408,15 @@ addEventListener('pointermove', e => {
     view.target.y = 0;
 });
 addEventListener('wheel', e => {
-    view.zoom = THREE.MathUtils.clamp(view.zoom * (e.deltaY > 0 ? 0.9 : 1.12), 0.55, 7);
+    view.zoom = THREE.MathUtils.clamp(view.zoom * (e.deltaY > 0 ? 0.9 : 1.12), 0.55, cinematic ? 3.2 : 7);
 });
 addEventListener('keydown', e => {
     const k = e.key.toLowerCase();
-    if (k === 'q') view.yawGoal += Math.PI / 4;
-    if (k === 'e') view.yawGoal -= Math.PI / 4;
+    if (k === 'v') setMode(!cinematic);
+    if (k === 'q' || k === 'e') {
+        if (cinematic) setMode(false);
+        view.yawGoal += (k === 'q' ? 1 : -1) * Math.PI / 4;
+    }
     if (k === 'l') labelGroup.visible = !labelGroup.visible;
 });
 
@@ -402,7 +455,7 @@ function tick() {
                 agent.rotation.y += dr * Math.min(1, dt * 8);
             }
             if (!route.length) {
-                statusEl.textContent = `AGENT: arrived — ${routeName}`;
+                statusEl.textContent = `[${statusEl.dataset.mode ?? 'LIVE 3D'}] AGENT: arrived — ${routeName}`;
                 idleT = 2 + Math.random() * 4;
             }
         } else {

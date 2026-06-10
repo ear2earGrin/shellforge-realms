@@ -262,7 +262,8 @@ def inside_wall(x, z, margin):
     return math.hypot(x, z) < wall_R(th) - margin
 
 
-HOUSES = [("house_small", 9.0, 3.0), ("house_med", 12.0, 1.7), ("house_tall", 8.2, 1.5)]
+HOUSES = [("house_small", 9.0, 3.0), ("house_med", 12.0, 1.7),
+          ("house_tall", 8.2, 1.5), ("house_jetty", 11.5, 1.3)]
 
 
 def pick_house():
@@ -285,9 +286,11 @@ def try_house(x, z, rot, rad, name, tight=0.94):
         return False
     place(name, x, z, rot, s=round(random.uniform(0.88, 1.12), 3), sink=1.2)
     blockers.append((x, z, rad))
+    street_houses.append((x, z, rot, rad))
     return True
 
 
+street_houses = []
 # A) street-front rows: houses hugging every road on both sides
 n_row = 0
 for r in ROADS:
@@ -322,6 +325,131 @@ for _ in range(2600):
     if try_house(x, z, rot, rad, name, tight=0.90):
         n_fill += 1
 
+# ---------------------------------------------------------------- clutter
+SMALL = [("crate", 1.2, 3), ("barrel", 1.0, 3), ("sacks", 1.3, 2), ("rubble", 2.0, 1)]
+
+
+def pick_small():
+    t = random.uniform(0, sum(w for *_, w in SMALL))
+    for name, rad, w in SMALL:
+        t -= w
+        if t <= 0:
+            return name, rad
+    return SMALL[0][:2]
+
+
+n_clutter = 0
+# street-edge clutter: barrels/crates against the houses
+for r in ROADS:
+    p = r["pts"]
+    for i in range(len(p) - 1):
+        segL = math.hypot(p[i + 1][0] - p[i][0], p[i + 1][1] - p[i][1])
+        ux, uz = (p[i + 1][0] - p[i][0]) / segL, (p[i + 1][1] - p[i][1]) / segL
+        nx, nz = -uz, ux
+        t = 0.0
+        while t < segL:
+            t += random.uniform(18, 34)
+            if random.random() < 0.62:
+                name, rad = pick_small()
+                side = random.choice((-1, 1))
+                off = r["w"] / 2 + rad + random.uniform(0.2, 1.4)
+                cx_, cz_ = p[i][0] + ux * t, p[i][1] + uz * t
+                x, z = cx_ + nx * side * off, cz_ + nz * side * off
+                if inside_wall(x, z, 6) and road_dist(x, z) > 0.2 \
+                        and not blocked(x, z, rad, 0.9):
+                    place(name, x, z, random.uniform(0, 6.28), sink=0.3)
+                    blockers.append((x, z, rad))
+                    n_clutter += 1
+
+# neon banner poles along the four avenues
+for ri, r in enumerate(ROADS[:4]):
+    p = r["pts"]
+    for k, t in enumerate((0.18, 0.42, 0.66, 0.9)):
+        i = min(int(t * (len(p) - 1)), len(p) - 2)
+        x0, z0 = p[i]
+        x1, z1 = p[i + 1]
+        L = math.hypot(x1 - x0, z1 - z0) or 1
+        nx, nz = -(z1 - z0) / L, (x1 - x0) / L
+        side = -1 if k % 2 else 1
+        bx = x0 + nx * side * (r["w"] / 2 + 1.5)
+        bz = z0 + nz * side * (r["w"] / 2 + 1.5)
+        if not blocked(bx, bz, 0.8, 0.9):
+            place("banner_pole" if (ri + k) % 2 else "banner_pole_c",
+                  bx, bz, face(bx, bz, x0, z0), sink=0.5)
+            blockers.append((bx, bz, 0.8))
+            n_clutter += 1
+
+# market dressing: carts, carpets, crate stacks, braziers
+for (mx, mz) in [(192, -2), (208, 6), (196, 24), (222, -10)]:
+    if not blocked(mx, mz, 2.0, 0.85):
+        place("cart", mx, mz, random.uniform(0, 6.28), sink=0.3)
+        blockers.append((mx, mz, 2.0))
+for (mx, mz, cc) in [(190, 8, 0), (210, -8, 1), (204, 16, 0), (216, 12, 1)]:
+    if not blocked(mx, mz, 1.8, 0.8):
+        place("carpet" if cc else "carpet_c", mx, mz, random.uniform(0, 6.28))
+for (mx, mz) in [(184, -26), (226, 14), (198, 36)]:
+    if not blocked(mx, mz, 1.0, 0.85):
+        place("brazier", mx, mz, 0, sink=0.2)
+        blockers.append((mx, mz, 1.0))
+for _ in range(14):
+    mx, mz = 200 + random.uniform(-30, 30), random.uniform(-30, 34)
+    name, rad = pick_small()
+    if not blocked(mx, mz, rad, 0.85):
+        place(name, mx, mz, random.uniform(0, 6.28), sink=0.3)
+        blockers.append((mx, mz, rad))
+        n_clutter += 1
+
+# holo-signs on shopfront houses near streets
+random.shuffle(street_houses)
+for (hx, hz, hrot, hrad) in street_houses[:64]:
+    fx = hx + math.sin(hrot) * (hrad * 0.7) + math.cos(hrot) * 2.5
+    fz = hz + math.cos(hrot) * (hrad * 0.7) - math.sin(hrot) * 2.5
+    place("holo_sign", fx, fz, hrot + math.pi / 2, sink=0.0)
+    n_clutter += 1
+
+# server racks humming beside houses
+for (hx, hz, hrot, hrad) in street_houses[64:116]:
+    sx_ = hx - math.sin(hrot + 0.9) * (hrad * 0.85)
+    sz_ = hz - math.cos(hrot + 0.9) * (hrad * 0.85)
+    if road_dist(sx_, sz_) > 0.3 and not blocked(sx_, sz_, 1.2, 0.85):
+        place("server_rack", sx_, sz_, hrot + random.uniform(-0.4, 0.4), sink=0.2)
+        blockers.append((sx_, sz_, 1.2))
+        n_clutter += 1
+
+# cables strung across the narrow alleys
+for r in ROADS[5:11]:
+    p = r["pts"]
+    for i in range(1, len(p) - 1, 2):
+        if random.random() < 0.6:
+            x0, z0 = p[i]
+            x1, z1 = p[i + 1]
+            L = math.hypot(x1 - x0, z1 - z0) or 1
+            tang = math.atan2((x1 - x0) / L, (z1 - z0) / L)
+            place("cable_span", x0, z0, tang + math.pi / 2, sink=0.0)
+            n_clutter += 1
+
+# rubble + extra cables in the dark alley quarter
+for _ in range(8):
+    x, z = -200 + random.uniform(-34, 34), 198 + random.uniform(-30, 30)
+    if road_dist(x, z) > 1 and not blocked(x, z, 2.0, 0.8):
+        place("rubble", x, z, random.uniform(0, 6.28), sink=0.4)
+        blockers.append((x, z, 2.0))
+        n_clutter += 1
+
+# courtyard bushes
+for _ in range(160):
+    th = random.uniform(0, 2 * math.pi)
+    rr = math.sqrt(random.random()) * wall_R(th) * 0.94
+    x, z = rr * math.cos(th), rr * math.sin(th)
+    if road_dist(x, z) > 2.5 and not blocked(x, z, 1.2, 0.75):
+        place("bush", x, z, random.uniform(0, 6.28),
+              s=round(random.uniform(0.7, 1.5), 2), sink=0.3)
+        blockers.append((x, z, 1.2))
+        n_clutter += 1
+
+# braziers flanking each gate (placed after GATES exist, see below)
+print(f"clutter: {n_clutter} props")
+
 # ---------------------------------------------------------------- wall + gates
 arc, th = 0.0, 0.0
 seg_i = 0
@@ -348,6 +476,10 @@ while th < 2 * math.pi:
             place("wall_tower", x, z, 0, sink=2.0)
 for g in GATES:
     place("gate", g["x"], g["z"], g["rot"], sink=2.0)
+    for side in (-1, 1):
+        bx = g["x"] + math.cos(g["rot"]) * side * 8 - math.sin(g["rot"]) * 10
+        bz = g["z"] - math.sin(g["rot"]) * side * 8 - math.cos(g["rot"]) * 10
+        place("brazier", bx, bz, 0, sink=0.2)
 
 # ---------------------------------------------------------------- lamps
 for r in ROADS[:4]:

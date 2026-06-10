@@ -55,12 +55,18 @@ M = {
     "glowM": glow_mat("M_GlowMagenta", (0.84, 0.41, 1.0), 5.0),
     "glowO": glow_mat("M_GlowOrange", (1.0, 0.62, 0.30), 4.0),
     "glowPool": glow_mat("M_GlowPool", (0.16, 0.50, 0.47), 1.2),
+    "neonCdim": glow_mat("M_NeonCdim", (0.30, 0.85, 0.78), 2.2),
+    "neonMdim": glow_mat("M_NeonMdim", (0.75, 0.36, 0.90), 2.2),
 }
 m_metal, bsdf, _ = new_mat("M_Metal")
 bsdf.inputs["Base Color"].default_value = (0.05, 0.055, 0.07, 1)
 bsdf.inputs["Metallic"].default_value = 0.9
 bsdf.inputs["Roughness"].default_value = 0.4
 M["metal"] = m_metal
+m_pine, bsdf, _ = new_mat("M_Pine")
+bsdf.inputs["Base Color"].default_value = (0.03, 0.075, 0.06, 1)
+bsdf.inputs["Roughness"].default_value = 1.0
+M["pine"] = m_pine
 
 KIT = []
 
@@ -246,6 +252,9 @@ def house_med():
     pitch = math.atan2(6.5, 7.9)
     p.roof_panel(-4.5, -3.9, 13.1, 6.0, 4.6, pitch)
     p.roof_panel(4.5, -3.9, 13.1, 6.0, 4.6, pitch)
+    p.box("metal", -7, 1.5, 16.5, 0.22, 0.22, 4.2)      # antenna
+    p.glow_quad("glowM", -7, 1.5, 20.6, 0.5, 0.5)
+    p.cone("metal", 6.5, 2.0, 20.2, 1.1, 0.5, seg=8)    # dish on chimney
     return p.done()
 
 
@@ -262,6 +271,8 @@ def house_tall():
     p.glow_quad("winM", -6.07, 0, 8, 2.2, 3.2, facing="-x")
     pitch = math.atan2(8, 6.7)
     p.roof_panel(-3.0, -3.3, 21.8, 4.6, 4.0, pitch)
+    p.box("metal", 4, 4, 24.5, 0.2, 0.2, 3.6)
+    p.glow_quad("glowC", 4, 4, 28.0, 0.45, 0.45)
     return p.done()
 
 
@@ -448,11 +459,177 @@ def lamp():
     return p.done()
 
 
+def crate():
+    p = Piece("crate")
+    p.box("timber", 0, 0, 0, 1.7, 1.7, 1.7)
+    p.box("timber", 0, 0, 1.7, 1.3, 1.3, 0.12)
+    return p.done()
+
+
+def barrel():
+    p = Piece("barrel")
+    p.cylinder("timber", 0, 0, 0, 0.85, 1.6, seg=10)
+    p.cylinder("metal", 0, 0, 0.25, 0.9, 0.14, seg=10)
+    p.cylinder("metal", 0, 0, 1.2, 0.9, 0.14, seg=10)
+    return p.done()
+
+
+def sacks():
+    p = Piece("sacks")
+    for (cx, cy, r, h) in ((0, 0, 0.9, 0.9), (1.0, 0.5, 0.7, 0.7), (-0.6, 0.8, 0.6, 0.65)):
+        p.cylinder("timber", cx, cy, 0, r, h, seg=8, r2=r * 0.55)
+    return p.done()
+
+
+def cart():
+    p = Piece("cart")
+    p.box("timber", 0, 0, 0.9, 2.6, 1.5, 0.35)
+    p.box("timber", 0, 0, 1.25, 0.9, 1.3, 0.5)          # load
+    for sx in (-1, 1):
+        p.cylinder("metal", sx * 1.0, 0.78, 0.7, 0.7, 0.18, seg=10)
+    for sy in (-0.5, 0.5):
+        p.box("timber", 1.9, sy, 0.8, 1.4, 0.14, 0.14)
+    return p.done()
+
+
+def banner_pole():
+    p = Piece("banner_pole")
+    p.cylinder("metal", 0, 0, -2, 0.18, 10.5, seg=8)
+    p.box("metal", 0, -0.8, 8.2, 0.14, 1.7, 0.14)
+    p.glow_quad("winM", 0, -1.45, 3.6, 1.6, 4.5)
+    p.glow_quad("winM", 0, -1.40, 3.6, 1.6, 4.5, facing="+y")
+    return p.done()
+
+
+def banner_pole_c():
+    p = Piece("banner_pole_c")
+    p.cylinder("metal", 0, 0, -2, 0.18, 10.5, seg=8)
+    p.box("metal", 0, -0.8, 8.2, 0.14, 1.7, 0.14)
+    p.glow_quad("winC", 0, -1.45, 3.6, 1.6, 4.5)
+    p.glow_quad("winC", 0, -1.40, 3.6, 1.6, 4.5, facing="+y")
+    return p.done()
+
+
+def holo_sign():
+    p = Piece("holo_sign")
+    p.box("metal", 0, 0, 4.2, 0.18, 0.9, 0.18)
+    p.glow_quad("neonMdim", 0, -0.95, 3.1, 2.3, 1.5)
+    p.glow_quad("neonCdim", 0, -0.90, 3.1, 2.3, 1.5, facing="+y")
+    return p.done()
+
+
+def cable_span():
+    p = Piece("cable_span")
+    n = 7
+    for i in range(n):
+        t0, t1 = i / n, (i + 1) / n
+        x0, x1 = -8 + 16 * t0, -8 + 16 * t1
+        y0 = 9.0 - 2.2 * (1 - (2 * t0 - 1) ** 2)
+        y1 = 9.0 - 2.2 * (1 - (2 * t1 - 1) ** 2)
+        cx, cz = (x0 + x1) / 2, (y0 + y1) / 2
+        L = math.hypot(x1 - x0, y1 - y0)
+        ang = math.atan2(y1 - y0, x1 - x0)
+        p.box("metal", cx, 0, cz - 0.06, L + 0.1, 0.12, 0.12,
+              rz=0.0, rx=0.0)
+        # tilt via direct rotation around Y is not supported; steps are fine
+    for lx in (-4, 0.5, 5):
+        p.box("metal", lx, 0, 6.4, 0.1, 0.1, 1.1)
+        p.glow_quad("glowO", lx, 0, 5.9, 0.5, 0.6)
+    return p.done()
+
+
+def rubble():
+    p = Piece("rubble")
+    rnd = __import__("random").Random(9)
+    for _ in range(7):
+        w = rnd.uniform(0.5, 1.4)
+        p.box("stone", rnd.uniform(-1.6, 1.6), rnd.uniform(-1.2, 1.2),
+              rnd.uniform(-0.3, 0.25), w, w * rnd.uniform(0.6, 1.2),
+              rnd.uniform(0.4, 1.0), rz=rnd.uniform(0, 3.1))
+    return p.done()
+
+
+def brazier():
+    p = Piece("brazier")
+    p.cylinder("metal", 0, 0, 0, 0.75, 1.0, seg=10, r2=0.95)
+    p.glow_quad("glowO", 0, 0, 1.02, 1.2, 1.2, rx=math.pi / 2)
+    return p.done()
+
+
+def bush():
+    p = Piece("bush")
+    p.cylinder("pine", 0, 0, 0, 1.3, 1.6, seg=8, r2=0.5)
+    return p.done()
+
+
+def carpet():
+    p = Piece("carpet")
+    p.box("winM", 0, 0, 0.04, 3.2, 4.6, 0.1)
+    return p.done()
+
+
+def carpet_c():
+    p = Piece("carpet_c")
+    p.box("winC", 0, 0, 0.04, 3.2, 4.6, 0.1)
+    return p.done()
+
+
+def house_jetty():
+    """D2 'Lut Gholein house' adapted: arched ground floor, jettied upper
+    storey, flat roof full of clutter (barrels, tarp, solar rack, servers)."""
+    p = Piece("house_jetty")
+    p.box("stone", 0, 0, -5, 17.6, 13.6, 5.2)
+    p.box("stone", 0, 0, 0, 18, 14, 7.5)
+    p.glow_quad("winO", -4.5, -7.07, 0.4, 4.2, 5.6)      # arched openings
+    p.glow_quad("winO", 4.5, -7.07, 0.4, 4.2, 5.6)
+    p.box("timber", 0, -0.8, 7.5, 18.4, 15.6, 6.0)       # jettied upper floor
+    for i in range(5):                                   # joist ends
+        p.box("timber", -7 + i * 3.5, -8.0, 6.9, 0.5, 1.4, 0.55)
+    windows_row(p, "winC", (-5.5, 0.0, 5.5), -8.67, 9.4, 2.0, 2.8)
+    p.glow_quad("winM", 9.27, 0, 9.4, 2.2, 3.0, facing="+x")
+    p.box("stone", 0, -0.8, 13.5, 18.8, 16.0, 0.8)       # flat roof slab
+    for (bx, by, bw, bd) in ((0, 6.9, 18.8, 0.7), (0, -8.5, 18.8, 0.7),
+                             (9.1, -0.8, 0.7, 16.0), (-9.1, -0.8, 0.7, 16.0)):
+        p.box("stone", bx, by, 14.3, bw, bd, 1.1)        # parapet
+    p.cylinder("timber", -5.5, 3.5, 14.3, 0.85, 1.6, seg=10)   # roof barrels
+    p.cylinder("timber", -3.8, 4.6, 14.3, 0.85, 1.6, seg=10)
+    p.box("timber", -5.2, 0.6, 14.3, 1.7, 1.7, 1.7)      # roof crate
+    for (qx, qy) in ((2.5, 2.0), (8.0, 2.0), (2.5, 6.4), (8.0, 6.4)):
+        p.box("timber", qx, qy, 14.3, 0.4, 0.4, 3.4)     # tarp poles
+    p.box("timber", 5.25, 4.2, 17.7, 7.2, 6.2, 0.25)     # tarp
+    p.roof_panel(-0.5, -5.6, 15.5, 6.5, 4.5, math.radians(28))  # solar rack
+    p.box("metal", 7.2, -5.8, 14.3, 1.6, 1.2, 2.6)       # roof server cabinet
+    for i in range(3):
+        p.glow_quad("glowC", 7.2, -6.42, 15.0 + i * 0.55, 0.9, 0.18)
+    p.cylinder("metal", -7.4, 5.9, 14.3, 0.5, 2.6, seg=8)       # vent stack
+    p.cylinder("metal", -7.4, 5.9, 16.9, 0.85, 0.45, seg=8)
+    p.roof_panel(10.4, 0, 6.6, 5.6, 3.4, math.radians(18), facing="+x")  # lean-to
+    p.box("timber", 11.8, -1.5, 0, 0.4, 0.4, 5.4)
+    p.box("timber", 11.8, 1.5, 0, 0.4, 0.4, 5.4)
+    p.box("metal", -7.8, -6.6, 15.4, 0.2, 0.2, 4.2)      # antenna
+    p.glow_quad("glowM", -7.8, -6.6, 19.5, 0.5, 0.5)
+    return p.done()
+
+
+def server_rack():
+    p = Piece("server_rack")
+    p.box("metal", 0, 0, 0, 1.8, 1.3, 3.0)
+    for i in range(4):
+        p.glow_quad("glowC" if i % 2 else "neonMdim", 0, -0.66,
+                    0.5 + i * 0.6, 1.2, 0.2)
+    p.cylinder("metal", 1.3, 0.2, 0, 0.3, 1.9, seg=8)
+    p.box("metal", 0.6, 0.9, 0, 0.9, 0.5, 0.6)
+    return p.done()
+
+
 PIECES = [house_small(), house_med(), house_tall(), tower_round(), cathedral(),
           arena(), wall_seg(), wall_tower(), gate(),
           monolith("monolith_c", "winC", "glowC"),
           monolith("monolith_m", "winM", "glowM"),
-          stall(), fountain_core(), vault(), foundry(), lamp()]
+          stall(), fountain_core(), vault(), foundry(), lamp(),
+          crate(), barrel(), sacks(), cart(), banner_pole(), banner_pole_c(),
+          holo_sign(), cable_span(), rubble(), brazier(), bush(), carpet(),
+          carpet_c(), house_jetty(), server_rack()]
 
 # ---------------------------------------------------------------- export
 bpy.ops.object.select_all(action="DESELECT")
