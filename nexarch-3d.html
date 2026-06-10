@@ -131,6 +131,7 @@ function heightAt(x, z) {
         new THREE.MeshStandardMaterial({ color: 0x070a10, roughness: 1 }));
     apron.position.y = -0.25;
     scene.add(apron);
+    window.__apronMat = apron.material;
 }
 
 // kit pieces -> InstancedMesh per primitive
@@ -166,6 +167,7 @@ for (const [name, places] of Object.entries(byPiece)) {
     const g = new THREE.ConeGeometry(1, 1, 7);
     g.translate(0, 0.5, 0);
     const m = new THREE.MeshStandardMaterial({ color: 0x0b2018, roughness: 1 });
+    window.__treeMat = m;
     const data = layout.trees;
     const trees = new THREE.InstancedMesh(g, m, data.length);
     data.forEach(([x, z, y, h], i) => {
@@ -179,7 +181,7 @@ for (const [name, places] of Object.entries(byPiece)) {
 const BAKE = { yaw: Math.PI * 1.25, pitch: THREE.MathUtils.degToRad(38),
                w: 830, h: 830 * 2800 / 4096 };
 let cinematic = false, bakeMesh = null;
-const modeMats = [...cityMats, window.__groundMat, window.__treeMat];
+const modeMats = [...cityMats, window.__groundMat, window.__treeMat, window.__apronMat];
 function setMode(c) {
     if (c && !bakeMesh) return;
     cinematic = c;
