@@ -21,7 +21,7 @@ for pl in layout["placements"]:
     dup = src.copy()  # linked duplicate, shares mesh
     dup.hide_render = False
     dup.hide_viewport = False
-    dup.location = (pl["x"], -pl["z"], 0)
+    dup.location = (pl["x"], -pl["z"], pl.get("y", 0))
     dup.rotation_euler = (0, 0, pl["r"])
     s = pl.get("s", 1.0)
     dup.scale = (s, s, s)

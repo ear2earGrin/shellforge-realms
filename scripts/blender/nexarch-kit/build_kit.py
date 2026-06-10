@@ -54,6 +54,7 @@ M = {
     "glowC": glow_mat("M_GlowCyan", (0.35, 0.95, 0.88), 5.0),
     "glowM": glow_mat("M_GlowMagenta", (0.84, 0.41, 1.0), 5.0),
     "glowO": glow_mat("M_GlowOrange", (1.0, 0.62, 0.30), 4.0),
+    "glowPool": glow_mat("M_GlowPool", (0.16, 0.50, 0.47), 1.2),
 }
 m_metal, bsdf, _ = new_mat("M_Metal")
 bsdf.inputs["Base Color"].default_value = (0.05, 0.055, 0.07, 1)
@@ -219,6 +220,7 @@ def windows_row(p, mat, xs, y, z0, w=2.2, h=3.2, facing="-y"):
 # ---------------------------------------------------------------- pieces
 def house_small():
     p = Piece("house_small")
+    p.box("stone", 0, 0, -5, 13.6, 11.6, 5.2)
     p.box("stone", 0, 0, 0, 14, 12, 8)
     p.box("timber", 0, 0, 4.2, 14.3, 12.3, 0.7)       # half-timber band
     p.prism("roof", 0, 0, 8, 15.4, 13.6, 5.5, ridge="x")
@@ -232,6 +234,7 @@ def house_small():
 
 def house_med():
     p = Piece("house_med")
+    p.box("stone", 0, 0, -5, 19.6, 13.6, 5.2)
     p.box("stone", 0, 0, 0, 20, 14, 10)
     p.box("timber", 0, 0, 5.0, 20.3, 14.3, 0.7)
     p.prism("roof", 0, 0, 10, 21.6, 15.8, 6.5, ridge="x")
@@ -248,6 +251,7 @@ def house_med():
 
 def house_tall():
     p = Piece("house_tall")
+    p.box("stone", 0, 0, -5, 11.6, 11.6, 5.2)
     p.box("stone", 0, 0, 0, 12, 12, 18)
     p.box("timber", 0, 0, 6.0, 12.3, 12.3, 0.7)
     p.box("timber", 0, 0, 12.0, 12.3, 12.3, 0.7)
@@ -263,6 +267,7 @@ def house_tall():
 
 def tower_round():
     p = Piece("tower_round")
+    p.cylinder("stone", 0, 0, -5, 5, 5.2, seg=14)
     p.cylinder("stone", 0, 0, 0, 5, 22, seg=14)
     p.cylinder("stone", 0, 0, 21.4, 5.8, 1.2, seg=14)
     p.cone("roof", 0, 0, 22.6, 6.2, 9, seg=14)
@@ -279,6 +284,8 @@ def tower_round():
 
 def cathedral():
     p = Piece("cathedral")
+    p.box("stone", 0, 4, -6, 17.6, 25.6, 6.2)
+    p.box("stone", 0, -13, -6, 10.6, 10.6, 6.2)
     p.box("stone", 0, 4, 0, 18, 26, 16)                 # nave
     p.prism("roof", 0, 4, 16, 19.4, 28, 7.5, ridge="y")
     p.box("stone", 0, -13, 0, 11, 11, 30)               # front tower
@@ -308,7 +315,7 @@ def arena():
         x, y = rx * math.cos(a), ry * math.sin(a)
         tang = math.atan2(ry * math.cos(a), -rx * math.sin(a))
         L = 2 * math.pi * math.hypot(rx, ry) / 2 / seg + 2.2
-        p.box("stone", x, y, 0, L, 4.5, 14, rz=tang)
+        p.box("stone", x, y, -6, L, 4.5, 20, rz=tang)
         p.box("stone", x, y, 14, L, 5.2, 1.4, rz=tang)
         if i % 2 == 0:                                   # glowing arches
             ox, oy = (rx + 2.4) * math.cos(a), (ry + 2.4) * math.sin(a)
@@ -328,6 +335,7 @@ def arena():
 
 def wall_seg():
     p = Piece("wall_seg")
+    p.box("stone", 0, 0, -7, 30, 4, 7.2)
     p.box("stone", 0, 0, 0, 30, 4, 10)
     for i in range(5):
         p.box("stone", -12 + i * 6, 0, 10, 3.2, 4.4, 2.2)
@@ -337,6 +345,7 @@ def wall_seg():
 
 def wall_tower():
     p = Piece("wall_tower")
+    p.cylinder("stone", 0, 0, -7, 5.5, 7.2, seg=12)
     p.cylinder("stone", 0, 0, 0, 5.5, 15, seg=12)
     p.cylinder("stone", 0, 0, 14.5, 6.3, 1.3, seg=12)
     p.cone("roof", 0, 0, 15.8, 6.7, 7, seg=12)
@@ -347,6 +356,7 @@ def wall_tower():
 
 def gate():
     p = Piece("gate")
+    p.box("stone", 0, 0, -7, 26, 5, 7.2)
     for sx in (-1, 1):
         p.cylinder("stone", sx * 10, 0, 0, 4.5, 17, seg=12)
         p.cone("roof", sx * 10, 0, 17.6, 5.4, 6.5, seg=12)
@@ -360,6 +370,7 @@ def gate():
 
 def monolith(name, win, glow):
     p = Piece(name)
+    p.box("stone", 0, 0, -2.5, 3.4, 2.2, 2.7)
     p.box("stone", 0, 0, 0, 3.4, 2.2, 0.9)
     p.box("stone", 0, 0, 0.9, 2.6, 1.5, 6.4)
     p.box("stone", 0, 0, 7.3, 3.0, 1.9, 0.5)
@@ -371,6 +382,7 @@ def monolith(name, win, glow):
 
 def stall():
     p = Piece("stall")
+    p.box("timber", 0, 0, -2.5, 7.4, 6.6, 2.7)
     for sx, sy in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
         p.box("timber", sx * 3.4, sy * 3.0, 0, 0.6, 0.6, 4.6)
     p.box("timber", 0, -2.6, 0, 7.4, 1.6, 2.6)           # counter
@@ -381,8 +393,9 @@ def stall():
 
 def fountain_core():
     p = Piece("fountain_core")
+    p.cylinder("stone", 0, 0, -4, 8, 4.2, seg=18)
     p.cylinder("stone", 0, 0, 0, 8, 1.3, seg=18)
-    p.cylinder("glowC", 0, 0, 1.0, 7.0, 0.35, seg=18)    # data pool
+    p.cylinder("glowPool", 0, 0, 1.0, 7.0, 0.35, seg=18)  # data pool
     p.cylinder("stone", 0, 0, 0, 2.6, 3.2, seg=10)
     p.box("stone", 0, 0, 3.2, 2.4, 2.4, 6.0)
     p.glow_quad("winC", 0, -1.21, 3.6, 1.8, 5.0)
@@ -396,6 +409,7 @@ def fountain_core():
 
 def vault():
     p = Piece("vault")
+    p.box("stone", 0, 0, -5, 12.6, 12.6, 5.2)
     p.box("stone", 0, 0, 0, 13, 13, 6)
     p.box("stone", 0, 0, 6, 10, 10, 3)
     p.pyramid("stone", 0, 0, 9, 8, 8, 2.6)
@@ -409,6 +423,7 @@ def vault():
 
 def foundry():
     p = Piece("foundry")
+    p.box("stone", 0, 0, -5, 23.6, 15.6, 5.2)
     p.box("stone", 0, 0, 0, 24, 16, 11)
     p.prism("roof", 0, 0, 11, 25.6, 17.8, 6.5, ridge="x")
     for cx in (-6, 4):
@@ -424,6 +439,7 @@ def foundry():
 
 def lamp():
     p = Piece("lamp")
+    p.cylinder("metal", 0, 0, -2.5, 0.34, 2.7, seg=8)
     p.cylinder("metal", 0, 0, 0, 0.28, 5.8, seg=8)
     p.box("metal", 0, -0.7, 5.6, 0.18, 1.6, 0.18)
     p.box("metal", 0, -1.4, 4.6, 0.7, 0.7, 1.0)
