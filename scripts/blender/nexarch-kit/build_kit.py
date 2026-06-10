@@ -622,6 +622,42 @@ def server_rack():
     return p.done()
 
 
+def kiosk():
+    """Market kiosk from the style ref: timber booth, goods on the counter,
+    big tilted circuit-panel awning with a neon trim strip."""
+    p = Piece("kiosk")
+    p.box("timber", 0, 0, -2.5, 8.0, 6.2, 2.7)           # foundation pad
+    p.box("timber", 0, 2.6, 0, 8.4, 0.7, 4.6)            # back wall
+    p.box("timber", -3.9, 0.6, 0, 0.6, 4.6, 4.6)         # side walls
+    p.box("timber", 3.9, 0.6, 0, 0.6, 4.6, 4.6)
+    p.box("timber", 0, -2.4, 0, 8.4, 1.3, 2.3)           # counter
+    for sx in (-1, 1):                                   # front posts
+        p.box("timber", sx * 3.9, -2.7, 0, 0.55, 0.55, 5.6)
+    p.roof_panel(0, -0.4, 6.3, 9.6, 7.6, math.radians(22))   # big panel awning
+    p.glow_quad("neonMdim", 0, -3.6, 5.0, 8.8, 0.5)      # neon trim strip
+    p.box("timber", -2.2, -2.3, 2.3, 1.5, 1.5, 1.5)      # goods
+    p.cylinder("timber", 2.0, -2.2, 2.3, 0.7, 1.2, seg=8)
+    p.box("metal", 0.2, -2.5, 2.3, 1.0, 0.8, 0.7)
+    p.box("metal", 0, 2.2, 4.7, 0.7, 0.7, 0.8)           # roof unit
+    p.glow_quad("glowO", 0, -0.5, 4.55, 0.8, 0.7)        # hanging lamp
+    return p.done()
+
+
+def e_waste():
+    """Broken hardware dumped in the street: dead cases, a cracked screen."""
+    p = Piece("e_waste")
+    rnd = __import__("random").Random(31)
+    for _ in range(5):
+        w = rnd.uniform(0.6, 1.3)
+        p.box("metal", rnd.uniform(-1.4, 1.4), rnd.uniform(-1.0, 1.0),
+              rnd.uniform(-0.2, 0.3), w, w * rnd.uniform(0.6, 1.1),
+              rnd.uniform(0.4, 0.9), rz=rnd.uniform(0, 3.1))
+    p.box("metal", -0.6, -0.4, 0.7, 1.6, 0.18, 1.1, rz=0.5)   # dead screen
+    p.glow_quad("neonCdim", 0.9, -1.05, 0.25, 0.8, 0.35)      # one still flickers
+    p.cylinder("metal", 1.5, 0.8, 0, 0.25, 1.3, seg=6)        # bent conduit
+    return p.done()
+
+
 PIECES = [house_small(), house_med(), house_tall(), tower_round(), cathedral(),
           arena(), wall_seg(), wall_tower(), gate(),
           monolith("monolith_c", "winC", "glowC"),
@@ -629,7 +665,7 @@ PIECES = [house_small(), house_med(), house_tall(), tower_round(), cathedral(),
           stall(), fountain_core(), vault(), foundry(), lamp(),
           crate(), barrel(), sacks(), cart(), banner_pole(), banner_pole_c(),
           holo_sign(), cable_span(), rubble(), brazier(), bush(), carpet(),
-          carpet_c(), house_jetty(), server_rack()]
+          carpet_c(), house_jetty(), server_rack(), kiosk(), e_waste()]
 
 # ---------------------------------------------------------------- export
 bpy.ops.object.select_all(action="DESELECT")

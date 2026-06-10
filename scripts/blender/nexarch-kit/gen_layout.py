@@ -222,8 +222,12 @@ landmark("vault", 150, -150, face(150, -150, 0, 0), "FAMILY VAULT", 12)
 landmark("gate", -250, 0, math.radians(90), "DEEP MINES", 16)
 
 labels.append({"name": "MARKET", "x": 200, "z": 0})
-for (mx, mz) in [(184, -18), (216, -14), (186, 16), (214, 18), (200, -32), (228, 2)]:
-    place("stall", mx, mz, random.uniform(0, 2 * math.pi))
+for (mx, mz) in [(182, -20), (218, -16), (184, 18), (216, 20), (234, 2)]:
+    place("kiosk", mx, mz, face(mx, mz, 200, 0) + random.uniform(-0.2, 0.2),
+          sink=0.3)
+    blockers.append((mx, mz, 6.0))
+for (mx, mz) in [(200, -34), (170, 2)]:
+    place("stall", mx, mz, face(mx, mz, 200, 0))
     blockers.append((mx, mz, 6.5))
 
 labels.append({"name": "DARK ALLEY", "x": -200, "z": 200})
@@ -326,7 +330,8 @@ for _ in range(2600):
         n_fill += 1
 
 # ---------------------------------------------------------------- clutter
-SMALL = [("crate", 1.2, 3), ("barrel", 1.0, 3), ("sacks", 1.3, 2), ("rubble", 2.0, 1)]
+SMALL = [("crate", 1.2, 3), ("barrel", 1.0, 4), ("sacks", 1.3, 2),
+         ("rubble", 2.0, 1), ("e_waste", 1.8, 3)]
 
 
 def pick_small():
@@ -348,8 +353,8 @@ for r in ROADS:
         nx, nz = -uz, ux
         t = 0.0
         while t < segL:
-            t += random.uniform(18, 34)
-            if random.random() < 0.62:
+            t += random.uniform(12, 24)
+            if random.random() < 0.85:
                 name, rad = pick_small()
                 side = random.choice((-1, 1))
                 off = r["w"] / 2 + rad + random.uniform(0.2, 1.4)
@@ -416,11 +421,12 @@ for (hx, hz, hrot, hrad) in street_houses[64:116]:
         blockers.append((sx_, sz_, 1.2))
         n_clutter += 1
 
-# cables strung across the narrow alleys
-for r in ROADS[5:11]:
+# cables strung across streets (alleys often, ring + avenues sometimes)
+for ri, r in enumerate(ROADS[:11]):
     p = r["pts"]
+    prob = 0.8 if ri >= 5 else 0.25
     for i in range(1, len(p) - 1, 2):
-        if random.random() < 0.6:
+        if random.random() < prob:
             x0, z0 = p[i]
             x1, z1 = p[i + 1]
             L = math.hypot(x1 - x0, z1 - z0) or 1
@@ -428,8 +434,16 @@ for r in ROADS[5:11]:
             place("cable_span", x0, z0, tang + math.pi / 2, sink=0.0)
             n_clutter += 1
 
+# broken hardware next to some server racks
+for pl in [p for p in placements if p["p"] == "server_rack"][::3]:
+    ex, ez = pl["x"] + random.uniform(-3, 3), pl["z"] + random.uniform(-3, 3)
+    if road_dist(ex, ez) > 0.3 and not blocked(ex, ez, 1.6, 0.8):
+        place("e_waste", ex, ez, random.uniform(0, 6.28), sink=0.3)
+        blockers.append((ex, ez, 1.6))
+        n_clutter += 1
+
 # rubble + extra cables in the dark alley quarter
-for _ in range(8):
+for _ in range(12):
     x, z = -200 + random.uniform(-34, 34), 198 + random.uniform(-30, 30)
     if road_dist(x, z) > 1 and not blocked(x, z, 2.0, 0.8):
         place("rubble", x, z, random.uniform(0, 6.28), sink=0.4)
@@ -599,51 +613,40 @@ rd.ellipse((cx0 - PLAZA_R * px, cz0 - PLAZA_R * px,
 for (sx, sz, sr) in SQUARES:
     sx0, sz0 = to_px(sx, sz)
     rd.ellipse((sx0 - sr * px, sz0 - sr * px, sx0 + sr * px, sz0 + sr * px), fill=255)
-cobbles = Image.new("RGB", (TEX, TEX), (22, 25, 33))
+cobbles = Image.new("RGB", (TEX, TEX), (26, 29, 38))
 cd = ImageDraw.Draw(cobbles)
-sw, sh, row = 17, 13, 0
+sw, sh, row = 11, 8, 0
 y = 0
 while y < TEX + sh:
     x = -(sw // 2) if row % 2 else 0
     while x < TEX:
-        g = random.randint(-9, 11)
-        cd.ellipse((x + 1, y + 1, x + sw - 1, y + sh - 1),
-                   fill=(64 + g, 71 + g, 88 + g), outline=(26, 29, 38))
-        x += sw
+        w = sw + random.choice((0, 0, 0, 3, -2))     # irregular stone widths
+        if random.random() < 0.03:                   # missing stone
+            x += w
+            continue
+        g = random.randint(-7, 9)
+        warm = random.randint(0, 4)
+        cd.rounded_rectangle((x + 1, y + 1, x + w - 1, y + sh - 1), radius=3,
+                             fill=(58 + g + warm, 64 + g, 80 + g - warm),
+                             outline=(30, 33, 42))
+        x += w
     y += sh
     row += 1
+# worn lighter patches along the middle of the lanes
+wear = Image.new("L", (TEX, TEX), 0)
+wd_ = ImageDraw.Draw(wear)
+for r in ROADS:
+    wd_.line([to_px(*p) for p in r["pts"]], fill=46,
+             width=int(r["w"] * px * 0.45), joint="curve")
+wear = wear.filter(ImageFilter.GaussianBlur(8))
+cob = np.asarray(cobbles).astype(np.int16) + np.asarray(wear)[..., None] // 4
+cobbles = Image.fromarray(np.clip(cob, 0, 255).astype(np.uint8))
 img.paste(cobbles, (0, 0), road_mask)
-
-# neon circuit traces along streets
-def trace_along(pts, color, n_branch=14):
-    glow = tuple(int(c * 0.30) for c in color)
-    pp = [to_px(*p) for p in pts]
-    d.line(pp, fill=glow, width=16, joint="curve")
-    d.line(pp, fill=color, width=4, joint="curve")
-    for _ in range(n_branch):
-        i = random.randrange(len(pts) - 1)
-        t = random.random()
-        bx = pts[i][0] + (pts[i + 1][0] - pts[i][0]) * t
-        bz = pts[i][1] + (pts[i + 1][1] - pts[i][1]) * t
-        path = [(bx, bz)]
-        for _ in range(random.randint(1, 3)):
-            axis = random.random() < 0.5
-            step = random.choice([-1, 1]) * random.uniform(6, 18)
-            bx, bz = (bx + step, bz) if axis else (bx, bz + step)
-            path.append((bx, bz))
-        ppp = [to_px(*p) for p in path]
-        d.line(ppp, fill=glow, width=8)
-        d.line(ppp, fill=color, width=3)
-        ex, ey = ppp[-1]
-        d.ellipse((ex - 4, ey - 4, ex + 4, ey + 4), outline=color, width=2)
-
-
-for i, r in enumerate(ROADS):
-    trace_along(r["pts"], CYAN if i % 2 == 0 else MAGENTA,
-                n_branch=22 if len(r["pts"]) > 12 else 8)
-for rr, col in ((46, CYAN), (36, MAGENTA), (25, CYAN)):
+# plaza: concentric slab rings (carved stone, not neon)
+for rr in (48, 40, 32, 24, 16):
     d.ellipse((cx0 - rr * px, cz0 - rr * px, cx0 + rr * px, cz0 + rr * px),
-              outline=tuple(int(c * 0.5) for c in col), width=5)
+              outline=(44, 48, 60), width=4)
+
 # puddles
 for _ in range(220):
     x, y = random.randrange(TEX), random.randrange(TEX)
