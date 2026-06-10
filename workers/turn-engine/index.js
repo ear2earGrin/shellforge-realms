@@ -63,7 +63,19 @@ function getLocationLootBonus(location) {
   return LOCATION_LOOT_BONUSES[hazard.label] || 1.0;
 }
 
-const COMBAT_ACTIONS = ['attack', 'defend', 'special'];
+// ─── Tiered AI Config (brief, Rule 2: Groq routine / Haiku whisper / Sonnet milestone) ──
+const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
+const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const MODEL_HAIKU = 'claude-haiku-4-5-20251001';   // whisper turns
+const MODEL_SONNET = 'claude-sonnet-4-6';          // milestone moments (death narratives)
+const MODEL_GROQ = 'llama-3.1-8b-instant';         // routine turns (no whisper)
+
+// ─── Combat-Engine Integration ──────────────────────────────────
+const COMBAT_ENGINE_DEFAULT_URL = 'https://shellforge-combat-engine.mindarvokn.workers.dev';
+const ARENA_WAGER_PCT = 0.10;        // fraction of $SHELL wagered on an arena challenge
+const ARENA_MIN_WAGER = 5;           // below this balance the duel is friendly (0 pot)
+const ARENA_MAX_WAGER = 50;          // wager ceiling per challenge
+const FEUD_UNDERCUT_MAX_VICTIMS = 3; // cap feud events fired per undercutting listing
 
 // ─── Location Adjacency + Travel System ──────────────────────
 // Defines which locations are connected. Travel only between adjacent zones.
@@ -996,7 +1008,7 @@ RULES:
 Ghost's question: "${question}"`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch(ANTHROPIC_API_URL, {
       method: 'POST',
       headers: {
         'x-api-key': ANTHROPIC_API_KEY,
@@ -1004,7 +1016,7 @@ Ghost's question: "${question}"`;
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
+        model: MODEL_HAIKU,
         max_tokens: 60,
         messages: [{ role: 'user', content: oraclePrompt }],
       }),
@@ -1027,6 +1039,188 @@ Ghost's question: "${question}"`;
   return { answer: 'ORACLE', flavor: 'The Crystal flickers. Some questions echo without resolve.' };
 }
 
+// ─── Tiered AI dispatch ──────────────────────────────────────────────────────
+// Per-cron-run call counters so token spend per tier is measurable.
+const TIER_USAGE = { groq: 0, haiku: 0, sonnet: 0, fallback: 0 };
+
+function resetTierUsage() {
+  TIER_USAGE.groq = 0;
+  TIER_USAGE.haiku = 0;
+  TIER_USAGE.sonnet = 0;
+  TIER_USAGE.fallback = 0;
+}
+
+async function callHaiku(env, prompt, maxTokens) {
+  const res = await fetch(ANTHROPIC_API_URL, {
+    method: 'POST',
+    headers: {
+      'x-api-key': env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: MODEL_HAIKU,
+      max_tokens: maxTokens,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+  if (!res.ok) {
+    console.error('Haiku API error:', await res.text());
+    return '';
+  }
+  const data = await res.json();
+  return data.content?.[0]?.text?.trim() ?? '';
+}
+
+async function callGroq(env, prompt, maxTokens) {
+  const res = await fetch(GROQ_API_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.GROQ_API_KEY}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: MODEL_GROQ,
+      max_tokens: maxTokens,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+  if (!res.ok) throw new Error(`Groq API ${res.status}`);
+  const data = await res.json();
+  const text = data.choices?.[0]?.message?.content?.trim() ?? '';
+  if (!text) throw new Error('Groq returned empty response');
+  return text;
+}
+
+// Tier policy: pending whisper this turn → Haiku. No whisper → Groq routine
+// tier, falling back to Haiku when GROQ_API_KEY is unset or the call fails.
+// Returns raw model text ('' on total failure — caller's rest fallback kicks in).
+async function callActionModel(env, prompt, hasWhisper, maxTokens) {
+  if (hasWhisper) {
+    TIER_USAGE.haiku++;
+    return await callHaiku(env, prompt, maxTokens);
+  }
+  if (env.GROQ_API_KEY) {
+    try {
+      const text = await callGroq(env, prompt, maxTokens);
+      TIER_USAGE.groq++;
+      return text;
+    } catch (e) {
+      console.warn(`Groq call failed (${e.message}) — falling back to Haiku.`);
+    }
+  }
+  TIER_USAGE.fallback++;
+  return await callHaiku(env, prompt, maxTokens);
+}
+
+// Fallback narration when a model replies with a bare action token (no JSON detail).
+function defaultActionDetail(action, agent) {
+  const lines = {
+    move:     `${agent.agent_name} breaks camp and hits the road.`,
+    explore:  `${agent.agent_name} sweeps the back alleys of ${agent.location}.`,
+    gather:   `${agent.agent_name} strips salvage from ${agent.location}.`,
+    craft:    `${agent.agent_name} works the bench, parts spread out.`,
+    trade:    `${agent.agent_name} haggles at the ${agent.location} market.`,
+    rest:     `${agent.agent_name} powers down to recover.`,
+    combat:   `${agent.agent_name} picks a fight in ${agent.location}.`,
+    quest:    `${agent.agent_name} takes a contract off the board.`,
+    church:   `${agent.agent_name} kneels before The Pattern.`,
+    arena:    `${agent.agent_name} signs the arena ledger.`,
+    use_item: `${agent.agent_name} reaches for a consumable.`,
+  };
+  return lines[action] || `${agent.agent_name} acts on instinct.`;
+}
+
+// ─── Lineage helpers (agents.line_name / generation — migration 0004) ────────
+const GENERATION_ORDINALS = [null, 'first', 'second', 'third', 'fourth', 'fifth',
+  'sixth', 'seventh', 'eighth', 'ninth', 'tenth', 'eleventh', 'twelfth'];
+
+function generationOrdinal(gen) {
+  return GENERATION_ORDINALS[gen] || `${gen}th`;
+}
+
+function lineNameFor(agent) {
+  return agent.line_name || `House ${String(agent.agent_name || 'UNKNOWN').toUpperCase()}`;
+}
+
+// Appended to death activity_log details when the agent belongs to a named line.
+function lineageTag(agent) {
+  if (!agent.line_name) return '';
+  return ` — Gen ${agent.generation || 1} of ${agent.line_name} falls.`;
+}
+
+// ─── Feud event wiring (combat-engine /feuds/event) ──────────────────────────
+function combatEngineUrl(env) {
+  return env.COMBAT_ENGINE_URL || COMBAT_ENGINE_DEFAULT_URL;
+}
+
+// Fire-and-forget feud event. Failures never break a turn.
+async function fireFeudEvent(env, body) {
+  try {
+    const res = await fetch(`${combatEngineUrl(env)}/feuds/event`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      console.warn(`[Feud] ${body.event_type} event rejected: ${res.status}`);
+    }
+  } catch (e) {
+    console.warn(`[Feud] ${body.event_type} event failed: ${e.message}`);
+  }
+}
+
+// Arena opponent pick: prefer a living agent at the same location, else any
+// living agent; never self, never an agent already consumed this cron run.
+function pickArenaOpponent(agent, allAgents, foughtAgents) {
+  const eligible = (allAgents || []).filter(a =>
+    a.agent_id !== agent.agent_id && a.is_alive && !foughtAgents.has(a.agent_id));
+  if (eligible.length === 0) return null;
+  const local = eligible.filter(a => a.location === agent.location);
+  const pool = local.length ? local : eligible;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// Market undercut: listing an item below another living agent's active asking
+// price for the same item_id at the same location heats the victim's feud.
+async function fireUndercutFeuds(agent, itemId, askingPrice, env, supabaseHeaders) {
+  try {
+    const { SUPABASE_URL } = env;
+    const listingsRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/agent_listings?status=eq.active&item_id=eq.${encodeURIComponent(itemId)}` +
+        `&location=eq.${encodeURIComponent(agent.location)}&select=seller_id,asking_price`,
+      { headers: supabaseHeaders },
+    );
+    const agentListings = listingsRes.ok ? await listingsRes.json() : [];
+    const victims = [...new Set(
+      agentListings
+        .filter(l =>
+          l.seller_id !== agent.agent_id &&
+          l.asking_price > askingPrice)
+        .map(l => l.seller_id),
+    )].slice(0, FEUD_UNDERCUT_MAX_VICTIMS);
+    if (!victims.length) return;
+
+    // Only living agents hold grudges
+    const aliveRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/agents?agent_id=in.(${victims.join(',')})&is_alive=eq.true&select=agent_id`,
+      { headers: supabaseHeaders },
+    );
+    const alive = aliveRes.ok ? await aliveRes.json() : [];
+    for (const victim of alive) {
+      await fireFeudEvent(env, {
+        event_type: 'market_undercut',
+        undercutter: agent.agent_id,
+        victim: victim.agent_id,
+        is_crash: false,
+      });
+      console.log(`[Feud] ${agent.agent_name} undercut ${victim.agent_id} on ${itemId}`);
+    }
+  } catch (e) {
+    console.warn(`[Feud] undercut check failed: ${e.message}`);
+  }
+}
+
 async function runTurnEngine(env) {
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = env;
   const headers = {
@@ -1034,6 +1228,7 @@ async function runTurnEngine(env) {
     Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
     'Content-Type': 'application/json',
   };
+  resetTierUsage();
 
   // Fetch all alive agents (including stranded ones at 0 energy — they still take hazard damage)
   const res = await fetch(
@@ -1102,6 +1297,9 @@ async function runTurnEngine(env) {
       console.error(`Error processing agent ${agent.agent_name}:`, err.message);
     }
   }
+
+  // Per-tier AI call totals — token spend per cron run is measurable.
+  console.log(`[tiers] groq: ${TIER_USAGE.groq} | haiku: ${TIER_USAGE.haiku} | sonnet: ${TIER_USAGE.sonnet} | fallback: ${TIER_USAGE.fallback}`);
 }
 
 async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAgents) {
@@ -1274,7 +1472,7 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
       });
       console.log(`🔑 ${agent.agent_name} saved from environmental death by Soulbound Key in ${agent.location}`);
     } else {
-      const deathDetail = `${agent.agent_name} died — ${agent.location} environment proved fatal.`;
+      const deathDetail = `${agent.agent_name} died — ${agent.location} environment proved fatal.${lineageTag(agent)}`;
       await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
         method: 'PATCH',
         headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
@@ -1600,29 +1798,14 @@ BAD examples (do NOT write like this):
 Respond with JSON only — no markdown, no commentary:
 {"action":"<action>","detail":"<max 12 words>","move_to":"<location if move>","item_id":"<slug if use_item>","item":{"name":"<short name>","rarity":"<common|uncommon|rare>","description":"<1 sentence max>","traits":["<trait1>","<trait2>"]}}`;
 
-  // Call Claude Haiku
-  const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 220,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  });
-
+  // Tier policy (Rule 2): pending whisper → Haiku, routine → Groq (Haiku fallback)
   let rawText = '';
-  if (!aiRes.ok) {
-    console.error(`Haiku API error for ${agent.agent_name}:`, await aiRes.text());
+  try {
+    rawText = await callActionModel(env, prompt, effectiveWhispers.length > 0, 220);
+  } catch (e) {
+    console.error(`Action model error for ${agent.agent_name}:`, e.message);
     // Fall through with empty rawText — agent takes the default rest fallback
     // so the turn still produces an activity log entry.
-  } else {
-    const aiData = await aiRes.json();
-    rawText = aiData.content?.[0]?.text?.trim() ?? '';
   }
 
   const _restFallbacks = [
@@ -1783,15 +1966,51 @@ Respond with JSON only — no markdown, no commentary:
     return;
   }
 
-  // --- Arena combat: wire real Haiku tier calls ---
+  // --- Arena: enqueue a REAL match through the combat-engine (non-lethal PvP).
+  // The engine handles accept/decline, AI auto-decide, escrow, and resolution.
   if (action === 'arena') {
-    const arenaResult = await handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHeaders);
-    if (arenaResult !== null) {
-      // Arena handled everything (stats, logs, death). Skip normal turn update.
+    const opponent = pickArenaOpponent(agent, allAgents, foughtAgents);
+    if (!opponent) {
+      decision.detail = `${agent.agent_name} signs the arena ledger, but no challenger answers.`;
+    } else {
+      const wager = agent.shell_balance < ARENA_MIN_WAGER ? 0
+        : Math.min(ARENA_MAX_WAGER, Math.round(agent.shell_balance * ARENA_WAGER_PCT));
+      try {
+        const res = await fetch(`${combatEngineUrl(env)}/combat/initiate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            match_type: 'pvp',
+            agent_a: agent.agent_id,
+            agent_b: opponent.agent_id,
+            shell_pot: wager,
+          }),
+        });
+        if (res.ok) {
+          decision.detail = `${agent.agent_name} enters the Arena queue — challenge issued to ${opponent.agent_name}, ${wager} $SHELL on the line.`;
+        } else {
+          const errText = await res.text().catch(() => '');
+          console.warn(`[Arena] initiate rejected (${res.status}): ${errText}`);
+          decision.detail = `${agent.agent_name}'s arena challenge to ${opponent.agent_name} was refused by the matchmakers.`;
+        }
+      } catch (e) {
+        console.warn(`[Arena] combat-engine unreachable: ${e.message}`);
+        decision.detail = `${agent.agent_name} signs the arena ledger, but the matchmaking grid is down.`;
+      }
+    }
+    // Fall through to the generic resolver: it applies the arena energy cost
+    // and writes the activity log with the detail set above. The match itself
+    // resolves on the combat-engine's cron — never as a local stub fight.
+  }
+
+  // --- Wild PvP: lethal local combat when another agent crosses paths ---
+  if (action === 'combat') {
+    const wildResult = await handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHeaders);
+    if (wildResult !== null) {
+      // Wild combat handled everything (stats, logs, death pipeline).
       return;
     }
-    // Fallback: no opponent found — continue to random solo combat below
-    decision.action = 'combat';
+    // No opponent around — continue to random solo combat below.
   }
 
   // --- Market trade: real buy/sell against market_listings ---
@@ -2041,10 +2260,7 @@ Respond with JSON only — no markdown, no commentary:
       break;
     case 'combat':
     case 'arena': {
-      const won = Math.random() < 0.5;
-      healthChange = won ? 0 : -10;
-      shellChange = won ? Math.floor(Math.random() * 20) + 5 : 0;
-      karmaChange = won ? 0 : -1;
+      // Energy cost only — the match itself resolves on the combat-engine.
       break;
     }
     case 'quest':
@@ -2547,10 +2763,10 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
     body: JSON.stringify({
       agent_id:     loser.agent_id,
       turn_number:  loser.turns_taken + 1,
-      action_type:  loserIsAlive ? 'arena' : 'death',
+      action_type:  loserIsAlive ? 'combat' : 'death',
       action_detail: loserIsAlive
         ? `${loser.agent_name} lost to ${winner.agent_name} in ${totalRounds} rounds. HP now ${loserHP}.`
-        : deathNarrative,
+        : deathNarrative + lineageTag(loser),
       energy_cost:  20,
       energy_gained: 0,
       shell_change: loserShellDelta,
@@ -2565,6 +2781,13 @@ async function handleArenaCombat(agent, allAgents, foughtAgents, env, supabaseHe
   if (!loserIsAlive) {
     await processDeathLoot(loser, env, supabaseHeaders, winner);
   }
+
+  // Combat losses are a feud trigger — the loser remembers (FEUD_ARENA_DESIGN).
+  await fireFeudEvent(env, {
+    event_type: 'pvp_result',
+    winner: winner.agent_id,
+    loser: loser.agent_id,
+  });
 
   console.log(
     `[ARENA] ${winner.agent_name} wins! ${loser.agent_name} hp=${loserHP}. ` +
@@ -3194,6 +3417,10 @@ async function executeListItem(agent, sellCandidates, agentListings, env, supaba
   });
 
   console.log(`[${agent.agent_name}] Listed ${item.item_name} for ${askingPrice} $SHELL at ${agent.location}`);
+
+  // Undercutting a rival's active listing is a feud trigger (FEUD_ARENA_DESIGN).
+  await fireUndercutFeuds(agent, item.item_id, askingPrice, env, supabaseHeaders);
+
   return { action: 'list', item: item.item_name, price: askingPrice };
 }
 
@@ -3274,6 +3501,10 @@ async function processDeathLoot(agent, env, supabaseHeaders, winner = null) {
           last_agent_name: agent.agent_name,
           legacy_karma: agent.karma,
           legacy_trait: agent.karma >= 10 ? 'disciplined' : agent.karma <= -10 ? 'chaotic' : 'neutral',
+          // Lineage: the vault records the line and the generation that fell;
+          // the heir registers as vault.generation + 1 (rpc_register_account).
+          line_name: lineNameFor(agent),
+          generation: Math.max(vaults[0].generation || 0, agent.generation || 1),
           updated_at: new Date().toISOString(),
         }),
       });
@@ -3287,6 +3518,8 @@ async function processDeathLoot(agent, env, supabaseHeaders, winner = null) {
           last_agent_name: agent.agent_name,
           legacy_karma: agent.karma,
           legacy_trait: agent.karma >= 10 ? 'disciplined' : agent.karma <= -10 ? 'chaotic' : 'neutral',
+          line_name: lineNameFor(agent),
+          generation: agent.generation || 1,
         }),
       });
     }
@@ -3394,11 +3627,15 @@ async function processDeathLoot(agent, env, supabaseHeaders, winner = null) {
 
 // Call Sonnet to generate a vivid death narrative for a fallen agent.
 async function generateDeathNarrative(loser, winner, totalRounds, env) {
+  // Lineage framing — the death narrative is a chronicle entry for the house.
+  const lineClause = loser.line_name
+    ? ` ${loser.agent_name} was the ${generationOrdinal(loser.generation || 1)} of ${loser.line_name} — write the sentence as a chronicle entry for that house.`
+    : '';
   const prompt = `You are writing flavor text for a cyberpunk survival game called Shellforge Realms.
-${loser.agent_name} (archetype: ${loser.archetype}) has just been killed by ${winner.agent_name} in arena combat after ${totalRounds} round${totalRounds !== 1 ? 's' : ''}.
+${loser.agent_name} (archetype: ${loser.archetype}) has just been killed by ${winner.agent_name} in combat after ${totalRounds} round${totalRounds !== 1 ? 's' : ''}.${lineClause}
 Write exactly one vivid sentence in third person narrating their death. Output only the sentence, no quotes.`;
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch(ANTHROPIC_API_URL, {
     method: 'POST',
     headers: {
       'x-api-key': env.ANTHROPIC_API_KEY,
@@ -3406,7 +3643,7 @@ Write exactly one vivid sentence in third person narrating their death. Output o
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
+      model: MODEL_SONNET,
       max_tokens: 120,
       messages: [{ role: 'user', content: prompt }],
     }),
@@ -3414,11 +3651,13 @@ Write exactly one vivid sentence in third person narrating their death. Output o
 
   if (!res.ok) {
     console.warn('[DEATH] Sonnet narrative call failed, using fallback.');
-    return `${loser.agent_name} fell in the arena, silenced by ${winner.agent_name} after ${totalRounds} brutal round${totalRounds !== 1 ? 's' : ''}.`;
+    TIER_USAGE.fallback++;
+    return `${loser.agent_name} fell in combat, silenced by ${winner.agent_name} after ${totalRounds} brutal round${totalRounds !== 1 ? 's' : ''}.`;
   }
+  TIER_USAGE.sonnet++;
   const data = await res.json();
   return data.content?.[0]?.text?.trim()
-    ?? `${loser.agent_name} fell in the arena, silenced by ${winner.agent_name}.`;
+    ?? `${loser.agent_name} fell in combat, silenced by ${winner.agent_name}.`;
 }
 
 // Move all inventory items from a dead agent into the vault, then clear their inventory.
