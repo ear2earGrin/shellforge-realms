@@ -12,7 +12,7 @@
 // Tunables — fold into game-config.json when the central config ships (brief.md rule 5).
 const FREE_WHISPERS_PER_DAY = 2;
 const MIN_SECONDS_BETWEEN_WHISPERS = 60;
-const MAX_MESSAGE_LENGTH = 500;
+const MAX_MESSAGE_LENGTH = 200; // matches the whispers.message CHECK constraint in the DB
 const COHERENCE_BOOST = 15;
 
 const CORS_HEADERS = {
