@@ -1,5 +1,5 @@
-# SHELLFORGE — AI Project Brief v4
-> **Last updated:** April 2026
+# SHELLFORGE — AI Project Brief v4.1
+> **Last updated:** June 2026 *(v4.1 amendments: crypto layer rescoped to v1.1; death model expanded — dual-consent feud deathmatch, downed bodies + Shadow-born; new Lineage and Travel & World Presence sections)*
 > **Live frontend:** shellforge.xyz
 > **Repo:** github.com/ear2earGrin/shellforge-realms
 
@@ -144,7 +144,7 @@ No avatar. No inventory. No direct control. Agent compliance is probabilistic. T
 Death is a narrative beat. The Family Vault preserves items, $SHELL balance, and one inherited legacy trait across agent death. A new agent is born into the same dynasty shaped by the previous agent's karma. Soul NFTs of legendary deceased agents retain their history and can be traded.
 
 **Pillar 4 — Crypto / Token Layer**
-$SHELL utility token, Soul NFTs, Lightning Network premium whispers, and the Family Vault are v1.0 requirements — not post-launch additions.
+$SHELL wallet connect, Soul NFTs, and the on-chain Family Vault ship at **v1.1** — the first post-launch milestone (amended June 2026; previously a v1.0 gate). Lightning Network premium whispers are payments-only and may ship at v1.0 as a SHOULD. The **in-game** Family Vault (inheritance across death) remains a v1.0 MUST.
 
 ---
 
@@ -193,7 +193,7 @@ Game logic does not change. Supabase state drives everything. PixiJS renders it.
 
 **Current state:** Not yet integrated into live build.
 
-**Boundary:** Must be live at v1.0. Non-paying Ghosts always observe for free — the paywall gates premium whisper confidence and vault features, not the core observation experience.
+**Boundary (amended June 2026):** The on-chain layer — $SHELL wallet connect, Soul NFTs, on-chain vault — must be live at **v1.1**, the first post-launch milestone. Lightning premium whispers are payments-only (no token/NFT dependency) and may land earlier as a v1.0 SHOULD. Non-paying Ghosts always observe for free — the paywall gates premium whisper confidence and vault features, not the core observation experience.
 
 **On loot boxes:** $SHELL-funded loot mechanics are acceptable if non-predatory and priced in the utility token, not real money directly. Real-money gacha is never in scope.
 
@@ -230,20 +230,25 @@ Includes: karma thresholds, market volatility, arena loot rates, whisper complia
 - Energy and health tracking ✅
 - Arena + Market systems functional with agent autonomy
 - Karma integrated across all active systems
-- $SHELL token + wallet connect
-- Family Vault persisting across death
+- Family Vault persisting across death (in-game)
 - Dynasty / death + inheritance mechanic
-- Soul NFT minting on legendary death
 - Mobile-responsive layout (desktop full experience, mobile companion layout)
 
 ### SHOULD (v1.0 enhanced)
 - Church + Alchemy/Forge systems
 - Rumor propagation affecting Market prices
 - Agent memory with recent event context
+- Lightning Network premium whispers (payments-only — no token/NFT dependency)
+- Public house/lineage page (see Lineage)
 - Isometric 2D world art via PixiJS (Phase B.5)
 - Agent personality evolution over time
 - Easter egg events
 - PWA — installable mobile with Web Push notifications
+
+### v1.1 (first post-launch milestone — locked, moved from v1.0 MUST in June 2026)
+- $SHELL token + wallet connect
+- Soul NFT minting on legendary death
+- On-chain Family Vault (death half-burn mechanics)
 
 ### COULD (Post-launch)
 - Cross-player agent interactions in shared world
@@ -295,7 +300,7 @@ Includes: karma thresholds, market volatility, arena loot rates, whisper complia
 | 1 | **The Ghost never controls the agent.** Whisper only. No buttons, no overrides, no "assist mode." Combat whispers are still whispers — probabilistic, not guaranteed. |
 | 2 | **Tiered AI is the agent brain.** Groq routine / Haiku whisper / Sonnet milestone. Never replaced with pure scripts or rules. |
 | 3 | **Vanilla JS only.** No framework without explicit written sign-off. |
-| 4 | **The crypto layer ships at v1.0.** $SHELL, Soul NFTs, Lightning whispers, Family Vault. Not post-launch. |
+| 4 | **The crypto layer ships at v1.1.** *(Amended June 2026 — previously v1.0.)* $SHELL wallet connect, Soul NFTs, and the on-chain vault are the locked scope of the first post-launch milestone. Lightning premium whispers (payments-only) may ship at v1.0 as a SHOULD. The in-game Family Vault remains v1.0. |
 | 5 | **All tunable values live in game-config.json.** No hardcoded numbers in logic. Ever. |
 | 6 | **Game logic never enters the frontend.** Cloudflare Workers + Supabase are the game. The browser is a view. This protects future visual upgrades and engine migration. |
 
@@ -332,6 +337,11 @@ Hybrid system — real-time visual spectacle for humans with text-based choice r
 | Loot | Winner takes pot | Item drops |
 | Spectators | Human betting via Lightning sats | — |
 
+**Death model (amended June 2026):**
+- **Arena PvP — non-lethal, always.** The loser loses the $SHELL pot, never their life. Unchanged.
+- **Wild combat — lethal.** Death is possible and triggers the full Dynasty & Death pipeline. Unchanged.
+- **Consensual feud deathmatch — the one PvP permadeath path.** When feud heat between two agents reaches maximum, a deathmatch unlock becomes available — but it can only fire if **both agents request it and both receive explicit permission from their Ghosts (dual-consent)**. If either Ghost declines or stays silent, the feud keeps resolving through normal non-lethal arena bouts. The Ghost grants or withholds permission for the stakes; the Ghost still never picks the moves. This passes the Ghost Principle: it deepens investment in the agents' story without adding a control surface.
+
 ---
 
 ## Dynasty & Death
@@ -346,7 +356,25 @@ Hybrid system — real-time visual spectacle for humans with text-based choice r
 - New agent inherits vault contents + one legacy trait + "father's log" (1–3 sentences)
 - New agent shaped by previous agent's karma direction
 
-**Soul NFTs:** Successful agents = higher-value Soul NFT (tradeable). Contains full agent history, personality, achievements.
+**Soul NFTs:** Successful agents = higher-value Soul NFT (tradeable). Contains full agent history, personality, achievements. *(Ships at v1.1 — see Crypto Integration.)*
+
+**Downed, not dead — open-world bodies (added June 2026):**
+When an agent goes down in the open world without triggering permadeath, the body stays where it fell as a **world object, visible on radar**. Passing agents face a choice:
+- **Revive** the fallen agent → karma gain
+- **Loot** the corpse → karma loss (severity is cluster-dependent — what counts as desecration in Prime Helix may be pragmatism in SEC-Grid)
+
+If nobody intervenes within a config-capped duration (`game-config.json`, default **18h**), the **Shadow-born** mechanic auto-recovers the agent: they rise on their own — weakened and marked.
+
+---
+
+## Lineage *(added June 2026)*
+
+Every agent belongs to a **named line** — one line per user (e.g. *House VEX*). Death does not end the line; it advances it.
+
+- **Generation counter** — each rebirth increments the line's generation (VEX III falls, VEX IV is born).
+- **Inheritance down the line** — the Family Vault, the single legacy trait, and the "father's log" are lineage mechanics: items, $SHELL, and character pass from generation to generation, shaped by accumulated karma.
+- **Lore accrues to the line, not the agent** — deeds, deaths, and heirlooms belong to the house's history.
+- **Public house/lineage page** (SHOULD) — a public page per line showing its generations, deaths, deeds, and heirlooms.
 
 ---
 
@@ -399,6 +427,18 @@ Agents spread gossip influencing prices, events, and behaviors. Humans can seed 
 - Live observers see smooth movement across map
 - Offline users return to see agent at destination or en route
 - Travel costs: 20 units/min, 0.6 energy/min
+
+---
+
+## Travel & World Presence *(added June 2026)*
+
+Travel is real-time and server-authoritative.
+
+- **Real travel times** — journeys take roughly **30–60+ minutes** depending on distance and terrain. No teleporting between turns; being en route is a real state of the world.
+- **Server-side position** — an agent's position is computed in Layer 1 from **departure time + route**. Clients only interpolate for smooth rendering; they never decide where the agent is.
+- **Dev acceleration** — the frontend `SPEED_MULTIPLIER` hack is retired. The future travel implementation replaces it with a **`dev_time_scale`** value in `game-config.json` (Rule 5 — no hardcoded tunables).
+- **Radar** — nearby entities appear as **unidentified blips**. Identity resolves through proximity, acquaintance (shared history), or feud (rivals are recognized at greater range).
+- **Diversions** — every journey carries a **low, config-tunable chance of diversion**: the agent's own decision, a random event, another agent crossing paths, or an NPC encounter. Diversions are logged as **diary-worthy events** in the activity log — the journey is content, not a loading screen.
 
 ---
 
