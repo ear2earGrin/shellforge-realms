@@ -1,0 +1,7 @@
+name = "shellforge-auth-worker"
+main = "index.js"
+compatibility_date = "2026-04-01"
+
+# Secrets — provide via `wrangler secret put` when deploying:
+#   SUPABASE_URL          — Project REST URL
+#   SUPABASE_SERVICE_KEY  — Service-role key (the only place password hashes are read)
