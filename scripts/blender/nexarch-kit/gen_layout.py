@@ -266,8 +266,9 @@ def inside_wall(x, z, margin):
     return math.hypot(x, z) < wall_R(th) - margin
 
 
-HOUSES = [("house_small", 9.0, 3.0), ("house_med", 12.0, 1.7),
-          ("house_tall", 8.2, 1.5), ("house_jetty", 11.5, 1.3)]
+HOUSES = [("house_small", 9.0, 2.6), ("house_med", 12.0, 1.7),
+          ("house_tall", 8.2, 1.5), ("house_jetty", 11.5, 1.3),
+          ("house_L", 12.5, 1.5)]
 
 
 def pick_house():
@@ -331,7 +332,7 @@ for _ in range(2600):
 
 # ---------------------------------------------------------------- clutter
 SMALL = [("crate", 1.2, 3), ("barrel", 1.0, 4), ("sacks", 1.3, 2),
-         ("rubble", 2.0, 1), ("e_waste", 1.8, 3)]
+         ("rubble", 2.0, 1), ("e_waste", 1.8, 3), ("garbage_pile", 1.9, 3)]
 
 
 def pick_small():
@@ -433,6 +434,15 @@ for ri, r in enumerate(ROADS[:11]):
             tang = math.atan2((x1 - x0) / L, (z1 - z0) / L)
             place("cable_span", x0, z0, tang + math.pi / 2, sink=0.0)
             n_clutter += 1
+
+# water pods (rain collectors) against house walls
+for (hx, hz, hrot, hrad) in street_houses[20:120:3]:
+    wx = hx + math.sin(hrot + 2.2) * (hrad * 0.92)
+    wz = hz + math.cos(hrot + 2.2) * (hrad * 0.92)
+    if road_dist(wx, wz) > 0.3 and not blocked(wx, wz, 1.5, 0.8):
+        place("water_pod", wx, wz, hrot + random.uniform(-0.3, 0.3), sink=0.3)
+        blockers.append((wx, wz, 1.5))
+        n_clutter += 1
 
 # broken hardware next to some server racks
 for pl in [p for p in placements if p["p"] == "server_rack"][::3]:

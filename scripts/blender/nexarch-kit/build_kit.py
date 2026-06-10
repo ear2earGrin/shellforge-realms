@@ -22,12 +22,17 @@ def new_mat(name):
     return m, m.node_tree.nodes["Principled BSDF"], m.node_tree
 
 
-def tex_mat(name, img, rough=0.85, emit=0.0):
+def tex_mat(name, img, rough=0.85, emit=0.0, bump=0.0):
     m, bsdf, tree = new_mat(name)
     t = tree.nodes.new("ShaderNodeTexImage")
     t.image = bpy.data.images.load(f"{OUT}/{img}")
     tree.links.new(t.outputs["Color"], bsdf.inputs["Base Color"])
     bsdf.inputs["Roughness"].default_value = rough
+    if bump:
+        bn = tree.nodes.new("ShaderNodeBump")
+        bn.inputs["Strength"].default_value = bump
+        tree.links.new(t.outputs["Color"], bn.inputs["Height"])
+        tree.links.new(bn.outputs["Normal"], bsdf.inputs["Normal"])
     if emit:
         tree.links.new(t.outputs["Color"], bsdf.inputs["Emission Color"])
         bsdf.inputs["Emission Strength"].default_value = emit
@@ -43,9 +48,9 @@ def glow_mat(name, color, strength):
 
 
 M = {
-    "stone": tex_mat("M_Stone", "stone.png"),
-    "roof": tex_mat("M_Roof", "roof.png"),
-    "timber": tex_mat("M_Timber", "timber.png"),
+    "stone": tex_mat("M_Stone", "stone.png", bump=0.45),
+    "roof": tex_mat("M_Roof", "roof.png", bump=0.4),
+    "timber": tex_mat("M_Timber", "timber.png", bump=0.3),
     "winC": tex_mat("M_WinCyan", "win_cyan.png", rough=0.4, emit=9.0),
     "winM": tex_mat("M_WinMagenta", "win_magenta.png", rough=0.4, emit=9.0),
     "winO": tex_mat("M_WinOrange", "win_orange.png", rough=0.4, emit=7.0),
@@ -67,6 +72,10 @@ m_pine, bsdf, _ = new_mat("M_Pine")
 bsdf.inputs["Base Color"].default_value = (0.03, 0.075, 0.06, 1)
 bsdf.inputs["Roughness"].default_value = 1.0
 M["pine"] = m_pine
+m_trash, bsdf, _ = new_mat("M_Trash")
+bsdf.inputs["Base Color"].default_value = (0.035, 0.04, 0.035, 1)
+bsdf.inputs["Roughness"].default_value = 0.95
+M["trash"] = m_trash
 
 KIT = []
 
@@ -224,15 +233,36 @@ def windows_row(p, mat, xs, y, z0, w=2.2, h=3.2, facing="-y"):
 
 
 # ---------------------------------------------------------------- pieces
+
+def shuttered(p, mat, x, y, z, w=2.2, h=3.2, facing="-y"):
+    p.glow_quad(mat, x, y, z, w, h, facing)
+    off = w / 2 + 0.45
+    if facing in ("-y", "+y"):
+        sy = y + (0.18 if facing == "-y" else -0.18)
+        p.box("timber", x - off, sy, z + 0.1, 0.7, 0.16, h - 0.4)
+        p.box("timber", x + off, sy, z + 0.1, 0.7, 0.16, h - 0.4)
+    else:
+        sx = x + (0.18 if facing == "-x" else -0.18)
+        p.box("timber", sx, y - off, z + 0.1, 0.16, 0.7, h - 0.4)
+        p.box("timber", sx, y + off, z + 0.1, 0.16, 0.7, h - 0.4)
+
+
+def stoop(p, x, y_front, w=3.6):
+    p.box("stone", x, y_front - 0.9, 0, w, 1.7, 0.55)
+
+
 def house_small():
     p = Piece("house_small")
     p.box("stone", 0, 0, -5, 13.6, 11.6, 5.2)
     p.box("stone", 0, 0, 0, 14, 12, 8)
     p.box("timber", 0, 0, 4.2, 14.3, 12.3, 0.7)       # half-timber band
     p.prism("roof", 0, 0, 8, 15.4, 13.6, 5.5, ridge="x")
-    windows_row(p, "winC", (-4, 4), -6.07, 4.0)
+    shuttered(p, "winC", -4, -6.07, 4.0)
+    shuttered(p, "winC", 4, -6.07, 4.0)
     p.glow_quad("winO", 0, -6.07, 0, 3.0, 4.6)          # door
+    stoop(p, 0, -6.07)
     p.glow_quad("winM", 7.07, 0, 3.8, 2.2, 3.2, facing="+x")
+    p.box("roof", 0, 0, 13.1, 15.8, 0.9, 0.5)           # ridge cap
     pitch = math.atan2(5.5, 6.8)
     p.roof_panel(0, -3.4, 10.85, 5.5, 4.2, pitch)
     return p.done()
@@ -245,10 +275,17 @@ def house_med():
     p.box("timber", 0, 0, 5.0, 20.3, 14.3, 0.7)
     p.prism("roof", 0, 0, 10, 21.6, 15.8, 6.5, ridge="x")
     p.box("stone", 6.5, 2.0, 16.5, 2.0, 2.0, 3.5)       # chimney
-    windows_row(p, "winC", (-7, -2.4, 2.4, 7), -7.07, 5.6)
+    shuttered(p, "winC", -7, -7.07, 5.6)
+    shuttered(p, "winC", 2.4, -7.07, 5.6)
+    windows_row(p, "winC", (-2.4, 7), -7.07, 5.6)
     windows_row(p, "winM", (-3,), -7.07, 1.0, 2.0, 3.0)
     p.glow_quad("winO", 3.2, -7.07, 0, 3.2, 5.0)
+    stoop(p, 3.2, -7.07)
     p.glow_quad("winC", 10.07, 0, 4.5, 2.4, 3.4, facing="+x")
+    p.box("roof", 0, 0, 16.1, 22.0, 0.9, 0.5)           # ridge cap
+    p.box("stone", 1.0, -5.6, 12.0, 3.0, 2.6, 2.6)      # dormer
+    p.prism("roof", 1.0, -5.6, 14.6, 3.6, 3.2, 1.5, ridge="y")
+    p.glow_quad("winC", 1.0, -6.95, 12.5, 1.5, 1.6)
     pitch = math.atan2(6.5, 7.9)
     p.roof_panel(-4.5, -3.9, 13.1, 6.0, 4.6, pitch)
     p.roof_panel(4.5, -3.9, 13.1, 6.0, 4.6, pitch)
@@ -267,6 +304,13 @@ def house_tall():
     p.prism("roof", 0, 0, 18, 13.4, 13.6, 8, ridge="y")
     for z, mat in ((1.0, "winO"), (7.2, "winC"), (13.2, "winM")):
         windows_row(p, mat, (-3.2, 3.2), -6.07, z)
+    stoop(p, 0, -6.07, 5.5)
+    p.box("timber", 0, -7.0, 12.0, 12.6, 2.4, 0.45)     # balcony deck
+    for bx in (-5.6, -1.9, 1.9, 5.6):
+        p.box("timber", bx, -7.9, 12.4, 0.28, 0.28, 2.6)
+    p.box("timber", 0, -7.9, 15.0, 12.0, 0.24, 0.35)    # rail
+    p.box("timber", 0, -7.6, 16.6, 12.4, 1.6, 0.22)     # balcony awning
+    p.glow_quad("neonCdim", 0, -8.42, 12.6, 10.5, 0.35)
     p.glow_quad("winC", 6.07, 0, 8, 2.2, 3.2, facing="+x")
     p.glow_quad("winM", -6.07, 0, 8, 2.2, 3.2, facing="-x")
     pitch = math.atan2(8, 6.7)
@@ -658,6 +702,61 @@ def e_waste():
     return p.done()
 
 
+def house_L():
+    """Two-wing house: gabled wings at right angles, lived-in details."""
+    p = Piece("house_L")
+    p.box("stone", 0, 1, -5, 19, 15, 5.2)
+    p.box("stone", -2, 0, 0, 14, 10, 9)                  # wing A
+    p.prism("roof", -2, 0, 9, 15.4, 11.4, 5, ridge="x")
+    p.box("roof", -2, 0, 13.7, 15.6, 0.9, 0.45)
+    p.box("stone", 5, 4, 0, 9, 13, 8)                    # wing B
+    p.prism("roof", 5, 4, 8, 9.8, 14.4, 4.5, ridge="y")
+    p.box("roof", 5, 4, 12.2, 0.9, 14.6, 0.45)
+    p.box("timber", -2, 0, 4.6, 14.3, 10.3, 0.7)
+    shuttered(p, "winC", -6, -5.07, 4.2)
+    p.glow_quad("winO", -1.5, -5.07, 0, 3.0, 4.6)
+    stoop(p, -1.5, -5.07)
+    shuttered(p, "winM", 5, -2.57, 3.6)
+    p.glow_quad("winC", 9.57, 4, 3.4, 2.2, 3.0, facing="+x")
+    p.glow_quad("winC", 9.57, 4, 0.4, 2.2, 2.4, facing="+x")
+    p.box("stone", -6.5, 2.0, 12.5, 2.0, 2.0, 3.5)       # chimney
+    pitch = math.atan2(5, 5.7)
+    p.roof_panel(-4.0, -2.9, 11.4, 5.5, 4.0, pitch)
+    p.box("metal", 8, 8, 11.0, 0.2, 0.2, 3.8)            # antenna
+    p.glow_quad("glowC", 8, 8, 14.7, 0.45, 0.45)
+    p.cylinder("metal", -8.3, -4.0, 0, 0.5, 7.5, seg=8)  # downpipe
+    return p.done()
+
+
+def garbage_pile():
+    p = Piece("garbage_pile")
+    rnd = __import__("random").Random(17)
+    for _ in range(6):
+        r = rnd.uniform(0.5, 1.0)
+        p.cylinder("trash", rnd.uniform(-1.3, 1.3), rnd.uniform(-1.0, 1.0),
+                   -0.1, r, r * rnd.uniform(0.9, 1.3), seg=7, r2=r * 0.4)
+    for _ in range(4):
+        w = rnd.uniform(0.3, 0.7)
+        p.box("trash", rnd.uniform(-1.8, 1.8), rnd.uniform(-1.4, 1.4), 0,
+              w, w, rnd.uniform(0.2, 0.5), rz=rnd.uniform(0, 3.1))
+    p.box("timber", 1.6, -0.8, 0, 0.4, 1.8, 0.3, rz=0.6)  # broken plank
+    return p.done()
+
+
+def water_pod():
+    """Rain-collector tank hugging a wall, valve light dripping cyan."""
+    p = Piece("water_pod")
+    for sx in (-0.8, 0.8):
+        p.box("metal", sx, 0, 0, 0.35, 1.6, 0.7)         # legs
+    p.cylinder("metal", 0, 0, 0.6, 1.35, 2.6, seg=12, r2=1.15)
+    p.cone("metal", 0, 0, 3.2, 1.18, 0.7, seg=12)        # dome
+    p.cylinder("metal", 0, -1.5, 0.9, 0.16, 0.9, seg=6)  # valve pipe
+    p.glow_quad("neonCdim", 0, -1.62, 0.45, 0.4, 0.5)    # valve light
+    p.cylinder("glowPool", 0, -1.6, 0.02, 0.7, 0.08, seg=10)  # drip puddle
+    p.cylinder("metal", 1.2, 0.9, 3.0, 0.14, 2.2, seg=6)  # feed pipe up
+    return p.done()
+
+
 PIECES = [house_small(), house_med(), house_tall(), tower_round(), cathedral(),
           arena(), wall_seg(), wall_tower(), gate(),
           monolith("monolith_c", "winC", "glowC"),
@@ -665,7 +764,8 @@ PIECES = [house_small(), house_med(), house_tall(), tower_round(), cathedral(),
           stall(), fountain_core(), vault(), foundry(), lamp(),
           crate(), barrel(), sacks(), cart(), banner_pole(), banner_pole_c(),
           holo_sign(), cable_span(), rubble(), brazier(), bush(), carpet(),
-          carpet_c(), house_jetty(), server_rack(), kiosk(), e_waste()]
+          carpet_c(), house_jetty(), server_rack(), kiosk(), e_waste(),
+          house_L(), garbage_pile(), water_pod()]
 
 # ---------------------------------------------------------------- export
 bpy.ops.object.select_all(action="DESELECT")

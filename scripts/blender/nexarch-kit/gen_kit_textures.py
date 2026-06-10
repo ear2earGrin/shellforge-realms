@@ -14,54 +14,93 @@ def jitter(c, amt):
     return tuple(max(0, min(255, v + random.randint(-amt, amt))) for v in c)
 
 
-def make_stone(path, size=512):
-    img = Image.new("RGB", (size, size), (58, 64, 80))
+def make_stone(path, size=1024):
+    img = Image.new("RGB", (size, size), (44, 49, 62))
     d = ImageDraw.Draw(img)
-    row_h = 40
+    row_h = 56
     y = 0
     row = 0
     while y < size:
-        x = -random.randint(0, 40) if row % 2 else 0
+        x = -random.randint(0, 50) if row % 2 else 0
         while x < size:
-            w = random.randint(52, 96)
-            col = jitter((74, 82, 102), 8)
-            d.rectangle((x + 2, y + 2, x + w - 2, y + row_h - 2), fill=col)
-            # weathering speckle
-            for _ in range(6):
-                px = random.randint(x + 4, max(x + 5, x + w - 4))
-                py = random.randint(y + 4, y + row_h - 4)
+            w = random.randint(70, 130)
+            col = jitter((72, 80, 100), 9)
+            d.rectangle((x + 3, y + 3, x + w - 3, y + row_h - 3), fill=col)
+            # beveled edges: lit top/left, shaded bottom/right
+            d.line((x + 3, y + 3, x + w - 3, y + 3),
+                   fill=jitter((96, 106, 128), 6), width=3)
+            d.line((x + 3, y + 3, x + 3, y + row_h - 3),
+                   fill=jitter((88, 97, 118), 6), width=2)
+            d.line((x + 3, y + row_h - 3, x + w - 3, y + row_h - 3),
+                   fill=jitter((48, 53, 68), 6), width=4)
+            d.line((x + w - 3, y + 3, x + w - 3, y + row_h - 3),
+                   fill=jitter((54, 60, 76), 6), width=3)
+            for _ in range(14):                      # weathering speckle
+                px = random.randint(x + 6, max(x + 7, x + w - 6))
+                py = random.randint(y + 6, y + row_h - 6)
                 if 0 <= px < size and 0 <= py < size:
-                    d.point((px, py), fill=jitter(col, 14))
+                    d.point((px, py), fill=jitter(col, 18))
+            if random.random() < 0.18:               # crack
+                cx_, cy_ = x + w // 2, y + 6
+                pts = [(cx_, cy_)]
+                for _ in range(3):
+                    cx_ += random.randint(-10, 10)
+                    cy_ += random.randint(8, 16)
+                    pts.append((cx_, cy_))
+                d.line(pts, fill=(38, 42, 54), width=2)
             x += w
         y += row_h
         row += 1
-    img = img.filter(ImageFilter.GaussianBlur(0.7))
+    # plaster patches over the masonry
+    for _ in range(9):
+        px_, py_ = random.randrange(size), random.randrange(size)
+        pw, ph = random.randint(90, 200), random.randint(60, 130)
+        col = jitter((92, 88, 78), 8)
+        d.rounded_rectangle((px_, py_, px_ + pw, py_ + ph), radius=18, fill=col)
+        for _ in range(30):                          # plaster grime
+            d.point((random.randint(px_, px_ + pw), random.randint(py_, py_ + ph)),
+                    fill=jitter(col, 16))
+        d.arc((px_ - 8, py_ - 8, px_ + pw + 8, py_ + ph + 8), 0, 360,
+              fill=(50, 50, 48), width=2)
+    # rain stain streaks
+    for _ in range(28):
+        sx_ = random.randrange(size)
+        sy_ = random.randrange(size - 160)
+        for k in range(random.randint(40, 140)):
+            d.point((sx_ + random.randint(-1, 1), sy_ + k), fill=(40, 45, 58))
+    img = img.filter(ImageFilter.GaussianBlur(0.5))
     img.save(path)
 
 
-def make_roof(path, size=512):
-    img = Image.new("RGB", (size, size), (36, 42, 56))
+def make_roof(path, size=1024):
+    img = Image.new("RGB", (size, size), (30, 35, 47))
     d = ImageDraw.Draw(img)
-    sh_w, sh_h = 64, 38
+    sh_w, sh_h = 56, 34
     y = 0
     row = 0
     while y < size + sh_h:
         x = -sh_w // 2 if row % 2 else 0
         while x < size:
-            col = jitter((54, 62, 78), 6)
+            if random.random() < 0.025:              # missing shingle
+                d.rectangle((x + 1, y, x + sh_w - 1, y + sh_h), fill=(20, 23, 31))
+                x += sh_w
+                continue
+            col = jitter((52, 60, 76), 8)
             d.rectangle((x + 1, y, x + sh_w - 1, y + sh_h), fill=col)
-            d.line((x + 1, y + sh_h, x + sh_w - 1, y + sh_h), fill=(22, 26, 36), width=3)
-            d.line((x + 1, y + sh_h - 4, x + sh_w - 1, y + sh_h - 4),
-                   fill=jitter((86, 98, 118), 6), width=2)
+            d.line((x + 1, y, x + sh_w - 1, y), fill=jitter((74, 84, 102), 6), width=2)
+            d.line((x + 1, y + sh_h, x + sh_w - 1, y + sh_h), fill=(18, 21, 29), width=4)
+            d.line((x + sh_w - 1, y, x + sh_w - 1, y + sh_h), fill=(28, 32, 42), width=2)
+            for _ in range(5):
+                d.point((random.randint(x + 4, x + sh_w - 4),
+                         random.randint(y + 3, y + sh_h - 3)), fill=jitter(col, 14))
             x += sh_w
         y += sh_h
         row += 1
-    # rare teal moss
-    for _ in range(10):
+    for _ in range(26):                               # moss
         x, y = random.randrange(size), random.randrange(size)
-        d.ellipse((x, y, x + random.randint(8, 20), y + random.randint(5, 10)),
-                  fill=(30, 52, 50))
-    img = img.filter(ImageFilter.GaussianBlur(0.6))
+        d.ellipse((x, y, x + random.randint(10, 34), y + random.randint(6, 16)),
+                  fill=jitter((34, 58, 52), 8))
+    img = img.filter(ImageFilter.GaussianBlur(0.5))
     img.save(path)
 
 
