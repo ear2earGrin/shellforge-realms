@@ -35,6 +35,37 @@
 
 ## 2. Critical issues — fix before anything else (Phase 0)
 
+> **STATUS (2026-06-10): Phase 0 EXECUTED.** ✅ 0.1 RLS live on users/agents/
+> activity_log (policies first, verified end-to-end as the anon role; six
+> SECURITY DEFINER RPCs replace the frontend's direct writes — see
+> `supabase/migrations/0002_phase0_rls_lockdown.sql`). ✅ 0.2 combat source
+> on main (cherry-picked; CLAUDE.md updated). ✅ 0.3 SPEED_MULTIPLIER=1.
+> ✅ 0.4 schema snapshotted (`supabase/migrations/0001`). ✅ 0.5 hygiene done.
+> Whisper-worker v2 enforces the 2/day limit + 60s rate limit server-side.
+>
+> **Remaining handoff (needs Cloudflare credentials, unavailable here):**
+> 1. `cd workers/whisper-worker && npx wrangler deploy` (v2: limits + user_id fix)
+> 2. `cd workers/combat-engine && npx wrangler deploy` (sync live worker to main's source)
+> 3. After (1) is confirmed: apply `supabase/migrations/0003_whispers_worker_only.sql`
+>    to drop the anon whisper-insert fallback.
+> 4. Merge this branch to main — until then the live frontend's old direct
+>    writes (market buy/sell, registration, whisper coherence boost) fail
+>    against the locked-down DB.
+>
+> **Policy audit of the other 25 tables (0.1 scope):** every RLS-enabled table
+> had blanket `anon … true` policies. True owner-scoping is impossible until
+> real authentication exists — there are no per-user JWTs; login is a
+> username lookup, passwords are never verified, and `users.password_hash`
+> is literally `'pending_real_auth'`. Still anon-writable for now (needed by
+> live frontend flows; revisit in Phase 1+ when auth lands): `inventory`
+> (equip/craft), `market_listings`*, `agent_listings`*, `crafting_attempts`,
+> `agent_known_recipes`, `agent_starter_chests`, `world_state` (update),
+> `arena_matches`, `combat_matches`, `whispers` (insert — until 0003).
+> *Largely superseded by the new RPCs; revoke once the old frontend is off
+> main. Pre-existing advisor errors to revisit in Phase 1: four SECURITY
+> DEFINER views from the combat engine (`v_crucible_danger`, `v_hot_feuds`,
+> `agent_status_summary`, `v_active_matches`).
+
 These are bugs/risks in the *current* live game, not new features. **Est: 3–5 days.**
 
 ### 0.1 🔴 Security: RLS disabled on core tables

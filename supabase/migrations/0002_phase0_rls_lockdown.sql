@@ -127,7 +127,7 @@ $$;
 CREATE OR REPLACE FUNCTION public.fn_item_unit_price(
   p_stats jsonb, p_item_category text, p_item_type text
 ) RETURNS integer
-LANGUAGE plpgsql IMMUTABLE
+LANGUAGE plpgsql IMMUTABLE SET search_path = public, extensions
 AS $$
 DECLARE
   v_rarity text := lower(coalesce(p_stats->>'rarity', p_item_category, 'common'));
