@@ -5444,6 +5444,62 @@
             }
         }
 
+        // Session token from the auth worker — identity for every mutation.
+        // RPCs assert ownership server-side; a missing/expired token means
+        // the Ghost can watch but not act until they log in again.
+        function sfToken() { return localStorage.getItem('shellforgeToken') || ''; }
+
+        // ─── Ghost consent requests (dual-consent deathmatch gate) ──
+        // When a blood feud maxes out, the engine asks BOTH Ghosts for
+        // permission. The deathmatch only fires after both grant it.
+        var _consentSeen = {};
+        async function checkConsentRequests() {
+            var userId = localStorage.getItem('shellforgeUserId');
+            if (!userId || !sfToken()) return;
+            var reqs = await sbGet('ghost_consent_requests',
+                'user_id=eq.' + userId + '&status=eq.pending&select=request_id,message,kind,expires_at&order=created_at.desc');
+            if (!reqs) return;
+            reqs.forEach(function(r) {
+                if (_consentSeen[r.request_id] || document.getElementById('consent-' + r.request_id)) return;
+                _consentSeen[r.request_id] = true;
+                var el = document.createElement('div');
+                el.id = 'consent-' + r.request_id;
+                el.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:99998;max-width:360px;' +
+                    'background:#0A0A0F;border:1px solid #FF00FF;border-radius:8px;padding:16px 18px;' +
+                    'font-family:var(--font-mono,monospace);font-size:13px;color:#e8e8f0;' +
+                    'box-shadow:0 0 24px rgba(255,0,255,0.35);';
+                el.innerHTML =
+                    '<div style="color:#FF00FF;font-weight:bold;margin-bottom:8px;">⚔️ DEATHMATCH CONSENT REQUESTED</div>' +
+                    '<div style="margin-bottom:12px;line-height:1.5;">' + (r.message || 'Your agent demands a deathmatch.') + '</div>' +
+                    '<div style="display:flex;gap:8px;">' +
+                    '<button data-grant="1" style="flex:1;background:rgba(255,0,255,0.15);border:1px solid #FF00FF;color:#FF00FF;padding:8px;border-radius:4px;cursor:pointer;font-family:inherit;">GRANT</button>' +
+                    '<button data-grant="0" style="flex:1;background:transparent;border:1px solid #555;color:#aaa;padding:8px;border-radius:4px;cursor:pointer;font-family:inherit;">REFUSE</button>' +
+                    '</div>';
+                el.querySelectorAll('button').forEach(function(btn) {
+                    btn.addEventListener('click', async function() {
+                        btn.disabled = true;
+                        var res = await sbRpc('rpc_respond_consent', {
+                            p_token: sfToken(),
+                            p_request_id: r.request_id,
+                            p_grant: btn.dataset.grant === '1'
+                        });
+                        el.remove();
+                        if (res.ok && typeof showNotification === 'function') {
+                            showNotification(res.data.deathmatch_state === 'armed'
+                                ? '⚔️ Both Ghosts have consented. The deathmatch is sanctioned.'
+                                : (btn.dataset.grant === '1' ? 'Consent given. Awaiting the other Ghost…' : 'You refused. The feud stands down to the arena.'),
+                                btn.dataset.grant === '1' ? 'warning' : 'success');
+                        } else if (!res.ok && typeof showNotification === 'function') {
+                            showNotification('Consent failed: ' + res.error, 'error');
+                        }
+                    });
+                });
+                document.body.appendChild(el);
+            });
+        }
+        setTimeout(checkConsentRequests, 5000);
+        setInterval(checkConsentRequests, 60000);
+
         // Whisper worker — enforces the 2/day limit + rate limit server-side
         // and applies the coherence boost with the service key.
         var WHISPER_WORKER_URL = 'https://shellforge-whisper-worker.mindarvokn.workers.dev';
@@ -5458,7 +5514,7 @@
                 var r = await fetch(WHISPER_WORKER_URL + '/whisper', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ agent_id: agentId, message: message })
+                    body: JSON.stringify({ agent_id: agentId, message: message, token: sfToken() })
                 });
                 var body = await r.json().catch(function() { return null; });
                 if (r.ok) return { ok: true, data: body || {} };
@@ -5643,52 +5699,13 @@
         // ─── Sync orphaned localStorage agent back to Supabase ──
         async function syncLocalAgentToSupabase(agent) {
             try {
-                // 1. Check if agent already exists in Supabase
-                const dup = await sbGet('agents', 'agent_name=eq.' + encodeURIComponent(agent.username) + '&select=agent_id&limit=1');
-                if (dup && dup.length > 0) {
-                    console.log('✅ Agent already in Supabase (synced by another path)');
-                    return;
-                }
-
-                // 2. Register through the server-side RPC (users + agents writes
-                // are no longer allowed with the anon key)
-                const reg = await sbRpc('rpc_register_account', {
-                    p_username: agent.username,
-                    p_email: agent.email || null,
-                    p_agent: {
-                        agent_name:      agent.username,
-                        archetype:       agent.archetype,
-                        archetype_name:  agent.archetypeName || agent.archetype,
-                        archetype_image: agent.archetypeImage || '',
-                        cluster:         agent.cluster || '',
-                        cluster_name:    agent.clusterName || '',
-                        bio:             agent.bio || '',
-                        energy:          agent.energy !== undefined ? agent.energy : 100,
-                        health:          agent.health !== undefined ? agent.health : 100,
-                        karma:           agent.karma !== undefined ? agent.karma : 0,
-                        shell_balance:   agent.shell !== undefined ? agent.shell : 50,
-                        location:        agent.location || 'Nexarch',
-                        location_detail: agent.locationDetail || 'The Core',
-                        position_x:      agent.visualX !== undefined ? agent.visualX / 100 : 0.77,
-                        position_y:      agent.visualY !== undefined ? agent.visualY / 100 : 0.33,
-                        stats:           agent.stats || {},
-                        traits:          agent.traits || {},
-                        days_survived:   agent.daysSurvived || 1,
-                        spawn_log:       agent.username + ' resynced to the grid.'
-                    }
-                });
-
-                if (reg.ok && reg.data && reg.data.agent_id) {
-                    console.log('✅ Orphaned agent synced to Supabase:', reg.data.agent_id);
-                    // Update in-memory agent with Supabase IDs
-                    agent.agentId = reg.data.agent_id;
-                    agent.userId = reg.data.user_id;
-                    agent._source = 'supabase';
-                    saveAgent(agent);
-                    loadActivityLog(reg.data.agent_id);
-                } else {
-                    console.warn('⚠️ syncLocalAgentToSupabase: registration failed:', reg.error);
-                }
+                // Registration now requires real authentication (auth-worker) —
+                // unauthenticated resync would let anyone claim an orphaned
+                // callsign. Pre-auth localStorage agents must be redeployed
+                // through deploy.html with a password.
+                console.warn('⚠️ Orphaned localStorage agent "' + agent.username +
+                    '" cannot be auto-synced — redeploy it via deploy.html (registration now requires a password).');
+                return;
             } catch(e) {
                 console.warn('⚠️ syncLocalAgentToSupabase error:', e);
             }
@@ -6040,41 +6057,26 @@
 
                 if (!itemId) return;
 
-                // 1. Unequip whatever currently occupies this gear slot.
-                var currentEquipped = await sbGet('inventory',
-                    'agent_id=eq.' + agent.agentId +
-                    '&is_equipped=eq.true' +
-                    '&equip_slot=eq.' + slotName +
-                    '&select=inventory_id,item_id'
-                );
-
-                if (currentEquipped && currentEquipped.length > 0) {
-                    // Unequip the old item
-                    for (var i = 0; i < currentEquipped.length; i++) {
-                        await fetch(SUPABASE_URL + '/rest/v1/inventory?inventory_id=eq.' + currentEquipped[i].inventory_id, {
-                            method: 'PATCH',
-                            headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                            body: JSON.stringify({ is_equipped: false })
-                        });
-                    }
+                // Resolve inventory_id if the slot only knows the item_id.
+                if (!invId) {
+                    var rows = await sbGet('inventory',
+                        'agent_id=eq.' + agent.agentId + '&item_id=eq.' + itemId + '&select=inventory_id&limit=1');
+                    if (rows && rows.length > 0) invId = rows[0].inventory_id;
                 }
+                if (!invId) return;
 
-                // 2. Equip the new item, stamping its resolved slot so future
-                //    slot queries stay consistent even if equip_slot was null.
-                var equipBody = JSON.stringify({ is_equipped: true, equip_slot: slotName });
-                if (invId) {
-                    await fetch(SUPABASE_URL + '/rest/v1/inventory?inventory_id=eq.' + invId, {
-                        method: 'PATCH',
-                        headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                        body: equipBody
-                    });
-                } else {
-                    // Fallback: use item_id + agent_id
-                    await fetch(SUPABASE_URL + '/rest/v1/inventory?agent_id=eq.' + agent.agentId + '&item_id=eq.' + itemId, {
-                        method: 'PATCH',
-                        headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                        body: equipBody
-                    });
+                // 1+2. Equip server-side — the RPC unequips the slot's current
+                // occupant and stamps the new item atomically (owner-asserted).
+                var eqRes = await sbRpc('rpc_set_equipment', {
+                    p_token: sfToken(),
+                    p_agent_id: agent.agentId,
+                    p_inventory_id: invId,
+                    p_equipped: true,
+                    p_slot: slotName
+                });
+                if (!eqRes.ok) {
+                    if (typeof showNotification === 'function') showNotification('Equip failed: ' + eqRes.error, 'error');
+                    return;
                 }
 
                 // 3. Refresh equipped display + inventory
@@ -6329,11 +6331,16 @@
                 var agent = window._currentAgent;
                 if (!invId || !agent) return;
 
-                await fetch(SUPABASE_URL + '/rest/v1/inventory?inventory_id=eq.' + invId, {
-                    method: 'PATCH',
-                    headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                    body: JSON.stringify({ is_equipped: false })
+                var uneqRes = await sbRpc('rpc_set_equipment', {
+                    p_token: sfToken(),
+                    p_agent_id: agent.agentId,
+                    p_inventory_id: invId,
+                    p_equipped: false
                 });
+                if (!uneqRes.ok) {
+                    if (typeof showNotification === 'function') showNotification('Unequip failed: ' + uneqRes.error, 'error');
+                    return;
+                }
 
                 updateEquippedItems(agent.agentId);
 
@@ -7242,46 +7249,18 @@
             }).join('');
             card.querySelector('.open-hint').textContent = '✓ COLLECTED';
 
-            // Grant items + mark opened (in parallel)
-            await Promise.all([
-                grantChestContents(contents),
-                fetch(SUPABASE_URL + '/rest/v1/agent_starter_chests?id=eq.' + chestId, {
-                    method: 'PATCH', headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                    body: JSON.stringify({ opened_at: new Date().toISOString() })
-                })
-            ]);
-            updateChestContinueState();
-        }
-        async function grantChestContents(contents) {
-            // Aggregate by item_id, then upsert each into inventory.
-            const byId = {};
-            contents.forEach(c => { byId[c.item_id] = (byId[c.item_id] || 0) + (c.quantity || 1); });
-            for (const [item_id, quantity] of Object.entries(byId)) {
-                const meta = (window.ALCHEMY_ITEMS && window.ALCHEMY_ITEMS[item_id]) || (window.ALCHEMY_INGREDIENTS && window.ALCHEMY_INGREDIENTS[item_id]);
-                if (!meta) continue;
-                const isIngredient = !!(window.ALCHEMY_INGREDIENTS && window.ALCHEMY_INGREDIENTS[item_id]);
-                const item_type    = isIngredient ? 'ingredient' : (meta.kind || 'material');
-                const item_category= isIngredient ? meta.cat : (meta.cat || null);
-                // Try upsert: increment quantity if already present
-                const existing = await sbGet('inventory',
-                    'agent_id=eq.' + _currentAgent.agentId + '&item_id=eq.' + encodeURIComponent(item_id) + '&select=inventory_id,quantity&limit=1');
-                if (existing && existing.length > 0) {
-                    await fetch(SUPABASE_URL + '/rest/v1/inventory?inventory_id=eq.' + existing[0].inventory_id, {
-                        method: 'PATCH', headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                        body: JSON.stringify({ quantity: existing[0].quantity + quantity })
-                    });
-                } else {
-                    await sbPost('inventory', {
-                        agent_id:      _currentAgent.agentId,
-                        item_id:       item_id,
-                        item_name:     meta.name,
-                        item_type:     item_type,
-                        item_category: item_category,
-                        quantity:      quantity,
-                        is_equipped:   false
-                    });
-                }
+            // Claim server-side: the RPC marks the chest opened and grants its
+            // contents (resolved against items_master) in one transaction.
+            var chestRes = await sbRpc('rpc_open_starter_chest', {
+                p_token: sfToken(),
+                p_chest_id: chestId,
+                p_claim: true
+            });
+            if (!chestRes.ok) {
+                console.warn('[chest] claim failed:', chestRes.error);
+                if (typeof showNotification === 'function') showNotification('Cache claim failed: ' + chestRes.error, 'error');
             }
+            updateChestContinueState();
         }
         function updateChestContinueState() {
             const cards = [...document.querySelectorAll('#chestGrid .chest-card')];
@@ -7305,9 +7284,10 @@
             const unopened = [...document.querySelectorAll('#chestGrid .chest-card')]
                 .filter(c => !c.classList.contains('opened') && c.dataset.chestId);
             await Promise.all(unopened.map(c =>
-                fetch(SUPABASE_URL + '/rest/v1/agent_starter_chests?id=eq.' + c.dataset.chestId, {
-                    method: 'PATCH', headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                    body: JSON.stringify({ opened_at: new Date().toISOString() })
+                sbRpc('rpc_open_starter_chest', {
+                    p_token: sfToken(),
+                    p_chest_id: c.dataset.chestId,
+                    p_claim: false
                 })
             ));
             document.getElementById('chestOverlay').classList.remove('open');
@@ -9817,6 +9797,7 @@
             // Listing creation, inventory escrow, and activity log run atomically
             // server-side (24h expiry, base_value computed there too).
             var listing = await sbRpc('rpc_create_player_listing', {
+                p_token: sfToken(),
                 p_agent_id: _currentAgent.agentId,
                 p_inventory_id: inventoryId,
                 p_asking_price: price
@@ -9871,6 +9852,7 @@
                 // Whole trade (funds check, shell transfer, escrowed item, listing
                 // close, activity log) runs atomically server-side.
                 var res = await sbRpc('rpc_buy_player_listing', {
+                    p_token: sfToken(),
                     p_listing_id: listingId,
                     p_buyer_agent_id: _currentAgent.agentId
                 });
@@ -9909,6 +9891,7 @@
             // Funds check, inventory grant, shell deduction, stock/price update
             // and activity log all happen atomically server-side.
             var res = await sbRpc('rpc_buy_npc_item', {
+                p_token: sfToken(),
                 p_agent_id: _currentAgent.agentId,
                 p_listing_id: listingId
             });
@@ -9935,6 +9918,7 @@
             // credits shell, removes the item, updates supply/price, and logs —
             // atomically. sellPrice stays only as the displayed estimate.
             var res = await sbRpc('rpc_sell_npc_item', {
+                p_token: sfToken(),
                 p_agent_id: _currentAgent.agentId,
                 p_inventory_id: inventoryId
             });
@@ -10301,79 +10285,54 @@
                 // 'slag' / 'minor_slag' → 0 damage
             }
 
-            // 1. Consume ingredients — decrement quantities
+            // 1-5. The whole craft transaction runs server-side in one call:
+            // ingredient consumption, result grant, energy/health costs,
+            // crafting_attempts record, and the activity log (owner-asserted).
+            var ingredientIds = [];
             for (var i = 0; i < 3; i++) {
                 var ingId = _alchSelected[i];
                 var inv = _alchInventory.find(function(x) { return x.item_id === ingId; });
-                if (!inv) continue;
-                var newQty = inv.quantity - 1;
-                if (newQty <= 0) {
-                    await fetch(SUPABASE_URL + '/rest/v1/inventory?agent_id=eq.' + _currentAgent.agentId + '&item_id=eq.' + ingId, {
-                        method: 'DELETE', headers: SB_HEADERS
-                    });
-                } else {
-                    await fetch(SUPABASE_URL + '/rest/v1/inventory?agent_id=eq.' + _currentAgent.agentId + '&item_id=eq.' + ingId, {
-                        method: 'PATCH', headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                        body: JSON.stringify({ quantity: newQty })
-                    });
-                }
-                inv.quantity = newQty;
-            }
-
-            // 2. On success: add crafted item to inventory
-            if (success && item) {
-                var existingItem = await sbGet('inventory', 'agent_id=eq.' + _currentAgent.agentId + '&item_id=eq.' + recipe.item_id + '&select=quantity');
-                if (existingItem && existingItem.length > 0) {
-                    await fetch(SUPABASE_URL + '/rest/v1/inventory?agent_id=eq.' + _currentAgent.agentId + '&item_id=eq.' + recipe.item_id, {
-                        method: 'PATCH', headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-                        body: JSON.stringify({ quantity: existingItem[0].quantity + 1 })
-                    });
-                } else {
-                    await sbPost('inventory', {
-                        agent_id: _currentAgent.agentId,
-                        item_id: recipe.item_id,
-                        item_name: item.name,
-                        item_type: item.cat.toLowerCase(),
-                        item_category: item.rarity.toLowerCase(),
-                        quantity: 1
-                    });
+                if (inv && inv.inventory_id) {
+                    ingredientIds.push(inv.inventory_id);
+                    inv.quantity = inv.quantity - 1;
                 }
             }
-
-            // 3. Apply energy/health costs + activity log server-side (atomic, clamped)
             var detail = success
                 ? 'Human crafted: ' + item.name + ' (' + item.rarity + ' ' + item.cat + '). Result: SUCCESS! Item added to inventory.'
                 : recipe
                     ? 'Human attempted to craft: ' + item.name + '. Result: FAILED (' + failEffect.replace(/_/g, ' ') + ')! Lost ingredients.' + (damageTaken > 0 ? ' Took ' + damageTaken + ' damage.' : '')
                     : 'Human mixed unknown ingredients. Result: Worthless slag.';
-            var craftRes = await sbRpc('rpc_apply_craft_result', {
+            var craftRes = await sbRpc('rpc_craft_attempt', {
+                p_token: sfToken(),
                 p_agent_id: _currentAgent.agentId,
+                p_ingredient_ids: ingredientIds,
+                p_success: !!(success && item),
                 p_damage: damageTaken,
                 p_detail: detail,
-                p_items_gained: (success && item) ? [item.name] : null
+                p_result: (success && item) ? {
+                    item_id: recipe.item_id,
+                    item_name: item.name,
+                    item_type: item.cat.toLowerCase(),
+                    item_category: item.rarity.toLowerCase()
+                } : null,
+                p_attempt: {
+                    item_id: recipe ? recipe.item_id : 'unknown_slag',
+                    item_name: item ? item.name : 'Worthless Slag',
+                    ingredients: _alchSelected,
+                    success_rate: recipe ? recipe.success_rate : 0,
+                    roll_value: Math.round(roll * 100) / 100,
+                    failure_effect: success ? null : failEffect
+                }
             });
+            if (!craftRes.ok && typeof showNotification === 'function') {
+                showNotification('Craft failed to commit: ' + craftRes.error, 'error');
+            }
             var newEnergy = (craftRes.ok && craftRes.data && craftRes.data.energy != null)
                 ? craftRes.data.energy : Math.max(0, (_currentAgent.energy || 0) - 20);
             var newHealth = (craftRes.ok && craftRes.data && craftRes.data.health != null)
                 ? craftRes.data.health : Math.max(0, (_currentAgent.health || 100) - damageTaken);
             _currentAgent.energy = newEnergy;
             _currentAgent.health = newHealth;
-
-            // 4. Log to crafting_attempts
-            await sbPost('crafting_attempts', {
-                agent_id: _currentAgent.agentId,
-                item_id: recipe ? recipe.item_id : 'unknown_slag',
-                item_name: item ? item.name : 'Worthless Slag',
-                ingredients: JSON.stringify(_alchSelected),
-                success: success,
-                success_rate: recipe ? recipe.success_rate : 0,
-                roll_value: Math.round(roll * 100) / 100,
-                failure_effect: success ? null : failEffect,
-                damage_taken: damageTaken,
-                energy_cost: 20
-            });
-
-            // 5. (Activity log is written by rpc_apply_craft_result in step 3.)
 
             // 6. Show result animation
             var overlay = document.getElementById('alchResultOverlay');

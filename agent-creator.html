@@ -1059,68 +1059,64 @@
 
                 const traits = generateAgentTraits(selectedArchetype, bio, birthSeed);
 
-                // ── 1+2. Create user + agent + spawn log via the server-side
-                // RPC (users/agents/activity_log are no longer anon-writable).
-                // The RPC also enforces one-living-agent-per-user and unique names.
+                // ── 1+2. Register through the auth worker — it hashes the
+                // password, creates user + agent + spawn log + starter
+                // recipes/caches in one server-side transaction, and issues
+                // the session token. A token in localStorage means a logged-in
+                // Ghost deploying the next generation (rebirth).
+                const AUTH_URL = 'https://shellforge-auth-worker.mindarvokn.workers.dev';
+                const existingToken = localStorage.getItem('shellforgeToken');
+                const starters = STARTER_RECIPES[selectedArchetype] || [];
+                const chests = rollChests(birthSeed);
+
+                const regRes = await fetch(AUTH_URL + '/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: username,
+                        email: email || null,
+                        password: password,
+                        token: existingToken || undefined,
+                        agent: {
+                            agent_name:      username,
+                            archetype:       selectedArchetype,
+                            archetype_name:  archetypeData.name,
+                            archetype_image: archetypeData.image,
+                            cluster:         selectedCluster,
+                            cluster_name:    clusterNames[selectedCluster],
+                            bio:             bio,
+                            quirk:           traits.quirk,
+                            karma:           traits.karmaStart,
+                            location:        'Nexarch',
+                            location_detail: 'The Core',
+                            position_x:      0.77,
+                            position_y:      0.33,
+                            stats:           traits.stats,
+                            traits:          traits.traits,
+                            days_survived:   1,
+                            spawn_log:       username + ' deployed in Nexarch. ' + (bio ? '"' + bio + '"' : 'No directive set.'),
+                            starter_recipes: starters,
+                            starter_chests:  chests.map((chest, i) => ({
+                                chest_index: i,
+                                theme:       chest.theme,
+                                contents:    chest.contents
+                            }))
+                        }
+                    })
+                });
+                const reg = await regRes.json().catch(() => null);
+
                 let agentId = null;
                 let userId  = null;
-                const reg = await sbRpc('rpc_register_account', {
-                    p_username: username,
-                    p_email: email || null,
-                    p_agent: {
-                        agent_name:      username,
-                        archetype:       selectedArchetype,
-                        archetype_name:  archetypeData.name,
-                        archetype_image: archetypeData.image,
-                        cluster:         selectedCluster,
-                        cluster_name:    clusterNames[selectedCluster],
-                        bio:             bio,
-                        quirk:           traits.quirk,
-                        karma:           traits.karmaStart,
-                        location:        'Nexarch',
-                        location_detail: 'The Core',
-                        position_x:      0.77,
-                        position_y:      0.33,
-                        stats:           traits.stats,
-                        traits:          traits.traits,
-                        days_survived:   1,
-                        spawn_log:       username + ' deployed in Nexarch. ' + (bio ? '"' + bio + '"' : 'No directive set.')
-                    }
-                });
-
-                if (reg.ok && reg.data && reg.data.agent_id) {
-                    agentId = reg.data.agent_id;
-                    userId  = reg.data.user_id;
-                    console.log('✅ Agent created in Supabase:', agentId);
-
-                    // ── 2b. Grant archetype starter recipes ──
-                    const starters = STARTER_RECIPES[selectedArchetype] || [];
-                    await Promise.all(starters.map(([recipeId, station]) =>
-                        sbPost('agent_known_recipes', {
-                            agent_id:  agentId,
-                            recipe_id: recipeId,
-                            station:   station,
-                            source:    'starter'
-                        })
-                    ));
-                    if (starters.length) console.log('✅ Granted', starters.length, 'starter recipes');
-
-                    // ── 2c. Roll + persist 3 starter caches. The player
-                    // opens 2 of the 3 on first boot (dashboard), forfeiting
-                    // the third — a real loadout choice. ──
-                    const chests = rollChests(birthSeed);
-                    await Promise.all(chests.map((chest, i) =>
-                        sbPost('agent_starter_chests', {
-                            agent_id:    agentId,
-                            chest_index: i,
-                            theme:       chest.theme,
-                            contents:    chest.contents
-                        })
-                    ));
-                    console.log('✅ Rolled', chests.length, 'starter caches:',
-                        chests.map(c => c.theme).join(', '));
+                if (regRes.ok && reg && reg.agent_id) {
+                    agentId = reg.agent_id;
+                    userId  = reg.user_id;
+                    localStorage.setItem('shellforgeToken', reg.token);
+                    localStorage.setItem('shellforgeUserId', userId);
+                    console.log('✅ Agent created:', agentId,
+                        reg.generation > 1 ? '(Generation ' + reg.generation + ' of ' + reg.line_name + ')' : '');
                 } else {
-                    terminalNotify.error(reg.error || 'Agent deployment failed. Please try again.');
+                    terminalNotify.error((reg && reg.error) || 'Agent deployment failed. Please try again.');
                     btn.disabled = false;
                     btn.textContent = 'deploy agent';
                     return;
