@@ -76,6 +76,10 @@ m_trash, bsdf, _ = new_mat("M_Trash")
 bsdf.inputs["Base Color"].default_value = (0.035, 0.04, 0.035, 1)
 bsdf.inputs["Roughness"].default_value = 0.95
 M["trash"] = m_trash
+m_cloak, bsdf, _ = new_mat("M_Cloak")
+bsdf.inputs["Base Color"].default_value = (0.018, 0.02, 0.026, 1)
+bsdf.inputs["Roughness"].default_value = 0.95
+M["cloak"] = m_cloak
 
 KIT = []
 
@@ -757,6 +761,19 @@ def water_pod():
     return p.done()
 
 
+def npc(name, trim):
+    """Hooded townsfolk, like the figures in the pixel-art reference."""
+    p = Piece(name)
+    p.cylinder("cloak", 0, 0, 0, 0.95, 2.7, seg=9, r2=0.55)      # robe
+    p.cylinder("cloak", 0, 0, 2.5, 0.62, 0.9, seg=8, r2=0.30)    # hood
+    p.cone("cloak", 0, 0, 3.35, 0.32, 0.45, seg=8)               # hood peak
+    p.glow_quad(trim, 0, -0.50, 2.62, 0.34, 0.14)                # eye glow
+    p.glow_quad(trim, 0, -0.86, 0.5, 0.22, 1.7)                  # robe trim
+    p.box("cloak", -0.78, -0.25, 1.1, 0.34, 0.34, 1.1, rz=0.3)   # arms
+    p.box("cloak", 0.78, -0.25, 1.1, 0.34, 0.34, 1.1, rz=-0.3)
+    return p.done()
+
+
 PIECES = [house_small(), house_med(), house_tall(), tower_round(), cathedral(),
           arena(), wall_seg(), wall_tower(), gate(),
           monolith("monolith_c", "winC", "glowC"),
@@ -765,7 +782,8 @@ PIECES = [house_small(), house_med(), house_tall(), tower_round(), cathedral(),
           crate(), barrel(), sacks(), cart(), banner_pole(), banner_pole_c(),
           holo_sign(), cable_span(), rubble(), brazier(), bush(), carpet(),
           carpet_c(), house_jetty(), server_rack(), kiosk(), e_waste(),
-          house_L(), garbage_pile(), water_pod()]
+          house_L(), garbage_pile(), water_pod(),
+          npc("npc_c", "glowC"), npc("npc_m", "glowM"), npc("npc_o", "glowO")]
 
 # ---------------------------------------------------------------- export
 bpy.ops.object.select_all(action="DESELECT")

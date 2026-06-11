@@ -9,7 +9,7 @@ import bpy
 import bmesh
 
 OUT = "/tmp/citybuild"
-RES_X, RES_Y = 4096, 2800
+RES_X, RES_Y = 6144, 4200
 ORTHO = 830.0
 AZ, PITCH = 135.0, 38.0
 
@@ -132,7 +132,7 @@ cam.rotation_euler = (math.radians(90 - PITCH), 0, math.radians(AZ + 90))
 
 scene.render.engine = "CYCLES"
 scene.cycles.device = "CPU"
-scene.cycles.samples = 28
+scene.cycles.samples = 24
 scene.cycles.use_denoising = True
 scene.cycles.sample_clamp_indirect = 8.0
 scene.render.resolution_x = RES_X

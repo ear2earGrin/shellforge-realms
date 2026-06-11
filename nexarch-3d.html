@@ -178,35 +178,83 @@ for (const [name, places] of Object.entries(byPiece)) {
 }
 
 // ---------------------------------------------------------- cinematic bake
-const BAKE = { yaw: Math.PI * 1.25, pitch: THREE.MathUtils.degToRad(38),
-               w: 830, h: 830 * 2800 / 4096 };
-let cinematic = false, bakeMesh = null;
+// Tile pyramid: L0 overview always on; L1/L2 512px tiles stream in by zoom.
+const BAKE = { yaw: Math.PI * 1.25, pitch: THREE.MathUtils.degToRad(38), w: 830 };
+let cinematic = false, bakeGroup = null, bakeMeta = null;
 const modeMats = [...cityMats, window.__groundMat, window.__treeMat, window.__apronMat];
+const tileLayers = {};      // lod name -> { meshes: Map "c_r" -> mesh, built }
 function setMode(c) {
-    if (c && !bakeMesh) return;
+    if (c && !bakeGroup) return;
     cinematic = c;
-    if (bakeMesh) bakeMesh.visible = c;
-    for (const m of modeMats) m.colorWrite = !c;   // depth-only in cinematic
-    if (c) { view.yaw = view.yawGoal = BAKE.yaw; view.zoom = Math.min(view.zoom, 3.2); }
+    if (bakeGroup) bakeGroup.visible = c;
+    for (const m of modeMats) m.colorWrite = !c;
+    if (c) { view.yaw = view.yawGoal = BAKE.yaw; view.zoom = Math.min(view.zoom, 5.5); }
     statusEl.dataset.mode = c ? 'CINEMATIC' : 'LIVE 3D';
 }
-texLoader.load(ASSETS + 'nexarch-bake.jpg', tex => {
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 4;
+function bakeQuat() {
     const dummy = new THREE.OrthographicCamera();
     const cp = Math.cos(BAKE.pitch), sp = Math.sin(BAKE.pitch);
     dummy.position.set(cp * Math.sin(BAKE.yaw), sp, cp * Math.cos(BAKE.yaw))
         .multiplyScalar(900);
     dummy.lookAt(0, 0, 0);
-    bakeMesh = new THREE.Mesh(
+    return dummy.quaternion.clone();
+}
+try {
+    bakeMeta = await (await fetch(ASSETS + 'tiles/meta.json')).json();
+    BAKE.h = BAKE.w * bakeMeta.fullH / bakeMeta.fullW;
+    bakeGroup = new THREE.Group();
+    bakeGroup.quaternion.copy(bakeQuat());
+    scene.add(bakeGroup);
+    const baseTex = texLoader.load(ASSETS + 'tiles/L0.jpg');
+    baseTex.colorSpace = THREE.SRGBColorSpace;
+    const base = new THREE.Mesh(
         new THREE.PlaneGeometry(BAKE.w, BAKE.h),
-        new THREE.MeshBasicMaterial({ map: tex, depthTest: false,
+        new THREE.MeshBasicMaterial({ map: baseTex, depthTest: false,
                                       depthWrite: false, toneMapped: false }));
-    bakeMesh.quaternion.copy(dummy.quaternion);
-    bakeMesh.renderOrder = -10;
-    scene.add(bakeMesh);
+    base.renderOrder = -12;
+    bakeGroup.add(base);
     setMode(true);
-}, undefined, () => console.warn('no bake image — staying in live mode'));
+} catch (e) { console.warn('no bake tiles — staying in live mode', e); }
+
+function ensureTiles() {
+    if (!cinematic || !bakeMeta) return;
+    const lod = view.zoom >= 3.0 ? 'L2' : (view.zoom >= 1.6 ? 'L1' : null);
+    if (!lod) return;
+    const info = bakeMeta.lods.find(l => l.name === lod);
+    const layer = (tileLayers[lod] ??= { meshes: new Map() });
+    // visible window in bake-local coords
+    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(bakeGroup.quaternion);
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(bakeGroup.quaternion);
+    const lx = view.target.dot(right), ly = view.target.dot(up);
+    const hw = (460 / view.zoom) * (innerWidth / innerHeight) / 2 + 30;
+    const hh = (460 / view.zoom) / 2 + 30;
+    const px = bakeMeta.fullW / (lod === 'L1' ? 2 : 1) / BAKE.w;  // px per unit
+    const t = bakeMeta.tile;
+    const c0 = Math.max(0, Math.floor(((lx - hw) + BAKE.w / 2) * px / t));
+    const c1 = Math.min(info.cols - 1, Math.floor(((lx + hw) + BAKE.w / 2) * px / t));
+    const r0 = Math.max(0, Math.floor((BAKE.h / 2 - (ly + hh)) * px / t));
+    const r1 = Math.min(info.rows - 1, Math.floor((BAKE.h / 2 - (ly - hh)) * px / t));
+    for (let r = r0; r <= r1; r++)
+        for (let c = c0; c <= c1; c++) {
+            const key = `${c}_${r}`;
+            if (layer.meshes.has(key)) continue;
+            layer.meshes.set(key, true);
+            texLoader.load(`${ASSETS}tiles/${lod}/${key}.jpg`, tex => {
+                tex.colorSpace = THREE.SRGBColorSpace;
+                const tw = Math.min(t, info.w - c * t), th = Math.min(t, info.h - r * t);
+                const w = BAKE.w * tw / info.w, h = BAKE.h * th / info.h;
+                const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h),
+                    new THREE.MeshBasicMaterial({ map: tex, depthTest: false,
+                                                  depthWrite: false, toneMapped: false }));
+                mesh.position.set(-BAKE.w / 2 + (c * t + tw / 2) / info.w * BAKE.w,
+                                  BAKE.h / 2 - (r * t + th / 2) / info.h * BAKE.h, 0.1);
+                mesh.renderOrder = lod === 'L2' ? -10 : -11;
+                layer.meshes.set(key, mesh);
+                bakeGroup.add(mesh);
+            });
+        }
+}
+setInterval(ensureTiles, 250);
 
 // ---------------------------------------------------------------- labels
 const LABEL_H = { 'CHURCH': 52, 'ARENA': 34, 'THE CORE': 20, 'FORGE': 28,
@@ -410,7 +458,7 @@ addEventListener('pointermove', e => {
     view.target.y = 0;
 });
 addEventListener('wheel', e => {
-    view.zoom = THREE.MathUtils.clamp(view.zoom * (e.deltaY > 0 ? 0.9 : 1.12), 0.55, cinematic ? 3.2 : 7);
+    view.zoom = THREE.MathUtils.clamp(view.zoom * (e.deltaY > 0 ? 0.9 : 1.12), 0.55, cinematic ? 5.5 : 7);
 });
 addEventListener('keydown', e => {
     const k = e.key.toLowerCase();

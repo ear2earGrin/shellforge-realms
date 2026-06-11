@@ -471,6 +471,47 @@ for _ in range(160):
         blockers.append((x, z, 1.2))
         n_clutter += 1
 
+# hooded townsfolk: market crowd, plaza loiterers, street wanderers
+NPCS = ("npc_c", "npc_m", "npc_o")
+
+
+def put_npc(x, z, face_x=None, face_z=None):
+    global n_clutter
+    if road_dist(x, z) > 4 or blocked(x, z, 0.7, 0.9):
+        return
+    rot = (face(x, z, face_x, face_z) if face_x is not None
+           else random.uniform(0, 2 * math.pi))
+    place(random.choice(NPCS), x, z, rot + random.uniform(-0.25, 0.25),
+          s=round(random.uniform(0.92, 1.1), 2), sink=0.1)
+    blockers.append((x, z, 0.7))
+    n_clutter += 1
+
+
+for (kx, kz) in [(182, -20), (218, -16), (184, 18), (216, 20), (234, 2)]:
+    for _ in range(2):                                   # shoppers at kiosks
+        a = random.uniform(0, 6.28)
+        put_npc(kx + 6.5 * math.cos(a), kz + 6.5 * math.sin(a), kx, kz)
+for _ in range(5):                                       # church congregation
+    a = random.uniform(0, 6.28)
+    rr = random.uniform(8, 26)
+    put_npc(rr * math.cos(a), -228 + rr * math.sin(a) * 0.7, 0, -250)
+for _ in range(6):                                       # plaza wanderers
+    a = random.uniform(0, 6.28)
+    rr = random.uniform(14, 44)
+    put_npc(rr * math.cos(a), rr * math.sin(a))
+for g in GATE_THETA.values():                            # gate guards
+    gr = wall_R(g) - 18
+    gx_, gz_ = gr * math.cos(g), gr * math.sin(g)
+    for side in (-6, 6):
+        put_npc(gx_ + side * abs(math.sin(g)), gz_ + side * abs(math.cos(g)))
+for r in ROADS:                                          # street traffic
+    p = r["pts"]
+    for i in range(len(p) - 1):
+        if random.random() < 0.30:
+            t = random.random()
+            put_npc(p[i][0] + (p[i + 1][0] - p[i][0]) * t + random.uniform(-3, 3),
+                    p[i][1] + (p[i + 1][1] - p[i][1]) * t + random.uniform(-3, 3))
+
 # braziers flanking each gate (placed after GATES exist, see below)
 print(f"clutter: {n_clutter} props")
 

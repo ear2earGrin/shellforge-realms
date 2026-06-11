@@ -1,0 +1,1 @@
+{"fullW": 4096, "fullH": 2800, "tile": 512, "lods": [{"name": "L0", "w": 1024, "h": 700, "single": true}, {"name": "L1", "w": 2048, "h": 1400, "cols": 4, "rows": 3}, {"name": "L2", "w": 4096, "h": 2800, "cols": 8, "rows": 6}]}
