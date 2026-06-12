@@ -1,0 +1,119 @@
+{
+ "core": {
+  "name": "THE CORE",
+  "bakeBox": [
+   2832,
+   1640,
+   480,
+   800
+  ],
+  "center": [
+   0,
+   0
+  ]
+ },
+ "church": {
+  "name": "CHURCH",
+  "bakeBox": [
+   1523,
+   2364,
+   480,
+   800
+  ],
+  "center": [
+   0,
+   -250
+  ]
+ },
+ "forge": {
+  "name": "FORGE",
+  "bakeBox": [
+   4140,
+   834,
+   480,
+   800
+  ],
+  "center": [
+   0,
+   250
+  ]
+ },
+ "market": {
+  "name": "MARKET",
+  "bakeBox": [
+   1785,
+   983,
+   480,
+   800
+  ],
+  "center": [
+   200,
+   0
+  ]
+ },
+ "arena": {
+  "name": "ARENA",
+  "bakeBox": [
+   2832,
+   649,
+   480,
+   800
+  ],
+  "center": [
+   150,
+   150
+  ]
+ },
+ "alchemy": {
+  "name": "ALCHEMY LABS",
+  "bakeBox": [
+   2832,
+   2607,
+   480,
+   800
+  ],
+  "center": [
+   -150,
+   -150
+  ]
+ },
+ "vault": {
+  "name": "FAMILY VAULT",
+  "bakeBox": [
+   1261,
+   1640,
+   480,
+   800
+  ],
+  "center": [
+   150,
+   -150
+  ]
+ },
+ "mines": {
+  "name": "DEEP MINES",
+  "bakeBox": [
+   4140,
+   2469,
+   480,
+   800
+  ],
+  "center": [
+   -250,
+   0
+  ]
+ },
+ "alley": {
+  "name": "DARK ALLEY",
+  "bakeBox": [
+   4925,
+   1674,
+   480,
+   800
+  ],
+  "center": [
+   -200,
+   200
+  ]
+ }
+}

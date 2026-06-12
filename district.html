@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>NEXARCH — District View</title>
+<style>
+    * { -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #04060b;
+                 font-family: 'Courier New', monospace; color: #5af0e1; }
+    #stage { position: fixed; inset: 0; overflow: hidden; }
+    #art { position: absolute; image-rendering: pixelated; user-select: none;
+           -webkit-user-drag: none; }
+    .agent { position: absolute; transform: translate(-50%, -100%);
+             image-rendering: pixelated; transition: none; cursor: pointer;
+             filter: drop-shadow(0 3px 4px rgba(0,0,0,.7)); }
+    .poi { position: absolute; transform: translate(-50%, -50%); width: 30px;
+           height: 30px; border-radius: 50%; cursor: pointer;
+           border: 2px solid rgba(90,240,225,.75);
+           background: radial-gradient(circle, rgba(90,240,225,.30), transparent 65%);
+           animation: poipulse 2.2s infinite; }
+    @keyframes poipulse { 50% { box-shadow: 0 0 14px rgba(90,240,225,.8); } }
+    /* rain */
+    #rain { position: fixed; inset: 0; pointer-events: none; opacity: .35;
+            background: repeating-linear-gradient(105deg, transparent 0 7px,
+                rgba(150,180,230,.16) 7px 8px);
+            animation: rainfall .5s linear infinite; }
+    @keyframes rainfall { to { transform: translateY(30px) translateX(-8px); } }
+    /* hud */
+    .chipbar { position: fixed; top: 10px; left: 0; right: 0; display: flex;
+               gap: 6px; overflow-x: auto; padding: 4px 10px; z-index: 30;
+               scrollbar-width: none; }
+    .chip { flex: 0 0 auto; padding: 7px 12px; font-size: .68rem;
+            letter-spacing: .12em; color: #9af5ec; cursor: pointer;
+            background: rgba(5,10,14,.85); border: 1px solid #2a6f6a; }
+    .chip.on { border-color: #5af0e1; color: #fff;
+               box-shadow: 0 0 10px rgba(90,240,225,.5); }
+    #panel { position: fixed; left: 10px; right: 10px; bottom: 10px; z-index: 30;
+             background: rgba(5,9,13,.92); border: 1px solid #5af0e1;
+             box-shadow: 0 0 14px rgba(90,240,225,.25); }
+    #panel header { display: flex; justify-content: space-between; padding: 8px 12px;
+                    font-size: .72rem; letter-spacing: .15em;
+                    border-bottom: 1px solid #1d4a47; }
+    #roster { display: flex; gap: 8px; padding: 8px 12px; overflow-x: auto; }
+    .face { width: 52px; height: 52px; flex: 0 0 auto; display: flex;
+            align-items: flex-end; justify-content: center; cursor: pointer;
+            border: 1px solid #234; background: #0a0f16;
+            image-rendering: pixelated; }
+    .face img { image-rendering: pixelated; height: 44px; }
+    #card { position: fixed; left: 14px; right: 14px; bottom: 96px; z-index: 40;
+            background: rgba(8,12,18,.96); border: 1px solid #d769ff;
+            box-shadow: 0 0 16px rgba(215,105,255,.4); padding: 12px 14px;
+            display: none; }
+    #card h3 { margin: 0 0 4px; font-size: .85rem; color: #d769ff;
+               letter-spacing: .12em; }
+    #card p { margin: 2px 0; font-size: .7rem; color: #9af5ec; line-height: 1.5; }
+    #card .x { position: absolute; top: 6px; right: 10px; color: #d769ff;
+               cursor: pointer; font-size: 1rem; }
+    #back { position: fixed; top: 54px; left: 10px; z-index: 30; font-size: .65rem;
+            color: #3d8f8a; text-decoration: none; letter-spacing: .12em;
+            background: rgba(5,10,14,.8); padding: 6px 10px;
+            border: 1px solid #1d4a47; }
+</style>
+</head>
+<body>
+<div id="stage"><img id="art" draggable="false"></div>
+<div id="rain"></div>
+<div class="chipbar" id="chips"></div>
+<a id="back" href="nexarch-3d.html">◂ CITY MAP</a>
+<div id="card"><span class="x">✕</span><h3 id="cardTitle"></h3><div id="cardBody"></div></div>
+<div id="panel">
+    <header><span id="dname">…</span><span id="dcount"></span></header>
+    <div id="roster"></div>
+</div>
+
+<script>
+(async function () {
+const ASSETS = 'images/3d/';
+const [layout, crops] = await Promise.all([
+    fetch(ASSETS + 'nexarch-layout.json').then(r => r.json()),
+    fetch('images/districts/structure/crops.json').then(r => r.json())]);
+
+// ---------------- world helpers (same math as the bake / nexarch-3d.html)
+const HN = layout.heightsN, SPAN = layout.span, HC = SPAN / HN;
+function heightAt(x, z) {
+    const fx = (x + SPAN / 2) / HC - 0.5, fz = (z + SPAN / 2) / HC - 0.5;
+    const x0 = Math.max(0, Math.min(HN - 2, Math.floor(fx)));
+    const z0 = Math.max(0, Math.min(HN - 2, Math.floor(fz)));
+    const tx = Math.max(0, Math.min(1, fx - x0)), tz = Math.max(0, Math.min(1, fz - z0));
+    const h = layout.heights;
+    return h[z0 * HN + x0] * (1 - tx) * (1 - tz) + h[z0 * HN + x0 + 1] * tx * (1 - tz)
+         + h[(z0 + 1) * HN + x0] * (1 - tx) * tz + h[(z0 + 1) * HN + x0 + 1] * tx * tz;
+}
+function toBakePx(x, z, h) {
+    const sx = -0.7071 * x + 0.7071 * z;
+    const sy = 0.4355 * (x + z) + 0.7876 * h;
+    return [3072 + sx * 7.402, 2100 - sy * 7.402];
+}
+// walk grid + A*
+const N = layout.gridN, CELL = SPAN / N, HALF = SPAN / 2;
+const walk = layout.grid;
+const cellOf = v => Math.max(0, Math.min(N - 1, Math.floor((v + HALF) / CELL)));
+const isWalk = (cx, cz) => cx >= 0 && cz >= 0 && cx < N && cz < N && walk[cz][cx] === '1';
+const worldOf = (cx, cz) => [-HALF + (cx + 0.5) * CELL, -HALF + (cz + 0.5) * CELL];
+function nearestWalkable(cx, cz) {
+    if (isWalk(cx, cz)) return [cx, cz];
+    for (let r = 1; r < 30; r++)
+        for (let dz = -r; dz <= r; dz++)
+            for (let dx = -r; dx <= r; dx++)
+                if (Math.max(Math.abs(dx), Math.abs(dz)) === r && isWalk(cx + dx, cz + dz))
+                    return [cx + dx, cz + dz];
+    return null;
+}
+function astar(start, goal) {
+    const key = (x, z) => z * N + x;
+    const open = new Map([[key(...start), { c: start, g: 0, f: 0, from: null }]]);
+    const closed = new Map();
+    while (open.size) {
+        let bk, best;
+        for (const [k, n] of open) if (!best || n.f < best.f) { best = n; bk = k; }
+        open.delete(bk); closed.set(bk, best);
+        const [cx, cz] = best.c;
+        if (cx === goal[0] && cz === goal[1]) {
+            const path = [];
+            for (let n = best; n; n = n.from) path.unshift(worldOf(...n.c));
+            return path;
+        }
+        for (const [dx, dz] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]) {
+            const nx = cx + dx, nz = cz + dz;
+            if (!isWalk(nx, nz)) continue;
+            if (dx && dz && (!isWalk(cx + dx, cz) || !isWalk(cx, cz + dz))) continue;
+            const k = key(nx, nz);
+            if (closed.has(k)) continue;
+            const g = best.g + Math.hypot(dx, dz);
+            const ex = open.get(k);
+            if (!ex || g < ex.g)
+                open.set(k, { c: [nx, nz], g,
+                    f: g + Math.hypot(goal[0] - nx, goal[1] - nz), from: best });
+        }
+        if (closed.size > 16000) break;
+    }
+    return null;
+}
+
+// ---------------- districts & POIs (world coordinates)
+const POIS = {
+    core:   [{ n: 'THE CORE', d: 'Safe zone. Resting agents recover 50 energy.', x: 0, z: 0 }],
+    market: [{ n: 'KIOSK ROW', d: 'Licensed traders. Components, scrap, rumors.', x: 184, z: 18 },
+             { n: 'CARAVAN CARTS', d: 'Goods inbound from Hashmere.', x: 208, z: 6 }],
+    church: [{ n: 'CATHEDRAL', d: 'The Order of the Compiler keeps the litany running.', x: 0, z: -250 },
+             { n: 'MONOLITH FIELD', d: 'Memorials to deleted agents. Do not linger.', x: 0, z: -198 }],
+    forge:  [{ n: 'THE FORGE', d: 'Hardware crafting. Bring components and patience.', x: 0, z: 250 }],
+    arena:  [{ n: 'ARENA GATE', d: 'PvP combat. Winners take inheritance shares.', x: 150, z: 150 }],
+    alchemy:[{ n: 'ALCHEMY LABS', d: 'Potion synthesis from gathered reagents.', x: -150, z: -150 }],
+    vault:  [{ n: 'THE ZIGGURAT', d: 'Family Vault. Generational wealth, sealed in stone.', x: 150, z: -150 }],
+    mines:  [{ n: 'MINE GATE', d: 'Deep Mines entrance. Ore, data crystals, danger.', x: -250, z: 0 }],
+    alley:  [{ n: 'DARK ALLEY', d: 'Black market. Stolen goods and forbidden mods.', x: -200, z: 200 }],
+};
+const ANCHORS = Object.fromEntries(Object.entries(crops).map(
+    ([k, v]) => [k, v.center]));
+
+// ---------------- agents living in world space
+const NAMES = ['VEX-9', 'NULLSAINT', 'CRC-HOLLOW', 'MOTHFRAME', 'SIGIL-7',
+               'BYTEWIDOW', 'PALEPROXY', 'GRIMHASH', 'ECHO-DELTA', 'RUSTPRIOR',
+               'KEYLEPER', 'WIRESHADE', 'ASHCURATE', 'TALLYGHOST', 'HEXWARDEN',
+               'DIMSEER', 'LOOPMARTYR', 'SALTREGENT', 'VOIDTITHE', 'CINDERSCRIBE',
+               'GLASSVICAR', 'NIGHTLEDGER', 'FERROMONK', 'PSALMCODER'];
+const ACTIONS = ['hauling scrap to the Forge', 'trading at the kiosks',
+                 'praying at the monoliths', 'scouting for the family',
+                 'carrying a sealed package', 'avoiding the Watch',
+                 'heading to the Arena', 'collecting rain data',
+                 'running an errand in the Alley', 'on pilgrimage to the Church'];
+const agents = NAMES.map((name, i) => {
+    const keys = Object.keys(ANCHORS);
+    const home = ANCHORS[keys[i % keys.length]];
+    const c = nearestWalkable(cellOf(home[0] + (Math.random() - 0.5) * 30),
+                              cellOf(home[1] + (Math.random() - 0.5) * 30));
+    const [x, z] = worldOf(...c);
+    return { name, x, z, route: [], idle: Math.random() * 6, speed: 7 + Math.random() * 5,
+             action: ACTIONS[i % ACTIONS.length], el: null, heading: 0 };
+});
+function sendAgent(a) {
+    const keys = Object.keys(ANCHORS);
+    let dest;
+    if (Math.random() < 0.65) {            // local errand nearby
+        dest = [a.x + (Math.random() - 0.5) * 60, a.z + (Math.random() - 0.5) * 60];
+    } else {                               // cross-city trip
+        dest = ANCHORS[keys[Math.floor(Math.random() * keys.length)]];
+    }
+    const from = nearestWalkable(cellOf(a.x), cellOf(a.z));
+    const to = nearestWalkable(cellOf(dest[0]), cellOf(dest[1]));
+    if (!from || !to) return;
+    a.route = astar(from, to) || [];
+    a.action = ACTIONS[Math.floor(Math.random() * ACTIONS.length)];
+}
+
+// ---------------- scene rendering
+const stage = document.getElementById('stage');
+const art = document.getElementById('art');
+const params = new URLSearchParams(location.search);
+let current = params.get('d') && crops[params.get('d')] ? params.get('d') : 'market';
+let box = null;     // displayed art box in px: {x, y, scale} bakePx -> screenPx
+
+function layoutArt() {
+    const meta = crops[current];
+    const [bx, by, bw, bh] = meta.bakeBox;
+    const vw = innerWidth, vh = innerHeight;
+    const s = Math.max(vw / bw, vh / bh);          // cover
+    const w = bw * s, h = bh * s;
+    const x = (vw - w) / 2, y = (vh - h) / 2;
+    Object.assign(art.style, { left: x + 'px', top: y + 'px',
+                               width: w + 'px', height: h + 'px' });
+    box = { bx, by, x, y, s };
+}
+function screenPos(wx, wz) {
+    const [px, py] = toBakePx(wx, wz, heightAt(wx, wz));
+    return [box.x + (px - box.bx) * box.s, box.y + (py - box.by) * box.s];
+}
+function inScene(wx, wz, m = 40) {
+    const [sx, sy] = screenPos(wx, wz);
+    return sx > -m && sy > -m && sx < innerWidth + m && sy < innerHeight + m;
+}
+
+// ---------------- UI
+const card = document.getElementById('card');
+function showCard(title, html) {
+    document.getElementById('cardTitle').textContent = title;
+    document.getElementById('cardBody').innerHTML = html;
+    card.style.display = 'block';
+}
+card.querySelector('.x').onclick = () => card.style.display = 'none';
+
+const chipbar = document.getElementById('chips');
+for (const [k, v] of Object.entries(crops)) {
+    const c = document.createElement('div');
+    c.className = 'chip';
+    c.textContent = v.name;
+    c.dataset.k = k;
+    c.onclick = () => select(k);
+    chipbar.appendChild(c);
+}
+let poiEls = [];
+function select(k) {
+    current = k;
+    history.replaceState(null, '', '?d=' + k);
+    document.querySelectorAll('.chip').forEach(c =>
+        c.classList.toggle('on', c.dataset.k === k));
+    document.getElementById('dname').textContent = crops[k].name;
+    card.style.display = 'none';
+    // art: styled art if present, structure placeholder otherwise
+    art.onerror = () => { art.onerror = null;
+        art.src = `images/districts/structure/${k}.jpg`; };
+    art.src = `images/districts/art/${k}.png`;
+    layoutArt();
+    populate(k);
+    // POIs
+    poiEls.forEach(e => e.remove());
+    poiEls = (POIS[k] || []).map(p => {
+        const e = document.createElement('div');
+        e.className = 'poi';
+        e.onclick = () => showCard(p.n, `<p>${p.d}</p>`);
+        stage.appendChild(e);
+        e._p = p;
+        return e;
+    });
+}
+function populate(k) {
+    const [ax, az] = ANCHORS[k];
+    let moved = 0;
+    for (const a of agents) {
+        if (moved >= 5) break;
+        if (a.route.length || inScene(a.x, a.z)) continue;
+        const c = nearestWalkable(cellOf(ax + (Math.random() - 0.5) * 44),
+                                  cellOf(az + (Math.random() - 0.5) * 44));
+        if (!c) continue;
+        [a.x, a.z] = worldOf(...c);
+        a.idle = 1 + Math.random() * 4;
+        moved++;
+    }
+}
+window.DISTRICT = { select, agents, populate };   // console / test hook
+
+// ---------------- main loop
+let last = performance.now();
+function tick(now) {
+    requestAnimationFrame(tick);
+    const dt = Math.min((now - last) / 1000, 0.1);
+    last = now;
+    if (!box) return;
+    const roster = [];
+    for (const a of agents) {
+        if (a.route.length) {
+            const [tx, tz] = a.route[0];
+            const dx = tx - a.x, dz = tz - a.z;
+            const d = Math.hypot(dx, dz);
+            if (d < 0.5) a.route.shift();
+            else {
+                a.x += dx / d * a.speed * dt;
+                a.z += dz / d * a.speed * dt;
+                a.heading = Math.atan2(dx, dz);
+            }
+            if (!a.route.length) a.idle = 3 + Math.random() * 8;
+        } else {
+            a.idle -= dt;
+            if (a.idle <= 0) sendAgent(a);
+        }
+        const visible = inScene(a.x, a.z);
+        if (visible) roster.push(a);
+        if (!a.el && visible) {
+            a.el = document.createElement('img');
+            a.el.className = 'agent';
+            a.el.onclick = () => showCard(a.name,
+                `<p>STATUS: ${a.route.length ? 'moving' : 'idle'} — ${a.action}</p>
+                 <p>POS: (${Math.round(a.x + 10500)}, ${Math.round(a.z + 9000)})</p>
+                 <p>ENERGY: ${60 + Math.floor(Math.random() * 40)} · KIN: Daemon-line</p>`);
+            stage.appendChild(a.el);
+        }
+        if (a.el) {
+            if (!visible) { a.el.remove(); a.el = null; continue; }
+            const [sx, sy] = screenPos(a.x, a.z);
+            // 8-direction sprite from world heading relative to camera yaw 225
+            const f = ((Math.round((a.heading + Math.PI * 1.25) / (Math.PI / 4)) % 8) + 8) % 8;
+            a.el.src = `images/districts/sprites/monk_${f}.png`;
+            const hpx = 5.8 * 7.402 * box.s;       // monk height in screen px
+            a.el.style.height = hpx + 'px';
+            a.el.style.left = sx + 'px';
+            a.el.style.top = (sy + Math.sin(now / 320 + a.x) * 1.5) + 'px';
+            a.el.style.zIndex = Math.round(sy);
+        }
+    }
+    for (const e of poiEls) {
+        const [sx, sy] = screenPos(e._p.x, e._p.z);
+        e.style.left = sx + 'px';
+        e.style.top = sy + 'px';
+    }
+    document.getElementById('dcount').textContent = roster.length + ' AGENTS';
+    const ros = document.getElementById('roster');
+    if (ros.dataset.sig !== roster.map(a => a.name).join()) {
+        ros.dataset.sig = roster.map(a => a.name).join();
+        ros.innerHTML = '';
+        for (const a of roster) {
+            const f = document.createElement('div');
+            f.className = 'face';
+            f.innerHTML = `<img src="images/districts/sprites/monk_4.png">`;
+            f.onclick = () => a.el && a.el.onclick();
+            f.title = a.name;
+            ros.appendChild(f);
+        }
+    }
+}
+addEventListener('resize', layoutArt);
+select(current);
+agents.forEach(sendAgent);
+requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
