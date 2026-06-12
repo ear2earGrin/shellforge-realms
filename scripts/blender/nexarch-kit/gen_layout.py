@@ -83,20 +83,20 @@ for i in range(90 + 1):
     ring_pts.append((rr * math.cos(th), rr * math.sin(th)))
 ROADS.append({"pts": ring_pts, "w": 12})
 
-for j, ang in enumerate((30, 75, 140, 210, 255, 320)):     # crooked alleys
+for j, ang in enumerate((30, 75, 110, 140, 175, 210, 255, 290, 320)):  # crooked alleys
     th = math.radians(ang)
     r0 = 0.56 * wall_R(th)
     r1 = 0.90 * wall_R(th)
     ROADS.append({"pts": wobble_line((r0 * math.cos(th), r0 * math.sin(th)),
                                      (r1 * math.cos(th), r1 * math.sin(th)),
-                                     segs=6, amp=10, seed=30 + j), "w": 8})
+                                     segs=8, amp=14, seed=30 + j), "w": 6.5})
 for j, ang in enumerate((45, 135, 225, 315)):              # plaza spokes
     th = math.radians(ang)
     r1 = 0.58 * wall_R(th)
     ROADS.append({"pts": wobble_line((PLAZA_R * 0.9 * math.cos(th),
                                       PLAZA_R * 0.9 * math.sin(th)),
                                      (r1 * math.cos(th), r1 * math.sin(th)),
-                                     segs=5, amp=7, seed=50 + j), "w": 9})
+                                     segs=6, amp=9, seed=50 + j), "w": 7.5})
 
 SQUARES = [(200, 0, 36), (0, -228, 34)]   # market square, church plaza (x,z,r)
 
@@ -218,7 +218,7 @@ landmark("cathedral", 0, -250, face(0, -250, 0, 0), "CHURCH", 28)
 landmark("foundry", 0, 250, face(0, 250, 0, 0), "FORGE", 22)
 landmark("arena", 150, 150, 0, "ARENA", 50)
 landmark("tower_round", -150, -150, 0, "ALCHEMY LABS", 12)
-landmark("vault", 150, -150, face(150, -150, 0, 0), "FAMILY VAULT", 12)
+landmark("vault", 150, -150, face(150, -150, 0, 0), "FAMILY VAULT", 27)
 landmark("gate", -250, 0, math.radians(90), "DEEP MINES", 16)
 
 labels.append({"name": "MARKET", "x": 200, "z": 0})
@@ -267,8 +267,10 @@ def inside_wall(x, z, margin):
 
 
 HOUSES = [("house_small", 9.0, 2.6), ("house_med", 12.0, 1.7),
-          ("house_tall", 8.2, 1.5), ("house_jetty", 11.5, 1.3),
-          ("house_L", 12.5, 1.5)]
+          ("house_tall", 8.2, 1.8), ("house_jetty", 11.5, 1.3),
+          ("house_L", 12.5, 1.5), ("house_ruin", 9.0, 0.7)]
+FRONTAGE = {"house_small": 14.5, "house_med": 20.5, "house_tall": 12.5,
+            "house_jetty": 18.5, "house_L": 19.5, "house_ruin": 14.5}
 
 
 def pick_house():
@@ -280,54 +282,75 @@ def pick_house():
     return HOUSES[0][:2]
 
 
+street_houses = []
+
+
 def try_house(x, z, rot, rad, name, tight=0.94):
     if not inside_wall(x, z, rad + 9):
         return False
-    if road_dist(x, z) < rad * 0.92 or blocked(x, z, rad, tight):
+    if road_dist(x, z) < rad * 0.88 or blocked(x, z, rad, tight):
         return False
-    slope_ok = abs(height_at(x + rad, z) - height_at(x - rad, z)) < 6.5 and \
-               abs(height_at(x, z + rad) - height_at(x, z - rad)) < 6.5
+    slope_ok = abs(height_at(x + rad, z) - height_at(x - rad, z)) < 7.5 and \
+               abs(height_at(x, z + rad) - height_at(x, z - rad)) < 7.5
     if not slope_ok:
         return False
-    place(name, x, z, rot, s=round(random.uniform(0.88, 1.12), 3), sink=1.2)
+    place(name, x, z, rot, s=round(random.uniform(0.86, 1.14), 3), sink=1.4)
     blockers.append((x, z, rad))
     street_houses.append((x, z, rot, rad))
     return True
 
 
-street_houses = []
-# A) street-front rows: houses hugging every road on both sides
+# A) terraced rows: houses shoulder to shoulder on both sides of each street
 n_row = 0
 for r in ROADS:
     p = r["pts"]
-    acc = 0.0
-    for i in range(len(p) - 1):
-        segL = math.hypot(p[i + 1][0] - p[i][0], p[i + 1][1] - p[i][1])
-        ux, uz = (p[i + 1][0] - p[i][0]) / segL, (p[i + 1][1] - p[i][1]) / segL
-        nx, nz = -uz, ux
-        t = -acc
-        while t < segL:
-            step = random.uniform(14, 20)
-            cx_, cz_ = p[i][0] + ux * max(t, 0), p[i][1] + uz * max(t, 0)
-            for side in (-1, 1):
-                name, rad = pick_house()
-                off = r["w"] / 2 + rad * 0.95 + random.uniform(0.5, 3.0)
-                hx, hz = cx_ + nx * side * off, cz_ + nz * side * off
-                rot = face(hx, hz, cx_, cz_) + random.uniform(-0.1, 0.1)
-                if try_house(hx, hz, rot, rad, name):
-                    n_row += 1
-            t += step
-        acc = (segL - t) % 14
+    lengths = [math.hypot(p[i + 1][0] - p[i][0], p[i + 1][1] - p[i][1])
+               for i in range(len(p) - 1)]
+    road_len = sum(lengths)
+    for side in (-1, 1):
+        cursor = random.uniform(0, 6)
+        while cursor < road_len - 8:
+            name, rad = pick_house()
+            w = FRONTAGE[name] * 0.97          # near-touching terraces
+            mid = cursor + w / 2
+            acc, i = 0.0, 0
+            while i < len(lengths) - 1 and acc + lengths[i] < mid:
+                acc += lengths[i]
+                i += 1
+            t = min(1.0, (mid - acc) / lengths[i])
+            cx_ = p[i][0] + (p[i + 1][0] - p[i][0]) * t
+            cz_ = p[i][1] + (p[i + 1][1] - p[i][1]) * t
+            ux = (p[i + 1][0] - p[i][0]) / lengths[i]
+            uz = (p[i + 1][1] - p[i][1]) / lengths[i]
+            nx, nz = -uz * side, ux * side
+            depth = rad * 0.92 + random.uniform(0.2, 1.0)
+            hx = cx_ + nx * (r["w"] / 2 + depth)
+            hz = cz_ + nz * (r["w"] / 2 + depth)
+            rot = face(hx, hz, cx_, cz_) + random.uniform(-0.04, 0.04)
+            if try_house(hx, hz, rot, rad, name, tight=0.55):
+                n_row += 1
+                if random.random() < 0.6:      # second row behind
+                    name2, rad2 = pick_house()
+                    bx = hx + nx * (rad + rad2 + random.uniform(0.5, 2.5))
+                    bz = hz + nz * (rad + rad2 + random.uniform(0.5, 2.5))
+                    if try_house(bx + ux * random.uniform(-4, 4),
+                                 bz + uz * random.uniform(-4, 4),
+                                 rot + random.uniform(-0.12, 0.12),
+                                 rad2, name2, tight=0.60):
+                        n_row += 1
+                cursor += w
+            else:
+                cursor += 6.0
 
-# B) block infill behind the street rows
+# B) tight block infill behind the terraces
 n_fill = 0
-for _ in range(2600):
+for _ in range(5200):
     th = random.uniform(0, 2 * math.pi)
     rr = math.sqrt(random.uniform(0.04, 1.0)) * wall_R(th)
     x, z = rr * math.cos(th), rr * math.sin(th)
     name, rad = pick_house()
-    rot = face(x, z, 0, 0) + math.pi + random.uniform(-0.4, 0.4)
-    if try_house(x, z, rot, rad, name, tight=0.90):
+    rot = face(x, z, 0, 0) + math.pi + random.uniform(-0.5, 0.5)
+    if try_house(x, z, rot, rad, name, tight=0.72):
         n_fill += 1
 
 # ---------------------------------------------------------------- clutter

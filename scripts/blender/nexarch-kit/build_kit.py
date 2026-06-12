@@ -467,16 +467,33 @@ def fountain_core():
 
 
 def vault():
+    """Family Vault as a circuit-ziggurat (packed-town reference centerpiece)."""
     p = Piece("vault")
-    p.box("stone", 0, 0, -5, 12.6, 12.6, 5.2)
-    p.box("stone", 0, 0, 0, 13, 13, 6)
-    p.box("stone", 0, 0, 6, 10, 10, 3)
-    p.pyramid("stone", 0, 0, 9, 8, 8, 2.6)
-    for f, cx, cy in (("-y", 0, -6.57), ("+y", 0, 6.57),
-                      ("+x", 6.57, 0), ("-x", -6.57, 0)):
-        p.glow_quad("glowC", cx, cy, 4.6, 11, 0.5, facing=f)
-        p.glow_quad("glowM", cx, cy, 7.6, 8, 0.4, facing=f)
-    p.glow_quad("winC", 0, -6.62, 0.6, 3.0, 3.6)
+    p.box("stone", 0, 0, -6, 38, 38, 6.2)
+    tiers = [(38, 8), (30, 7), (22, 6), (14, 6)]
+    z = 0
+    for (w, h) in tiers:
+        p.box("stone", 0, 0, z, w, w, h)
+        # glowing circuit panels on each tier face
+        for f, cx, cy in (("-y", 0, -w / 2 - 0.07), ("+y", 0, w / 2 + 0.07),
+                          ("+x", w / 2 + 0.07, 0), ("-x", -w / 2 - 0.07, 0)):
+            p.glow_quad("winC" if z % 2 == 0 else "winM", cx, cy, z + 1.2,
+                        w * 0.45, h - 2.4, facing=f)
+        z += h
+    # grand stair up the front
+    sz = 0
+    for i, (w, h) in enumerate(tiers):
+        steps = 6
+        for k in range(steps):
+            p.box("stone", 0, -w / 2 - 2.2 + k * 0.36, sz + k * h / steps,
+                  6.5, 2.4, h / steps + 0.15)
+        sz += h
+    p.box("stone", 0, 0, z, 8, 8, 2.2)                  # crown
+    p.glow_quad("glowM", 0, -4.07, z + 0.4, 5.5, 1.4)
+    for (ax, ay) in ((-3, -3), (3, -3), (0, 3.2)):      # antenna cluster
+        p.box("metal", ax, ay, z + 2.2, 0.25, 0.25, 5.5)
+        p.glow_quad("glowC", ax, ay, z + 7.6, 0.5, 0.5)
+    p.cylinder("metal", -8, 8, z - 2, 1.0, 3.0, seg=8)  # rooftop unit
     return p.done()
 
 
@@ -774,6 +791,33 @@ def npc(name, trim):
     return p.done()
 
 
+def house_ruin():
+    """Collapsed house: broken walls, fallen beams, one dead flickering panel."""
+    p = Piece("house_ruin")
+    p.box("stone", 0, 0, -5, 13.6, 11.6, 5.2)
+    p.box("stone", 0, 5.2, 0, 14, 1.6, 7.0)             # back wall stands
+    p.box("stone", -6.2, 0, 0, 1.6, 12, 5.5)            # side wall, lower
+    p.box("stone", 6.2, 0, 0, 1.6, 12, 3.2)             # stub wall
+    p.box("stone", 0, -5.2, 0, 14, 1.6, 2.0)            # front reduced to sill
+    # jagged tops: offset blocks along the standing walls
+    p.box("stone", -2.5, 5.2, 7.0, 4.0, 1.7, 2.2)
+    p.box("stone", 4.0, 5.2, 7.0, 2.5, 1.7, 1.2)
+    p.box("stone", -6.2, -2.5, 5.5, 1.7, 3.5, 1.8)
+    # fallen roof beams
+    p.box("timber", -1.0, 0.5, 4.2, 0.6, 11.5, 0.6, rz=0.18, rx=0.5)
+    p.box("timber", 3.0, -0.5, 3.0, 0.6, 10.0, 0.6, rz=-0.3, rx=0.8)
+    p.box("timber", -3.5, 1.5, 2.0, 0.6, 9.0, 0.6, rz=0.5, rx=1.1)
+    # interior rubble + a dead panel still flickering
+    rnd = __import__("random").Random(23)
+    for _ in range(7):
+        w = rnd.uniform(0.7, 1.8)
+        p.box("stone", rnd.uniform(-4, 4), rnd.uniform(-3.5, 3.5), 0,
+              w, w * 0.8, rnd.uniform(0.5, 1.6), rz=rnd.uniform(0, 3))
+    p.roof_panel(2.5, 2.0, 1.3, 4.5, 3.4, math.radians(64))
+    p.glow_quad("neonCdim", -3.5, 5.1, 2.5, 2.0, 1.4)
+    return p.done()
+
+
 PIECES = [house_small(), house_med(), house_tall(), tower_round(), cathedral(),
           arena(), wall_seg(), wall_tower(), gate(),
           monolith("monolith_c", "winC", "glowC"),
@@ -783,7 +827,8 @@ PIECES = [house_small(), house_med(), house_tall(), tower_round(), cathedral(),
           holo_sign(), cable_span(), rubble(), brazier(), bush(), carpet(),
           carpet_c(), house_jetty(), server_rack(), kiosk(), e_waste(),
           house_L(), garbage_pile(), water_pod(),
-          npc("npc_c", "glowC"), npc("npc_m", "glowM"), npc("npc_o", "glowO")]
+          npc("npc_c", "glowC"), npc("npc_m", "glowM"), npc("npc_o", "glowO"),
+          house_ruin()]
 
 # ---------------------------------------------------------------- export
 bpy.ops.object.select_all(action="DESELECT")

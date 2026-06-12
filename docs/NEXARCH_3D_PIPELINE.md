@@ -43,9 +43,18 @@ pitch 38°, ortho width 830 world units, target (0,0,0), aspect 6144:4200.
    puddle reflections, rain mood. Reference: the AI concept art in
    `images/` and the Lovable map. No neon lines on the ground itself —
    streets are plain wet cobble.
-3. **Process in overlapping regions** (the image is 6144 wide; most APIs
-   cap lower). Blend overlaps to hide seams; keep global color grading
-   consistent across regions.
+3. **Process in overlapping regions** (the image is 6144 wide; image models
+   cap around 2048 — feeding the whole map gives a restyled center crop,
+   not the city). Use the ready-made tooling:
+   ```
+   python3 scripts/blender/nexarch-kit/restyle_tools.py split images/3d/nexarch-bake.jpg /tmp/restyle
+   # img2img every /tmp/restyle/in/*.png -> /tmp/restyle/out/<same name>.png
+   #   (12 regions, SAME prompt/strength/settings for all)
+   python3 scripts/blender/nexarch-kit/restyle_tools.py stitch /tmp/restyle images/3d/nexarch-bake.jpg
+   ```
+   The stitcher feather-blends the 256px overlaps; keep global color
+   grading consistent across regions (identical settings, ideally same
+   seed).
 4. **Output:** one finished 6144x4200 image saved over
    `images/3d/nexarch-bake.jpg`, then re-run `gen_tiles.py` (PIL only, no
    Blender needed) to rebuild `images/3d/tiles/`, and verify
