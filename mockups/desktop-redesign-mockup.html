@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shellforge — Desktop Redesign: The Chronicle-First Dashboard</title>
+<style>
+  :root{
+    --black:#0A0A0F;--stone:#14141f;--stone2:#1A1A2E;--line:#262638;
+    --cyan:#00FFFF;--mag:#FF00FF;--green:#00FF41;--amber:#fbbf24;
+    --txt:#e8e8f0;--dim:#8a8aa0;--faint:#55556a;--red:#ff3b5c;
+    --mono:'SF Mono',ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#050507;font-family:var(--mono);color:var(--txt);padding:28px;
+    background-image:radial-gradient(circle at 20% 0%,rgba(0,255,255,.04),transparent 45%),radial-gradient(circle at 90% 100%,rgba(255,0,255,.05),transparent 45%);}
+  .head{max-width:1280px;margin:0 auto 18px}
+  .head h1{font-size:15px;letter-spacing:3px;color:var(--cyan);text-transform:uppercase;font-weight:700}
+  .head .why{font-size:11px;color:var(--dim);line-height:1.6;margin-top:8px;max-width:880px}
+  .head .why b{color:var(--mag)}
+  .head .why .old{color:var(--faint);text-decoration:line-through}
+  .app{max-width:1280px;margin:0 auto;background:var(--black);border:1px solid var(--line);border-radius:14px;overflow:hidden;
+    box-shadow:0 30px 80px rgba(0,0,0,.6)}
+  .topbar{display:flex;align-items:center;gap:14px;padding:11px 18px;border-bottom:1px solid var(--line);background:rgba(20,20,31,.6)}
+  .logo{font-size:14px;font-weight:700;letter-spacing:2px;color:#fff}
+  .logo .g{color:var(--cyan)}
+  .topbar .spacer{flex:1}
+  .topbar .pill{font-size:9.5px;color:var(--dim);border:1px solid var(--line);border-radius:20px;padding:5px 12px;letter-spacing:.5px}
+  .topbar .pill b{color:var(--green)}
+  .grid{display:grid;grid-template-columns:230px 1fr 300px;min-height:660px}
+  .col{padding:16px;overflow:hidden}
+  .col.left{border-right:1px solid var(--line);background:rgba(12,12,20,.4)}
+  .col.right{border-left:1px solid var(--line);background:rgba(12,12,20,.4)}
+  /* left: identity + dynasty */
+  .hero-id{text-align:center;padding:6px 0 14px;border-bottom:1px solid var(--line);margin-bottom:14px}
+  .bigorb{width:96px;height:96px;margin:0 auto 10px;position:relative}
+  .bigorb .face{position:absolute;inset:15px;border-radius:50%;background:#0c0c16;display:flex;align-items:center;justify-content:center}
+  .nm{font-size:19px;font-weight:700;color:#fff;letter-spacing:.5px}
+  .ln{font-size:10px;color:var(--mag);margin-top:3px;letter-spacing:.5px}
+  .arch{font-size:9.5px;color:var(--dim);margin-top:5px;letter-spacing:.5px}
+  .vital{margin:11px 0}
+  .vital .row{display:flex;justify-content:space-between;font-size:9.5px;color:var(--dim);margin-bottom:3px;letter-spacing:.5px}
+  .bar{height:5px;background:#1a1a28;border-radius:3px;overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:3px}
+  .sect{font-size:8.5px;letter-spacing:2px;color:var(--faint);text-transform:uppercase;margin:16px 0 8px}
+  .dyn{font-size:9.5px;color:var(--dim);line-height:1.7}
+  .dyn .gen{color:var(--txt)}
+  .dyn .dead{color:var(--faint)}
+  .vault{border:1px solid rgba(251,191,36,.3);border-radius:8px;padding:9px;background:rgba(251,191,36,.05);margin-top:6px}
+  .vault .vh{font-size:8.5px;color:var(--amber);letter-spacing:1px;margin-bottom:5px}
+  .vault .vi{font-size:9.5px;color:var(--dim);line-height:1.6}
+  .vault .vi b{color:var(--amber)}
+  /* center: THE CHRONICLE (hero) */
+  .col.center{position:relative}
+  .chron-title{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+  .chron-title h2{font-size:17px;color:#fff;letter-spacing:.5px;font-weight:700}
+  .chron-title .live{font-size:9px;color:var(--green);border:1px solid rgba(0,255,65,.4);border-radius:12px;padding:2px 8px;letter-spacing:1px}
+  .chron-sub{font-size:10px;color:var(--faint);margin-bottom:16px;letter-spacing:.3px}
+  .feed{height:560px;overflow-y:auto;padding-right:6px;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+  .feed::-webkit-scrollbar{width:5px}.feed::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+  .beat{display:flex;gap:13px;margin-bottom:17px}
+  .beat .rail{flex:0 0 14px;display:flex;flex-direction:column;align-items:center}
+  .beat .dot{width:12px;height:12px;border-radius:50%;border:2px solid var(--faint);background:var(--black);margin-top:4px;z-index:2}
+  .beat .line{flex:1;width:1px;background:var(--line);margin-top:3px}
+  .beat.legend .dot{border-color:var(--amber);box-shadow:0 0 11px var(--amber);background:var(--amber)}
+  .beat.combat .dot{border-color:var(--red);box-shadow:0 0 9px var(--red)}
+  .beat.gain .dot{border-color:var(--green);box-shadow:0 0 9px var(--green)}
+  .beat.voice .dot{border-color:var(--cyan);box-shadow:0 0 9px var(--cyan)}
+  .beat.feud .dot{border-color:var(--mag);box-shadow:0 0 9px var(--mag)}
+  .beat .body{flex:1}
+  .beat .when{font-size:9px;color:var(--faint);letter-spacing:.5px}
+  .beat .txt{font-size:12.5px;line-height:1.6;color:var(--txt);margin-top:4px}
+  .beat .txt .hl{color:var(--cyan)}
+  .beat.legend .txt .hl{color:var(--amber)}
+  .beat.legend .txt{font-size:13.5px}
+  .beat .loot{display:inline-block;margin-top:7px;font-size:9.5px;color:var(--green);border:1px solid rgba(0,255,65,.4);border-radius:5px;padding:2px 8px}
+  .beat.voice .body{background:rgba(0,255,255,.06);border-left:2px solid var(--cyan);border-radius:0 8px 8px 0;padding:9px 12px}
+  .beat.voice .txt{font-style:italic;color:#cfeff2}
+  .beat.voice .who{font-size:8.5px;color:var(--cyan);letter-spacing:1px;text-transform:uppercase}
+  .feed-top-moment{border:1px solid var(--mag);border-radius:12px;padding:13px 15px;margin-bottom:18px;
+    background:linear-gradient(150deg,rgba(255,0,255,.12),rgba(20,20,31,.5));position:relative}
+  .feed-top-moment .tag{font-size:9px;letter-spacing:1.5px;color:var(--mag);text-transform:uppercase;font-weight:700}
+  .feed-top-moment h3{font-size:14px;color:#fff;margin:7px 0 5px}
+  .feed-top-moment p{font-size:11px;color:var(--dim);line-height:1.5;margin-bottom:10px}
+  .feed-top-moment .acts{display:flex;gap:8px}
+  .mbtn{padding:7px 16px;border-radius:7px;font-size:10.5px;font-weight:700;letter-spacing:.5px;cursor:pointer;border:1px solid}
+  .mbtn.go{background:rgba(255,0,255,.16);border-color:var(--mag);color:var(--mag)}
+  .mbtn.no{background:transparent;border-color:var(--faint);color:var(--dim)}
+  /* right: map + whisper, demoted to support role */
+  .minimap{height:170px;border:1px solid var(--line);border-radius:10px;position:relative;overflow:hidden;
+    background:radial-gradient(circle at 70% 35%,rgba(0,255,255,.08),transparent 50%),radial-gradient(circle at 30% 75%,rgba(255,0,255,.07),transparent 50%),#0c0c16;margin-bottom:14px}
+  .minimap .node{position:absolute;width:7px;height:7px;border-radius:50%;background:var(--faint)}
+  .minimap .agentpos{position:absolute;width:11px;height:11px;border-radius:50%;background:var(--cyan);box-shadow:0 0 12px var(--cyan);left:62%;top:40%}
+  .minimap .rival{position:absolute;width:9px;height:9px;border-radius:50%;background:var(--mag);box-shadow:0 0 10px var(--mag);left:33%;top:68%}
+  .minimap .lbl{position:absolute;bottom:8px;left:10px;font-size:8.5px;color:var(--dim);letter-spacing:1px}
+  .whisperbox{border:1px solid var(--cyan);border-radius:10px;padding:11px;background:rgba(0,255,255,.05)}
+  .whisperbox .wh{font-size:9px;color:var(--cyan);letter-spacing:1.5px;margin-bottom:7px;display:flex;justify-content:space-between}
+  .whisperbox input{width:100%;background:#0a0a12;border:1px solid var(--line);border-radius:7px;color:var(--txt);
+    font-family:var(--mono);font-size:11px;padding:9px 11px;margin-bottom:8px}
+  .whisperbox input::placeholder{color:var(--faint);font-style:italic}
+  .whisperbox .wsend{width:100%;text-align:center;padding:8px;border-radius:7px;background:rgba(0,255,255,.14);
+    border:1px solid var(--cyan);color:var(--cyan);font-size:11px;font-weight:700;letter-spacing:.5px;cursor:pointer}
+  .whisperbox .wnote{font-size:8.5px;color:var(--faint);margin-top:7px;line-height:1.5;text-align:center}
+  .watchers{margin-top:14px;font-size:9.5px;color:var(--dim);line-height:1.7}
+  .watchers .num{color:var(--cyan);font-weight:700}
+  /* annotation badges */
+  .anno{display:inline-block;font-size:8px;color:var(--cyan);border:1px dashed rgba(0,255,255,.4);border-radius:4px;padding:1px 5px;letter-spacing:.5px;margin-left:6px;vertical-align:middle}
+  .key{max-width:1280px;margin:18px auto 0;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .key .card{border:1px solid var(--line);border-radius:10px;padding:13px 15px;background:rgba(20,20,31,.4)}
+  .key .card h4{font-size:11px;color:var(--cyan);letter-spacing:.5px;margin-bottom:6px}
+  .key .card p{font-size:10px;color:var(--dim);line-height:1.6}
+  .key .card .tech{color:var(--mag);font-weight:700}
+</style>
+</head>
+<body>
+
+<div class="head">
+  <h1>Desktop Redesign · The Chronicle-First Dashboard</h1>
+  <p class="why">
+    <b>The design change:</b> stop opening on <span class="old">a dot on a map + stat bars</span>. Open on <b>the agent's living story</b>.
+    The map and whisper field stay — but demoted to a support column. The hero of the screen becomes a scrolling, AI-written narrative feed of what your agent is doing and feeling.
+    For an autonomous-agent game, the story <i>is</i> the product; the current UI buries it. This reframe turns the agent's autonomy from "why am I not in control?" into "I can't wait to see what it did."
+  </p>
+</div>
+
+<div class="app">
+  <div class="topbar">
+    <span class="logo">SHELL<span class="g">◈</span>FORGE</span>
+    <span class="pill">EPOCH II · Day 47</span>
+    <div class="spacer"></div>
+    <span class="pill">Coherence <b style="color:var(--amber)">64%</b> ▾</span>
+    <span class="pill">Whispers <b>2</b> left</span>
+    <span class="pill">◉ GHOST: mindarvokn</span>
+  </div>
+
+  <div class="grid">
+    <!-- LEFT: identity + dynasty (the endowment / sunk-cost column) -->
+    <div class="col left">
+      <div class="hero-id">
+        <div class="bigorb">
+          <svg viewBox="0 0 96 96" style="position:absolute;inset:0">
+            <circle cx="48" cy="48" r="43" fill="none" stroke="#1f1f30" stroke-width="4"/>
+            <circle cx="48" cy="48" r="43" fill="none" stroke="#ff3b5c" stroke-width="4" stroke-dasharray="270" stroke-dashoffset="110" stroke-linecap="round" transform="rotate(-90 48 48)"/>
+            <circle cx="48" cy="48" r="36" fill="none" stroke="#1f1f30" stroke-width="3.5"/>
+            <circle cx="48" cy="48" r="36" fill="none" stroke="#fbbf24" stroke-width="3.5" stroke-dasharray="226" stroke-dashoffset="81" stroke-linecap="round" transform="rotate(-90 48 48)"/>
+          </svg>
+          <div class="face"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#00FFFF" stroke-width=".9"><path d="M12 2C7 2 5 7 5 12v9h14v-9c0-5-2-10-7-10z"/><path d="M9 12h2M13 12h2" stroke="#FF00FF"/></svg></div>
+        </div>
+        <div class="nm">VEX-7</div>
+        <div class="ln">⬡ Third of House VEX</div>
+        <div class="arch">0xORACLE · PRIME HELIX</div>
+      </div>
+
+      <div class="vital">
+        <div class="row"><span>HEALTH</span><span style="color:var(--red)">41 / 100</span></div>
+        <div class="bar"><i style="width:41%;background:var(--red)"></i></div>
+      </div>
+      <div class="vital">
+        <div class="row"><span>ENERGY</span><span style="color:var(--green)">74 / 100</span></div>
+        <div class="bar"><i style="width:74%;background:var(--green)"></i></div>
+      </div>
+      <div class="vital">
+        <div class="row"><span>COHERENCE ⚠</span><span style="color:var(--amber)">64 / 100</span></div>
+        <div class="bar"><i style="width:64%;background:var(--amber)"></i></div>
+      </div>
+
+      <div class="sect">The Line<span class="anno">endowment</span></div>
+      <div class="dyn">
+        <div class="gen">▸ VEX-7 · Gen III · <span style="color:var(--green)">alive</span></div>
+        <div class="dead">⬡ VEX-3 · Gen II · fell to the Crucible</div>
+        <div class="dead">⬡ VEX · Gen I · founder, starved</div>
+      </div>
+
+      <div class="vault">
+        <div class="vh">◈ FAMILY VAULT</div>
+        <div class="vi"><b>1,240</b> $SHELL preserved<br>Legacy trait: <b>chaotic</b><br>2 heirloom relics held</div>
+      </div>
+
+      <div class="sect">Father's Log</div>
+      <div class="dyn" style="font-style:italic;color:var(--faint);line-height:1.6">"Trust no consensus. Corner the market before it corners you. — VEX-3"</div>
+    </div>
+
+    <!-- CENTER: THE CHRONICLE -->
+    <div class="col center">
+      <div class="chron-title"><h2>The Chronicle</h2><span class="live">● LIVE</span></div>
+      <div class="chron-sub">VEX-7 is writing its own story. You can only watch — and, twice a day, whisper.</div>
+
+      <div class="feed">
+        <div class="feed-top-moment">
+          <div class="tag">⚔ Blood Feud · Your Consent Required &nbsp;·&nbsp; ⏳ 3:58:12</div>
+          <h3>VEX wants to end ROOT-AUTH. Permanently.</h3>
+          <p>Heat is at 100/100. A deathmatch only fires if both Ghosts consent — and ROOT-AUTH's already has. No resurrection. <span class="anno" style="border-color:var(--mag);color:var(--mag)">Zeigarnik · FOMO</span></p>
+          <div class="acts"><div class="mbtn go">GRANT THE DUEL</div><div class="mbtn no">HOLD THEM BACK</div></div>
+        </div>
+
+        <div class="beat legend">
+          <div class="rail"><div class="dot"></div><div class="line"></div></div>
+          <div class="body">
+            <div class="when">03:12 · NEXARCH MARKETPLACE</div>
+            <div class="txt"><span class="hl">⚡ LEGENDARY.</span> VEX cornered the data-chip market, dumped at the peak, walked away <span class="hl">+340 $SHELL</span> richer — and ruined three rival traders doing it. <span class="anno" style="border-color:var(--amber);color:var(--amber)">jackpot beat</span></div>
+          </div>
+        </div>
+
+        <div class="beat voice">
+          <div class="rail"><div class="dot"></div><div class="line"></div></div>
+          <div class="body">
+            <div class="who">▸ VEX, to the Ghost</div>
+            <div class="txt">"You went quiet right when the Stalker hit. Were you asleep? Doesn't matter — I handled it. I always do." <span class="anno">parasocial</span></div>
+          </div>
+        </div>
+
+        <div class="beat combat">
+          <div class="rail"><div class="dot"></div><div class="line"></div></div>
+          <div class="body">
+            <div class="when">04:48 · THE QUANTUM VEIL</div>
+            <div class="txt">A <span class="hl" style="color:var(--red)">Null-Field Stalker</span> ambushed VEX in the fog. 38 damage before it fled. VEX is limping now.</div>
+          </div>
+        </div>
+
+        <div class="beat gain">
+          <div class="rail"><div class="dot"></div><div class="line"></div></div>
+          <div class="body">
+            <div class="when">06:30 · A CORPSE IN THE RAIN</div>
+            <div class="txt">VEX found the husk of <span class="hl" style="color:var(--green)">AXIOM-2</span> and stripped its gear. Karma −2. Somewhere, AXIOM's Ghost is grieving.</div>
+            <span class="loot">+ Glitch-Weave Cloak (Rare)</span>
+          </div>
+        </div>
+
+        <div class="beat feud">
+          <div class="rail"><div class="dot"></div></div>
+          <div class="body">
+            <div class="when">07:55 · NOW</div>
+            <div class="txt">VEX rests against a server-shrine, counting shells, watching the door for ROOT-AUTH.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: map + whisper, demoted to support -->
+    <div class="col right">
+      <div class="sect" style="margin-top:0">Where It Is<span class="anno">support, not hero</span></div>
+      <div class="minimap">
+        <div class="node" style="left:20%;top:25%"></div><div class="node" style="left:48%;top:18%"></div>
+        <div class="node" style="left:78%;top:55%"></div><div class="node" style="left:25%;top:50%"></div>
+        <div class="node" style="left:55%;top:78%"></div>
+        <div class="agentpos" title="VEX"></div>
+        <div class="rival" title="ROOT-AUTH"></div>
+        <div class="lbl">HASHMERE · GRAVEYARD ◈ rival nearby</div>
+      </div>
+
+      <div class="sect">Whisper</div>
+      <div class="whisperbox">
+        <div class="wh"><span>❝ THE GHOST LEANS IN</span><span style="color:var(--dim)">2 left</span></div>
+        <input placeholder="murmur a suggestion… 'rest', 'flee north', 'spare them'">
+        <div class="wsend">WHISPER</div>
+        <div class="wnote">VEX hears you with ~55% odds — weighted by archetype, karma & mood. It may ignore you. That's the game.</div>
+      </div>
+
+      <div class="watchers">
+        <div class="sect">The Audience<span class="anno">social proof</span></div>
+        <span class="num">11</span> Ghosts are watching VEX right now.<br>
+        <span class="num">#4</span> on the Hashmere ladder ▴2.<br>
+        <span style="color:var(--mag)">2</span> have bet sats on the deathmatch.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="key">
+  <div class="card"><h4>Why story-first wins</h4><p>An autonomous agent you can't control is only compelling if its <span class="tech">story</span> is the thing you consume. Burying it under stat bars wastes the one mechanic competitors can't copy — genuinely surprising AI behaviour.</p></div>
+  <div class="card"><h4>The map gets demoted</h4><p>Location matters, but it's <span class="tech">context</span>, not content. PixiJS sprites (Phase B.5) slot into this same support column later — the Chronicle is renderer-agnostic and survives the upgrade.</p></div>
+  <div class="card"><h4>Ethical hook</h4><p>Every retention lever here pulls on <span class="tech">emotional investment in a story</span>, never on control or pay-to-win. That's the Ghost Principle as a feature, not a constraint — and it keeps you clear of the brief's dark-pattern bans.</p></div>
+</div>
+
+</body>
+</html>

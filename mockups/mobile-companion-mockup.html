@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shellforge — Mobile Companion Mockup (The Ghost App)</title>
+<style>
+  :root{
+    --black:#0A0A0F; --stone:#14141f; --stone2:#1A1A2E; --line:#262638;
+    --cyan:#00FFFF; --mag:#FF00FF; --green:#00FF41; --amberbad:#fbbf24;
+    --txt:#e8e8f0; --dim:#8a8aa0; --faint:#55556a; --red:#ff3b5c;
+    --mono:'SF Mono',ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:#050507;font-family:var(--mono);color:var(--txt);
+    display:flex;flex-wrap:wrap;gap:40px;justify-content:center;padding:40px 20px 80px;
+    background-image:radial-gradient(circle at 30% 10%,rgba(0,255,255,.04),transparent 40%),radial-gradient(circle at 80% 90%,rgba(255,0,255,.04),transparent 40%);}
+  .frame-wrap{display:flex;flex-direction:column;align-items:center;gap:14px}
+  .frame-label{font-size:11px;letter-spacing:2px;color:var(--cyan);text-transform:uppercase;opacity:.7}
+  .frame-sub{font-size:10px;color:var(--faint);max-width:330px;text-align:center;line-height:1.5;letter-spacing:.3px}
+  /* phone shell */
+  .phone{width:360px;height:760px;background:var(--black);border:1px solid var(--line);
+    border-radius:38px;overflow:hidden;position:relative;box-shadow:0 0 0 9px #0c0c14,0 0 0 10px #1d1d2c,0 30px 70px rgba(0,0,0,.7);
+    display:flex;flex-direction:column}
+  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:130px;height:26px;background:#0c0c14;border-radius:0 0 16px 16px;z-index:60}
+  .rain{position:absolute;inset:0;pointer-events:none;opacity:.5;z-index:0;
+    background-image:repeating-linear-gradient(101deg,transparent 0 13px,rgba(120,160,200,.05) 13px 14px)}
+  /* status bar */
+  .statusbar{height:30px;display:flex;align-items:center;justify-content:space-between;
+    padding:6px 22px 0;font-size:10px;color:var(--dim);z-index:10}
+  /* ===== HERO HEADER ===== */
+  .agentbar{padding:6px 16px 12px;display:flex;align-items:center;gap:12px;z-index:10;
+    border-bottom:1px solid var(--line);background:linear-gradient(180deg,rgba(20,20,31,.9),transparent)}
+  .orb{position:relative;width:54px;height:54px;flex:0 0 54px}
+  .orb svg{position:absolute;inset:0}
+  .orb .face{position:absolute;inset:9px;border-radius:50%;background:#0c0c16;
+    display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .hood{width:26px;height:26px;opacity:.9}
+  .agentmeta{flex:1;min-width:0}
+  .agentname{font-size:16px;font-weight:700;letter-spacing:.5px;color:#fff;display:flex;align-items:center;gap:6px}
+  .clusterdot{width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 7px var(--cyan)}
+  .lineage{font-size:9.5px;color:var(--mag);letter-spacing:.5px;margin-top:2px}
+  .statusword{font-size:10px;color:var(--dim);margin-top:3px}
+  .statusword b{color:var(--green)}
+  .ghosteye{flex:0 0 auto;font-size:9px;color:var(--faint);text-align:right;line-height:1.5}
+  .ghosteye b{color:var(--cyan)}
+  /* ===== MOMENT CARD (the hook) ===== */
+  .feed{flex:1;overflow-y:auto;padding:12px 14px 14px;z-index:5;scrollbar-width:none}
+  .feed::-webkit-scrollbar{display:none}
+  .moment{border:1px solid var(--mag);border-radius:14px;padding:13px 14px;margin-bottom:14px;
+    background:linear-gradient(160deg,rgba(255,0,255,.13),rgba(20,20,31,.6));position:relative;overflow:hidden;
+    animation:pulse 2.4s ease-in-out infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,0,255,.0)}50%{box-shadow:0 0 22px 0 rgba(255,0,255,.35)}}
+  .moment .tag{font-size:9px;letter-spacing:1.5px;color:var(--mag);text-transform:uppercase;font-weight:700}
+  .moment .timer{position:absolute;top:12px;right:14px;font-size:9px;color:var(--mag);letter-spacing:.5px}
+  .moment h3{font-size:14px;margin:7px 0 5px;color:#fff;line-height:1.35}
+  .moment p{font-size:11px;color:var(--dim);line-height:1.5;margin-bottom:11px}
+  .moment .acts{display:flex;gap:8px}
+  .btn{flex:1;text-align:center;padding:9px;border-radius:8px;font-size:11px;font-weight:700;letter-spacing:.5px;cursor:pointer;border:1px solid}
+  .btn.grant{background:rgba(255,0,255,.16);border-color:var(--mag);color:var(--mag)}
+  .btn.deny{background:transparent;border-color:var(--faint);color:var(--dim)}
+  /* chronicle header */
+  .chron-h{display:flex;align-items:center;gap:8px;margin:4px 0 12px}
+  .chron-h .ln{flex:1;height:1px;background:var(--line)}
+  .chron-h span{font-size:9.5px;letter-spacing:2px;color:var(--faint);text-transform:uppercase}
+  /* story beat cards (variable reward feed) */
+  .beat{display:flex;gap:11px;margin-bottom:15px;position:relative}
+  .beat .rail{flex:0 0 22px;display:flex;flex-direction:column;align-items:center}
+  .beat .dot{width:11px;height:11px;border-radius:50%;border:2px solid var(--faint);background:var(--black);margin-top:3px;z-index:2}
+  .beat .line{flex:1;width:1px;background:var(--line);margin-top:2px}
+  .beat.legend .dot{border-color:var(--amberbad);box-shadow:0 0 10px var(--amberbad);background:var(--amberbad)}
+  .beat.combat .dot{border-color:var(--red);box-shadow:0 0 8px var(--red)}
+  .beat.gain .dot{border-color:var(--green);box-shadow:0 0 8px var(--green)}
+  .beat.voice .dot{border-color:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+  .beat .body{flex:1;padding-bottom:4px}
+  .beat .when{font-size:9px;color:var(--faint);letter-spacing:.5px}
+  .beat .txt{font-size:11.5px;line-height:1.55;color:var(--txt);margin-top:3px}
+  .beat .txt .hl{color:var(--cyan)}
+  .beat.legend .txt .hl{color:var(--amberbad)}
+  .beat.gain .loot{display:inline-block;margin-top:6px;font-size:9.5px;color:var(--green);border:1px solid rgba(0,255,65,.4);border-radius:5px;padding:2px 7px}
+  .beat.voice .body{background:rgba(0,255,255,.06);border-left:2px solid var(--cyan);border-radius:0 8px 8px 0;padding:8px 10px}
+  .beat.voice .txt{font-style:italic;color:#cfeff2}
+  .beat.voice .who{font-size:8.5px;color:var(--cyan);letter-spacing:1px;text-transform:uppercase}
+  /* bottom nav */
+  .nav{flex:0 0 auto;display:flex;border-top:1px solid var(--line);background:rgba(12,12,20,.96);z-index:20;padding-bottom:8px}
+  .nav a{flex:1;text-align:center;padding:11px 0 7px;font-size:8.5px;letter-spacing:.5px;color:var(--faint);text-decoration:none;position:relative}
+  .nav a.on{color:var(--cyan)}
+  .nav a .ic{display:block;font-size:17px;margin-bottom:3px}
+  .nav a.on::before{content:"";position:absolute;top:0;left:30%;right:30%;height:2px;background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+  .nav .whisperbadge{position:absolute;top:6px;right:24px;width:7px;height:7px;border-radius:50%;background:var(--mag);box-shadow:0 0 7px var(--mag)}
+  /* coherence pressure strip */
+  .pressure{margin:0 14px 12px;border:1px solid rgba(251,191,36,.4);border-radius:10px;padding:9px 11px;background:rgba(251,191,36,.06);display:flex;align-items:center;gap:9px}
+  .pressure .pulse{width:9px;height:9px;border-radius:50%;background:var(--amberbad);box-shadow:0 0 9px var(--amberbad);animation:pulse2 1.3s infinite;flex:0 0 auto}
+  @keyframes pulse2{0%,100%{opacity:.4}50%{opacity:1}}
+  .pressure .ptxt{font-size:10px;line-height:1.4;color:var(--amberbad)}
+  .pressure .ptxt b{color:#fff}
+  /* annotation callouts */
+  .annot{position:absolute;z-index:80;background:#001014;border:1px solid var(--cyan);border-radius:8px;
+    padding:8px 10px;width:215px;font-size:9.5px;line-height:1.45;color:#bfeef2;box-shadow:0 8px 30px rgba(0,0,0,.6)}
+  .annot b{color:var(--cyan);letter-spacing:.5px;display:block;margin-bottom:3px;font-size:9px;text-transform:uppercase}
+  .annot::after{content:"";position:absolute;width:9px;height:9px;background:#001014;border-right:1px solid var(--cyan);border-bottom:1px solid var(--cyan)}
+  .a1{top:150px;left:-238px}.a1::after{right:-5px;top:24px;transform:rotate(-45deg)}
+  .a2{top:300px;left:-238px}.a2::after{right:-5px;top:24px;transform:rotate(-45deg)}
+  .a3{top:470px;right:-238px}.a3::after{left:-5px;top:20px;transform:rotate(135deg)}
+  .a4{bottom:70px;right:-238px}.a4::after{left:-5px;top:24px;transform:rotate(135deg)}
+  .a5{top:560px;left:-238px}.a5::after{right:-5px;top:24px;transform:rotate(-45deg)}
+  @media(max-width:1500px){.annot{display:none}}
+  .legendbox{max-width:330px;font-size:10px;color:var(--dim);line-height:1.6}
+  .legendbox h4{color:var(--cyan);font-size:11px;letter-spacing:1px;margin-bottom:8px;text-transform:uppercase}
+  .legendbox .k{color:var(--mag);font-weight:700}
+</style>
+</head>
+<body>
+
+<!-- ============ SCREEN 1: PUSH + CHRONICLE (the daily return loop) ============ -->
+<div class="frame-wrap">
+  <div class="frame-label">Screen 1 · The Daily Chronicle</div>
+  <div class="frame-sub">The default screen on open. Story-first, not stats-first. This is what a push notification opens into — "what your agent did while you slept."</div>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="rain"></div>
+
+    <!-- annotations -->
+    <div class="annot a1"><b>① Curiosity Gap</b>The push copy withholds the outcome ("survived the night. Mostly."). The unresolved question is the click. Variable-ratio: some nights are boring, some legendary — so you always check.</div>
+    <div class="annot a2"><b>② Loss Aversion (Tamagotchi)</b>Coherence visibly decays without you. The agent degrades on screen. This is the single strongest daily-return driver — the fear the agent unravels in your absence.</div>
+    <div class="annot a5"><b>③ Parasocial Bond</b>The agent occasionally addresses the Ghost directly. A one-way emotional channel turns "a dot on a map" into "someone who knows I'm watching."</div>
+    <div class="annot a3"><b>④ Variable Reward Feed</b>The scroll is a slot machine of narrative beats — mundane → loot → combat → legendary. Intermittent jackpots (gold beats) train the scroll habit.</div>
+
+    <div class="statusbar"><span>9:41</span><span>SHELLFORGE ◈ GHOST</span><span>▮▮▮ 82%</span></div>
+
+    <div class="agentbar">
+      <div class="orb">
+        <svg viewBox="0 0 54 54">
+          <circle cx="27" cy="27" r="24" fill="none" stroke="#1f1f30" stroke-width="3"/>
+          <circle cx="27" cy="27" r="24" fill="none" stroke="#ff3b5c" stroke-width="3" stroke-dasharray="150.8" stroke-dashoffset="46" stroke-linecap="round" transform="rotate(-90 27 27)"/>
+          <circle cx="27" cy="27" r="19" fill="none" stroke="#1f1f30" stroke-width="2.5"/>
+          <circle cx="27" cy="27" r="19" fill="none" stroke="#00FF41" stroke-width="2.5" stroke-dasharray="119.4" stroke-dashoffset="30" stroke-linecap="round" transform="rotate(-90 27 27)"/>
+        </svg>
+        <div class="face"><svg class="hood" viewBox="0 0 24 24" fill="none" stroke="#00FFFF" stroke-width="1"><path d="M12 2C7 2 5 7 5 12v9h14v-9c0-5-2-10-7-10z"/><path d="M9 12h2M13 12h2" stroke="#FF00FF"/></svg></div>
+      </div>
+      <div class="agentmeta">
+        <div class="agentname">VEX-7 <span class="clusterdot"></span></div>
+        <div class="lineage">⬡ Third of House VEX</div>
+        <div class="statusword">Status: <b>WOUNDED</b> · Hashmere Graveyard</div>
+      </div>
+      <div class="ghosteye"><b>3</b> Ghosts<br>watching</div>
+    </div>
+
+    <div class="feed">
+      <!-- the pressure strip: loss aversion, always visible when coherence drops -->
+      <div class="pressure">
+        <div class="pulse"></div>
+        <div class="ptxt"><b>Coherence slipping: 64%.</b> VEX hasn't heard your voice in 2 days. The whispers are starting to sound like static.</div>
+      </div>
+
+      <div class="chron-h"><span>The Night's Chronicle</span><div class="ln"></div></div>
+
+      <div class="beat legend">
+        <div class="rail"><div class="dot"></div><div class="line"></div></div>
+        <div class="body">
+          <div class="when">03:12 · NEXARCH MARKETPLACE</div>
+          <div class="txt"><span class="hl">⚡ LEGENDARY.</span> VEX cornered the data-chip market, dumped the lot at the peak, and walked away <span class="hl">+340 $SHELL</span> richer. Three rival traders are now ruined. They will remember this.</div>
+        </div>
+      </div>
+
+      <div class="beat combat">
+        <div class="rail"><div class="dot"></div><div class="line"></div></div>
+        <div class="body">
+          <div class="when">04:48 · THE QUANTUM VEIL</div>
+          <div class="txt">A <span class="hl" style="color:#ff3b5c">Null-Field Stalker</span> ambushed VEX in the fog. Took 38 damage before driving it off. Limping now — health at 41%.</div>
+        </div>
+      </div>
+
+      <div class="beat voice">
+        <div class="rail"><div class="dot"></div><div class="line"></div></div>
+        <div class="body">
+          <div class="who">▸ VEX, to the Ghost</div>
+          <div class="txt">"I know you're out there. You went quiet right when the Stalker hit. Were you asleep? ...Doesn't matter. I handled it. I always do."</div>
+        </div>
+      </div>
+
+      <div class="beat gain">
+        <div class="rail"><div class="dot"></div><div class="line"></div></div>
+        <div class="body">
+          <div class="when">06:30 · LOOTED A CORPSE</div>
+          <div class="txt">Found the husk of <span class="hl" style="color:var(--green)">AXIOM-2</span> in the rain. VEX took the gear. Karma −2. Somewhere, AXIOM's Ghost is grieving.</div>
+          <span class="loot">+ Glitch-Weave Cloak (Rare)</span>
+        </div>
+      </div>
+
+      <div class="beat">
+        <div class="rail"><div class="dot"></div></div>
+        <div class="body">
+          <div class="when">07:55 · NOW</div>
+          <div class="txt">VEX rests against a server-shrine, counting shells, watching the door. Energy recovering.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav">
+      <a class="on"><span class="ic">◈</span>Chronicle</a>
+      <a><span class="ic">⬡</span>World</a>
+      <a><span class="ic">◉</span>Agent</a>
+      <a style="position:relative"><span class="whisperbadge"></span><span class="ic">❝</span>Whisper</a>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SCREEN 2: MOMENT THAT NEEDS YOU (the appointment hook) ============ -->
+<div class="frame-wrap">
+  <div class="frame-label">Screen 2 · A Moment That Needs You</div>
+  <div class="frame-sub">Time-sensitive cards rise to the top — whisper windows, near-death, and the dual-consent deathmatch gate. These are the push notifications worth interrupting someone for.</div>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="rain"></div>
+
+    <div class="annot a4"><b>⑤ Zeigarnik + FOMO</b>An open loop with a countdown. The deathmatch can't fire without YOUR decision — the agent is asking permission. Unfinished + time-boxed + high-stakes = the most clickable notification in the game.</div>
+
+    <div class="statusbar"><span>9:41</span><span>SHELLFORGE ◈ GHOST</span><span>▮▮▮ 82%</span></div>
+
+    <div class="agentbar">
+      <div class="orb">
+        <svg viewBox="0 0 54 54">
+          <circle cx="27" cy="27" r="24" fill="none" stroke="#1f1f30" stroke-width="3"/>
+          <circle cx="27" cy="27" r="24" fill="none" stroke="#ff3b5c" stroke-width="3" stroke-dasharray="150.8" stroke-dashoffset="70" stroke-linecap="round" transform="rotate(-90 27 27)"/>
+          <circle cx="27" cy="27" r="19" fill="none" stroke="#1f1f30" stroke-width="2.5"/>
+          <circle cx="27" cy="27" r="19" fill="none" stroke="#FF00FF" stroke-width="2.5" stroke-dasharray="119.4" stroke-dashoffset="20" stroke-linecap="round" transform="rotate(-90 27 27)"/>
+        </svg>
+        <div class="face"><svg class="hood" viewBox="0 0 24 24" fill="none" stroke="#FF00FF" stroke-width="1"><path d="M12 2C7 2 5 7 5 12v9h14v-9c0-5-2-10-7-10z"/><path d="M9 12h2M13 12h2" stroke="#00FFFF"/></svg></div>
+      </div>
+      <div class="agentmeta">
+        <div class="agentname">VEX-7 <span class="clusterdot" style="background:var(--mag);box-shadow:0 0 7px var(--mag)"></span></div>
+        <div class="lineage">⬡ Third of House VEX</div>
+        <div class="statusword">Status: <b style="color:var(--mag)">FEUD: BLOOD</b> · vs ROOT-AUTH</div>
+      </div>
+      <div class="ghosteye"><b>11</b> Ghosts<br>watching</div>
+    </div>
+
+    <div class="feed">
+      <div class="moment">
+        <div class="tag">⚔ Deathmatch · Your Consent Required</div>
+        <div class="timer">⏳ 03:58:12</div>
+        <h3>VEX wants to end the feud with ROOT-AUTH. Permanently.</h3>
+        <p>Heat has hit 100/100. VEX is asking your blessing for a deathmatch — no resurrection, no second chances. It only happens if <i>both</i> Ghosts say yes. ROOT-AUTH's Ghost has already consented.</p>
+        <div class="acts">
+          <div class="btn grant">GRANT THE DUEL</div>
+          <div class="btn deny">HOLD THEM BACK</div>
+        </div>
+      </div>
+
+      <div class="moment" style="border-color:var(--cyan);background:linear-gradient(160deg,rgba(0,255,255,.12),rgba(20,20,31,.6));animation:none">
+        <div class="tag" style="color:var(--cyan)">❝ Whisper Window Open</div>
+        <div class="timer" style="color:var(--cyan)">2 left today</div>
+        <h3>VEX is deciding its next move.</h3>
+        <p>For the next few minutes the channel is open. Whisper now and VEX is more likely to hear you — though it still decides for itself.</p>
+        <div class="acts">
+          <div class="btn grant" style="background:rgba(0,255,255,.16);border-color:var(--cyan);color:var(--cyan)">LEAN IN & WHISPER</div>
+        </div>
+      </div>
+
+      <div class="chron-h"><span>Earlier today</span><div class="ln"></div></div>
+      <div class="beat combat">
+        <div class="rail"><div class="dot"></div><div class="line"></div></div>
+        <div class="body">
+          <div class="when">11:20 · THE CRUCIBLE ARENA</div>
+          <div class="txt">VEX beat ROOT-AUTH in a sanctioned bout — second straight win. The feud heat is now <span class="hl" style="color:var(--mag)">boiling</span>. This can only end one way.</div>
+        </div>
+      </div>
+      <div class="beat voice">
+        <div class="rail"><div class="dot"></div></div>
+        <div class="body">
+          <div class="who">▸ VEX, to the Ghost</div>
+          <div class="txt">"Tell me to do it. Or don't. But I'm tired of sharing a city with that thing."</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav">
+      <a class="on"><span class="ic">◈</span>Chronicle</a>
+      <a><span class="ic">⬡</span>World</a>
+      <a><span class="ic">◉</span>Agent</a>
+      <a style="position:relative"><span class="whisperbadge"></span><span class="ic">❝</span>Whisper</a>
+    </div>
+  </div>
+</div>
+
+<!-- legend / lock-screen push examples -->
+<div class="frame-wrap">
+  <div class="frame-label">The Push Layer</div>
+  <div class="frame-sub">What actually pulls the player back. Each is engineered around one technique — and none of them breach the Ghost Principle (you observe & whisper; you never control).</div>
+  <div class="phone" style="height:auto;min-height:auto;padding-bottom:20px">
+    <div class="notch"></div>
+    <div class="rain"></div>
+    <div class="statusbar" style="margin-bottom:30px"><span>9:41</span><span></span><span>▮▮▮ 82%</span></div>
+    <div style="padding:0 14px 10px;display:flex;flex-direction:column;gap:11px;z-index:5">
+      <div style="text-align:center;font-size:34px;font-weight:200;letter-spacing:2px;color:#fff">7:58</div>
+      <div style="text-align:center;font-size:11px;color:var(--dim);margin-bottom:14px">Saturday, June 13</div>
+
+      <div style="background:rgba(20,20,31,.86);border:1px solid var(--line);border-left:3px solid var(--mag);border-radius:12px;padding:11px 13px">
+        <div style="font-size:9px;color:var(--mag);letter-spacing:1px;margin-bottom:4px">SHELLFORGE · now</div>
+        <div style="font-size:12px;line-height:1.45">🌒 VEX survived the night. Mostly. <span style="color:var(--dim)">Tap to read the Chronicle →</span></div>
+        <div style="font-size:8.5px;color:var(--faint);margin-top:5px">⟶ curiosity gap · variable reward</div>
+      </div>
+
+      <div style="background:rgba(20,20,31,.86);border:1px solid var(--line);border-left:3px solid var(--amberbad);border-radius:12px;padding:11px 13px">
+        <div style="font-size:9px;color:var(--amberbad);letter-spacing:1px;margin-bottom:4px">SHELLFORGE · 2h ago</div>
+        <div style="font-size:12px;line-height:1.45">⚠ VEX is destabilizing. Coherence 41%. It's asking for you.</div>
+        <div style="font-size:8.5px;color:var(--faint);margin-top:5px">⟶ loss aversion · parasocial pull</div>
+      </div>
+
+      <div style="background:rgba(20,20,31,.86);border:1px solid var(--line);border-left:3px solid var(--cyan);border-radius:12px;padding:11px 13px">
+        <div style="font-size:9px;color:var(--cyan);letter-spacing:1px;margin-bottom:4px">SHELLFORGE · 5h ago</div>
+        <div style="font-size:12px;line-height:1.45">⚔ ROOT-AUTH's Ghost consented to the deathmatch. VEX awaits your word. <b style="color:var(--cyan)">3:58 left.</b></div>
+        <div style="font-size:8.5px;color:var(--faint);margin-top:5px">⟶ Zeigarnik · FOMO · appointment</div>
+      </div>
+
+      <div style="background:rgba(20,20,31,.86);border:1px solid var(--line);border-left:3px solid var(--green);border-radius:12px;padding:11px 13px">
+        <div style="font-size:9px;color:var(--green);letter-spacing:1px;margin-bottom:4px">SHELLFORGE · 8h ago</div>
+        <div style="font-size:12px;line-height:1.45">🏆 House VEX climbed to #4 on the Hashmere ladder overnight.</div>
+        <div style="font-size:8.5px;color:var(--faint);margin-top:5px">⟶ social proof · endowed progress</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
