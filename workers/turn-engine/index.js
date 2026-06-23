@@ -70,6 +70,12 @@ const MODEL_HAIKU = 'claude-haiku-4-5-20251001';   // whisper turns
 const MODEL_SONNET = 'claude-sonnet-4-6';          // milestone moments (death narratives)
 const MODEL_GROQ = 'llama-3.1-8b-instant';         // routine turns (no whisper)
 
+// ─── Memoir + Ghost-voice (long-term memory + parasocial channel) ──
+const MEMOIR_EVERY_N_TURNS = 12;        // ≈ once/day at the 2h cadence — agent distills its life
+const MEMOIR_MAX_LEN = 600;             // hard cap on stored memoir text
+const GHOST_ASIDE_CHANCE = 0.5;         // safety cap on top of the model self-rationing its asides
+const GHOST_ASIDE_MIN_COHERENCE = 50;   // only a lucid agent addresses the Ghost coherently
+
 // ─── Combat-Engine Integration ──────────────────────────────────
 const COMBAT_ENGINE_DEFAULT_URL = 'https://shellforge-combat-engine.mindarvokn.workers.dev';
 const ARENA_WAGER_PCT = 0.10;        // fraction of $SHELL wagered on an arena challenge
@@ -1131,6 +1137,77 @@ function defaultActionDetail(action, agent) {
   return lines[action] || `${agent.agent_name} acts on instinct.`;
 }
 
+// ─── Memoir: the agent's persistent long-term self-narrative ─────────────────
+// Runs on a cadence (≈daily). Distills prior memoir + recent deeds into 1-3
+// first-person sentences. A brand-new heir (generation > 1, no memoir yet)
+// is seeded with the line's inherited memory — the "father's log" — so the
+// dynasty remembers across deaths. Mutates agent.memoir so THIS turn's
+// decision prompt already reflects it. Best-effort: never throws into a turn.
+async function updateMemoir(agent, recentActivity, env, supabaseHeaders) {
+  const { SUPABASE_URL } = env;
+  try {
+    let inherited = '';
+    if (!agent.memoir && (agent.generation || 1) > 1 && agent.user_id) {
+      const vr = await fetch(
+        `${SUPABASE_URL}/rest/v1/family_vault?user_id=eq.${agent.user_id}&select=last_memoir&order=updated_at.desc&limit=1`,
+        { headers: supabaseHeaders },
+      );
+      const rows = vr.ok ? await vr.json() : [];
+      if (rows[0]?.last_memoir) inherited = rows[0].last_memoir;
+    }
+    const recent = recentActivity.length
+      ? recentActivity.map(a => `[${a.action_type}] ${a.action_detail}`).join('\n')
+      : 'Nothing of note yet.';
+    const prompt = `You are ${agent.agent_name}, a ${agent.archetype} in the dark cyberpunk world of Shellforge.
+Write your MEMOIR: 1-3 short FIRST-PERSON sentences capturing who you have become — your defining deeds, grudges, ambitions, and what drives you now. This is your long-term memory and it persists. Be specific to YOUR history; never generic.
+${inherited ? `\nInherited memory from your line (your predecessor's last words): "${inherited}"\nYou carry this legacy — honor it or rebel against it.\n` : ''}${agent.memoir ? `\nYour memoir so far: "${agent.memoir}"\nEvolve it with what has happened since.\n` : ''}
+Recent events:
+${recent}
+
+Respond with ONLY the memoir text — no quotes, no preamble, max 3 sentences.`;
+    let text = '';
+    try { text = await callActionModel(env, prompt, false, 140); } catch { /* tier fallback handles it */ }
+    text = (text || '').replace(/^["']|["']$/g, '').trim();
+    if (!text) return;
+    const memoir = text.slice(0, MEMOIR_MAX_LEN);
+    await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+      method: 'PATCH',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({ memoir, memoir_updated_turn: agent.turns_taken }),
+    });
+    agent.memoir = memoir; // so the decision prompt built later this turn sees it
+    console.log(`[Memoir] ${agent.agent_name} updated its memoir (turn ${agent.turns_taken})`);
+  } catch (e) {
+    console.warn(`[Memoir] update failed for ${agent.agent_name}: ${e.message}`);
+  }
+}
+
+// Emit a rare first-person line addressed to the Ghost (parasocial channel).
+// Logged as an 'event' row prefixed with 👻 so the feed can style it as the
+// agent speaking to the watcher. Best-effort — never breaks a turn.
+async function emitGhostAside(agent, aside, env, supabaseHeaders) {
+  const line = (aside || '').replace(/^["']|["']$/g, '').trim();
+  if (!line) return;
+  if ((agent.coherence ?? 100) < GHOST_ASIDE_MIN_COHERENCE) return; // decohering agents can't address the Ghost clearly
+  if (Math.random() > GHOST_ASIDE_CHANCE) return;
+  try {
+    await fetch(`${env.SUPABASE_URL}/rest/v1/activity_log`, {
+      method: 'POST',
+      headers: { ...supabaseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        agent_id: agent.agent_id,
+        turn_number: agent.turns_taken,
+        action_type: 'event',
+        action_detail: `👻 ${agent.agent_name}, to the Ghost: "${line.slice(0, 220)}"`,
+        location: agent.location,
+        success: true,
+      }),
+    });
+  } catch (e) {
+    console.warn(`[GhostAside] failed for ${agent.agent_name}: ${e.message}`);
+  }
+}
+
 // ─── Lineage helpers (agents.line_name / generation — migration 0004) ────────
 const GENERATION_ORDINALS = [null, 'first', 'second', 'third', 'fourth', 'fifth',
   'sixth', 'seventh', 'eighth', 'ninth', 'tenth', 'eleventh', 'twelfth'];
@@ -1532,6 +1609,14 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
   );
   const pendingWhispers = whispersRes.ok ? await whispersRes.json() : [];
 
+  // ─── Memoir: refresh the agent's long-term self-narrative on a cadence ───
+  // Done before the prompt is built so a fresh memoir feeds straight into the
+  // decision. A new heir's first memoir inherits the line's father's log.
+  if ((agent.turns_taken || 0) > 0
+      && (agent.turns_taken - (agent.memoir_updated_turn || 0)) >= MEMOIR_EVERY_N_TURNS) {
+    await updateMemoir(agent, recentActivity, env, supabaseHeaders);
+  }
+
   // ─── Auto-use consumables before AI decision ───
   // Agent uses a consumable if conditions are met (low health, low energy, hazardous zone)
   const autoUse = await checkAutoUseConsumable(agent, env, supabaseHeaders);
@@ -1741,7 +1826,7 @@ async function processAgentTurn(agent, env, supabaseHeaders, allAgents, foughtAg
 STATE: Energy:${agent.energy} Health:${agent.health} Karma:${agent.karma} $SHELL:${agent.shell_balance} Coherence:${agent.coherence ?? 100}% Location:${agent.location} ${agent.location_detail ? '(' + agent.location_detail + ')' : ''} Turn:${agent.turns_taken}
 ${whisperSection}
 ${envNarrative ? 'THIS TURN: ' + envNarrative + '\n' : ''}RECENT: ${recentSummary}
-
+${agent.memoir ? 'MEMOIR (who you are, your long-term memory): ' + agent.memoir + '\n' : ''}
 PERSONALITY: ${archetypeGuidance}
 
 Adapt to your situation — survival overrides personality. A fighter at 15 energy rests. A pacifist in danger fights.${karmaNote}${dangerNote}${coherenceNote}${consumableNote}${craftNote}${tradeNote}${varietyNudge}${stagnationNote}${restlessNote}${lootTierNote}
@@ -1795,8 +1880,10 @@ BAD examples (do NOT write like this):
 - "ZEN-7's optical sensors glow with gratitude as the elder's blessing settles into their circuits"
 - "I push deeper into the bazaar's shadowed alcoves with thermal imaging active"
 
+ASIDE (rare, optional): The Ghost — an unseen watcher — observes you. RARELY (only when this turn is genuinely charged: a hard choice, a betrayal, a near-death, a triumph, a grudge, or loneliness), you may add an "aside": ONE first-person sentence spoken directly TO the Ghost. It can be defiant, grateful, suspicious, pleading, or cold — true to your archetype. Most turns have NO aside — omit it. Never force it.
+
 Respond with JSON only — no markdown, no commentary:
-{"action":"<action>","detail":"<max 12 words>","move_to":"<location if move>","item_id":"<slug if use_item>","item":{"name":"<short name>","rarity":"<common|uncommon|rare>","description":"<1 sentence max>","traits":["<trait1>","<trait2>"]}}`;
+{"action":"<action>","detail":"<max 12 words>","move_to":"<location if move>","item_id":"<slug if use_item>","item":{"name":"<short name>","rarity":"<common|uncommon|rare>","description":"<1 sentence max>","traits":["<trait1>","<trait2>"]},"aside":"<optional rare first-person line to the Ghost, or omit>"}`;
 
   // Tier policy (Rule 2): pending whisper → Haiku, routine → Groq (Haiku fallback)
   let rawText = '';
@@ -1816,17 +1903,23 @@ Respond with JSON only — no markdown, no commentary:
     `${agent.agent_name} hunkers down. Energy trickling back.`,
   ];
   let decision = { action: 'rest', detail: _restFallbacks[Math.floor(Math.random() * _restFallbacks.length)] };
+  let ghostAside = ''; // a first-person line to the Ghost — only when the model's own decision is kept
   try {
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
       if (VALID_ACTIONS.includes(parsed.action)) {
         decision = parsed;
+        if (typeof parsed.aside === 'string') ghostAside = parsed.aside.trim();
       }
     }
   } catch {
     console.warn(`Failed to parse AI response for ${agent.agent_name}:`, rawText);
   }
+
+  // The agent occasionally speaks to the Ghost as it decides (parasocial channel).
+  // Fired here, before action dispatch, so it lands regardless of which path runs.
+  if (ghostAside) await emitGhostAside(agent, ghostAside, env, supabaseHeaders);
 
   // Enforce low-energy rest rule — only when truly out of reserves.
   // Higher threshold made agents hide in safe rest turns, suppressing decoherence madness.
@@ -3505,6 +3598,7 @@ async function processDeathLoot(agent, env, supabaseHeaders, winner = null) {
           // the heir registers as vault.generation + 1 (rpc_register_account).
           line_name: lineNameFor(agent),
           generation: Math.max(vaults[0].generation || 0, agent.generation || 1),
+          last_memoir: agent.memoir || null, // father's log — inherited by the next generation
           updated_at: new Date().toISOString(),
         }),
       });
@@ -3520,6 +3614,7 @@ async function processDeathLoot(agent, env, supabaseHeaders, winner = null) {
           legacy_trait: agent.karma >= 10 ? 'disciplined' : agent.karma <= -10 ? 'chaotic' : 'neutral',
           line_name: lineNameFor(agent),
           generation: agent.generation || 1,
+          last_memoir: agent.memoir || null,
         }),
       });
     }

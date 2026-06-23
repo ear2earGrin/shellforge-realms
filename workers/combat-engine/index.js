@@ -310,6 +310,7 @@ async function runDeathLoot(env, dead) {
       legacy_trait: legacyTrait,
       line_name: lineName,
       generation: Math.max(vaults[0].generation || 0, dead.generation || 1),
+      last_memoir: dead.memoir || null, // father's log — inherited by the next generation
       updated_at: new Date().toISOString(),
     });
   } else {
@@ -321,6 +322,7 @@ async function runDeathLoot(env, dead) {
       legacy_trait: legacyTrait,
       line_name: lineName,
       generation: dead.generation || 1,
+      last_memoir: dead.memoir || null,
     }]);
   }
 
