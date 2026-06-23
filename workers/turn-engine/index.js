@@ -1307,9 +1307,18 @@ async function runTurnEngine(env) {
   };
   resetTierUsage();
 
-  // Fetch all alive agents (including stranded ones at 0 energy — they still take hazard damage)
+  // Process the stalest agents first and cap how many run per invocation.
+  // Cloudflare's free plan caps ~50 subrequests per invocation; at ~10-15
+  // subrequests per agent turn, a large population blows past it mid-run.
+  // Ordering by last_action_at (oldest first) means repeated /run calls — and
+  // each 2h cron tick — fairly rotate through everyone instead of re-hitting
+  // the same few. Raise MAX_AGENTS_PER_RUN (or set it as a worker var) once on
+  // a paid plan to process the whole roster in a single pass.
+  const maxAgents = Number(env.MAX_AGENTS_PER_RUN) || 6;
+
+  // Fetch the stalest alive agents (including stranded ones at 0 energy — they still take hazard damage)
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/agents?is_alive=eq.true&select=*`,
+    `${SUPABASE_URL}/rest/v1/agents?is_alive=eq.true&select=*&order=last_action_at.asc.nullsfirst&limit=${maxAgents}`,
     { headers },
   );
 
