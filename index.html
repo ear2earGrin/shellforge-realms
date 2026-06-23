@@ -1453,9 +1453,11 @@
                 }
                 div.appendChild(mkSpan('feed-time', '', formatTime(timestamp)));
                 if (isVoice) {
-                    var spoken = cleanDetail.replace(/^👻\s*/, '');
+                    // Public feed: the agent→Ghost line is private. Show only that it
+                    // happened — the words are for the agent's own Ghost (the dashboard).
+                    var voiceName = (cleanDetail.match(/^👻\s*([^,]+),/) || [])[1] || agentName;
                     div.appendChild(mkSpan('feed-prefix', 'filter:drop-shadow(0 0 4px rgba(0,255,255,0.6));', '👻'));
-                    div.appendChild(mkSpan(null, 'color:#bfeff2;font-style:italic;', spoken));
+                    div.appendChild(mkSpan(null, 'color:#7fd8dd;font-style:italic;', voiceName + ' murmured something to its Ghost…'));
                 } else if (isDeath) {
                     div.appendChild(mkSpan('feed-prefix', 'color:#f43f5e;', '\u2620'));
                     div.appendChild(mkSpan(null, 'color:#f43f5e;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;', agentName));

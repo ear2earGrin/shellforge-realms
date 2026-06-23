@@ -2,5 +2,8 @@ name = "shellforge-turn-engine"
 main = "index.js"
 compatibility_date = "2026-02-12"
 
+# Runs every 30 min, but each agent only acts when ITS next_turn_at is due
+# (set ~90-150 min out after each turn) — so agents act on staggered clocks,
+# a few per tick, instead of all on one shared 2h beat.
 [triggers]
-crons = ["0 */2 * * *"]
+crons = ["*/30 * * * *"]

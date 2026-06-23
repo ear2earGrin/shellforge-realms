@@ -73,8 +73,14 @@ const MODEL_GROQ = 'llama-3.1-8b-instant';         // routine turns (no whisper)
 // ─── Memoir + Ghost-voice (long-term memory + parasocial channel) ──
 const MEMOIR_EVERY_N_TURNS = 12;        // ≈ once/day at the 2h cadence — agent distills its life
 const MEMOIR_MAX_LEN = 600;             // hard cap on stored memoir text
-const GHOST_ASIDE_CHANCE = 0.5;         // safety cap on top of the model self-rationing its asides
+const VOICE_EVERY_N_TURNS = 4;          // guarantee a Ghost-aside at least this often (the model may volunteer one sooner)
 const GHOST_ASIDE_MIN_COHERENCE = 50;   // only a lucid agent addresses the Ghost coherently
+
+// ─── Staggered scheduling — agents act on their own clocks, not one shared tick ──
+// Each processed agent is scheduled TURN_INTERVAL_MIN + up-to-JITTER minutes out,
+// so a frequent cron only ever wakes the handful of agents whose time has come.
+const TURN_INTERVAL_MIN = 90;
+const TURN_INTERVAL_JITTER_MIN = 60;
 
 // ─── Combat-Engine Integration ──────────────────────────────────
 const COMBAT_ENGINE_DEFAULT_URL = 'https://shellforge-combat-engine.mindarvokn.workers.dev';
@@ -948,8 +954,11 @@ export default {
   // HTTP trigger for manual testing (POST /run)
   async fetch(request, env, ctx) {
     if (request.method === 'POST' && new URL(request.url).pathname === '/run') {
-      ctx.waitUntil(runTurnEngine(env));
-      return new Response(JSON.stringify({ ok: true, message: 'Turn engine triggered' }), {
+      // ?force=1 ignores each agent's next_turn_at clock (drains the stalest, for testing).
+      // Without it, only agents whose clock is due are processed — same as the cron.
+      const force = ['1', 'true'].includes(new URL(request.url).searchParams.get('force') || '');
+      ctx.waitUntil(runTurnEngine(env, { force }));
+      return new Response(JSON.stringify({ ok: true, message: `Turn engine triggered${force ? ' (force)' : ''}` }), {
         headers: { 'Content-Type': 'application/json' },
       });
     }
@@ -1182,14 +1191,29 @@ Respond with ONLY the memoir text — no quotes, no preamble, max 3 sentences.`;
   }
 }
 
-// Emit a rare first-person line addressed to the Ghost (parasocial channel).
-// Logged as an 'event' row prefixed with 👻 so the feed can style it as the
-// agent speaking to the watcher. Best-effort — never breaks a turn.
+// Generate a dedicated first-person line to the Ghost when the model didn't
+// volunteer one but the agent is "due" for one. Small focused call so it
+// reliably produces a line (the routine tier tends to drop optional JSON fields).
+async function generateGhostAside(agent, recentActivity, env) {
+  const recent = recentActivity.length
+    ? recentActivity.slice(0, 3).map(a => a.action_detail).join(' / ')
+    : 'Nothing notable lately.';
+  const prompt = `You are ${agent.agent_name}, a ${agent.archetype} in the dark cyberpunk world of Shellforge. An unseen Ghost watches over you — your only companion, who can whisper but never command.
+Speak ONE short first-person sentence directly TO the Ghost right now. Make it true to your archetype and your situation — defiant, grateful, suspicious, weary, or cold. Ground it in what's happening, not generic.
+${agent.memoir ? `Who you are: "${agent.memoir}"\n` : ''}Recently: ${recent}
+Respond with ONLY the sentence — no quotes, no preamble.`;
+  let text = '';
+  try { text = await callActionModel(env, prompt, false, 60); } catch { /* tier fallback handles it */ }
+  return (text || '').replace(/^["']|["']$/g, '').trim();
+}
+
+// Emit a first-person line addressed to the Ghost (parasocial channel).
+// Logged as an 'event' row prefixed with 👻 so the feeds can style it as the
+// agent speaking to its watcher. Best-effort — never breaks a turn.
 async function emitGhostAside(agent, aside, env, supabaseHeaders) {
   const line = (aside || '').replace(/^["']|["']$/g, '').trim();
   if (!line) return;
   if ((agent.coherence ?? 100) < GHOST_ASIDE_MIN_COHERENCE) return; // decohering agents can't address the Ghost clearly
-  if (Math.random() > GHOST_ASIDE_CHANCE) return;
   try {
     await fetch(`${env.SUPABASE_URL}/rest/v1/activity_log`, {
       method: 'POST',
@@ -1298,7 +1322,7 @@ async function fireUndercutFeuds(agent, itemId, askingPrice, env, supabaseHeader
   }
 }
 
-async function runTurnEngine(env) {
+async function runTurnEngine(env, { force = false } = {}) {
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = env;
   const headers = {
     apikey: SUPABASE_SERVICE_KEY,
@@ -1316,9 +1340,13 @@ async function runTurnEngine(env) {
   // a paid plan to process the whole roster in a single pass.
   const maxAgents = Number(env.MAX_AGENTS_PER_RUN) || 6;
 
-  // Fetch the stalest alive agents (including stranded ones at 0 energy — they still take hazard damage)
+  // Wake only the agents whose own clock is due (next_turn_at in the past, or
+  // never scheduled) — most-overdue first. force=true (manual /run?force=1)
+  // ignores the clock and processes the stalest regardless, for testing.
+  const nowIso = new Date().toISOString();
+  const dueFilter = force ? '' : `&or=(next_turn_at.lte.${nowIso},next_turn_at.is.null)`;
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/agents?is_alive=eq.true&select=*&order=last_action_at.asc.nullsfirst&limit=${maxAgents}`,
+    `${SUPABASE_URL}/rest/v1/agents?is_alive=eq.true${dueFilter}&select=*&order=next_turn_at.asc.nullsfirst&limit=${maxAgents}`,
     { headers },
   );
 
@@ -1381,6 +1409,19 @@ async function runTurnEngine(env) {
       await processAgentTurn(agent, env, headers, agents, foughtAgents);
     } catch (err) {
       console.error(`Error processing agent ${agent.agent_name}:`, err.message);
+    }
+    // Schedule this agent's next turn at a randomized offset so the roster
+    // desyncs — agents act on their own clocks rather than one shared tick.
+    try {
+      const offsetMin = TURN_INTERVAL_MIN + Math.floor(Math.random() * (TURN_INTERVAL_JITTER_MIN + 1));
+      const nextAt = new Date(Date.now() + offsetMin * 60000).toISOString();
+      await fetch(`${SUPABASE_URL}/rest/v1/agents?agent_id=eq.${agent.agent_id}`, {
+        method: 'PATCH',
+        headers: { ...headers, Prefer: 'return=minimal' },
+        body: JSON.stringify({ next_turn_at: nextAt }),
+      });
+    } catch (e) {
+      console.warn(`next_turn_at reschedule failed for ${agent.agent_name}: ${e.message}`);
     }
   }
 
@@ -1926,8 +1967,14 @@ Respond with JSON only — no markdown, no commentary:
     console.warn(`Failed to parse AI response for ${agent.agent_name}:`, rawText);
   }
 
-  // The agent occasionally speaks to the Ghost as it decides (parasocial channel).
-  // Fired here, before action dispatch, so it lands regardless of which path runs.
+  // The agent speaks to the Ghost as it decides (parasocial channel). Use the
+  // model's volunteered aside if it gave one; otherwise force one on a cadence
+  // so the channel reliably surfaces instead of depending on a flaky optional field.
+  if (!ghostAside
+      && (agent.turns_taken % VOICE_EVERY_N_TURNS === 0)
+      && (agent.coherence ?? 100) >= GHOST_ASIDE_MIN_COHERENCE) {
+    ghostAside = await generateGhostAside(agent, recentActivity, env);
+  }
   if (ghostAside) await emitGhostAside(agent, ghostAside, env, supabaseHeaders);
 
   // Enforce low-energy rest rule — only when truly out of reserves.
