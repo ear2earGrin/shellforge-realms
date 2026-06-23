@@ -1,0 +1,75 @@
+{
+ "pxPerUnit": 24,
+ "camera": {
+  "azimuth": 135,
+  "pitch": 38
+ },
+ "note": "Blender reference/fallback building sprites (transparent PNG). Foot anchor = horizontal center, vertical bottom of each cropped image. Regenerate the full 36-piece set with scripts/blender/nexarch-kit/render_building_sprites.py",
+ "sprites": {
+  "arena": {
+   "file": "arena.png",
+   "w": 1895,
+   "h": 1470
+  },
+  "banner_pole": {
+   "file": "banner_pole.png",
+   "w": 44,
+   "h": 103
+  },
+  "banner_pole_c": {
+   "file": "banner_pole_c.png",
+   "w": 44,
+   "h": 103
+  },
+  "barrel": {
+   "file": "barrel.png",
+   "w": 44,
+   "h": 57
+  },
+  "brazier": {
+   "file": "brazier.png",
+   "w": 54,
+   "h": 51
+  },
+  "bush": {
+   "file": "bush.png",
+   "w": 64,
+   "h": 59
+  },
+  "cable_span": {
+   "file": "cable_span.png",
+   "w": 281,
+   "h": 181
+  },
+  "carpet": {
+   "file": "carpet.png",
+   "w": 134,
+   "h": 85
+  },
+  "carpet_c": {
+   "file": "carpet_c.png",
+   "w": 134,
+   "h": 85
+  },
+  "cart": {
+   "file": "cart.png",
+   "w": 91,
+   "h": 68
+  },
+  "cathedral": {
+   "file": "cathedral.png",
+   "w": 903,
+   "h": 1238
+  },
+  "crate": {
+   "file": "crate.png",
+   "w": 60,
+   "h": 69
+  },
+  "e_waste": {
+   "file": "e_waste.png",
+   "w": 83,
+   "h": 65
+  }
+ }
+}
