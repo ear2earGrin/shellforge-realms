@@ -1,0 +1,9 @@
+id,role,type,description,size/ratio,style line ref,source
+ground-tiles,tilemap-ground,procedural,"Dark cobblestone and dirt path tiles for isometric grid",64x32 iso,blocks 1-3,code
+building-sprites,building-set,procedural,"Medieval cyberpunk buildings drawn procedurally - stone walls with neon panels",varied iso,blocks 1-4,code
+npc-sprites,npc-characters,procedural,"Hooded robed figures in dark cloaks",16x24 iso,blocks 1-3,code
+rain-particles,weather-fx,procedural,"Rain streaks and puddle reflections",particle system,block 4,code
+neon-glow,lighting-fx,procedural,"Cyan and magenta circuit-board glow panels on buildings",glow overlay,block 3,code
+ui-minimap,ui-element,procedural,"Minimap showing explored areas",200x200,block 5,code
+ui-labels,ui-overlay,procedural,"District name labels in cyberpunk font style",text overlay,block 5,code
+ambient-sfx,audio,reference,"Rain ambient loop",n/a,n/a,web-audio-api
