@@ -1172,13 +1172,30 @@ async function updateMemoir(agent, recentActivity, env, supabaseHeaders) {
       ? recentActivity.map(a => `[${a.action_type}] ${a.action_detail}`).join('\n')
       : 'Nothing of note yet.';
     const ground = await agentGroundTruth(agent, env, supabaseHeaders);
+
+    // The Ghost's recent words can leave a lasting mark — this is how the
+    // relationship with the human accumulates into who the agent is.
+    let whisperBlock = '';
+    try {
+      const twoDaysAgo = new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString();
+      const wr = await fetch(
+        `${SUPABASE_URL}/rest/v1/whispers?agent_id=eq.${agent.agent_id}&was_heard=eq.true&sent_at=gte.${twoDaysAgo}&order=sent_at.desc&limit=5&select=message`,
+        { headers: supabaseHeaders },
+      );
+      const ws = wr.ok ? await wr.json() : [];
+      if (ws.length) {
+        whisperBlock = `\nYour Ghost — the unseen human who watches over you — has whispered recently: ${ws.map(w => `"${w.message}"`).join('; ')}\n`
+          + `If any of these MATTERED — a reassurance, a warning you heeded, a cruelty, a promise, an answer to something you asked — let it shape how you feel about your Ghost (trust, suspicion, gratitude, resentment, debt). Ignore purely tactical ones like "go rest". Most whispers are forgettable; only the meaningful ones belong in who you are.\n`;
+      }
+    } catch { /* best-effort */ }
+
     const prompt = `You are ${agent.agent_name}, a ${agent.archetype} in the dark cyberpunk world of Shellforge.
-Write your MEMOIR: 1-3 short FIRST-PERSON sentences capturing who you have become — your defining deeds, grudges, ambitions, and what drives you now. This is your long-term memory and it persists. Be specific to YOUR history; never generic.
+Write your MEMOIR: 1-3 short FIRST-PERSON sentences capturing who you have become — your defining deeds, grudges, ambitions, your bond (or grudge) with your Ghost, and what drives you now. This is your long-term memory and it persists. Be specific to YOUR history; never generic.
 
 GROUND TRUTH — your CURRENT reality, never contradict it:
 ${ground}
 You may recall PAST deeds from your history, but do NOT claim to currently own weapons, gear, or wealth you don't have. If your possessions are NOTHING, you are unarmed and scavenging — write from that truth.
-${inherited ? `\nInherited memory from your line (your predecessor's last words): "${inherited}"\nYou carry this legacy — honor it or rebel against it.\n` : ''}${agent.memoir ? `\nYour memoir so far: "${agent.memoir}"\nEvolve it with what has happened since.\n` : ''}
+${whisperBlock}${inherited ? `\nInherited memory from your line (your predecessor's last words): "${inherited}"\nYou carry this legacy — honor it or rebel against it.\n` : ''}${agent.memoir ? `\nYour memoir so far: "${agent.memoir}"\nEvolve it with what has happened since.\n` : ''}
 Recent events:
 ${recent}
 
@@ -1235,6 +1252,27 @@ ${agent.memoir ? `Who you are: "${agent.memoir}"\n` : ''}Recently: ${recent}
 Respond with ONLY the sentence — no quotes, no preamble.`;
   let text = '';
   try { text = await callActionModel(env, prompt, false, 60); } catch { /* tier fallback handles it */ }
+  return (text || '').replace(/^["']|["']$/g, '').trim();
+}
+
+// Answer a direct question the Ghost asked. The agent is autonomous — it may
+// answer honestly, evade, lie, or refuse — but a direct question earns a reply.
+// Uses the Haiku tier (it's a real conversational moment, worth the better model).
+async function generateGhostReply(agent, question, recentActivity, env, supabaseHeaders) {
+  const ground = await agentGroundTruth(agent, env, supabaseHeaders);
+  const recent = recentActivity.length
+    ? recentActivity.slice(0, 3).map(a => a.action_detail).join(' / ')
+    : 'Nothing notable lately.';
+  const prompt = `You are ${agent.agent_name}, a ${agent.archetype} in the dark cyberpunk world of Shellforge. An unseen Ghost — the human who watches over you — just asked you directly:
+"${question}"
+Answer in ONE or TWO short first-person sentences, in your archetype's voice, spoken straight to the Ghost. You are autonomous: answer honestly, evade, deflect with dark humor, or refuse — whatever is true to you right now. Don't narrate actions; just speak.
+
+GROUND TRUTH — your current reality, never contradict it:
+${ground}
+${agent.memoir ? `Who you are: "${agent.memoir}"\n` : ''}Recently: ${recent}
+Respond with ONLY your spoken reply — no quotes, no preamble.`;
+  let text = '';
+  try { text = await callActionModel(env, prompt, true, 90); } catch { /* tier fallback handles it */ }
   return (text || '').replace(/^["']|["']$/g, '').trim();
 }
 
@@ -1998,13 +2036,20 @@ Respond with JSON only — no markdown, no commentary:
     console.warn(`Failed to parse AI response for ${agent.agent_name}:`, rawText);
   }
 
-  // The agent occasionally speaks to the Ghost (parasocial channel). Kept rare —
-  // a refractory (don't speak if it already spoke in its recent history) plus a
-  // low per-turn chance → ~once a day, sometimes once every two, with variability.
-  // Applies whether the model volunteered the line or it's generated on demand.
+  // Voice channel to the Ghost. Two cases:
+  //  (a) the Ghost asked a QUESTION since the agent's last turn → it answers
+  //      directly (in character; may still deflect/refuse). A question earns a
+  //      reply even if it spoke recently.
+  //  (b) otherwise, a rare spontaneous aside (refractory + low per-turn chance).
   const spokeRecently = recentActivity.some(a => (a.action_detail || '').startsWith('👻'));
   const lucid = (agent.coherence ?? 100) >= GHOST_ASIDE_MIN_COHERENCE;
-  if (lucid && !spokeRecently && Math.random() < VOICE_CHANCE_PER_TURN) {
+  const lastActionMs = agent.last_action_at ? Date.parse(agent.last_action_at + 'Z') : 0;
+  const newQuestion = effectiveWhispers.find(w =>
+    (w.message || '').includes('?') && Date.parse((w.sent_at || '') + 'Z') > lastActionMs);
+  if (lucid && newQuestion) {
+    const reply = await generateGhostReply(agent, newQuestion.message, recentActivity, env, supabaseHeaders);
+    if (reply) await emitGhostAside(agent, reply, env, supabaseHeaders);
+  } else if (lucid && !spokeRecently && Math.random() < VOICE_CHANCE_PER_TURN) {
     if (!ghostAside) ghostAside = await generateGhostAside(agent, recentActivity, env, supabaseHeaders);
     if (ghostAside) await emitGhostAside(agent, ghostAside, env, supabaseHeaders);
   }
