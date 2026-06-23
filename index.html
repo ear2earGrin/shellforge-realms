@@ -1437,8 +1437,9 @@
                 if (cleanDetail && cleanDetail.toLowerCase().startsWith(agentName.toLowerCase())) {
                     cleanDetail = cleanDetail.slice(agentName.length).replace(/^\s+/, '');
                 }
-                var isDeath = actionType === 'death' || /died|death|killed|succumbed|terminated|fell in the arena|was slain/i.test(cleanDetail);
-                var isArena = !isDeath && (actionType === 'arena' || /arena|defeated.*in/i.test(cleanDetail));
+                var isVoice = cleanDetail && cleanDetail.indexOf('👻') === 0; // 👻 — agent speaking to the Ghost
+                var isDeath = !isVoice && (actionType === 'death' || /died|death|killed|succumbed|terminated|fell in the arena|was slain/i.test(cleanDetail));
+                var isArena = !isDeath && !isVoice && (actionType === 'arena' || /arena|defeated.*in/i.test(cleanDetail));
                 var cls = isDeath ? 'death' : classifyText(cleanDetail);
                 var tc = cls==='death'?'#f43f5e':isArena?'#ff8c00':cls==='good'?'#4ade80':cls==='bad'?'#fb923c':'rgba(200,200,200,0.82)';
                 var div = document.createElement('div');
@@ -1451,7 +1452,11 @@
                     return s;
                 }
                 div.appendChild(mkSpan('feed-time', '', formatTime(timestamp)));
-                if (isDeath) {
+                if (isVoice) {
+                    var spoken = cleanDetail.replace(/^👻\s*/, '');
+                    div.appendChild(mkSpan('feed-prefix', 'filter:drop-shadow(0 0 4px rgba(0,255,255,0.6));', '👻'));
+                    div.appendChild(mkSpan(null, 'color:#bfeff2;font-style:italic;', spoken));
+                } else if (isDeath) {
                     div.appendChild(mkSpan('feed-prefix', 'color:#f43f5e;', '\u2620'));
                     div.appendChild(mkSpan(null, 'color:#f43f5e;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;', agentName));
                     div.appendChild(document.createTextNode(' '));

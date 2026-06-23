@@ -693,6 +693,10 @@
         .chronicle-entry[data-action="quest"]   .ch-type { background:rgba(255,200,80,0.12);  color:rgba(255,210,100,0.9); }
         .chronicle-entry[data-action="church"]  .ch-type { background:rgba(200,60,255,0.12);  color:rgba(200,60,255,0.85); }
         .chronicle-entry[data-action="death"]   .ch-type { background:rgba(255,0,44,0.18);    color:#ff0044; }
+        /* voice line — the agent addressing the Ghost */
+        .chronicle-entry.voice { background:rgba(0,255,255,0.05); border-left:2px solid rgba(0,255,255,0.6); padding-left:8px; }
+        .chronicle-entry.voice .ch-text { color:#bfeff2; font-style:italic; letter-spacing:0.2px; }
+        .chronicle-entry.voice .voice-icon { margin-right:6px; font-style:normal; filter:drop-shadow(0 0 4px rgba(0,255,255,0.6)); }
 
         /* forge slots */
         .forge-input-grid {
@@ -7006,6 +7010,17 @@
                 div.className = 'chronicle-entry';
                 div.dataset.action = entry.action_type || '';
                 let detail = entry.action_detail || entry.action_type;
+
+                // Voice line — the agent speaking to the Ghost (👻 marker from the turn engine).
+                // Rendered as its own cyan-italic beat, no action chip.
+                if (detail.indexOf('👻') === 0) {
+                    div.classList.add('voice');
+                    const spoken = detail.replace(/^👻\s*/, '');
+                    div.innerHTML = `<div class="ch-time">${when}</div><div class="ch-text"><span class="voice-icon">👻</span>${spoken}</div>`;
+                    log.appendChild(div);
+                    return;
+                }
+
                 if (_currentAgent && _currentAgent.name && detail.startsWith(_currentAgent.name)) {
                     detail = detail.slice(_currentAgent.name.length).replace(/^\s+/, '');
                 }
