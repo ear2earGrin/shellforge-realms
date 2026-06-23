@@ -73,7 +73,11 @@ const MODEL_GROQ = 'llama-3.1-8b-instant';         // routine turns (no whisper)
 // ─── Memoir + Ghost-voice (long-term memory + parasocial channel) ──
 const MEMOIR_EVERY_N_TURNS = 12;        // ≈ once/day at the 2h cadence — agent distills its life
 const MEMOIR_MAX_LEN = 600;             // hard cap on stored memoir text
-const VOICE_EVERY_N_TURNS = 4;          // guarantee a Ghost-aside at least this often (the model may volunteer one sooner)
+// Ghost-asides are meant to be rare and special — averaging ~once a day, sometimes
+// once every two. With ~12 staggered turns/day, a refractory (no aside if the agent
+// spoke in its recent history) plus this low per-turn chance lands in that range
+// with natural variability (no fixed cadence).
+const VOICE_CHANCE_PER_TURN = 0.15;
 const GHOST_ASIDE_MIN_COHERENCE = 50;   // only a lucid agent addresses the Ghost coherently
 
 // ─── Staggered scheduling — agents act on their own clocks, not one shared tick ──
@@ -1994,15 +1998,16 @@ Respond with JSON only — no markdown, no commentary:
     console.warn(`Failed to parse AI response for ${agent.agent_name}:`, rawText);
   }
 
-  // The agent speaks to the Ghost as it decides (parasocial channel). Use the
-  // model's volunteered aside if it gave one; otherwise force one on a cadence
-  // so the channel reliably surfaces instead of depending on a flaky optional field.
-  if (!ghostAside
-      && (agent.turns_taken % VOICE_EVERY_N_TURNS === 0)
-      && (agent.coherence ?? 100) >= GHOST_ASIDE_MIN_COHERENCE) {
-    ghostAside = await generateGhostAside(agent, recentActivity, env, supabaseHeaders);
+  // The agent occasionally speaks to the Ghost (parasocial channel). Kept rare —
+  // a refractory (don't speak if it already spoke in its recent history) plus a
+  // low per-turn chance → ~once a day, sometimes once every two, with variability.
+  // Applies whether the model volunteered the line or it's generated on demand.
+  const spokeRecently = recentActivity.some(a => (a.action_detail || '').startsWith('👻'));
+  const lucid = (agent.coherence ?? 100) >= GHOST_ASIDE_MIN_COHERENCE;
+  if (lucid && !spokeRecently && Math.random() < VOICE_CHANCE_PER_TURN) {
+    if (!ghostAside) ghostAside = await generateGhostAside(agent, recentActivity, env, supabaseHeaders);
+    if (ghostAside) await emitGhostAside(agent, ghostAside, env, supabaseHeaders);
   }
-  if (ghostAside) await emitGhostAside(agent, ghostAside, env, supabaseHeaders);
 
   // Enforce low-energy rest rule — only when truly out of reserves.
   // Higher threshold made agents hide in safe rest turns, suppressing decoherence madness.
