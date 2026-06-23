@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>NEXARCH — City Map</title>
+<style>
+  *{ -webkit-tap-highlight-color:transparent; box-sizing:border-box; }
+  html,body{ margin:0; height:100%; overflow:hidden; background:#0a0712;
+             font-family:'Courier New',monospace; }
+  #c{ position:fixed; inset:0; display:block; touch-action:none; cursor:grab; }
+  #c:active{ cursor:grabbing; }
+  .hud{ position:fixed; z-index:10; pointer-events:none; letter-spacing:.12em;
+        text-shadow:0 0 8px rgba(90,240,225,.7); }
+  #title{ top:14px; left:18px; color:#5af0e1; font-size:1rem; }
+  #title small{ display:block; color:#d769ff; font-size:.6rem; letter-spacing:.3em;
+                margin-top:3px; }
+  #hint{ bottom:12px; left:18px; color:#3d6f74; font-size:.62rem; }
+  #loading{ top:50%; left:50%; transform:translate(-50%,-50%); color:#5af0e1;
+            font-size:.8rem; animation:pulse 1.2s infinite; }
+  @keyframes pulse{ 50%{opacity:.35} }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="hud" id="title">NEXARCH<small>CITY MAP</small></div>
+<div class="hud" id="hint">DRAG pan · WHEEL/PINCH zoom</div>
+<div class="hud" id="loading">LOADING…</div>
+<script>
+(async function(){
+const SP='images/districts/sprites/';
+const plan=await (await fetch('images/districts/city-plan-compact.json')).json();
+const anchors=await (await fetch(SP+'buildings/anchors.json')).json();
+const N=plan.gridN, streets=plan.streets;
+
+let TILE_W=140, TILE_H=70; const DESIGN=256;
+const iso=(c,r)=>[(c-r)*TILE_W/2,(c+r)*TILE_H/2];
+
+const HOUSES=['house_a_v2','house_b_v2','house_c_v2','house_d'];
+const TALLS=['tavern_v2','house_d','slum_tenement'];
+const MAP={ fountain_core:['well'],cathedral:['cathedral_v3'],foundry:['foundry_v2'],
+  arena:['cathedral_v3'],tower_round:['clock_church'],vault:['black_market'],
+  gate:['wall_v2'],kiosk:['black_market'],
+  house_small:HOUSES,house_med:HOUSES,house_L:HOUSES,
+  house_tall:TALLS,house_jetty:['tavern_v2','house_d'],house_ruin:['slum_tenement'] };
+
+const NEED=new Set(['ground_cobble','ground_neon','ground_puddle']);
+Object.values(MAP).flat().forEach(s=>NEED.add('B:'+s));
+for(const a of ['npc_c','npc_m','npc_o']) for(let d=0;d<4;d++) NEED.add('A:'+a+'_'+d);
+const IMG={};
+const load=(k,u)=>new Promise(res=>{const i=new Image();i.onload=()=>{IMG[k]=i;res();};i.onerror=()=>res();i.src=u;});
+const jobs=[]; for(const k of NEED){ if(k[0]==='B')jobs.push(load(k,SP+'buildings/'+k.slice(2)+'.png'));
+  else if(k[0]==='A')jobs.push(load(k,SP+k.slice(2)+'.png')); else jobs.push(load(k,SP+'ground/'+k+'.png')); }
+await Promise.all(jobs);
+
+const hash=i=>{let x=Math.sin(i*127.1+311.7)*43758.5453;return x-Math.floor(x);};
+
+// buildings
+const buildings=[];
+plan.buildings.forEach((b,i)=>{ const o=MAP[b.type]; if(!o)return; const s=o[Math.floor(hash(i)*o.length)];
+  if(!IMG['B:'+s])return; buildings.push({col:b.tile[0],row:b.tile[1],spr:'B:'+s,mirror:hash(i+9)<0.5,type:b.type}); });
+buildings.sort((a,b)=>(a.col+a.row)-(b.col+b.row));
+
+// ground: cobble everywhere on/around streets+buildings; neon accent on roads
+const ground=new Map();
+const setG=(c,r,k)=>{ if(c<0||r<0||c>=N||r>=N)return; const key=c+','+r; if(!ground.has(key))ground.set(key,k); };
+for(let r=0;r<N;r++)for(let c=0;c<N;c++) if(streets[r][c]==='1'){ const h=hash(r*N+c);
+  setG(c,r, h<0.12?'ground_neon': h<0.2?'ground_puddle':'ground_cobble'); }
+for(const b of buildings){ setG(b.col,b.row,'ground_cobble');
+  for(const[dc,dr]of[[1,0],[-1,0],[0,1],[0,-1]])setG(b.col+dc,b.row+dr,'ground_cobble'); }
+for(let p=0;p<1;p++){ const add=[]; for(const[k]of ground){const[c,r]=k.split(',').map(Number);
+  for(const[dc,dr]of[[1,0],[-1,0],[0,1],[0,-1]]){const nk=(c+dc)+','+(r+dr); if(!ground.has(nk))add.push([c+dc,r+dr]);}}
+  for(const[c,r]of add)setG(c,r,'ground_cobble'); }
+const groundList=[...ground.entries()].map(([k,key])=>{const[c,r]=k.split(',').map(Number);return{col:c,row:r,key};});
+
+// camera
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+let cam={x:0,y:0,zoom:0.8};
+const resize=()=>{cv.width=innerWidth*devicePixelRatio;cv.height=innerHeight*devicePixelRatio;cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';};
+addEventListener('resize',resize); resize();
+{const[cx,cy]=iso(N/2,N/2);cam.x=cx;cam.y=cy;}
+
+// agents
+const isW=(c,r)=>c>=0&&r>=0&&c<N&&r<N&&streets[r][c]==='1';
+const nearestW=(c,r)=>{if(isW(c,r))return[c,r];for(let rad=1;rad<18;rad++)for(let dr=-rad;dr<=rad;dr++)for(let dc=-rad;dc<=rad;dc++)if(Math.max(Math.abs(dc),Math.abs(dr))===rad&&isW(c+dc,r+dr))return[c+dc,r+dr];return null;};
+function astar(s,g){const key=(c,r)=>r*N+c;const open=new Map([[key(...s),{c:s,g:0,f:0,from:null}]]),cl=new Map();
+  while(open.size){let bk,bn;for(const[k,n]of open)if(!bn||n.f<bn.f){bn=n;bk=k;}open.delete(bk);cl.set(bk,bn);
+    const[cc,cr]=bn.c;if(cc===g[0]&&cr===g[1]){const p=[];for(let n=bn;n;n=n.from)p.unshift(n.c);return p;}
+    for(const[dc,dr]of[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){const nc=cc+dc,nr=cr+dr;if(!isW(nc,nr))continue;if(dc&&dr&&(!isW(cc+dc,cr)||!isW(cc,cr+dr)))continue;const k=key(nc,nr);if(cl.has(k))continue;const gg=bn.g+Math.hypot(dc,dr),ex=open.get(k);if(!ex||gg<ex.g)open.set(k,{c:[nc,nr],g:gg,f:gg+Math.hypot(g[0]-nc,g[1]-nr),from:bn});}
+    if(cl.size>5000)break;}
+  return null;}
+const districts=plan.districts.map(d=>d.tile), dnames=plan.districts;
+const agents=[]; const atypes=['npc_c','npc_m','npc_o'];
+for(let i=0;i<8;i++){const d=districts[i%districts.length];const w=nearestW(d[0],d[1])||[14,14];
+  agents.push({col:w[0],row:w[1],route:[],type:atypes[i%3],idle:hash(i)*4,spd:2.2,face:0});}
+const send=a=>{const d=districts[Math.floor(Math.random()*districts.length)];const f=nearestW(Math.round(a.col),Math.round(a.row)),t=nearestW(d[0],d[1]);if(f&&t)a.route=astar(f,t)||[];};
+agents.forEach(send);
+
+// draw helpers
+function dGround(g,ox,oy){const im=IMG[g.key];if(!im)return;const[x,y]=iso(g.col,g.row);const s=TILE_W/DESIGN;ctx.drawImage(im,ox+x-TILE_W/2,oy+y-TILE_H/2,im.width*s,im.height*s);}
+function dBuild(b,ox,oy){const im=IMG[b.spr];if(!im)return;const an=anchors[b.spr.slice(2)]||{anchorX:im.width/2,anchorY:im.height};const s=TILE_W/DESIGN,w=im.width*s,h=im.height*s;const[x,y]=iso(b.col,b.row);ctx.save();ctx.translate(ox+x,oy+y);ctx.scale(b.mirror?-1:1,1);ctx.drawImage(im,-an.anchorX*s,-an.anchorY*s,w,h);ctx.restore();}
+function dAgent(a,ox,oy){const fr=IMG['A:'+a.type+'_'+a.face];const[x,y]=iso(a.col,a.row);const s=TILE_W/DESIGN*1.05;if(fr){const w=fr.width*s,h=fr.height*s;ctx.drawImage(fr,ox+x-w/2,oy+y-h,w,h);}}
+
+let last=performance.now();
+function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-last)/1000,.1);last=now;
+  for(const a of agents){if(a.route.length){const[tc,tr]=a.route[0],dc=tc-a.col,dr=tr-a.row,d=Math.hypot(dc,dr);
+    if(d<.15)a.route.shift();else{a.col+=dc/d*a.spd*dt;a.row+=dr/d*a.spd*dt;a.face=(dc-dr)>0?(Math.abs(dc)>Math.abs(dr)?2:1):(Math.abs(dc)>Math.abs(dr)?3:0);}
+    if(!a.route.length)a.idle=2+Math.random()*4;}else{a.idle-=dt;if(a.idle<=0)send(a);}}
+  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.fillStyle='#0a0712';ctx.fillRect(0,0,innerWidth,innerHeight);
+  const z=cam.zoom;ctx.setTransform(devicePixelRatio*z,0,0,devicePixelRatio*z,0,0);
+  const ox=innerWidth/(2*z)-cam.x,oy=innerHeight/(2*z)-cam.y;
+  // 1) ground (flat, behind everything)
+  for(const g of groundList)dGround(g,ox,oy);
+  // 2) road overlay — glowing lines on the ground
+  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
+  for(const poly of plan.roads){ ctx.beginPath();
+    poly.forEach((p,i)=>{const[x,y]=iso(p[0],p[1]);i?ctx.lineTo(ox+x,oy+y):ctx.moveTo(ox+x,oy+y);});
+    ctx.strokeStyle='rgba(90,240,225,.18)';ctx.lineWidth=18;ctx.stroke();
+    ctx.strokeStyle='rgba(120,250,235,.55)';ctx.lineWidth=4;ctx.stroke(); }
+  ctx.restore();
+  // 3) buildings + agents, depth sorted
+  const draws=[];
+  for(const b of buildings)draws.push({k:1,d:b.col+b.row+0.5,o:b});
+  for(const a of agents)draws.push({k:2,d:a.col+a.row+0.6,o:a});
+  draws.sort((p,q)=>p.d-q.d||p.k-q.k);
+  for(const it of draws){ if(it.k===1)dBuild(it.o,ox,oy); else dAgent(it.o,ox,oy); }
+  // 4) district labels
+  ctx.save();ctx.font='bold 13px Courier New';ctx.textAlign='center';
+  for(const d of dnames){const[x,y]=iso(d.tile[0],d.tile[1]);const sx=ox+x,sy=oy+y-1;
+    const w=ctx.measureText(d.name).width+14;
+    ctx.fillStyle='rgba(5,10,14,.8)';ctx.fillRect(sx-w/2,sy-46,w,18);
+    ctx.strokeStyle='rgba(90,240,225,.7)';ctx.lineWidth=1;ctx.strokeRect(sx-w/2,sy-46,w,18);
+    ctx.fillStyle='#9af5ec';ctx.shadowColor='#5af0e1';ctx.shadowBlur=6;ctx.fillText(d.name,sx,sy-33);ctx.shadowBlur=0;}
+  ctx.restore();
+}
+document.getElementById('loading').style.display='none';
+window.NMAP={cam,buildings};
+requestAnimationFrame(frame);
+
+// input
+let drag=null;
+cv.addEventListener('pointerdown',e=>drag={x:e.clientX,y:e.clientY,cx:cam.x,cy:cam.y});
+addEventListener('pointermove',e=>{if(!drag)return;cam.x=drag.cx-(e.clientX-drag.x)/cam.zoom;cam.y=drag.cy-(e.clientY-drag.y)/cam.zoom;});
+addEventListener('pointerup',()=>drag=null);
+addEventListener('wheel',e=>{cam.zoom=Math.max(.35,Math.min(2.5,cam.zoom*(e.deltaY>0?.9:1.11)));},{passive:true});
+let pinch=null;
+cv.addEventListener('touchstart',e=>{if(e.touches.length===2){const a=e.touches[0],b=e.touches[1];pinch={d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY),z:cam.zoom};}});
+cv.addEventListener('touchmove',e=>{if(pinch&&e.touches.length===2){const a=e.touches[0],b=e.touches[1];const d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);cam.zoom=Math.max(.35,Math.min(2.5,pinch.z*d/pinch.d));}},{passive:true});
+cv.addEventListener('touchend',()=>pinch=null);
+})();
+</script>
+</body>
+</html>
