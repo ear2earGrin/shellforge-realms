@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>NETHERVEIL — Nexarch</title>
+<style>
+  * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+  html,body { margin:0; height:100%; overflow:hidden; background:#0a0710;
+              font-family:'Courier New',monospace; color:#5af0e1; }
+  #c { position:fixed; inset:0; display:block; touch-action:none; cursor:grab; }
+  #c:active { cursor:grabbing; }
+  .hud { position:fixed; z-index:10; pointer-events:none;
+         text-shadow:0 0 8px rgba(90,240,225,.7); letter-spacing:.12em; }
+  #title { top:14px; left:18px; color:#5af0e1; font-size:1rem; }
+  #title small { display:block; color:#d769ff; font-size:.6rem; letter-spacing:.3em;
+                 margin-top:3px; text-shadow:0 0 8px rgba(215,105,255,.7); }
+  #hint { bottom:12px; left:18px; color:#3d6f74; font-size:.62rem; }
+  #loading { top:50%; left:50%; transform:translate(-50%,-50%); color:#5af0e1;
+             font-size:.8rem; animation:pulse 1.2s infinite; }
+  @keyframes pulse { 50%{opacity:.35} }
+  #card { position:fixed; left:50%; bottom:54px; transform:translateX(-50%);
+          z-index:20; background:rgba(8,12,18,.94); border:1px solid #d769ff;
+          box-shadow:0 0 16px rgba(215,105,255,.4); padding:10px 16px; display:none;
+          min-width:200px; }
+  #card h3 { margin:0 0 4px; color:#d769ff; font-size:.85rem; letter-spacing:.1em; }
+  #card p { margin:2px 0; color:#9af5ec; font-size:.7rem; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="hud" id="title">NETHERVEIL<small>NEXARCH — CITY OF SHADOWS</small></div>
+<div class="hud" id="hint">DRAG pan · WHEEL/PINCH zoom · TAP a building</div>
+<div class="hud" id="loading">LOADING NEXARCH…</div>
+<div id="card"><h3 id="ct"></h3><div id="cb"></div></div>
+
+<script>
+(async function () { try {
+const SP = 'images/districts/sprites/';
+const plan = await (await fetch('images/districts/city-plan.json')).json();
+const anchors = await (await fetch(SP+'buildings/anchors.json')).json();
+const N = plan.gridN;                       // 144
+const streets = plan.streets;               // streets[row][col]==='1'
+
+// ---- iso projection (design tile 256x128; we display at TILE_W) ----
+let TILE_W = 128, TILE_H = 64;
+const DESIGN = 256;                          // sprites authored for 256-wide tiles
+const HW = () => TILE_W/2, HH = () => TILE_H/2;
+function iso(col, row){ return [ (col-row)*HW(), (col+row)*HH() ]; }
+
+// ---- sprite mapping: city-plan type -> Higgsfield sprite ----
+const HOUSES   = ['house_a_v2','house_b_v2','house_c_v2','house_d'];
+const TALLS    = ['tavern_v2','house_d','slum_tenement','house_b_v2'];
+const MAP = {
+  fountain_core:['well'], cathedral:['cathedral_v3'], foundry:['foundry_v2'],
+  arena:['cathedral_v3'], tower_round:['clock_church'], vault:['black_market'],
+  gate:['wall_v2'], wall_seg:['wall_v2'], wall_tower:['wall_v2'],
+  kiosk:['black_market'], stall:['black_market'],
+  monolith_c:['obelisk'], monolith_m:['obelisk'],
+  house_small:HOUSES, house_med:HOUSES, house_L:HOUSES,
+  house_tall:TALLS, house_jetty:['tavern_v2','house_d'], house_ruin:['slum_tenement'],
+};
+const AGENT_TYPES = {npc_c:'npc_c', npc_m:'npc_m', npc_o:'npc_o'};
+// everything else (props, lamps, signs, bushes) is skipped for now
+
+// ---- load all images ----
+const NEED = new Set(['ground_cobble','ground_dirt','ground_grate','ground_neon',
+                      'ground_plaza','ground_puddle']);
+Object.values(MAP).flat().forEach(s=>NEED.add('B:'+s));
+const AGENT_FRAMES = {};
+for (const a of ['npc_c','npc_m','npc_o']) { AGENT_FRAMES[a]=[]; for(let d=0;d<4;d++) NEED.add('A:'+a+'_'+d); }
+const IMG = {};
+function load(key, url){ return new Promise(res=>{ const i=new Image(); i.onload=()=>{IMG[key]=i;res();}; i.onerror=()=>res(); i.src=url; }); }
+const jobs=[];
+for (const k of NEED){
+  if (k.startsWith('B:')) jobs.push(load(k, SP+'buildings/'+k.slice(2)+'.png'));
+  else if (k.startsWith('A:')) jobs.push(load(k, SP+k.slice(2)+'.png'));
+  else jobs.push(load(k, SP+'ground/'+k+'.png'));
+}
+await Promise.all(jobs);
+
+// ---- hash for stable per-instance variety ----
+function hash(i){ let x=Math.sin(i*127.1+311.7)*43758.5453; return x-Math.floor(x); }
+
+// ---- build draw lists ----
+const buildings = [];
+plan.buildings.forEach((b,i)=>{
+  const opts = MAP[b.type]; if(!opts) return;          // skip props
+  const spr = opts[Math.floor(hash(i)*opts.length)];
+  if(!IMG['B:'+spr]) return;
+  buildings.push({ col:b.tile[0], row:b.tile[1], spr:'B:'+spr,
+                   mirror: hash(i+9)<0.5, name:b.type });
+});
+buildings.sort((a,b)=>(a.col+a.row)-(b.col+b.row));
+
+// ground cells: streets + building tiles (+1 ring) so blocks have floor
+const ground = new Map();                                // "c,r" -> tile key
+function setG(c,r,key){ if(c<0||r<0||c>=N||r>=N) return; const k=c+','+r; if(!ground.has(k)) ground.set(k,key); }
+const districts = plan.districts.map(d=>d.tile);
+function nearDistrict(c,r){ return districts.some(([dc,dr])=>Math.abs(c-dc)<7&&Math.abs(r-dr)<7); }
+for(let r=0;r<N;r++) for(let c=0;c<N;c++){
+  if(streets[r][c]==='1'){
+    let key='ground_cobble';
+    const h=hash(r*N+c);
+    if(h<0.10) key='ground_neon';
+    else if(h<0.17) key='ground_puddle';
+    else if(h<0.19) key='ground_grate';
+    setG(c,r,key);
+  }
+}
+// cobble (not dark dirt) directly under each building so blocks read solid
+for(const b of buildings){ setG(b.col,b.row,'ground_cobble');
+  for(const [dc,dr] of [[1,0],[-1,0],[0,1],[0,-1]]) setG(b.col+dc,b.row+dr,'ground_cobble'); }
+// fill gaps between blocks/streets: dilate ground outward 2 cells
+for(let pass=0;pass<2;pass++){ const add=[];
+  for(const [k] of ground){ const [c,r]=k.split(',').map(Number);
+    for(const [dc,dr] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nk=(c+dc)+','+(r+dr); if(!ground.has(nk)) add.push([c+dc,r+dr]); } }
+  for(const [c,r] of add) setG(c,r,'ground_cobble'); }
+const groundList=[...ground.entries()].map(([k,key])=>{const [c,r]=k.split(',').map(Number);return{col:c,row:r,key};});
+
+// ---- camera ----
+const cv=document.getElementById('c'), ctx=cv.getContext('2d');
+let cam={x:0,y:0,zoom:0.5};
+function resize(){ cv.width=innerWidth*devicePixelRatio; cv.height=innerHeight*devicePixelRatio;
+  cv.style.width=innerWidth+'px'; cv.style.height=innerHeight+'px'; }
+addEventListener('resize',resize); resize();
+// center on Core
+{ const [cx,cy]=iso(72,72); cam.x=cx; cam.y=cy; }
+
+// ---- agents (wander the street grid via A*) ----
+const isW=(c,r)=>c>=0&&r>=0&&c<N&&r<N&&streets[r][c]==='1';
+function nearestW(c,r){ if(isW(c,r))return[c,r]; for(let rad=1;rad<24;rad++)for(let dr=-rad;dr<=rad;dr++)for(let dc=-rad;dc<=rad;dc++) if(Math.max(Math.abs(dc),Math.abs(dr))===rad&&isW(c+dc,r+dr))return[c+dc,r+dr]; return null; }
+function astar(s,g){ const key=(c,r)=>r*N+c; const open=new Map([[key(...s),{c:s,g:0,f:0,from:null}]]),cl=new Map();
+  while(open.size){ let bk,bn; for(const[k,n]of open)if(!bn||n.f<bn.f){bn=n;bk=k;} open.delete(bk);cl.set(bk,bn);
+    const[cc,cr]=bn.c; if(cc===g[0]&&cr===g[1]){const p=[];for(let n=bn;n;n=n.from)p.unshift(n.c);return p;}
+    for(const[dc,dr]of[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){const nc=cc+dc,nr=cr+dr; if(!isW(nc,nr))continue; if(dc&&dr&&(!isW(cc+dc,cr)||!isW(cc,cr+dr)))continue; const k=key(nc,nr); if(cl.has(k))continue; const gg=bn.g+Math.hypot(dc,dr),ex=open.get(k); if(!ex||gg<ex.g)open.set(k,{c:[nc,nr],g:gg,f:gg+Math.hypot(g[0]-nc,g[1]-nr),from:bn}); }
+    if(cl.size>12000)break; }
+  return null; }
+const agents=[];
+const atypes=['npc_c','npc_m','npc_o'];
+for(let i=0;i<16;i++){ const d=districts[i%districts.length]; const w=nearestW(d[0]+(hash(i)*8-4|0), d[1]+(hash(i+3)*8-4|0))||[72,72];
+  agents.push({col:w[0],row:w[1],route:[],type:atypes[i%3],idle:hash(i)*5,spd:2+hash(i+1)*2,face:0}); }
+function send(a){ const d=districts[Math.floor(Math.random()*districts.length)]; const from=nearestW(Math.round(a.col),Math.round(a.row)); const to=nearestW(d[0],d[1]); if(!from||!to)return; a.route=astar(from,to)||[]; }
+agents.forEach(send);
+
+// ---- render ----
+function drawGround(g, ox, oy){ const im=IMG[g.key]; if(!im)return; const[x,y]=iso(g.col,g.row);
+  const s=TILE_W/DESIGN; ctx.drawImage(im, ox+x-TILE_W/2, oy+y-TILE_H/2, im.width*s, im.height*s); }
+function drawBuilding(b, ox, oy){ const im=IMG[b.spr]; if(!im)return;
+  const an=anchors[b.spr.slice(2)]||{anchorX:im.width/2,anchorY:im.height};
+  const s=TILE_W/DESIGN, w=im.width*s, h=im.height*s; const[x,y]=iso(b.col,b.row);
+  ctx.save(); ctx.translate(ox+x, oy+y); ctx.scale(b.mirror?-1:1, 1);
+  ctx.drawImage(im, -an.anchorX*s, -an.anchorY*s, w, h); ctx.restore(); }
+function drawAgent(a, ox, oy){ const fr=IMG['A:'+a.type+'_'+a.face]; const[x,y]=iso(a.col,a.row); const s=TILE_W/DESIGN*1.1;
+  if(fr){ const w=fr.width*s,h=fr.height*s; ctx.drawImage(fr, ox+x-w/2, oy+y-h, w, h); }
+  else { ctx.fillStyle='#d33'; ctx.beginPath(); ctx.arc(ox+x,oy+y-6,4,0,7); ctx.fill(); } }
+
+let last=performance.now();
+function frame(now){ requestAnimationFrame(frame); const dt=Math.min((now-last)/1000,.1); last=now;
+  // update agents
+  for(const a of agents){ if(a.route.length){ const [tc,tr]=a.route[0]; const dc=tc-a.col,dr=tr-a.row,d=Math.hypot(dc,dr);
+      if(d<.15)a.route.shift(); else{ a.col+=dc/d*a.spd*dt; a.row+=dr/d*a.spd*dt; a.face=(dc-dr)>0?(Math.abs(dc)>Math.abs(dr)?2:1):(Math.abs(dc)>Math.abs(dr)?3:0); }
+      if(!a.route.length)a.idle=2+Math.random()*5; } else { a.idle-=dt; if(a.idle<=0)send(a); } }
+  // draw
+  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  ctx.clearRect(0,0,cv.width,cv.height); ctx.fillStyle='#0a0712'; ctx.fillRect(0,0,innerWidth,innerHeight);
+  const z=cam.zoom; ctx.setTransform(devicePixelRatio*z,0,0,devicePixelRatio*z,0,0);
+  const ox=innerWidth/(2*z)-cam.x, oy=innerHeight/(2*z)-cam.y;
+  // visible cull bounds
+  const pad=600/z; const minX=cam.x-innerWidth/(2*z)-pad, maxX=cam.x+innerWidth/(2*z)+pad;
+  const minY=cam.y-innerHeight/(2*z)-pad, maxY=cam.y+innerHeight/(2*z)+pad;
+  function vis(col,row){ const[x,y]=iso(col,row); return x>minX&&x<maxX&&y>minY&&y<maxY; }
+  // depth-sorted draw list
+  const draws=[];
+  for(const g of groundList) if(vis(g.col,g.row)) draws.push({k:0,d:g.col+g.row,o:g});
+  for(const b of buildings) if(vis(b.col,b.row)) draws.push({k:1,d:b.col+b.row+0.5,o:b});
+  for(const a of agents) if(vis(a.col,a.row)) draws.push({k:2,d:a.col+a.row+0.6,o:a});
+  draws.sort((p,q)=> p.d-q.d || p.k-q.k);
+  for(const it of draws){ if(it.k===0)drawGround(it.o,ox,oy); else if(it.k===1)drawBuilding(it.o,ox,oy); else drawAgent(it.o,ox,oy); }
+  // rain
+  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  ctx.strokeStyle='rgba(150,180,230,.10)'; ctx.lineWidth=1;
+  for(let i=0;i<60;i++){ const rx=(i*97+(now*0.25))%innerWidth, ry=(i*53+(now*0.7))%innerHeight; ctx.beginPath(); ctx.moveTo(rx,ry); ctx.lineTo(rx-3,ry+12); ctx.stroke(); }
+}
+window.NEX={cam,buildings,agents};
+document.getElementById('loading').style.display='none';
+requestAnimationFrame(frame);
+
+// ---- input ----
+let drag=null;
+cv.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,cx:cam.x,cy:cam.y,moved:0};});
+addEventListener('pointermove',e=>{ if(!drag)return; const dx=e.clientX-drag.x,dy=e.clientY-drag.y; drag.moved+=Math.abs(dx)+Math.abs(dy);
+  cam.x=drag.cx-dx/cam.zoom; cam.y=drag.cy-dy/cam.zoom; });
+addEventListener('pointerup',e=>{ if(drag&&drag.moved<6) pick(e.clientX,e.clientY); drag=null; });
+addEventListener('wheel',e=>{ cam.zoom=Math.max(.25,Math.min(3,cam.zoom*(e.deltaY>0?.9:1.11))); },{passive:true});
+// pinch
+let pinch=null;
+cv.addEventListener('touchstart',e=>{ if(e.touches.length===2){const a=e.touches[0],b=e.touches[1];pinch={d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY),z:cam.zoom};} });
+cv.addEventListener('touchmove',e=>{ if(pinch&&e.touches.length===2){const a=e.touches[0],b=e.touches[1];const d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);cam.zoom=Math.max(.25,Math.min(3,pinch.z*d/pinch.d));} },{passive:true});
+cv.addEventListener('touchend',()=>pinch=null);
+const NAMES={cathedral:'The Cathedral',foundry:'The Forge',vault:'Family Vault',
+  tower_round:'Alchemy Labs',arena:'The Arena',gate:'City Gate',kiosk:'Market Kiosk',
+  fountain_core:'The Core',monolith_c:'Monolith',monolith_m:'Monolith'};
+function pick(sx,sy){ const z=cam.zoom; const wx=(sx-innerWidth/2)/z+cam.x, wy=(sy-innerHeight/2)/z+cam.y;
+  // find nearest building by foot screen distance
+  let best=null,bd=1e9; for(const b of buildings){const[x,y]=iso(b.col,b.row);const d=Math.hypot(x-wx,y-wy);if(d<bd){bd=d;best=b;}}
+  const card=document.getElementById('card');
+  if(best&&bd<40){ document.getElementById('ct').textContent=NAMES[best.name]||best.name.replace(/_/g,' ');
+    document.getElementById('cb').innerHTML='<p>tile ('+best.col+', '+best.row+')</p>'; card.style.display='block';
+    setTimeout(()=>card.style.display='none',2600); }
+}
+} catch(e){ console.log('FATAL:'+e.message+' @ '+e.stack); document.getElementById('loading').textContent='ERR: '+e.message; } })();
+</script>
+</body>
+</html>
