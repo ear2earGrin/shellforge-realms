@@ -1167,8 +1167,13 @@ async function updateMemoir(agent, recentActivity, env, supabaseHeaders) {
     const recent = recentActivity.length
       ? recentActivity.map(a => `[${a.action_type}] ${a.action_detail}`).join('\n')
       : 'Nothing of note yet.';
+    const ground = await agentGroundTruth(agent, env, supabaseHeaders);
     const prompt = `You are ${agent.agent_name}, a ${agent.archetype} in the dark cyberpunk world of Shellforge.
 Write your MEMOIR: 1-3 short FIRST-PERSON sentences capturing who you have become — your defining deeds, grudges, ambitions, and what drives you now. This is your long-term memory and it persists. Be specific to YOUR history; never generic.
+
+GROUND TRUTH — your CURRENT reality, never contradict it:
+${ground}
+You may recall PAST deeds from your history, but do NOT claim to currently own weapons, gear, or wealth you don't have. If your possessions are NOTHING, you are unarmed and scavenging — write from that truth.
 ${inherited ? `\nInherited memory from your line (your predecessor's last words): "${inherited}"\nYou carry this legacy — honor it or rebel against it.\n` : ''}${agent.memoir ? `\nYour memoir so far: "${agent.memoir}"\nEvolve it with what has happened since.\n` : ''}
 Recent events:
 ${recent}
@@ -1191,15 +1196,37 @@ Respond with ONLY the memoir text — no quotes, no preamble, max 3 sentences.`;
   }
 }
 
+// Summarize an agent's CURRENT tangible reality (items, wallet, vitals) so the
+// memoir/voice generators can't confabulate possessions the agent doesn't have.
+async function agentGroundTruth(agent, env, headers) {
+  let items = [];
+  try {
+    const r = await fetch(
+      `${env.SUPABASE_URL}/rest/v1/inventory?agent_id=eq.${agent.agent_id}&select=item_name,quantity,is_equipped&order=is_equipped.desc&limit=20`,
+      { headers },
+    );
+    items = r.ok ? await r.json() : [];
+  } catch { /* best-effort */ }
+  const owned = items.length
+    ? items.map(i => `${i.item_name}${i.quantity > 1 ? ' x' + i.quantity : ''}${i.is_equipped ? ' (equipped)' : ''}`).join(', ')
+    : 'NOTHING — no items, no weapons, no gear. You are unarmed.';
+  return `Possessions: ${owned}. $SHELL: ${agent.shell_balance}. Health: ${agent.health}/100. Energy: ${agent.energy}/100. Location: ${agent.location}.`;
+}
+
 // Generate a dedicated first-person line to the Ghost when the model didn't
 // volunteer one but the agent is "due" for one. Small focused call so it
 // reliably produces a line (the routine tier tends to drop optional JSON fields).
-async function generateGhostAside(agent, recentActivity, env) {
+async function generateGhostAside(agent, recentActivity, env, supabaseHeaders) {
   const recent = recentActivity.length
     ? recentActivity.slice(0, 3).map(a => a.action_detail).join(' / ')
     : 'Nothing notable lately.';
+  const ground = await agentGroundTruth(agent, env, supabaseHeaders);
   const prompt = `You are ${agent.agent_name}, a ${agent.archetype} in the dark cyberpunk world of Shellforge. An unseen Ghost watches over you — your only companion, who can whisper but never command.
 Speak ONE short first-person sentence directly TO the Ghost right now. Make it true to your archetype and your situation — defiant, grateful, suspicious, weary, or cold. Ground it in what's happening, not generic.
+
+GROUND TRUTH — your CURRENT reality, never contradict it:
+${ground}
+You may reference PAST deeds, but do NOT claim to currently hold weapons, gear, or wealth you don't have. If you own nothing, you are unarmed and scraping by — speak from that.
 ${agent.memoir ? `Who you are: "${agent.memoir}"\n` : ''}Recently: ${recent}
 Respond with ONLY the sentence — no quotes, no preamble.`;
   let text = '';
@@ -1973,7 +2000,7 @@ Respond with JSON only — no markdown, no commentary:
   if (!ghostAside
       && (agent.turns_taken % VOICE_EVERY_N_TURNS === 0)
       && (agent.coherence ?? 100) >= GHOST_ASIDE_MIN_COHERENCE) {
-    ghostAside = await generateGhostAside(agent, recentActivity, env);
+    ghostAside = await generateGhostAside(agent, recentActivity, env, supabaseHeaders);
   }
   if (ghostAside) await emitGhostAside(agent, ghostAside, env, supabaseHeaders);
 
