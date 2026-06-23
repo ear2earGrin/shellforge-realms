@@ -1,0 +1,80 @@
+{
+ "black_market": {
+  "w": 400,
+  "h": 512,
+  "anchorX": 200,
+  "anchorY": 512
+ },
+ "cathedral_v3": {
+  "w": 511,
+  "h": 479,
+  "anchorX": 255,
+  "anchorY": 479
+ },
+ "clock_church": {
+  "w": 508,
+  "h": 511,
+  "anchorX": 254,
+  "anchorY": 511
+ },
+ "foundry_v2": {
+  "w": 511,
+  "h": 506,
+  "anchorX": 255,
+  "anchorY": 506
+ },
+ "house_a_v2": {
+  "w": 450,
+  "h": 512,
+  "anchorX": 225,
+  "anchorY": 512
+ },
+ "house_b_v2": {
+  "w": 407,
+  "h": 511,
+  "anchorX": 203,
+  "anchorY": 511
+ },
+ "house_c_v2": {
+  "w": 175,
+  "h": 512,
+  "anchorX": 87,
+  "anchorY": 512
+ },
+ "house_d": {
+  "w": 487,
+  "h": 512,
+  "anchorX": 243,
+  "anchorY": 512
+ },
+ "obelisk": {
+  "w": 491,
+  "h": 512,
+  "anchorX": 245,
+  "anchorY": 512
+ },
+ "slum_tenement": {
+  "w": 394,
+  "h": 512,
+  "anchorX": 197,
+  "anchorY": 512
+ },
+ "tavern_v2": {
+  "w": 459,
+  "h": 512,
+  "anchorX": 229,
+  "anchorY": 512
+ },
+ "wall_v2": {
+  "w": 418,
+  "h": 512,
+  "anchorX": 209,
+  "anchorY": 512
+ },
+ "well": {
+  "w": 486,
+  "h": 512,
+  "anchorX": 243,
+  "anchorY": 512
+ }
+}
